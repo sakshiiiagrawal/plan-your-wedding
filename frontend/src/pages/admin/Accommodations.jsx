@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { HiOutlineOfficeBuilding, HiOutlineUsers, HiOutlineHome } from 'react-icons/hi';
 
 const mockAccommodations = [
@@ -38,6 +39,7 @@ const mockRooms = [
 ];
 
 export default function Accommodations() {
+  const { canEdit } = useAuth();
   const [selectedHotel, setSelectedHotel] = useState(mockAccommodations[0]);
 
   const formatCurrency = (amount) => {
@@ -52,7 +54,7 @@ export default function Accommodations() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="page-title">Accommodations & Room Allocation</h1>
-        <button className="btn-primary">Add Hotel</button>
+        {canEdit && <button className="btn-primary">Add Hotel</button>}
       </div>
 
       {/* Hotel Cards */}
@@ -122,7 +124,7 @@ export default function Accommodations() {
                 <th className="text-left p-3">Type</th>
                 <th className="text-left p-3">Capacity</th>
                 <th className="text-left p-3">Guests</th>
-                <th className="text-left p-3">Actions</th>
+                {canEdit && <th className="text-left p-3">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -142,11 +144,13 @@ export default function Accommodations() {
                       <span className="text-gray-400 italic">Available - Drag guest here</span>
                     )}
                   </td>
-                  <td className="p-3">
-                    <button className="text-sm text-gold-600 hover:text-gold-700">
-                      {room.guests.length > 0 ? 'Edit' : 'Assign'}
-                    </button>
-                  </td>
+                  {canEdit && (
+                    <td className="p-3">
+                      <button className="text-sm text-gold-600 hover:text-gold-700">
+                        {room.guests.length > 0 ? 'Edit' : 'Assign'}
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

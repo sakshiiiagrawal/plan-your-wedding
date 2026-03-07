@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { HiOutlinePlus, HiOutlineCheck, HiOutlineClock, HiOutlineExclamation } from 'react-icons/hi';
 
 const mockTasks = [
@@ -21,6 +22,7 @@ const stats = {
 };
 
 export default function Tasks() {
+  const { canEdit } = useAuth();
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
 
@@ -50,10 +52,12 @@ export default function Tasks() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="page-title">Tasks & Checklist</h1>
-        <button className="btn-primary flex items-center gap-2">
-          <HiOutlinePlus className="w-4 h-4" />
-          Add Task
-        </button>
+        {canEdit && (
+          <button className="btn-primary flex items-center gap-2">
+            <HiOutlinePlus className="w-4 h-4" />
+            Add Task
+          </button>
+        )}
       </div>
 
       {/* Stats */}
@@ -117,11 +121,14 @@ export default function Tasks() {
             }`}
           >
             {/* Checkbox */}
-            <button className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-              task.status === 'completed'
-                ? 'bg-green-500 border-green-500'
-                : 'border-gray-300 hover:border-gold-500'
-            }`}>
+            <button
+              disabled={!canEdit}
+              className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                task.status === 'completed'
+                  ? 'bg-green-500 border-green-500'
+                  : `border-gray-300 ${canEdit ? 'hover:border-gold-500 cursor-pointer' : 'cursor-default'}`
+              }`}
+            >
               {task.status === 'completed' && (
                 <HiOutlineCheck className="w-4 h-4 text-white" />
               )}

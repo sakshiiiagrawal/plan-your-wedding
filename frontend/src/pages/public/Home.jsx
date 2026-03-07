@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { HiOutlineCalendar, HiOutlineLocationMarker, HiOutlineClock } from 'react-icons/hi';
+import Gallery from '../../components/Gallery';
 
 const WEDDING_DATE = new Date('2026-11-26T07:00:00');
 
@@ -9,16 +10,16 @@ const events = [
     name: 'Mehendi',
     date: 'November 24, 2026',
     time: '6:00 PM onwards',
-    venue: 'Garden Lawns, Hotel Radisson',
-    dress: 'Green/Yellow Traditional',
+    venue: 'Hotel Malsi Mist',
+    dress: 'Multi-Color Traditional',
     description: 'Join us for an evening of henna, music, and celebration.',
     color: '#228B22'
   },
   {
     name: 'Haldi Carnival',
     date: 'November 25, 2026',
-    time: '9:00 AM - 1:00 PM',
-    venue: 'Pool Side, Hotel Radisson',
+    time: '11:00 AM - 3:00 PM',
+    venue: 'Hotel Malsi Mist',
     dress: 'Yellow Attire',
     description: 'A colorful morning filled with turmeric rituals and fun.',
     color: '#FFD700'
@@ -26,18 +27,18 @@ const events = [
   {
     name: 'Engagement & Sangeet',
     date: 'November 25, 2026',
-    time: '6:00 PM onwards',
-    venue: 'Grand Ballroom, Hotel Radisson',
-    dress: 'Indo-Western',
+    time: '7:00 PM onwards',
+    venue: 'Hotel Malsi Mist',
+    dress: 'Indo-Western Bling',
     description: 'Ring ceremony followed by dance performances and party.',
     color: '#1A237E'
   },
   {
     name: 'Wedding',
     date: 'November 26, 2026',
-    time: '7:00 AM onwards',
-    venue: 'Royal Mandap, Hotel Radisson',
-    dress: 'Traditional Attire',
+    time: '11:00 AM onwards',
+    venue: 'Regal Manor by Grand Dreams',
+    dress: 'Traditional',
     description: 'The sacred union of two souls in a traditional ceremony.',
     color: '#8B0000'
   },
@@ -284,14 +285,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Gallery Section Placeholder */}
-      <section id="gallery" className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-4 text-center">
-          <h2 className="font-script text-5xl text-maroon-800 mb-4">Gallery</h2>
-          <div className="w-24 h-1 bg-gold-500 mx-auto mb-8" />
-          <p className="text-gray-500">Coming soon - Our pre-wedding photos!</p>
-        </div>
-      </section>
+      <Gallery />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { HiOutlinePhone, HiOutlineMail, HiOutlineStar, HiOutlineCurrencyRupee } from 'react-icons/hi';
 
 const categories = [
@@ -88,6 +89,7 @@ const mockVendors = [
 ];
 
 export default function Vendors() {
+  const { canEdit } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -107,7 +109,7 @@ export default function Vendors() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="page-title">Vendors</h1>
-        <button onClick={() => setShowAddModal(true)} className="btn-primary">Add Vendor</button>
+        {canEdit && <button onClick={() => setShowAddModal(true)} className="btn-primary">Add Vendor</button>}
       </div>
 
       {/* Category Tabs */}
@@ -186,7 +188,7 @@ export default function Vendors() {
               </span>
               <div className="flex gap-2">
                 <button className="text-sm text-gold-600 hover:underline">Details</button>
-                <button className="text-sm text-maroon-800 hover:underline">Pay</button>
+                {canEdit && <button className="text-sm text-maroon-800 hover:underline">Pay</button>}
               </div>
             </div>
           </div>

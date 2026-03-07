@@ -72,9 +72,32 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-gray-500">
-            Default: admin@wedding.com / SakshiAyush2026
-          </p>
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <p className="text-sm text-gray-500 text-center mb-3">Login Credentials:</p>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center justify-between p-2 bg-maroon-50 rounded-lg">
+                <div>
+                  <span className="font-medium text-maroon-800">Admin</span>
+                  <span className="text-gray-500 ml-2">(Full Access)</span>
+                </div>
+                <code className="text-gray-600">admin@wedding.com / SakshiAyush2026</code>
+              </div>
+              <div className="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
+                <div>
+                  <span className="font-medium text-blue-800">Family</span>
+                  <span className="text-gray-500 ml-2">(View Only)</span>
+                </div>
+                <code className="text-gray-600">family@wedding.com / Family2026</code>
+              </div>
+              <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
+                <div>
+                  <span className="font-medium text-green-800">Friends</span>
+                  <span className="text-gray-500 ml-2">(View Only, No Finance)</span>
+                </div>
+                <code className="text-gray-600">friends@wedding.com / Friends2026</code>
+              </div>
+            </div>
+          </div>
         </div>
 
         <p className="mt-6 text-center text-cream/70 text-sm">

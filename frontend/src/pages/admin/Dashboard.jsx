@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   HiOutlineUserGroup,
   HiOutlineCurrencyRupee,
@@ -40,6 +41,7 @@ const rsvpData = [
 ];
 
 export default function Dashboard() {
+  const { canEdit, canViewFinance } = useAuth();
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
@@ -105,14 +107,16 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="stat-card">
-          <HiOutlineCurrencyRupee className="w-8 h-8 text-gold-500 mb-2" />
-          <div className="stat-value">{formatCurrency(mockStats.budget.spent)}</div>
-          <div className="stat-label">Spent</div>
-          <div className="text-xs text-gray-400 mt-1">
-            of {formatCurrency(mockStats.budget.total)}
+        {canViewFinance && (
+          <div className="stat-card">
+            <HiOutlineCurrencyRupee className="w-8 h-8 text-gold-500 mb-2" />
+            <div className="stat-value">{formatCurrency(mockStats.budget.spent)}</div>
+            <div className="stat-label">Spent</div>
+            <div className="text-xs text-gray-400 mt-1">
+              of {formatCurrency(mockStats.budget.total)}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="stat-card">
           <HiOutlineClipboardList className="w-8 h-8 text-gold-500 mb-2" />
@@ -136,22 +140,28 @@ export default function Dashboard() {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Add Guest', path: '/admin/guests', icon: HiOutlineUserGroup },
-          { label: 'Add Expense', path: '/admin/budget', icon: HiOutlineCurrencyRupee },
-          { label: 'Add Task', path: '/admin/tasks', icon: HiOutlineClipboardList },
+          { label: 'Add Guest', path: '/admin/guests', icon: HiOutlineUserGroup, requiresEdit: true },
+          { label: 'Add Expense', path: '/admin/budget', icon: HiOutlineCurrencyRupee, requiresEdit: true, requiresFinance: true },
+          { label: 'Add Task', path: '/admin/tasks', icon: HiOutlineClipboardList, requiresEdit: true },
           { label: 'View Events', path: '/admin/events', icon: HiOutlineCalendar },
-        ].map((action) => (
-          <Link
-            key={action.label}
-            to={action.path}
-            className="card-hover flex items-center gap-3 p-4"
-          >
-            <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center">
-              <action.icon className="w-5 h-5 text-gold-600" />
-            </div>
-            <span className="font-medium text-gray-700">{action.label}</span>
-          </Link>
-        ))}
+        ]
+          .filter(action => {
+            if (action.requiresEdit && !canEdit) return false;
+            if (action.requiresFinance && !canViewFinance) return false;
+            return true;
+          })
+          .map((action) => (
+            <Link
+              key={action.label}
+              to={action.path}
+              className="card-hover flex items-center gap-3 p-4"
+            >
+              <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center">
+                <action.icon className="w-5 h-5 text-gold-600" />
+              </div>
+              <span className="font-medium text-gray-700">{action.label}</span>
+            </Link>
+          ))}
       </div>
 
       {/* Charts Row */}
@@ -192,18 +202,20 @@ export default function Dashboard() {
         </div>
 
         {/* Budget Overview */}
-        <div className="card">
-          <h3 className="section-title mb-4">Budget Overview</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={mockBudgetData} layout="vertical">
-              <XAxis type="number" tickFormatter={(v) => `₹${v / 100000}L`} />
-              <YAxis type="category" dataKey="name" width={80} />
-              <Tooltip formatter={(v) => formatCurrency(v)} />
-              <Bar dataKey="allocated" fill="#D4AF37" name="Allocated" />
-              <Bar dataKey="spent" fill="#8B0000" name="Spent" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {canViewFinance && (
+          <div className="card">
+            <h3 className="section-title mb-4">Budget Overview</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={mockBudgetData} layout="vertical">
+                <XAxis type="number" tickFormatter={(v) => `₹${v / 100000}L`} />
+                <YAxis type="category" dataKey="name" width={80} />
+                <Tooltip formatter={(v) => formatCurrency(v)} />
+                <Bar dataKey="allocated" fill="#D4AF37" name="Allocated" />
+                <Bar dataKey="spent" fill="#8B0000" name="Spent" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* Events Timeline */}

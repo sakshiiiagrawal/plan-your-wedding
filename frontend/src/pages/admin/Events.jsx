@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { HiOutlineCalendar, HiOutlineLocationMarker, HiOutlineClock, HiOutlineSparkles } from 'react-icons/hi';
 
 const mockEvents = [
@@ -61,6 +62,7 @@ const mockEvents = [
 ];
 
 export default function Events() {
+  const { canEdit } = useAuth();
   const [selectedEvent, setSelectedEvent] = useState(null);
 
   const formatDate = (dateStr) => {
@@ -167,9 +169,9 @@ export default function Events() {
                     </div>
 
                     <div className="flex gap-3 mt-6">
-                      <button className="btn-primary">Edit Event</button>
+                      {canEdit && <button className="btn-primary">Edit Event</button>}
                       <button className="btn-outline">View Vendors</button>
-                      <button className="btn-outline">Manage Rituals</button>
+                      {canEdit && <button className="btn-outline">Manage Rituals</button>}
                     </div>
                   </div>
                 )}

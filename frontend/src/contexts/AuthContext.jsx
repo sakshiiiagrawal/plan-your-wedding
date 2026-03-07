@@ -4,13 +4,29 @@ import api from '../api/axios';
 const AuthContext = createContext(null);
 
 // Demo credentials for when backend is not available
-const DEMO_EMAIL = 'admin@wedding.com';
-const DEMO_PASSWORD = 'SakshiAyush2026';
-const DEMO_USER = {
-  id: 1,
-  email: 'admin@wedding.com',
-  name: 'Wedding Admin',
-  role: 'admin'
+// Roles: admin (full access), family (view all, read-only), friends (view all except finance, read-only)
+const DEMO_USERS = {
+  'admin@wedding.com': {
+    id: 1,
+    email: 'admin@wedding.com',
+    password: 'SakshiAyush2026',
+    name: 'Wedding Admin',
+    role: 'admin'
+  },
+  'family@wedding.com': {
+    id: 2,
+    email: 'family@wedding.com',
+    password: 'Family2026',
+    name: 'Family Member',
+    role: 'family'
+  },
+  'friends@wedding.com': {
+    id: 3,
+    email: 'friends@wedding.com',
+    password: 'Friends2026',
+    name: 'Friend',
+    role: 'friends'
+  }
 };
 
 export const AuthProvider = ({ children }) => {
@@ -60,12 +76,14 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       // If backend is unavailable, use demo credentials
       if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-        if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
+        const demoUser = DEMO_USERS[email];
+        if (demoUser && password === demoUser.password) {
           const demoToken = 'demo-token-' + Date.now();
           localStorage.setItem('token', demoToken);
-          localStorage.setItem('user', JSON.stringify(DEMO_USER));
-          setUser(DEMO_USER);
-          return DEMO_USER;
+          const userToStore = { id: demoUser.id, email: demoUser.email, name: demoUser.name, role: demoUser.role };
+          localStorage.setItem('user', JSON.stringify(userToStore));
+          setUser(userToStore);
+          return userToStore;
         } else {
           throw new Error('Invalid credentials');
         }
@@ -80,8 +98,36 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  // Role-based access helpers
+  const isAdmin = user?.role === 'admin';
+  const isFamily = user?.role === 'family';
+  const isFriends = user?.role === 'friends';
+
+  // Can edit/update data - only admin
+  const canEdit = isAdmin;
+
+  // Can view finance/budget - admin and family, but NOT friends
+  const canViewFinance = isAdmin || isFamily;
+
+  // Is in read-only mode - family and friends
+  const isReadOnly = isFamily || isFriends;
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
+      logout,
+      isAuthenticated: !!user,
+      // Role checks
+      isAdmin,
+      isFamily,
+      isFriends,
+      // Permission helpers
+      canEdit,
+      canViewFinance,
+      isReadOnly
+    }}>
       {children}
     </AuthContext.Provider>
   );

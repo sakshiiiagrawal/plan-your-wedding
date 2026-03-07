@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { HiOutlinePlus, HiOutlineCurrencyRupee } from 'react-icons/hi';
 
@@ -36,7 +38,13 @@ const pendingPayments = [
 const COLORS = ['#8B0000', '#D4AF37', '#228B22', '#1A237E', '#E91E63', '#FF6F00', '#607D8B'];
 
 export default function Budget() {
+  const { canEdit, canViewFinance } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Redirect if user doesn't have permission to view finance
+  if (!canViewFinance) {
+    return <Navigate to="/admin" replace />;
+  }
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -56,10 +64,12 @@ export default function Budget() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="page-title">Budget & Finance</h1>
-        <button className="btn-primary flex items-center gap-2">
-          <HiOutlinePlus className="w-4 h-4" />
-          Add Expense
-        </button>
+        {canEdit && (
+          <button className="btn-primary flex items-center gap-2">
+            <HiOutlinePlus className="w-4 h-4" />
+            Add Expense
+          </button>
+        )}
       </div>
 
       {/* Summary Cards */}
@@ -204,7 +214,7 @@ export default function Budget() {
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="text-lg font-bold text-red-600">{formatCurrency(payment.amount)}</span>
-                  <button className="btn-primary text-sm py-2">Record Payment</button>
+                  {canEdit && <button className="btn-primary text-sm py-2">Record Payment</button>}
                 </div>
               </div>
             ))}

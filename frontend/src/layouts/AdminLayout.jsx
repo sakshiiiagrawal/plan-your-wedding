@@ -14,21 +14,29 @@ import {
 } from 'react-icons/hi';
 import { useState } from 'react';
 
-const navItems = [
+const allNavItems = [
   { path: '/admin', label: 'Dashboard', icon: HiOutlineHome, end: true },
   { path: '/admin/events', label: 'Events', icon: HiOutlineCalendar },
   { path: '/admin/guests', label: 'Guests', icon: HiOutlineUserGroup },
   { path: '/admin/venues', label: 'Venues', icon: HiOutlineLocationMarker },
   { path: '/admin/accommodations', label: 'Accommodations', icon: HiOutlineOfficeBuilding },
   { path: '/admin/vendors', label: 'Vendors', icon: HiOutlineBriefcase },
-  { path: '/admin/budget', label: 'Budget', icon: HiOutlineCurrencyRupee },
+  { path: '/admin/budget', label: 'Budget', icon: HiOutlineCurrencyRupee, requiresFinanceAccess: true },
   { path: '/admin/tasks', label: 'Tasks', icon: HiOutlineClipboardList },
 ];
 
 export default function AdminLayout() {
-  const { logout, user, isAuthenticated, loading } = useAuth();
+  const { logout, user, isAuthenticated, loading, canViewFinance, isReadOnly, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Filter nav items based on role permissions
+  const navItems = allNavItems.filter(item => {
+    if (item.requiresFinanceAccess && !canViewFinance) {
+      return false;
+    }
+    return true;
+  });
 
   const handleLogout = () => {
     logout();
@@ -117,6 +125,11 @@ export default function AdminLayout() {
                 <p className="text-xs text-gray-500 truncate">{user?.email}</p>
               </div>
             </div>
+            {isReadOnly && (
+              <div className="mb-3 mx-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs text-amber-700 font-medium text-center">View Only Mode</p>
+              </div>
+            )}
             <button
               onClick={handleLogout}
               className="flex items-center gap-3 px-4 py-3 w-full text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
@@ -141,12 +154,27 @@ export default function AdminLayout() {
           <div className="flex-1">
             <h2 className="font-display font-semibold text-maroon-800">Wedding Dashboard</h2>
           </div>
-          <NavLink
-            to="/"
-            className="text-sm text-gold-600 hover:text-gold-700 font-medium"
-          >
-            View Wedding Website →
-          </NavLink>
+          <div className="flex items-center gap-4">
+            <NavLink
+              to="/"
+              className="text-sm text-gold-600 hover:text-gold-700 font-medium"
+            >
+              View Wedding Website →
+            </NavLink>
+            <div className="hidden sm:flex items-center gap-3 pl-4 border-l border-gold-200">
+              <div className="text-right">
+                <p className="text-sm font-medium text-gray-700">{user?.name}</p>
+                <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Logout"
+              >
+                <HiOutlineLogout className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
         </header>
 
         {/* Page Content */}

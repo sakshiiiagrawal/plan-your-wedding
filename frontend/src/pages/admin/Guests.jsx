@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   HiOutlineSearch,
   HiOutlinePlus,
@@ -31,6 +32,7 @@ const stats = {
 };
 
 export default function Guests() {
+  const { canEdit } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [sideFilter, setSideFilter] = useState('all');
   const [rsvpFilter, setRsvpFilter] = useState('all');
@@ -60,20 +62,24 @@ export default function Guests() {
         <h1 className="page-title">Guest Management</h1>
         <div className="flex gap-2">
           <button className="btn-outline flex items-center gap-2">
-            <HiOutlineUpload className="w-4 h-4" />
-            Import
-          </button>
-          <button className="btn-outline flex items-center gap-2">
             <HiOutlineDownload className="w-4 h-4" />
             Export
           </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="btn-primary flex items-center gap-2"
-          >
-            <HiOutlinePlus className="w-4 h-4" />
-            Add Guest
-          </button>
+          {canEdit && (
+            <>
+              <button className="btn-outline flex items-center gap-2">
+                <HiOutlineUpload className="w-4 h-4" />
+                Import
+              </button>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="btn-primary flex items-center gap-2"
+              >
+                <HiOutlinePlus className="w-4 h-4" />
+                Add Guest
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -152,7 +158,7 @@ export default function Guests() {
                 <th className="text-left p-4">RSVP</th>
                 <th className="text-left p-4">Diet</th>
                 <th className="text-left p-4">Accommodation</th>
-                <th className="text-left p-4">Actions</th>
+                {canEdit && <th className="text-left p-4">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -187,16 +193,18 @@ export default function Guests() {
                       <span className="text-gray-400">—</span>
                     )}
                   </td>
-                  <td className="p-4">
-                    <div className="flex gap-2">
-                      <button className="p-2 hover:bg-gold-50 rounded-lg text-gold-600">
-                        <HiOutlinePencil className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 hover:bg-red-50 rounded-lg text-red-600">
-                        <HiOutlineTrash className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
+                  {canEdit && (
+                    <td className="p-4">
+                      <div className="flex gap-2">
+                        <button className="p-2 hover:bg-gold-50 rounded-lg text-gold-600">
+                          <HiOutlinePencil className="w-4 h-4" />
+                        </button>
+                        <button className="p-2 hover:bg-red-50 rounded-lg text-red-600">
+                          <HiOutlineTrash className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -205,7 +213,7 @@ export default function Guests() {
       </div>
 
       {/* Add Guest Modal */}
-      {showAddModal && (
+      {canEdit && showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gold-200">

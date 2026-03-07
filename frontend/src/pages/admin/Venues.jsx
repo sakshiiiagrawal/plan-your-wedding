@@ -1,3 +1,4 @@
+import { useAuth } from '../../contexts/AuthContext';
 import { HiOutlineLocationMarker, HiOutlinePhone, HiOutlineUsers, HiOutlineCurrencyRupee } from 'react-icons/hi';
 
 const mockVenues = [
@@ -52,6 +53,8 @@ const mockVenues = [
 ];
 
 export default function Venues() {
+  const { canEdit } = useAuth();
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -73,7 +76,7 @@ export default function Venues() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="page-title">Venues</h1>
-        <button className="btn-primary">Add Venue</button>
+        {canEdit && <button className="btn-primary">Add Venue</button>}
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">

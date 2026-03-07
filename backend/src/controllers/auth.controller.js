@@ -3,21 +3,36 @@ const jwt = require('jsonwebtoken');
 
 // Simple in-memory auth for demo purposes
 // In production, you'd use Supabase Auth or another auth provider
-const ADMIN_CREDENTIALS = {
-  email: process.env.ADMIN_EMAIL || 'admin@wedding.com',
-  password: process.env.ADMIN_PASSWORD || 'SakshiAyush2026'
+// User roles: admin (full access), family (view all, read-only), friends (view all except finance, read-only)
+const USERS = {
+  'admin@wedding.com': {
+    password: process.env.ADMIN_PASSWORD || 'SakshiAyush2026',
+    role: 'admin',
+    name: 'Wedding Admin'
+  },
+  'family@wedding.com': {
+    password: process.env.FAMILY_PASSWORD || 'Family2026',
+    role: 'family',
+    name: 'Family Member'
+  },
+  'friends@wedding.com': {
+    password: process.env.FRIENDS_PASSWORD || 'Friends2026',
+    role: 'friends',
+    name: 'Friend'
+  }
 };
 
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    if (email !== ADMIN_CREDENTIALS.email || password !== ADMIN_CREDENTIALS.password) {
+    const user = USERS[email];
+    if (!user || password !== user.password) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const token = jwt.sign(
-      { email, role: 'admin' },
+      { email, role: user.role },
       process.env.JWT_SECRET || 'wedding-planner-secret-2026',
       { expiresIn: '7d' }
     );
@@ -26,8 +41,8 @@ const login = async (req, res, next) => {
       token,
       user: {
         email,
-        role: 'admin',
-        name: 'Wedding Admin'
+        role: user.role,
+        name: user.name
       }
     });
   } catch (error) {
@@ -57,10 +72,11 @@ const getCurrentUser = async (req, res, next) => {
       process.env.JWT_SECRET || 'wedding-planner-secret-2026'
     );
 
+    const user = USERS[decoded.email];
     res.json({
       email: decoded.email,
       role: decoded.role,
-      name: 'Wedding Admin'
+      name: user?.name || 'Guest'
     });
   } catch (error) {
     if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
