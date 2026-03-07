@@ -1,0 +1,197 @@
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+:root {
+  --color-primary: #8B0000;
+  --color-primary-light: #A52A2A;
+  --color-primary-dark: #5C0000;
+  --color-secondary: #D4AF37;
+  --color-secondary-light: #FFD700;
+  --color-secondary-dark: #B8860B;
+  --color-accent: #FF6F00;
+  --color-tertiary: #E91E63;
+  --color-cream: #FFF8E7;
+  --color-ivory: #FFFFF0;
+}
+
+@layer base {
+  body {
+    @apply font-body text-gray-800 bg-cream m-0;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@utility btn-primary {
+  @apply bg-maroon-800 text-white px-6 py-2 rounded-lg hover:bg-maroon-700 transition-colors duration-200 font-medium;
+}
+
+@utility btn-secondary {
+  @apply bg-gold-500 text-maroon-900 px-6 py-2 rounded-lg hover:bg-gold-400 transition-colors duration-200 font-medium;
+}
+
+@utility btn-outline {
+  @apply border-2 border-maroon-800 text-maroon-800 px-6 py-2 rounded-lg hover:bg-maroon-800 hover:text-white transition-colors duration-200 font-medium;
+}
+
+@utility card {
+  @apply bg-white rounded-xl shadow-md p-6 border border-gold-200;
+}
+
+@utility card-hover {
+  @apply card hover:shadow-lg hover:border-gold-400 transition-all duration-200;
+}
+
+@utility input {
+  @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500 outline-none transition-all duration-200;
+}
+
+@utility label {
+  @apply block text-sm font-medium text-gray-700 mb-1;
+}
+
+@utility sidebar-link {
+  @apply flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gold-100 hover:text-maroon-800 rounded-lg transition-colors duration-200;
+}
+
+@utility sidebar-link-active {
+  @apply sidebar-link bg-maroon-800 text-white hover:bg-maroon-700 hover:text-white;
+}
+
+@utility badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+@utility badge-success {
+  @apply badge bg-green-100 text-green-800;
+}
+
+@utility badge-warning {
+  @apply badge bg-yellow-100 text-yellow-800;
+}
+
+@utility badge-danger {
+  @apply badge bg-red-100 text-red-800;
+}
+
+@utility badge-info {
+  @apply badge bg-blue-100 text-blue-800;
+}
+
+@utility badge-bride {
+  @apply badge bg-pink-100 text-pink-800;
+}
+
+@utility badge-groom {
+  @apply badge bg-blue-100 text-blue-800;
+}
+
+@utility stat-card {
+  @apply card flex flex-col items-center justify-center text-center p-6;
+}
+
+@utility stat-value {
+  @apply text-3xl font-bold text-maroon-800;
+}
+
+@utility stat-label {
+  @apply text-sm text-gray-500 mt-1;
+}
+
+@utility table-header {
+  @apply bg-maroon-800 text-white;
+}
+
+@utility table-row {
+  @apply border-b border-gray-200 hover:bg-gold-50 transition-colors duration-150;
+}
+
+@utility section-title {
+  @apply text-2xl font-display font-bold text-maroon-800 mb-6;
+}
+
+@utility page-title {
+  @apply text-3xl font-display font-bold text-maroon-800;
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-maroon-800 to-gold-600 bg-clip-text text-transparent;
+  }
+
+  .bg-gradient-wedding {
+    @apply bg-gradient-to-r from-maroon-800 via-maroon-700 to-gold-600;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Animation keyframes */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-gold {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(212, 175, 55, 0);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-pulse-gold {
+  animation: pulse-gold 2s ease-in-out infinite;
+}
+
+/* Custom scrollbar for main content */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #FFF8E7;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #D4AF37;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #B8860B;
+}
