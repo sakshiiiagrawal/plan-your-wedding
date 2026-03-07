@@ -1,4 +1,5 @@
 const { supabase } = require('../config/database');
+const { validateRequiredFields, createValidationError } = require('../utils/validation');
 
 const getSummary = async (req, res, next) => {
   try {
@@ -141,6 +142,12 @@ const getCategories = async (req, res, next) => {
 
 const createCategory = async (req, res, next) => {
   try {
+    // Validate required fields
+    const validation = validateRequiredFields(req.body, ['name']);
+    if (!validation.isValid) {
+      return res.status(400).json(createValidationError(validation.missingFields));
+    }
+
     const { data, error } = await supabase
       .from('budget_categories')
       .insert([req.body])
@@ -211,6 +218,12 @@ const getExpenseById = async (req, res, next) => {
 
 const createExpense = async (req, res, next) => {
   try {
+    // Validate required fields
+    const validation = validateRequiredFields(req.body, ['description', 'amount', 'expense_date']);
+    if (!validation.isValid) {
+      return res.status(400).json(createValidationError(validation.missingFields));
+    }
+
     const { data, error } = await supabase
       .from('expenses')
       .insert([req.body])
@@ -333,6 +346,12 @@ const getPendingPayments = async (req, res, next) => {
 
 const createPayment = async (req, res, next) => {
   try {
+    // Validate required fields
+    const validation = validateRequiredFields(req.body, ['amount', 'payment_date', 'payment_method']);
+    if (!validation.isValid) {
+      return res.status(400).json(createValidationError(validation.missingFields));
+    }
+
     const { data, error } = await supabase
       .from('payments')
       .insert([req.body])

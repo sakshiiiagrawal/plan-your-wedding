@@ -1,4 +1,5 @@
 const { supabase } = require('../config/database');
+const { validateRequiredFields, createValidationError } = require('../utils/validation');
 
 const getAll = async (req, res, next) => {
   try {
@@ -78,6 +79,12 @@ const getGroups = async (req, res, next) => {
 
 const createGroup = async (req, res, next) => {
   try {
+    // Validate required fields
+    const validation = validateRequiredFields(req.body, ['name', 'side']);
+    if (!validation.isValid) {
+      return res.status(400).json(createValidationError(validation.missingFields));
+    }
+
     const { data, error } = await supabase
       .from('guest_groups')
       .insert([req.body])
@@ -111,6 +118,12 @@ const getById = async (req, res, next) => {
 const create = async (req, res, next) => {
   try {
     const { events, ...guestData } = req.body;
+
+    // Validate required fields
+    const validation = validateRequiredFields(guestData, ['first_name', 'side']);
+    if (!validation.isValid) {
+      return res.status(400).json(createValidationError(validation.missingFields));
+    }
 
     // Create guest
     const { data: guest, error: guestError } = await supabase

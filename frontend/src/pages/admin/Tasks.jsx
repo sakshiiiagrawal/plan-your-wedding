@@ -1,12 +1,25 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useTasks, useTaskStats } from '../../hooks/useApi';
-import { HiOutlinePlus, HiOutlineCheck, HiOutlineClock, HiOutlineExclamation } from 'react-icons/hi';
+import { useTasks, useTaskStats, useCreateTask, useUpdateTask, useUpdateTaskStatus, useDeleteTask } from '../../hooks/useApi';
+import toast from 'react-hot-toast';
+import { HiOutlinePlus, HiOutlineCheck, HiOutlineClock, HiOutlineExclamation, HiOutlineX, HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
 
 export default function Tasks() {
   const { canEdit } = useAuth();
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    due_date: '',
+    priority: 'medium',
+    status: 'pending',
+    assigned_to: '',
+    event_id: null
+  });
+  const [editingTask, setEditingTask] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   // API hooks
   const { data: tasks = [], isLoading: tasksLoading } = useTasks({
@@ -14,6 +27,76 @@ export default function Tasks() {
     priority: priorityFilter !== 'all' ? priorityFilter : undefined,
   });
   const { data: stats } = useTaskStats();
+  const createMutation = useCreateTask();
+  const updateMutation = useUpdateTask();
+  const updateStatusMutation = useUpdateTaskStatus();
+  const deleteMutation = useDeleteTask();
+
+  // Handler functions
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      due_date: '',
+      priority: 'medium',
+      status: 'pending',
+      assigned_to: '',
+      event_id: null
+    });
+    setEditingTask(null);
+  };
+
+  const handleEdit = (task) => {
+    setEditingTask(task);
+    setFormData({
+      title: task.title || '',
+      description: task.description || '',
+      due_date: task.due_date || '',
+      priority: task.priority || 'medium',
+      status: task.status || 'pending',
+      assigned_to: task.assigned_to || '',
+      event_id: task.event_id || null
+    });
+    setShowAddModal(true);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingTask) {
+        await updateMutation.mutateAsync({ id: editingTask.id, ...formData });
+        toast.success('Task updated successfully!');
+      } else {
+        await createMutation.mutateAsync(formData);
+        toast.success('Task created successfully!');
+      }
+      setShowAddModal(false);
+      resetForm();
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to save task';
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleToggleStatus = async (task) => {
+    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+    try {
+      await updateStatusMutation.mutateAsync({ id: task.id, status: newStatus });
+      toast.success(`Task marked as ${newStatus}`);
+    } catch (error) {
+      toast.error('Failed to update task status');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteMutation.mutateAsync(id);
+      toast.success('Task deleted successfully!');
+      setDeleteConfirm(null);
+    } catch (error) {
+      toast.error('Failed to delete task');
+    }
+  };
 
   const getPriorityColor = (priority) => {
     const colors = {
@@ -45,7 +128,10 @@ export default function Tasks() {
       <div className="flex items-center justify-between">
         <h1 className="page-title">Tasks & Checklist</h1>
         {canEdit && (
-          <button className="btn-primary flex items-center gap-2">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
             <HiOutlinePlus className="w-4 h-4" />
             Add Task
           </button>
@@ -115,6 +201,7 @@ export default function Tasks() {
             {/* Checkbox */}
             <button
               disabled={!canEdit}
+              onClick={() => canEdit && handleToggleStatus(task)}
               className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                 task.status === 'completed'
                   ? 'bg-green-500 border-green-500'
@@ -153,8 +240,25 @@ export default function Tasks() {
               </span>
             </div>
 
-            {/* Status Icon */}
-            {getStatusIcon(task.status)}
+            {/* Action Buttons */}
+            {canEdit && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleEdit(task)}
+                  className="p-2 hover:bg-gold-50 rounded-lg text-gold-600"
+                  title="Edit task"
+                >
+                  <HiOutlinePencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setDeleteConfirm(task.id)}
+                  className="p-2 hover:bg-red-50 rounded-lg text-red-600"
+                  title="Delete task"
+                >
+                  <HiOutlineTrash className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         ))}
         {tasks.length === 0 && (
@@ -163,6 +267,155 @@ export default function Tasks() {
           </div>
         )}
       </div>
+
+      {/* Add/Edit Task Modal */}
+      {canEdit && showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gold-200">
+              <h2 className="text-xl font-display font-bold text-maroon-800">
+                {editingTask ? 'Edit Task' : 'Add New Task'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  resetForm();
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <HiOutlineX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="label">Title *</label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="input"
+                  placeholder="Task title"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="label">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="input"
+                  rows={3}
+                  placeholder="Task description..."
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Due Date</label>
+                  <input
+                    type="date"
+                    value={formData.due_date}
+                    onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label">Assigned To</label>
+                  <input
+                    type="text"
+                    value={formData.assigned_to}
+                    onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+                    className="input"
+                    placeholder="Person name"
+                  />
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Priority</label>
+                  <select
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                    className="input"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="input"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+              </div>
+            </form>
+
+            <div className="flex gap-3 p-6 border-t border-gold-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddModal(false);
+                  resetForm();
+                }}
+                className="btn-outline flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                onClick={handleSubmit}
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="btn-primary flex-1 disabled:opacity-50"
+              >
+                {createMutation.isPending || updateMutation.isPending
+                  ? 'Saving...'
+                  : editingTask
+                  ? 'Update Task'
+                  : 'Create Task'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md">
+            <h3 className="text-lg font-bold text-maroon-800 mb-2">Confirm Deletion</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this task? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="btn-outline flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirm)}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

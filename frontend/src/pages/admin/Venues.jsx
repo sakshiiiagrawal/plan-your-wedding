@@ -1,10 +1,93 @@
+import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { HiOutlineLocationMarker, HiOutlinePhone, HiOutlineUsers, HiOutlineCurrencyRupee } from 'react-icons/hi';
-import { useVenues } from '../../hooks/useApi';
+import { HiOutlineLocationMarker, HiOutlinePhone, HiOutlineUsers, HiOutlineCurrencyRupee, HiOutlinePlus, HiOutlineX, HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
+import { useVenues, useCreateVenue, useUpdateVenue, useDeleteVenue } from '../../hooks/useApi';
+import toast from 'react-hot-toast';
 
 export default function Venues() {
   const { canEdit } = useAuth();
+  const [showVenueModal, setShowVenueModal] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    venue_type: 'wedding_hall',
+    address: '',
+    city: '',
+    capacity: 0,
+    total_cost: 0,
+    payment_status: 'pending',
+    contact_person: '',
+    contact_phone: '',
+    google_maps_link: ''
+  });
+  const [editingVenue, setEditingVenue] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
   const { data: venues = [], isLoading, error } = useVenues();
+  const createMutation = useCreateVenue();
+  const updateMutation = useUpdateVenue();
+  const deleteMutation = useDeleteVenue();
+
+  // Handler functions
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      venue_type: 'wedding_hall',
+      address: '',
+      city: '',
+      capacity: 0,
+      total_cost: 0,
+      payment_status: 'pending',
+      contact_person: '',
+      contact_phone: '',
+      google_maps_link: ''
+    });
+    setEditingVenue(null);
+  };
+
+  const handleEdit = (venue) => {
+    setEditingVenue(venue);
+    setFormData({
+      name: venue.name || '',
+      venue_type: venue.venue_type || 'wedding_hall',
+      address: venue.address || '',
+      city: venue.city || '',
+      capacity: venue.capacity || 0,
+      total_cost: venue.total_cost || 0,
+      payment_status: venue.payment_status || 'pending',
+      contact_person: venue.contact_person || '',
+      contact_phone: venue.contact_phone || '',
+      google_maps_link: venue.google_maps_link || ''
+    });
+    setShowVenueModal(true);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingVenue) {
+        await updateMutation.mutateAsync({ id: editingVenue.id, ...formData });
+        toast.success('Venue updated successfully!');
+      } else {
+        await createMutation.mutateAsync(formData);
+        toast.success('Venue added successfully!');
+      }
+      setShowVenueModal(false);
+      resetForm();
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to save venue';
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteMutation.mutateAsync(id);
+      toast.success('Venue deleted successfully!');
+      setDeleteConfirm(null);
+    } catch (error) {
+      toast.error('Failed to delete venue');
+    }
+  };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -43,7 +126,14 @@ export default function Venues() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="page-title">Venues</h1>
-        {canEdit && <button className="btn-primary">Add Venue</button>}
+        {canEdit && (
+          <button
+            onClick={() => setShowVenueModal(true)}
+            className="btn-primary"
+          >
+            Add Venue
+          </button>
+        )}
       </div>
 
       {venues.length === 0 ? (
@@ -107,19 +197,224 @@ export default function Venues() {
                 </div>
               )}
 
-              <div className="flex gap-2 mt-4">
-                <button className="btn-outline flex-1 text-sm py-2">View Details</button>
-                {venue.google_maps_link && (
+              {canEdit && (
+                <div className="flex gap-2 mt-4">
                   <button
-                    className="btn-secondary flex-1 text-sm py-2"
-                    onClick={() => window.open(venue.google_maps_link, '_blank')}
+                    onClick={() => handleEdit(venue)}
+                    className="btn-outline flex-1 text-sm py-2"
                   >
-                    View on Map
+                    Edit
                   </button>
-                )}
-              </div>
+                  <button
+                    onClick={() => setDeleteConfirm(venue.id)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 text-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Add/Edit Venue Modal */}
+      {canEdit && showVenueModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gold-200">
+              <h2 className="text-xl font-display font-bold text-maroon-800">
+                {editingVenue ? 'Edit Venue' : 'Add New Venue'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowVenueModal(false);
+                  resetForm();
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <HiOutlineX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="label">Venue Name *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="input"
+                  placeholder="Venue name"
+                  required
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Type *</label>
+                  <select
+                    value={formData.venue_type}
+                    onChange={(e) => setFormData({ ...formData, venue_type: e.target.value })}
+                    className="input"
+                    required
+                  >
+                    <option value="wedding_hall">Wedding Hall</option>
+                    <option value="banquet">Banquet</option>
+                    <option value="outdoor">Outdoor</option>
+                    <option value="resort">Resort</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Payment Status *</label>
+                  <select
+                    value={formData.payment_status}
+                    onChange={(e) => setFormData({ ...formData, payment_status: e.target.value })}
+                    className="input"
+                    required
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="partial">Partial</option>
+                    <option value="paid">Paid</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Address *</label>
+                  <textarea
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    className="input"
+                    rows={2}
+                    placeholder="Full address"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">City *</label>
+                  <input
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    className="input"
+                    placeholder="City name"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Capacity</label>
+                  <input
+                    type="number"
+                    value={formData.capacity}
+                    onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
+                    className="input"
+                    placeholder="Number of guests"
+                  />
+                </div>
+                <div>
+                  <label className="label">Total Cost</label>
+                  <input
+                    type="number"
+                    value={formData.total_cost}
+                    onChange={(e) => setFormData({ ...formData, total_cost: e.target.value })}
+                    className="input"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Contact Person</label>
+                  <input
+                    type="text"
+                    value={formData.contact_person}
+                    onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                    className="input"
+                    placeholder="Contact name"
+                  />
+                </div>
+                <div>
+                  <label className="label">Contact Phone</label>
+                  <input
+                    type="tel"
+                    value={formData.contact_phone}
+                    onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                    className="input"
+                    placeholder="Phone number"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Google Maps Link</label>
+                <input
+                  type="url"
+                  value={formData.google_maps_link}
+                  onChange={(e) => setFormData({ ...formData, google_maps_link: e.target.value })}
+                  className="input"
+                  placeholder="https://maps.google.com/..."
+                />
+              </div>
+            </form>
+
+            <div className="flex gap-3 p-6 border-t border-gold-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowVenueModal(false);
+                  resetForm();
+                }}
+                className="btn-outline flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                onClick={handleSubmit}
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="btn-primary flex-1 disabled:opacity-50"
+              >
+                {createMutation.isPending || updateMutation.isPending
+                  ? 'Saving...'
+                  : editingVenue
+                  ? 'Update Venue'
+                  : 'Add Venue'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md">
+            <h3 className="text-lg font-bold text-maroon-800 mb-2">Confirm Deletion</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this venue? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="btn-outline flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirm)}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

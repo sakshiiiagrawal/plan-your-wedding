@@ -2,20 +2,99 @@ import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
-import { HiOutlinePlus, HiOutlineCurrencyRupee } from 'react-icons/hi';
-import { useBudgetSummary, useBudgetOverview, useExpenses, usePendingPayments } from '../../hooks/useApi';
+import { HiOutlinePlus, HiOutlineCurrencyRupee, HiOutlineX } from 'react-icons/hi';
+import { useBudgetSummary, useBudgetOverview, useExpenses, usePendingPayments, useBudgetCategories, useCreateExpense, useCreatePayment } from '../../hooks/useApi';
+import toast from 'react-hot-toast';
 
 const COLORS = ['#8B0000', '#D4AF37', '#228B22', '#1A237E', '#E91E63', '#FF6F00', '#607D8B'];
 
 export default function Budget() {
   const { canEdit, canViewFinance } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [expenseFormData, setExpenseFormData] = useState({
+    description: '',
+    amount: '',
+    category_id: null,
+    expense_date: new Date().toISOString().split('T')[0],
+    paid_by: '',
+    side: 'bride',
+    payment_method: 'cash',
+    vendor_id: null,
+    event_id: null
+  });
+  const [paymentFormData, setPaymentFormData] = useState({
+    vendor_id: null,
+    amount: '',
+    payment_date: new Date().toISOString().split('T')[0],
+    payment_method: 'bank_transfer',
+    status: 'completed',
+    transaction_id: '',
+    notes: ''
+  });
 
   // Fetch data from API
   const { data: budgetSummary, isLoading: loadingSummary } = useBudgetSummary();
   const { data: budgetOverview, isLoading: loadingOverview } = useBudgetOverview();
   const { data: expenses, isLoading: loadingExpenses } = useExpenses();
   const { data: pendingPayments, isLoading: loadingPayments } = usePendingPayments();
+  const { data: categories = [] } = useBudgetCategories();
+  const createExpenseMutation = useCreateExpense();
+  const createPaymentMutation = useCreatePayment();
+
+  // Handler functions
+  const resetExpenseForm = () => {
+    setExpenseFormData({
+      description: '',
+      amount: '',
+      category_id: null,
+      expense_date: new Date().toISOString().split('T')[0],
+      paid_by: '',
+      side: 'bride',
+      payment_method: 'cash',
+      vendor_id: null,
+      event_id: null
+    });
+  };
+
+  const resetPaymentForm = () => {
+    setPaymentFormData({
+      vendor_id: null,
+      amount: '',
+      payment_date: new Date().toISOString().split('T')[0],
+      payment_method: 'bank_transfer',
+      status: 'completed',
+      transaction_id: '',
+      notes: ''
+    });
+  };
+
+  const handleExpenseSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await createExpenseMutation.mutateAsync(expenseFormData);
+      toast.success('Expense added successfully!');
+      setShowExpenseModal(false);
+      resetExpenseForm();
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to add expense';
+      toast.error(errorMessage);
+    }
+  };
+
+  const handlePaymentSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await createPaymentMutation.mutateAsync(paymentFormData);
+      toast.success('Payment recorded successfully!');
+      setShowPaymentModal(false);
+      resetPaymentForm();
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to record payment';
+      toast.error(errorMessage);
+    }
+  };
 
   // Redirect if user doesn't have permission to view finance
   if (!canViewFinance) {
@@ -65,7 +144,10 @@ export default function Budget() {
       <div className="flex items-center justify-between">
         <h1 className="page-title">Budget & Finance</h1>
         {canEdit && (
-          <button className="btn-primary flex items-center gap-2">
+          <button
+            onClick={() => setShowExpenseModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
             <HiOutlinePlus className="w-4 h-4" />
             Add Expense
           </button>
@@ -223,7 +305,21 @@ export default function Budget() {
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-lg font-bold text-red-600">{formatCurrency(payment.amount)}</span>
-                    {canEdit && <button className="btn-primary text-sm py-2">Record Payment</button>}
+                    {canEdit && (
+                      <button
+                        onClick={() => {
+                          setPaymentFormData({
+                            ...paymentFormData,
+                            vendor_id: payment.vendor_id,
+                            amount: payment.amount
+                          });
+                          setShowPaymentModal(true);
+                        }}
+                        className="btn-primary text-sm py-2"
+                      >
+                        Record Payment
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -231,6 +327,260 @@ export default function Budget() {
           ) : (
             <div className="p-8 text-center text-gray-500">No pending payments.</div>
           )}
+        </div>
+      )}
+
+      {/* Add Expense Modal */}
+      {canEdit && showExpenseModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gold-200">
+              <h2 className="text-xl font-display font-bold text-maroon-800">Add Expense</h2>
+              <button
+                onClick={() => {
+                  setShowExpenseModal(false);
+                  resetExpenseForm();
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <HiOutlineX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleExpenseSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="label">Description *</label>
+                <input
+                  type="text"
+                  value={expenseFormData.description}
+                  onChange={(e) => setExpenseFormData({ ...expenseFormData, description: e.target.value })}
+                  className="input"
+                  placeholder="Expense description"
+                  required
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Amount *</label>
+                  <input
+                    type="number"
+                    value={expenseFormData.amount}
+                    onChange={(e) => setExpenseFormData({ ...expenseFormData, amount: e.target.value })}
+                    className="input"
+                    placeholder="0"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">Category *</label>
+                  <select
+                    value={expenseFormData.category_id || ''}
+                    onChange={(e) => setExpenseFormData({ ...expenseFormData, category_id: e.target.value || null })}
+                    className="input"
+                    required
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Expense Date *</label>
+                <input
+                  type="date"
+                  value={expenseFormData.expense_date}
+                  onChange={(e) => setExpenseFormData({ ...expenseFormData, expense_date: e.target.value })}
+                  className="input"
+                  required
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Paid By</label>
+                  <input
+                    type="text"
+                    value={expenseFormData.paid_by}
+                    onChange={(e) => setExpenseFormData({ ...expenseFormData, paid_by: e.target.value })}
+                    className="input"
+                    placeholder="Person name"
+                  />
+                </div>
+                <div>
+                  <label className="label">Side</label>
+                  <select
+                    value={expenseFormData.side}
+                    onChange={(e) => setExpenseFormData({ ...expenseFormData, side: e.target.value })}
+                    className="input"
+                  >
+                    <option value="bride">Bride Side</option>
+                    <option value="groom">Groom Side</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Payment Method</label>
+                <select
+                  value={expenseFormData.payment_method}
+                  onChange={(e) => setExpenseFormData({ ...expenseFormData, payment_method: e.target.value })}
+                  className="input"
+                >
+                  <option value="cash">Cash</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="upi">UPI</option>
+                  <option value="cheque">Cheque</option>
+                  <option value="credit_card">Credit Card</option>
+                </select>
+              </div>
+            </form>
+
+            <div className="flex gap-3 p-6 border-t border-gold-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExpenseModal(false);
+                  resetExpenseForm();
+                }}
+                className="btn-outline flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                onClick={handleExpenseSubmit}
+                disabled={createExpenseMutation.isPending}
+                className="btn-primary flex-1 disabled:opacity-50"
+              >
+                {createExpenseMutation.isPending ? 'Saving...' : 'Add Expense'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Record Payment Modal */}
+      {canEdit && showPaymentModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gold-200">
+              <h2 className="text-xl font-display font-bold text-maroon-800">Record Payment</h2>
+              <button
+                onClick={() => {
+                  setShowPaymentModal(false);
+                  resetPaymentForm();
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <HiOutlineX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handlePaymentSubmit} className="p-6 space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Amount *</label>
+                  <input
+                    type="number"
+                    value={paymentFormData.amount}
+                    onChange={(e) => setPaymentFormData({ ...paymentFormData, amount: e.target.value })}
+                    className="input"
+                    placeholder="0"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">Payment Date *</label>
+                  <input
+                    type="date"
+                    value={paymentFormData.payment_date}
+                    onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_date: e.target.value })}
+                    className="input"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Payment Method *</label>
+                  <select
+                    value={paymentFormData.payment_method}
+                    onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_method: e.target.value })}
+                    className="input"
+                    required
+                  >
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="cash">Cash</option>
+                    <option value="credit_card">Credit Card</option>
+                    <option value="upi">UPI</option>
+                    <option value="cheque">Cheque</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Status *</label>
+                  <select
+                    value={paymentFormData.status}
+                    onChange={(e) => setPaymentFormData({ ...paymentFormData, status: e.target.value })}
+                    className="input"
+                    required
+                  >
+                    <option value="completed">Completed</option>
+                    <option value="pending">Pending</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Transaction ID</label>
+                <input
+                  type="text"
+                  value={paymentFormData.transaction_id}
+                  onChange={(e) => setPaymentFormData({ ...paymentFormData, transaction_id: e.target.value })}
+                  className="input"
+                  placeholder="Transaction reference"
+                />
+              </div>
+
+              <div>
+                <label className="label">Notes</label>
+                <textarea
+                  value={paymentFormData.notes}
+                  onChange={(e) => setPaymentFormData({ ...paymentFormData, notes: e.target.value })}
+                  className="input"
+                  rows={3}
+                  placeholder="Payment notes..."
+                />
+              </div>
+            </form>
+
+            <div className="flex gap-3 p-6 border-t border-gold-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPaymentModal(false);
+                  resetPaymentForm();
+                }}
+                className="btn-outline flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                onClick={handlePaymentSubmit}
+                disabled={createPaymentMutation.isPending}
+                className="btn-primary flex-1 disabled:opacity-50"
+              >
+                {createPaymentMutation.isPending ? 'Recording...' : 'Record Payment'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

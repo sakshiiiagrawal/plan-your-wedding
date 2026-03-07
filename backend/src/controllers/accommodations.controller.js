@@ -1,4 +1,5 @@
 const { supabase } = require('../config/database');
+const { validateRequiredFields, createValidationError } = require('../utils/validation');
 
 const getAll = async (req, res, next) => {
   try {
@@ -33,6 +34,12 @@ const getById = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
+    // Validate required fields
+    const validation = validateRequiredFields(req.body, ['name']);
+    if (!validation.isValid) {
+      return res.status(400).json(createValidationError(validation.missingFields));
+    }
+
     const { data, error } = await supabase
       .from('accommodations')
       .insert([req.body])
@@ -97,6 +104,13 @@ const getRooms = async (req, res, next) => {
 const addRoom = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    // Validate required fields
+    const validation = validateRequiredFields(req.body, ['room_number', 'room_type']);
+    if (!validation.isValid) {
+      return res.status(400).json(createValidationError(validation.missingFields));
+    }
+
     const { data, error } = await supabase
       .from('rooms')
       .insert([{ ...req.body, accommodation_id: id }])
@@ -150,6 +164,12 @@ const getAllocationMatrix = async (req, res, next) => {
 
 const createAllocation = async (req, res, next) => {
   try {
+    // Validate required fields
+    const validation = validateRequiredFields(req.body, ['room_id', 'guest_id', 'check_in_date', 'check_out_date']);
+    if (!validation.isValid) {
+      return res.status(400).json(createValidationError(validation.missingFields));
+    }
+
     const { data, error } = await supabase
       .from('room_allocations')
       .insert([req.body])

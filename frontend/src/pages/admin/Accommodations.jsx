@@ -1,13 +1,115 @@
 import { useState, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { HiOutlineOfficeBuilding, HiOutlineUsers, HiOutlineHome } from 'react-icons/hi';
-import { useAllocationMatrix, useUnassignedGuests } from '../../hooks/useApi';
+import { HiOutlineOfficeBuilding, HiOutlineUsers, HiOutlineHome, HiOutlinePlus, HiOutlineX } from 'react-icons/hi';
+import { useAllocationMatrix, useUnassignedGuests, useCreateAccommodation, useCreateRoom, useCreateAllocation } from '../../hooks/useApi';
+import toast from 'react-hot-toast';
 
 export default function Accommodations() {
   const { canEdit } = useAuth();
   const { data: allocationMatrix = [], isLoading, error } = useAllocationMatrix();
   const { data: unassignedGuests = [] } = useUnassignedGuests();
   const [selectedHotelId, setSelectedHotelId] = useState(null);
+  const [showHotelModal, setShowHotelModal] = useState(false);
+  const [showRoomModal, setShowRoomModal] = useState(false);
+  const [showAllocationModal, setShowAllocationModal] = useState(false);
+  const [hotelFormData, setHotelFormData] = useState({
+    name: '',
+    address: '',
+    distance_from_venue: '',
+    total_rooms_booked: 0,
+    total_cost: 0,
+    contact_person: '',
+    contact_phone: ''
+  });
+  const [roomFormData, setRoomFormData] = useState({
+    accommodationId: null,
+    room_number: '',
+    room_type: '',
+    capacity: 2,
+    rate_per_night: 0
+  });
+  const [allocationFormData, setAllocationFormData] = useState({
+    room_id: null,
+    guest_id: null,
+    check_in_date: '',
+    check_out_date: ''
+  });
+
+  const createHotelMutation = useCreateAccommodation();
+  const createRoomMutation = useCreateRoom();
+  const createAllocationMutation = useCreateAllocation();
+
+  // Handler functions
+  const resetHotelForm = () => {
+    setHotelFormData({
+      name: '',
+      address: '',
+      distance_from_venue: '',
+      total_rooms_booked: 0,
+      total_cost: 0,
+      contact_person: '',
+      contact_phone: ''
+    });
+  };
+
+  const resetRoomForm = () => {
+    setRoomFormData({
+      accommodationId: null,
+      room_number: '',
+      room_type: '',
+      capacity: 2,
+      rate_per_night: 0
+    });
+  };
+
+  const resetAllocationForm = () => {
+    setAllocationFormData({
+      room_id: null,
+      guest_id: null,
+      check_in_date: '',
+      check_out_date: ''
+    });
+  };
+
+  const handleHotelSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await createHotelMutation.mutateAsync(hotelFormData);
+      toast.success('Hotel added successfully!');
+      setShowHotelModal(false);
+      resetHotelForm();
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to add hotel';
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleRoomSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const { accommodationId, ...roomData } = roomFormData;
+      await createRoomMutation.mutateAsync({ accommodationId, ...roomData });
+      toast.success('Room added successfully!');
+      setShowRoomModal(false);
+      resetRoomForm();
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to add room';
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleAllocationSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await createAllocationMutation.mutateAsync(allocationFormData);
+      toast.success('Guest assigned successfully!');
+      setShowAllocationModal(false);
+      resetAllocationForm();
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to assign guest';
+      toast.error(errorMessage);
+    }
+  };
 
   // Select first hotel by default when data loads
   const selectedHotel = useMemo(() => {
@@ -64,7 +166,29 @@ export default function Accommodations() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="page-title">Accommodations & Room Allocation</h1>
-        {canEdit && <button className="btn-primary">Add Hotel</button>}
+        <div className="flex gap-2">
+          {canEdit && (
+            <>
+              <button
+                onClick={() => setShowHotelModal(true)}
+                className="btn-primary"
+              >
+                Add Hotel
+              </button>
+              {selectedHotel && (
+                <button
+                  onClick={() => {
+                    setRoomFormData({ ...roomFormData, accommodationId: selectedHotel.id });
+                    setShowRoomModal(true);
+                  }}
+                  className="btn-outline"
+                >
+                  Add Room
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {enrichedHotels.length === 0 ? (
@@ -174,7 +298,16 @@ export default function Accommodations() {
                               </td>
                               {canEdit && (
                                 <td className="p-3">
-                                  <button className="text-sm text-gold-600 hover:text-gold-700">
+                                  <button
+                                    onClick={() => {
+                                      setAllocationFormData({
+                                        ...allocationFormData,
+                                        room_id: room.id
+                                      });
+                                      setShowAllocationModal(true);
+                                    }}
+                                    className="text-sm text-gold-600 hover:text-gold-700"
+                                  >
                                     {guests.length > 0 ? 'Edit' : 'Assign'}
                                   </button>
                                 </td>
@@ -203,6 +336,313 @@ export default function Accommodations() {
             </div>
           )}
         </>
+      )}
+
+      {/* Add Hotel Modal */}
+      {canEdit && showHotelModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gold-200">
+              <h2 className="text-xl font-display font-bold text-maroon-800">Add Hotel</h2>
+              <button
+                onClick={() => {
+                  setShowHotelModal(false);
+                  resetHotelForm();
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <HiOutlineX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleHotelSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="label">Hotel Name *</label>
+                <input
+                  type="text"
+                  value={hotelFormData.name}
+                  onChange={(e) => setHotelFormData({ ...hotelFormData, name: e.target.value })}
+                  className="input"
+                  placeholder="Hotel name"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="label">Address *</label>
+                <textarea
+                  value={hotelFormData.address}
+                  onChange={(e) => setHotelFormData({ ...hotelFormData, address: e.target.value })}
+                  className="input"
+                  rows={2}
+                  placeholder="Full address"
+                  required
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Distance from Venue</label>
+                  <input
+                    type="text"
+                    value={hotelFormData.distance_from_venue}
+                    onChange={(e) => setHotelFormData({ ...hotelFormData, distance_from_venue: e.target.value })}
+                    className="input"
+                    placeholder="e.g., 2 km"
+                  />
+                </div>
+                <div>
+                  <label className="label">Rooms Booked</label>
+                  <input
+                    type="number"
+                    value={hotelFormData.total_rooms_booked}
+                    onChange={(e) => setHotelFormData({ ...hotelFormData, total_rooms_booked: e.target.value })}
+                    className="input"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Total Cost</label>
+                <input
+                  type="number"
+                  value={hotelFormData.total_cost}
+                  onChange={(e) => setHotelFormData({ ...hotelFormData, total_cost: e.target.value })}
+                  className="input"
+                  placeholder="0"
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Contact Person</label>
+                  <input
+                    type="text"
+                    value={hotelFormData.contact_person}
+                    onChange={(e) => setHotelFormData({ ...hotelFormData, contact_person: e.target.value })}
+                    className="input"
+                    placeholder="Contact name"
+                  />
+                </div>
+                <div>
+                  <label className="label">Contact Phone</label>
+                  <input
+                    type="tel"
+                    value={hotelFormData.contact_phone}
+                    onChange={(e) => setHotelFormData({ ...hotelFormData, contact_phone: e.target.value })}
+                    className="input"
+                    placeholder="Phone number"
+                  />
+                </div>
+              </div>
+            </form>
+
+            <div className="flex gap-3 p-6 border-t border-gold-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowHotelModal(false);
+                  resetHotelForm();
+                }}
+                className="btn-outline flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                onClick={handleHotelSubmit}
+                disabled={createHotelMutation.isPending}
+                className="btn-primary flex-1 disabled:opacity-50"
+              >
+                {createHotelMutation.isPending ? 'Adding...' : 'Add Hotel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Room Modal */}
+      {canEdit && showRoomModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gold-200">
+              <h2 className="text-xl font-display font-bold text-maroon-800">Add Room</h2>
+              <button
+                onClick={() => {
+                  setShowRoomModal(false);
+                  resetRoomForm();
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <HiOutlineX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRoomSubmit} className="p-6 space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Room Number *</label>
+                  <input
+                    type="text"
+                    value={roomFormData.room_number}
+                    onChange={(e) => setRoomFormData({ ...roomFormData, room_number: e.target.value })}
+                    className="input"
+                    placeholder="e.g., 101"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">Room Type *</label>
+                  <select
+                    value={roomFormData.room_type}
+                    onChange={(e) => setRoomFormData({ ...roomFormData, room_type: e.target.value })}
+                    className="input"
+                    required
+                  >
+                    <option value="">Select room type</option>
+                    <option value="single">Single</option>
+                    <option value="double">Double</option>
+                    <option value="suite">Suite</option>
+                    <option value="family">Family</option>
+                    <option value="dormitory">Dormitory</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Capacity *</label>
+                <input
+                  type="number"
+                  value={roomFormData.capacity}
+                  onChange={(e) => setRoomFormData({ ...roomFormData, capacity: e.target.value })}
+                  className="input"
+                  placeholder="2"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="label">Rate Per Night</label>
+                <input
+                  type="number"
+                  value={roomFormData.rate_per_night}
+                  onChange={(e) => setRoomFormData({ ...roomFormData, rate_per_night: e.target.value })}
+                  className="input"
+                  placeholder="0"
+                />
+              </div>
+            </form>
+
+            <div className="flex gap-3 p-6 border-t border-gold-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRoomModal(false);
+                  resetRoomForm();
+                }}
+                className="btn-outline flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                onClick={handleRoomSubmit}
+                disabled={createRoomMutation.isPending}
+                className="btn-primary flex-1 disabled:opacity-50"
+              >
+                {createRoomMutation.isPending ? 'Adding...' : 'Add Room'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Guest to Room Modal */}
+      {canEdit && showAllocationModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gold-200">
+              <h2 className="text-xl font-display font-bold text-maroon-800">Assign Guest to Room</h2>
+              <button
+                onClick={() => {
+                  setShowAllocationModal(false);
+                  resetAllocationForm();
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <HiOutlineX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAllocationSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="label">Guest *</label>
+                <select
+                  value={allocationFormData.guest_id || ''}
+                  onChange={(e) => setAllocationFormData({ ...allocationFormData, guest_id: e.target.value })}
+                  className="input"
+                  required
+                >
+                  <option value="">Select Guest</option>
+                  {unassignedGuests.map((guest) => (
+                    <option key={guest.id} value={guest.id}>
+                      {guest.first_name} {guest.last_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Check-in Date *</label>
+                  <input
+                    type="date"
+                    value={allocationFormData.check_in_date}
+                    onChange={(e) => setAllocationFormData({ ...allocationFormData, check_in_date: e.target.value })}
+                    className="input"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">Check-out Date *</label>
+                  <input
+                    type="date"
+                    value={allocationFormData.check_out_date}
+                    onChange={(e) => setAllocationFormData({ ...allocationFormData, check_out_date: e.target.value })}
+                    className="input"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-gold-50 rounded-lg text-sm text-gray-600">
+                {unassignedGuests.length} unassigned guests needing accommodation
+              </div>
+            </form>
+
+            <div className="flex gap-3 p-6 border-t border-gold-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAllocationModal(false);
+                  resetAllocationForm();
+                }}
+                className="btn-outline flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                onClick={handleAllocationSubmit}
+                disabled={createAllocationMutation.isPending}
+                className="btn-primary flex-1 disabled:opacity-50"
+              >
+                {createAllocationMutation.isPending ? 'Assigning...' : 'Assign Guest'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

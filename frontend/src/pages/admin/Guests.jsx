@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useGuests, useGuestSummary } from '../../hooks/useApi';
+import { useGuests, useGuestSummary, useCreateGuest, useUpdateGuest, useDeleteGuest } from '../../hooks/useApi';
+import toast from 'react-hot-toast';
 import {
   HiOutlineSearch,
   HiOutlinePlus,
@@ -18,6 +19,22 @@ export default function Guests() {
   const [sideFilter, setSideFilter] = useState('all');
   const [rsvpFilter, setRsvpFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [formData, setFormData] = useState({
+    first_name: '',
+    last_name: '',
+    phone: '',
+    email: '',
+    side: 'bride',
+    relationship: '',
+    meal_preference: 'vegetarian',
+    dietary_restrictions: '',
+    needs_accommodation: false,
+    needs_pickup: false,
+    is_vip: false,
+    notes: ''
+  });
+  const [editingGuest, setEditingGuest] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   // API hooks
   const { data: guests = [], isLoading: guestsLoading } = useGuests({
@@ -25,26 +42,78 @@ export default function Guests() {
     search: searchTerm || undefined,
   });
   const { data: summary } = useGuestSummary();
+  const createMutation = useCreateGuest();
+  const updateMutation = useUpdateGuest();
+  const deleteMutation = useDeleteGuest();
 
-  // Client-side filtering for RSVP (since guest_event_rsvp is separate)
-  const filteredGuests = guests.filter(guest => {
-    if (rsvpFilter !== 'all') {
-      // For now, skip RSVP filter since it requires join with guest_event_rsvp
-      // This would need backend support to filter by RSVP status
-      return true;
-    }
-    return true;
-  });
-
-  const getRsvpBadge = (status) => {
-    const badges = {
-      confirmed: 'badge-success',
-      pending: 'badge-warning',
-      declined: 'badge-danger',
-      tentative: 'badge-info'
-    };
-    return badges[status] || 'badge-info';
+  // Handler functions
+  const resetForm = () => {
+    setFormData({
+      first_name: '',
+      last_name: '',
+      phone: '',
+      email: '',
+      side: 'bride',
+      relationship: '',
+      meal_preference: 'vegetarian',
+      dietary_restrictions: '',
+      needs_accommodation: false,
+      needs_pickup: false,
+      is_vip: false,
+      notes: ''
+    });
+    setEditingGuest(null);
   };
+
+  const handleEdit = (guest) => {
+    setEditingGuest(guest);
+    setFormData({
+      first_name: guest.first_name || '',
+      last_name: guest.last_name || '',
+      phone: guest.phone || '',
+      email: guest.email || '',
+      side: guest.side || 'bride',
+      relationship: guest.relationship || '',
+      meal_preference: guest.meal_preference || 'vegetarian',
+      dietary_restrictions: guest.dietary_restrictions || '',
+      needs_accommodation: guest.needs_accommodation || false,
+      needs_pickup: guest.needs_pickup || false,
+      is_vip: guest.is_vip || false,
+      notes: guest.notes || ''
+    });
+    setShowAddModal(true);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingGuest) {
+        await updateMutation.mutateAsync({ id: editingGuest.id, ...formData });
+        toast.success('Guest updated successfully!');
+      } else {
+        await createMutation.mutateAsync(formData);
+        toast.success('Guest added successfully!');
+      }
+      setShowAddModal(false);
+      resetForm();
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to save guest';
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteMutation.mutateAsync(id);
+      toast.success('Guest deleted successfully!');
+      setDeleteConfirm(null);
+    } catch (error) {
+      toast.error('Failed to delete guest');
+    }
+  };
+
+  // Note: RSVP filtering would require backend support to filter by RSVP status
+  const filteredGuests = guests;
 
   // Loading state
   if (guestsLoading) {
@@ -190,10 +259,18 @@ export default function Guests() {
                   {canEdit && (
                     <td className="p-4">
                       <div className="flex gap-2">
-                        <button className="p-2 hover:bg-gold-50 rounded-lg text-gold-600">
+                        <button
+                          onClick={() => handleEdit(guest)}
+                          className="p-2 hover:bg-gold-50 rounded-lg text-gold-600"
+                          title="Edit guest"
+                        >
                           <HiOutlinePencil className="w-4 h-4" />
                         </button>
-                        <button className="p-2 hover:bg-red-50 rounded-lg text-red-600">
+                        <button
+                          onClick={() => setDeleteConfirm(guest.id)}
+                          className="p-2 hover:bg-red-50 rounded-lg text-red-600"
+                          title="Delete guest"
+                        >
                           <HiOutlineTrash className="w-4 h-4" />
                         </button>
                       </div>
@@ -213,61 +290,106 @@ export default function Guests() {
         </div>
       </div>
 
-      {/* Add Guest Modal */}
+      {/* Add/Edit Guest Modal */}
       {canEdit && showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gold-200">
-              <h2 className="text-xl font-display font-bold text-maroon-800">Add New Guest</h2>
+              <h2 className="text-xl font-display font-bold text-maroon-800">
+                {editingGuest ? 'Edit Guest' : 'Add New Guest'}
+              </h2>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={() => {
+                  setShowAddModal(false);
+                  resetForm();
+                }}
                 className="p-2 hover:bg-gray-100 rounded-lg"
               >
                 <HiOutlineX className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="label">First Name *</label>
-                  <input type="text" className="input" placeholder="First name" />
+                  <input
+                    type="text"
+                    value={formData.first_name}
+                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                    className="input"
+                    placeholder="First name"
+                    required
+                  />
                 </div>
                 <div>
                   <label className="label">Last Name</label>
-                  <input type="text" className="input" placeholder="Last name" />
+                  <input
+                    type="text"
+                    value={formData.last_name}
+                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                    className="input"
+                    placeholder="Last name"
+                  />
                 </div>
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="label">Phone</label>
-                  <input type="tel" className="input" placeholder="Phone number" />
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="input"
+                    placeholder="Phone number"
+                  />
                 </div>
                 <div>
                   <label className="label">Email</label>
-                  <input type="email" className="input" placeholder="Email address" />
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="input"
+                    placeholder="Email address"
+                  />
                 </div>
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="label">Side *</label>
-                  <select className="input">
+                  <select
+                    value={formData.side}
+                    onChange={(e) => setFormData({ ...formData, side: e.target.value })}
+                    className="input"
+                    required
+                  >
                     <option value="bride">Bride Side</option>
                     <option value="groom">Groom Side</option>
                   </select>
                 </div>
                 <div>
                   <label className="label">Relationship</label>
-                  <input type="text" className="input" placeholder="e.g., Uncle, Cousin" />
+                  <input
+                    type="text"
+                    value={formData.relationship}
+                    onChange={(e) => setFormData({ ...formData, relationship: e.target.value })}
+                    className="input"
+                    placeholder="e.g., Uncle, Cousin"
+                  />
                 </div>
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="label">Meal Preference</label>
-                  <select className="input">
+                  <select
+                    value={formData.meal_preference}
+                    onChange={(e) => setFormData({ ...formData, meal_preference: e.target.value })}
+                    className="input"
+                  >
                     <option value="vegetarian">Vegetarian</option>
                     <option value="jain">Jain</option>
                     <option value="vegan">Vegan</option>
@@ -276,52 +398,107 @@ export default function Guests() {
                 </div>
                 <div>
                   <label className="label">Dietary Restrictions</label>
-                  <input type="text" className="input" placeholder="e.g., No onion-garlic" />
+                  <input
+                    type="text"
+                    value={formData.dietary_restrictions}
+                    onChange={(e) => setFormData({ ...formData, dietary_restrictions: e.target.value })}
+                    className="input"
+                    placeholder="e.g., No onion-garlic"
+                  />
                 </div>
               </div>
 
               <div className="flex gap-4">
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" className="w-4 h-4 text-maroon-800" />
+                  <input
+                    type="checkbox"
+                    checked={formData.needs_accommodation}
+                    onChange={(e) => setFormData({ ...formData, needs_accommodation: e.target.checked })}
+                    className="w-4 h-4 text-maroon-800"
+                  />
                   <span className="text-sm">Needs Accommodation</span>
                 </label>
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" className="w-4 h-4 text-maroon-800" />
+                  <input
+                    type="checkbox"
+                    checked={formData.needs_pickup}
+                    onChange={(e) => setFormData({ ...formData, needs_pickup: e.target.checked })}
+                    className="w-4 h-4 text-maroon-800"
+                  />
                   <span className="text-sm">Needs Pickup</span>
                 </label>
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" className="w-4 h-4 text-maroon-800" />
+                  <input
+                    type="checkbox"
+                    checked={formData.is_vip}
+                    onChange={(e) => setFormData({ ...formData, is_vip: e.target.checked })}
+                    className="w-4 h-4 text-maroon-800"
+                  />
                   <span className="text-sm">VIP Guest</span>
                 </label>
               </div>
 
               <div>
-                <label className="label">Events Attending</label>
-                <div className="flex flex-wrap gap-3">
-                  {['Mehendi', 'Haldi', 'Sangeet', 'Wedding'].map((event) => (
-                    <label key={event} className="flex items-center gap-2">
-                      <input type="checkbox" defaultChecked className="w-4 h-4 text-maroon-800" />
-                      <span className="text-sm">{event}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
                 <label className="label">Notes</label>
-                <textarea className="input" rows={3} placeholder="Any special notes..." />
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="input"
+                  rows={3}
+                  placeholder="Any special notes..."
+                />
               </div>
-            </div>
+            </form>
 
             <div className="flex gap-3 p-6 border-t border-gold-200">
               <button
-                onClick={() => setShowAddModal(false)}
+                type="button"
+                onClick={() => {
+                  setShowAddModal(false);
+                  resetForm();
+                }}
                 className="btn-outline flex-1"
               >
                 Cancel
               </button>
-              <button className="btn-primary flex-1">
-                Add Guest
+              <button
+                type="submit"
+                onClick={handleSubmit}
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="btn-primary flex-1 disabled:opacity-50"
+              >
+                {createMutation.isPending || updateMutation.isPending
+                  ? 'Saving...'
+                  : editingGuest
+                  ? 'Update Guest'
+                  : 'Add Guest'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md">
+            <h3 className="text-lg font-bold text-maroon-800 mb-2">Confirm Deletion</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this guest? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="btn-outline flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirm)}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>

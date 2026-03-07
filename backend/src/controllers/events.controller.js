@@ -1,4 +1,5 @@
 const { supabase } = require('../config/database');
+const { validateRequiredFields, createValidationError } = require('../utils/validation');
 
 const getAll = async (req, res, next) => {
   try {
@@ -33,6 +34,12 @@ const getById = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
+    // Validate required fields
+    const validation = validateRequiredFields(req.body, ['name', 'event_type', 'event_date', 'start_time']);
+    if (!validation.isValid) {
+      return res.status(400).json(createValidationError(validation.missingFields));
+    }
+
     const { data, error } = await supabase
       .from('events')
       .insert([req.body])

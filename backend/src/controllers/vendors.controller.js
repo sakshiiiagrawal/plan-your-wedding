@@ -1,5 +1,6 @@
 const { supabase } = require('../config/database');
 const { VENDOR_CATEGORIES } = require('../config/constants');
+const { validateRequiredFields, createValidationError } = require('../utils/validation');
 
 const getAll = async (req, res, next) => {
   try {
@@ -52,6 +53,12 @@ const getById = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
+    // Validate required fields
+    const validation = validateRequiredFields(req.body, ['name', 'category']);
+    if (!validation.isValid) {
+      return res.status(400).json(createValidationError(validation.missingFields));
+    }
+
     const { data, error } = await supabase
       .from('vendors')
       .insert([req.body])
