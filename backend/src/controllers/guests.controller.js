@@ -1,5 +1,6 @@
 const { supabase } = require('../config/database');
 const { validateRequiredFields, createValidationError } = require('../utils/validation');
+const { generateGuestTemplate, parseGuestExcel, validateGuest } = require('../utils/excel.utils');
 
 const getAll = async (req, res, next) => {
   try {
@@ -229,6 +230,73 @@ const updateRsvp = async (req, res, next) => {
   }
 };
 
+const downloadTemplate = async (req, res, next) => {
+  try {
+    const buffer = generateGuestTemplate();
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=guest_import_template.xlsx');
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const importGuests = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Parse Excel file
+    const guests = parseGuestExcel(req.file.buffer);
+
+    // Check if any guests were found
+    if (guests.length === 0) {
+      return res.status(400).json({
+        error: 'No valid guest data found in the Excel file',
+        details: 'The file does not contain any guest data rows (all rows below the header are empty).',
+        hint: 'Make sure you have at least one row with First Name* and Side* filled in.'
+      });
+    }
+
+    // Validate all guests
+    const validationResults = guests.map((guest, index) => ({
+      index: index + 1,
+      guest,
+      validation: validateGuest(guest)
+    }));
+
+    const invalidGuests = validationResults.filter(r => !r.validation.isValid);
+
+    if (invalidGuests.length > 0) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        invalidGuests: invalidGuests.map(r => ({
+          row: r.index,
+          errors: r.validation.errors
+        }))
+      });
+    }
+
+    // Insert guests into database
+    const { data, error } = await supabase
+      .from('guests')
+      .insert(guests)
+      .select();
+
+    if (error) throw error;
+
+    res.status(201).json({
+      message: 'Guests imported successfully',
+      count: data.length,
+      guests: data
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAll,
   getSummary,
@@ -239,5 +307,7 @@ module.exports = {
   bulkCreate,
   update,
   delete: deleteGuest,
-  updateRsvp
+  updateRsvp,
+  downloadTemplate,
+  importGuests
 };

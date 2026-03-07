@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGuests, useGuestSummary, useCreateGuest, useUpdateGuest, useDeleteGuest } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
+import api from '../../api/axios';
 import {
   HiOutlineSearch,
   HiOutlinePlus,
@@ -15,6 +17,7 @@ import {
 
 export default function Guests() {
   const { canEdit } = useAuth();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [sideFilter, setSideFilter] = useState('all');
   const [rsvpFilter, setRsvpFilter] = useState('all');
@@ -35,11 +38,13 @@ export default function Guests() {
   });
   const [editingGuest, setEditingGuest] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef(null);
 
-  // API hooks
+  // API hooks - fetch all guests without search filter
   const { data: guests = [], isLoading: guestsLoading } = useGuests({
     side: sideFilter !== 'all' ? sideFilter : undefined,
-    search: searchTerm || undefined,
   });
   const { data: summary } = useGuestSummary();
   const createMutation = useCreateGuest();
@@ -112,8 +117,109 @@ export default function Guests() {
     }
   };
 
-  // Note: RSVP filtering would require backend support to filter by RSVP status
-  const filteredGuests = guests;
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await api.get('/guests/template/download', {
+        responseType: 'blob'
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'guest_import_template.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Template downloaded successfully!');
+    } catch (error) {
+      toast.error('Failed to download template');
+    }
+  };
+
+  const handleImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await api.post('/guests/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      toast.success(`Successfully imported ${response.data.count} guests!`);
+
+      // Refresh guest list and summary
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['guests', 'summary'] });
+
+      // Reset file input and close modal
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      setShowImportModal(false);
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || 'Failed to import guests';
+      const details = error.response?.data?.invalidGuests || error.response?.data?.errors;
+      const hint = error.response?.data?.hint;
+      const additionalDetails = error.response?.data?.details;
+
+      if (details && details.length > 0) {
+        toast.error(`${errorMessage}. Check console for details.`, { duration: 5000 });
+        console.error('========== IMPORT ERRORS ==========');
+        console.error(errorMessage);
+        if (additionalDetails) console.error(additionalDetails);
+        if (hint) console.error('Hint:', hint);
+        console.error('\nValidation Errors:');
+        details.forEach((err, idx) => {
+          console.error(`${idx + 1}. Row ${err.row}:`, err.errors.join(', '));
+        });
+        console.error('===================================');
+      } else if (additionalDetails || hint) {
+        toast.error(errorMessage, { duration: 6000 });
+        console.error('========== IMPORT ERROR ==========');
+        console.error(errorMessage);
+        if (additionalDetails) console.error('\n' + additionalDetails);
+        if (hint) console.error('\nHint:', hint);
+        console.error('==================================');
+      } else {
+        toast.error(errorMessage);
+      }
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  // Client-side filtering for search and RSVP
+  const filteredGuests = useMemo(() => {
+    return guests.filter(guest => {
+      // Search filter
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        const fullName = `${guest.first_name} ${guest.last_name}`.toLowerCase();
+        const matchesSearch =
+          fullName.includes(search) ||
+          guest.phone?.toLowerCase().includes(search) ||
+          guest.email?.toLowerCase().includes(search) ||
+          guest.relationship?.toLowerCase().includes(search);
+
+        if (!matchesSearch) return false;
+      }
+
+      // RSVP filter (if rsvp_status exists in guest data)
+      if (rsvpFilter !== 'all' && guest.rsvp_status) {
+        if (guest.rsvp_status !== rsvpFilter) return false;
+      }
+
+      return true;
+    });
+  }, [guests, searchTerm, rsvpFilter]);
 
   // Loading state
   if (guestsLoading) {
@@ -130,13 +236,12 @@ export default function Guests() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="page-title">Guest Management</h1>
         <div className="flex gap-2">
-          <button className="btn-outline flex items-center gap-2">
-            <HiOutlineDownload className="w-4 h-4" />
-            Export
-          </button>
           {canEdit && (
             <>
-              <button className="btn-outline flex items-center gap-2">
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="btn-outline flex items-center gap-2"
+              >
                 <HiOutlineUpload className="w-4 h-4" />
                 Import
               </button>
@@ -500,6 +605,84 @@ export default function Guests() {
               >
                 {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {canEdit && showImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-gold-200">
+              <h2 className="text-xl font-display font-bold text-maroon-800">
+                Import Guests from Excel
+              </h2>
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <HiOutlineX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Import Instructions */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-900 mb-3">Import Instructions</h3>
+                <ol className="list-decimal ml-5 space-y-2 text-sm text-gray-700">
+                  <li>
+                    <strong>Download the sample template</strong> - It contains example data with 3 guests to help you understand the format
+                  </li>
+                  <li>
+                    <strong>Edit the Excel file:</strong> Replace the sample data with your actual guests, or add new rows below the examples
+                  </li>
+                  <li>
+                    <strong>Mandatory fields:</strong> First Name* and Side* (must be either "Bride" or "Groom")
+                  </li>
+                  <li>
+                    <strong>Optional fields:</strong> Last Name, Phone, Relationship, Meal Preference, Needs Accommodation, Needs Pickup
+                  </li>
+                  <li>
+                    <strong>Boolean values:</strong> Use "Yes" or "No" for Needs Accommodation and Needs Pickup columns
+                  </li>
+                  <li>
+                    <strong>Important:</strong> Row 1 contains the headers and will be kept automatically. All data rows below will be imported
+                  </li>
+                </ol>
+              </div>
+
+              {/* Download Template Button */}
+              <div className="flex justify-center py-2">
+                <button
+                  onClick={handleDownloadTemplate}
+                  className="btn-outline text-sm flex items-center gap-2"
+                >
+                  <HiOutlineDownload className="w-4 h-4" />
+                  Download Sample Template
+                </button>
+              </div>
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleImport}
+                className="hidden"
+              />
+
+              {/* Import Button */}
+              <div className="pt-2">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isImporting}
+                  className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <HiOutlineUpload className="w-5 h-5" />
+                  {isImporting ? 'Importing...' : 'Import Data from Excel'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -1,17 +1,23 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
-import { HiOutlineOfficeBuilding, HiOutlineUsers, HiOutlineHome, HiOutlinePlus, HiOutlineX } from 'react-icons/hi';
+import { HiOutlineOfficeBuilding, HiOutlineUsers, HiOutlineHome, HiOutlinePlus, HiOutlineX, HiOutlineDownload, HiOutlineUpload } from 'react-icons/hi';
 import { useAllocationMatrix, useUnassignedGuests, useCreateAccommodation, useCreateRoom, useCreateAllocation } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
+import api from '../../api/axios';
 
 export default function Accommodations() {
   const { canEdit } = useAuth();
+  const queryClient = useQueryClient();
   const { data: allocationMatrix = [], isLoading, error } = useAllocationMatrix();
   const { data: unassignedGuests = [] } = useUnassignedGuests();
   const [selectedHotelId, setSelectedHotelId] = useState(null);
   const [showHotelModal, setShowHotelModal] = useState(false);
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showImportResultsModal, setShowImportResultsModal] = useState(false);
+  const [importResults, setImportResults] = useState(null);
   const [hotelFormData, setHotelFormData] = useState({
     name: '',
     address: '',
@@ -34,6 +40,8 @@ export default function Accommodations() {
     check_in_date: '',
     check_out_date: ''
   });
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef(null);
 
   const createHotelMutation = useCreateAccommodation();
   const createRoomMutation = useCreateRoom();
@@ -111,6 +119,78 @@ export default function Accommodations() {
     }
   };
 
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await api.get('/accommodations/allocations/template/all-venues/download', {
+        responseType: 'blob'
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const filename = 'all_venues_room_allocation.xlsx';
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Template downloaded successfully!');
+    } catch (error) {
+      toast.error('Failed to download template');
+    }
+  };
+
+  const handleImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await api.post('/accommodations/allocations/import/all-venues', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      // Store results for the results modal
+      setImportResults(response.data);
+
+      // Refresh allocation matrix and unassigned guests
+      queryClient.invalidateQueries({ queryKey: ['accommodations', 'allocation-matrix'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations', 'unassigned-guests'] });
+
+      // Reset file input and close import modal
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      setShowImportModal(false);
+
+      // Show results modal
+      setShowImportResultsModal(true);
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || 'Failed to import allocations';
+      const errors = error.response?.data?.errors || error.response?.data?.invalidAllocations;
+
+      // Store error results for the results modal
+      setImportResults({
+        success: false,
+        error: errorMessage,
+        errors: errors || [],
+        count: 0
+      });
+
+      // Close import modal and show results modal
+      setShowImportModal(false);
+      setShowImportResultsModal(true);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   // Select first hotel by default when data loads
   const selectedHotel = useMemo(() => {
     if (allocationMatrix.length > 0) {
@@ -170,26 +250,23 @@ export default function Accommodations() {
           {canEdit && (
             <>
               <button
+                onClick={() => setShowImportModal(true)}
+                className="btn-outline flex items-center gap-2"
+              >
+                <HiOutlineUpload className="w-4 h-4" />
+                Import
+              </button>
+              <button
                 onClick={() => setShowHotelModal(true)}
                 className="btn-primary"
               >
                 Add Hotel
               </button>
-              {selectedHotel && (
-                <button
-                  onClick={() => {
-                    setRoomFormData({ ...roomFormData, accommodationId: selectedHotel.id });
-                    setShowRoomModal(true);
-                  }}
-                  className="btn-outline"
-                >
-                  Add Room
-                </button>
-              )}
             </>
           )}
         </div>
       </div>
+
 
       {enrichedHotels.length === 0 ? (
         <div className="text-center py-12">
@@ -243,19 +320,33 @@ export default function Accommodations() {
             <div className="card">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="section-title mb-0">{selectedHotel.name} - Room Allocation</h3>
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-pink-400" />
-                    <span>Bride Side</span>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-pink-400" />
+                      <span>Bride Side</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-blue-400" />
+                      <span>Groom Side</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-gray-300" />
+                      <span>Available</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-blue-400" />
-                    <span>Groom Side</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-gray-300" />
-                    <span>Available</span>
-                  </div>
+                  {canEdit && (
+                    <button
+                      onClick={() => {
+                        setRoomFormData({ ...roomFormData, accommodationId: selectedHotel.id });
+                        setShowRoomModal(true);
+                      }}
+                      className="btn-outline text-sm flex items-center gap-2"
+                    >
+                      <HiOutlinePlus className="w-4 h-4" />
+                      Add Room
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -639,6 +730,277 @@ export default function Accommodations() {
                 className="btn-primary flex-1 disabled:opacity-50"
               >
                 {createAllocationMutation.isPending ? 'Assigning...' : 'Assign Guest'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {canEdit && showImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-gold-200">
+              <h2 className="text-xl font-display font-bold text-maroon-800">
+                Import Room Allocations from Excel
+              </h2>
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <HiOutlineX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Import Instructions */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-900 mb-3">Import Instructions</h3>
+                <ol className="list-decimal ml-5 space-y-2 text-sm text-gray-700">
+                  <li>
+                    <strong>Download the sample template</strong> - It contains separate sheets for each venue with example room allocations
+                  </li>
+                  <li>
+                    <strong>Edit the Excel file:</strong> Go to the sheet for the venue you want to import and replace the sample data with your actual room assignments
+                  </li>
+                  <li>
+                    <strong>Use the Guest List sheet:</strong> The last sheet contains all your guests grouped by side. Copy exact names from there into the Guest 1, Guest 2, Guest 3 columns
+                  </li>
+                  <li>
+                    <strong>Mandatory fields:</strong> Room Number*, at least one Guest (Guest 1), Check-in Date*, and Check-out Date*
+                  </li>
+                  <li>
+                    <strong>Multiple guests per room:</strong> Assign up to 3 guests per room using the Guest 1, 2, 3 columns
+                  </li>
+                </ol>
+              </div>
+
+              {/* Download Template Button */}
+              <div className="flex justify-center py-2">
+                <button
+                  onClick={handleDownloadTemplate}
+                  className="btn-outline text-sm flex items-center gap-2"
+                >
+                  <HiOutlineDownload className="w-4 h-4" />
+                  Download Sample Template
+                </button>
+              </div>
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleImport}
+                className="hidden"
+              />
+
+              {/* Import Button */}
+              <div className="pt-2">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isImporting}
+                  className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <HiOutlineUpload className="w-5 h-5" />
+                  {isImporting ? 'Importing...' : 'Import Data from Excel'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Results Modal */}
+      {showImportResultsModal && importResults && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gold-200">
+              <h2 className="text-xl font-display font-bold text-maroon-800">
+                Import Results
+              </h2>
+              <button
+                onClick={() => {
+                  setShowImportResultsModal(false);
+                  setImportResults(null);
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <HiOutlineX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Summary Stats */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                  <div className="text-3xl font-bold text-green-700">{importResults.count || 0}</div>
+                  <div className="text-sm text-green-600 font-medium">Successful Imports</div>
+                </div>
+                <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
+                  <div className="text-3xl font-bold text-red-700">
+                    {importResults.failedCount || importResults.errors?.length || 0}
+                  </div>
+                  <div className="text-sm text-red-600 font-medium">Failed Imports</div>
+                </div>
+              </div>
+
+              {/* Success Section */}
+              {importResults.count > 0 && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
+                    <span className="text-xl">✓</span>
+                    Successfully Imported
+                  </h3>
+                  <div className="text-sm text-gray-700 space-y-3">
+                    <div className="flex gap-4">
+                      <p>
+                        <strong>{importResults.count} room allocations</strong> processed
+                      </p>
+                      {importResults.created > 0 && (
+                        <span className="text-green-700">
+                          ({importResults.created} created)
+                        </span>
+                      )}
+                      {importResults.updated > 0 && (
+                        <span className="text-blue-700">
+                          ({importResults.updated} updated)
+                        </span>
+                      )}
+                    </div>
+
+                    {/* List of successful allocations */}
+                    {importResults.allocations && importResults.allocations.length > 0 && (
+                      <div className="mt-3">
+                        <p className="font-medium text-green-800 mb-2">Guest Allocations:</p>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {importResults.allocations.map((allocation, idx) => (
+                            <div key={idx} className={`bg-white border rounded p-2 text-xs ${
+                              allocation.action === 'updated'
+                                ? 'border-blue-200 bg-blue-50'
+                                : 'border-green-200'
+                            }`}>
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1 flex items-center gap-2">
+                                  <span className="font-medium text-gray-800">{allocation.guest}</span>
+                                  <span className="text-gray-500">→</span>
+                                  <span className="text-gray-600">Room {allocation.room}</span>
+                                  {allocation.action === 'updated' && (
+                                    <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                                      Updated
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-gray-500 text-right">
+                                  {allocation.venue}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {importResults.roomsCreated > 0 && (
+                      <div className="mt-3">
+                        <p className="font-medium text-green-800">Created {importResults.roomsCreated} new rooms:</p>
+                        <ul className="list-disc ml-5 mt-1">
+                          {importResults.newRooms?.map((room, idx) => (
+                            <li key={idx}>
+                              Room {room.room} at {room.venue}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Error Section */}
+              {(importResults.errors?.length > 0 || importResults.success === false) && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-red-900 mb-3 flex items-center gap-2">
+                    <span className="text-xl">✗</span>
+                    Failed Imports
+                  </h3>
+
+                  {importResults.success === false && (
+                    <div className="mb-4 p-3 bg-red-100 rounded border border-red-300">
+                      <p className="font-medium text-red-800">{importResults.error}</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {importResults.errors?.map((error, idx) => (
+                      <div key={idx} className="bg-white border border-red-200 rounded-lg p-3">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-800">
+                              {error.guest || `Row ${error.row}`}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              Sheet: {error.sheet} • Row: {error.row}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-sm text-red-700 mb-2">
+                          {error.error || error.errors?.join(', ')}
+                        </div>
+
+                        {error.suggestions && error.suggestions.length > 0 && (
+                          <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                            <div className="text-xs font-medium text-blue-900 mb-1">
+                              Did you mean one of these?
+                            </div>
+                            <ul className="text-xs text-blue-700 space-y-1">
+                              {error.suggestions.map((suggestion, sIdx) => (
+                                <li key={sIdx}>
+                                  • {suggestion.name} ({suggestion.similarity}, {suggestion.side} side)
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {importResults.errors?.length > 0 && (
+                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                      <p className="text-sm text-yellow-800">
+                        <strong>Next Steps:</strong> Fix the errors in your Excel file and try importing again.
+                        Make sure to copy guest names exactly from the Guest List sheet.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Full Success Message */}
+              {importResults.count > 0 && (!importResults.errors || importResults.errors.length === 0) && (
+                <div className="text-center p-6 bg-green-50 border-2 border-green-200 rounded-lg">
+                  <div className="text-5xl mb-3">🎉</div>
+                  <h3 className="text-xl font-bold text-green-800 mb-2">
+                    All Done!
+                  </h3>
+                  <p className="text-green-700">
+                    All room allocations were imported successfully. Your data is now available on the accommodations page.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 p-6 border-t border-gold-200">
+              <button
+                onClick={() => {
+                  setShowImportResultsModal(false);
+                  setImportResults(null);
+                }}
+                className="btn-primary flex-1"
+              >
+                Close
               </button>
             </div>
           </div>
