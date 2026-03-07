@@ -1,0 +1,392 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '../api/axios';
+
+// =====================================================
+// WEBSITE CONTENT HOOKS
+// =====================================================
+
+export const useHeroContent = () => useQuery({
+  queryKey: ['website-content', 'hero'],
+  queryFn: () => api.get('/website-content/hero').then(res => res.data),
+  staleTime: 10 * 60 * 1000, // 10 minutes
+});
+
+export const useCoupleContent = () => useQuery({
+  queryKey: ['website-content', 'couple'],
+  queryFn: () => api.get('/website-content/couple').then(res => res.data),
+  staleTime: 10 * 60 * 1000,
+});
+
+export const useOurStory = () => useQuery({
+  queryKey: ['website-content', 'story'],
+  queryFn: () => api.get('/website-content/story').then(res => res.data),
+  staleTime: 10 * 60 * 1000,
+});
+
+// =====================================================
+// DASHBOARD HOOKS
+// =====================================================
+
+export const useDashboardStats = () => useQuery({
+  queryKey: ['dashboard', 'stats'],
+  queryFn: () => api.get('/dashboard/stats').then(res => res.data),
+});
+
+export const useDashboardSummary = () => useQuery({
+  queryKey: ['dashboard', 'summary'],
+  queryFn: () => api.get('/dashboard/summary').then(res => res.data),
+});
+
+export const useCountdown = () => useQuery({
+  queryKey: ['dashboard', 'countdown'],
+  queryFn: () => api.get('/dashboard/countdown').then(res => res.data),
+  refetchInterval: 60000, // Refetch every minute
+});
+
+// =====================================================
+// GUESTS HOOKS
+// =====================================================
+
+export const useGuests = (filters = {}) => useQuery({
+  queryKey: ['guests', filters],
+  queryFn: () => api.get('/guests', { params: filters }).then(res => res.data),
+});
+
+export const useGuestSummary = () => useQuery({
+  queryKey: ['guests', 'summary'],
+  queryFn: () => api.get('/guests/summary').then(res => res.data),
+});
+
+export const useGuestGroups = () => useQuery({
+  queryKey: ['guests', 'groups'],
+  queryFn: () => api.get('/guests/groups').then(res => res.data),
+});
+
+export const useGuest = (id) => useQuery({
+  queryKey: ['guests', id],
+  queryFn: () => api.get(`/guests/${id}`).then(res => res.data),
+  enabled: !!id,
+});
+
+export const useCreateGuest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (guestData) => api.post('/guests', guestData).then(res => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+    },
+  });
+};
+
+export const useUpdateGuest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => api.put(`/guests/${id}`, data).then(res => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+    },
+  });
+};
+
+export const useDeleteGuest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => api.delete(`/guests/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+    },
+  });
+};
+
+// =====================================================
+// EVENTS HOOKS
+// =====================================================
+
+export const useEvents = () => useQuery({
+  queryKey: ['events'],
+  queryFn: () => api.get('/events').then(res => res.data),
+});
+
+export const useEvent = (id) => useQuery({
+  queryKey: ['events', id],
+  queryFn: () => api.get(`/events/${id}`).then(res => res.data),
+  enabled: !!id,
+});
+
+export const useEventGuests = (eventId) => useQuery({
+  queryKey: ['events', eventId, 'guests'],
+  queryFn: () => api.get(`/events/${eventId}/guests`).then(res => res.data),
+  enabled: !!eventId,
+});
+
+export const useEventVendors = (eventId) => useQuery({
+  queryKey: ['events', eventId, 'vendors'],
+  queryFn: () => api.get(`/events/${eventId}/vendors`).then(res => res.data),
+  enabled: !!eventId,
+});
+
+// =====================================================
+// VENUES HOOKS
+// =====================================================
+
+export const useVenues = () => useQuery({
+  queryKey: ['venues'],
+  queryFn: () => api.get('/venues').then(res => res.data),
+});
+
+export const useVenue = (id) => useQuery({
+  queryKey: ['venues', id],
+  queryFn: () => api.get(`/venues/${id}`).then(res => res.data),
+  enabled: !!id,
+});
+
+export const useCreateVenue = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (venueData) => api.post('/venues', venueData).then(res => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+    },
+  });
+};
+
+export const useUpdateVenue = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => api.put(`/venues/${id}`, data).then(res => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+    },
+  });
+};
+
+// =====================================================
+// ACCOMMODATIONS HOOKS
+// =====================================================
+
+export const useAccommodations = () => useQuery({
+  queryKey: ['accommodations'],
+  queryFn: () => api.get('/accommodations').then(res => res.data),
+});
+
+export const useAccommodation = (id) => useQuery({
+  queryKey: ['accommodations', id],
+  queryFn: () => api.get(`/accommodations/${id}`).then(res => res.data),
+  enabled: !!id,
+});
+
+export const useAccommodationRooms = (accommodationId) => useQuery({
+  queryKey: ['accommodations', accommodationId, 'rooms'],
+  queryFn: () => api.get(`/accommodations/${accommodationId}/rooms`).then(res => res.data),
+  enabled: !!accommodationId,
+});
+
+export const useRoomAllocations = () => useQuery({
+  queryKey: ['accommodations', 'allocations'],
+  queryFn: () => api.get('/accommodations/allocations').then(res => res.data),
+});
+
+export const useAllocationMatrix = () => useQuery({
+  queryKey: ['accommodations', 'allocation-matrix'],
+  queryFn: () => api.get('/accommodations/allocations/matrix').then(res => res.data),
+});
+
+export const useUnassignedGuests = () => useQuery({
+  queryKey: ['accommodations', 'unassigned-guests'],
+  queryFn: () => api.get('/accommodations/allocations/unassigned').then(res => res.data),
+});
+
+export const useCreateAllocation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (allocationData) => api.post('/accommodations/allocations', allocationData).then(res => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+    },
+  });
+};
+
+// =====================================================
+// VENDORS HOOKS
+// =====================================================
+
+export const useVendors = (category) => useQuery({
+  queryKey: ['vendors', { category }],
+  queryFn: () => api.get('/vendors', { params: category ? { category } : {} }).then(res => res.data),
+});
+
+export const useVendor = (id) => useQuery({
+  queryKey: ['vendors', id],
+  queryFn: () => api.get(`/vendors/${id}`).then(res => res.data),
+  enabled: !!id,
+});
+
+export const useVendorCategories = () => useQuery({
+  queryKey: ['vendors', 'categories'],
+  queryFn: () => api.get('/vendors/categories').then(res => res.data),
+});
+
+export const useVendorPayments = (vendorId) => useQuery({
+  queryKey: ['vendors', vendorId, 'payments'],
+  queryFn: () => api.get(`/vendors/${vendorId}/payments`).then(res => res.data),
+  enabled: !!vendorId,
+});
+
+export const useCreateVendor = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vendorData) => api.post('/vendors', vendorData).then(res => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+    },
+  });
+};
+
+export const useUpdateVendor = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => api.put(`/vendors/${id}`, data).then(res => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+    },
+  });
+};
+
+// =====================================================
+// BUDGET HOOKS
+// =====================================================
+
+export const useBudgetSummary = () => useQuery({
+  queryKey: ['budget', 'summary'],
+  queryFn: () => api.get('/budget').then(res => res.data),
+});
+
+export const useBudgetOverview = () => useQuery({
+  queryKey: ['budget', 'overview'],
+  queryFn: () => api.get('/budget/overview').then(res => res.data),
+});
+
+export const useBudgetByCategory = () => useQuery({
+  queryKey: ['budget', 'by-category'],
+  queryFn: () => api.get('/budget/expenses/by-category').then(res => res.data),
+});
+
+export const useBudgetBySide = () => useQuery({
+  queryKey: ['budget', 'by-side'],
+  queryFn: () => api.get('/budget/by-side').then(res => res.data),
+});
+
+export const useBudgetCategories = () => useQuery({
+  queryKey: ['budget', 'categories'],
+  queryFn: () => api.get('/budget/categories').then(res => res.data),
+});
+
+export const useExpenses = (filters = {}) => useQuery({
+  queryKey: ['budget', 'expenses', filters],
+  queryFn: () => api.get('/budget/expenses', { params: filters }).then(res => res.data),
+});
+
+export const usePendingPayments = () => useQuery({
+  queryKey: ['budget', 'payments', 'pending'],
+  queryFn: () => api.get('/budget/payments/pending').then(res => res.data),
+});
+
+export const useAllPayments = () => useQuery({
+  queryKey: ['budget', 'payments'],
+  queryFn: () => api.get('/budget/payments').then(res => res.data),
+});
+
+export const useCreateExpense = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (expenseData) => api.post('/budget/expenses', expenseData).then(res => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget'] });
+    },
+  });
+};
+
+export const useCreatePayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (paymentData) => api.post('/budget/payments', paymentData).then(res => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget'] });
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+    },
+  });
+};
+
+// =====================================================
+// TASKS HOOKS
+// =====================================================
+
+export const useTasks = (filters = {}) => useQuery({
+  queryKey: ['tasks', filters],
+  queryFn: () => api.get('/tasks', { params: filters }).then(res => res.data),
+});
+
+export const useTaskStats = () => useQuery({
+  queryKey: ['tasks', 'stats'],
+  queryFn: () => api.get('/tasks/stats').then(res => res.data),
+});
+
+export const useOverdueTasks = () => useQuery({
+  queryKey: ['tasks', 'overdue'],
+  queryFn: () => api.get('/tasks/overdue').then(res => res.data),
+});
+
+export const useUpcomingTasks = () => useQuery({
+  queryKey: ['tasks', 'upcoming'],
+  queryFn: () => api.get('/tasks/upcoming').then(res => res.data),
+});
+
+export const useTask = (id) => useQuery({
+  queryKey: ['tasks', id],
+  queryFn: () => api.get(`/tasks/${id}`).then(res => res.data),
+  enabled: !!id,
+});
+
+export const useCreateTask = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (taskData) => api.post('/tasks', taskData).then(res => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+export const useUpdateTask = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }) => api.put(`/tasks/${id}`, data).then(res => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+export const useUpdateTaskStatus = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }) => api.put(`/tasks/${id}/status`, { status }).then(res => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+export const useDeleteTask = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => api.delete(`/tasks/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};

@@ -155,6 +155,37 @@ const deleteTask = async (req, res, next) => {
   }
 };
 
+const getStats = async (req, res, next) => {
+  try {
+    const { data: tasks, error } = await supabase
+      .from('tasks')
+      .select('status, due_date');
+
+    if (error) throw error;
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const total = tasks?.length || 0;
+    const pending = tasks?.filter(t => t.status === 'pending').length || 0;
+    const in_progress = tasks?.filter(t => t.status === 'in_progress').length || 0;
+    const completed = tasks?.filter(t => t.status === 'completed').length || 0;
+    const overdue = tasks?.filter(t =>
+      t.due_date < today &&
+      (t.status === 'pending' || t.status === 'in_progress')
+    ).length || 0;
+
+    res.json({
+      total,
+      pending,
+      in_progress,
+      completed,
+      overdue
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAll,
   getOverdue,
@@ -163,5 +194,6 @@ module.exports = {
   create,
   update,
   updateStatus,
-  delete: deleteTask
+  delete: deleteTask,
+  getStats
 };

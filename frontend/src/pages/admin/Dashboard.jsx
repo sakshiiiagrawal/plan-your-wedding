@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
+  useDashboardStats,
+  useDashboardSummary,
+  useCountdown,
+  useHeroContent,
+  useBudgetOverview,
+} from '../../hooks/useApi';
+import {
   HiOutlineUserGroup,
   HiOutlineCurrencyRupee,
   HiOutlineClipboardList,
@@ -10,44 +17,29 @@ import {
 } from 'react-icons/hi';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 
-const WEDDING_DATE = new Date('2026-11-26T07:00:00');
-
-// Mock data for now - will connect to API
-const mockStats = {
-  guests: { total: 245, bride: 120, groom: 125 },
-  rsvp: { confirmed: 180, pending: 65 },
-  tasks: { pending: 25, completed: 48 },
-  budget: { total: 5000000, spent: 3245000 }
-};
-
-const mockEvents = [
-  { name: 'Mehendi', date: '2026-11-24', time: '6:00 PM', theme: 'Floral Garden', color: '#228B22' },
-  { name: 'Haldi Carnival', date: '2026-11-25', time: '9:00 AM', theme: 'Yellow Carnival', color: '#FFD700' },
-  { name: 'Engagement & Sangeet', date: '2026-11-25', time: '6:00 PM', theme: 'Starry Night', color: '#1A237E' },
-  { name: 'Wedding', date: '2026-11-26', time: '7:00 AM', theme: 'Royal Indian', color: '#8B0000' },
-];
-
-const mockBudgetData = [
-  { name: 'Venue', allocated: 1000000, spent: 850000 },
-  { name: 'Catering', allocated: 1500000, spent: 1200000 },
-  { name: 'Decoration', allocated: 500000, spent: 450000 },
-  { name: 'Photography', allocated: 400000, spent: 300000 },
-  { name: 'Other', allocated: 1600000, spent: 445000 },
-];
-
-const rsvpData = [
-  { name: 'Confirmed', value: 180, color: '#22c55e' },
-  { name: 'Pending', value: 65, color: '#eab308' },
-];
-
 export default function Dashboard() {
   const { canEdit, canViewFinance } = useAuth();
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
+  // API hooks
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: summary, isLoading: summaryLoading } = useDashboardSummary();
+  const { data: countdownData } = useCountdown();
+  const { data: heroContent } = useHeroContent();
+  const { data: budgetOverview } = useBudgetOverview();
+
+  // Get names from hero content or use defaults
+  const brideName = heroContent?.bride_name || 'Bride';
+  const groomName = heroContent?.groom_name || 'Groom';
+  const weddingDateStr = heroContent?.wedding_date || countdownData?.weddingDate;
+
   useEffect(() => {
+    if (!weddingDateStr) return;
+
+    const weddingDate = new Date(weddingDateStr);
     const timer = setInterval(() => {
       const now = new Date();
-      const diff = WEDDING_DATE - now;
+      const diff = weddingDate - now;
 
       if (diff > 0) {
         setCountdown({
@@ -60,7 +52,7 @@ export default function Dashboard() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [weddingDateStr]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -70,13 +62,34 @@ export default function Dashboard() {
     }).format(amount);
   };
 
+  // Prepare RSVP data for pie chart
+  const rsvpData = stats ? [
+    { name: 'Confirmed', value: stats.rsvp?.confirmed || 0, color: '#22c55e' },
+    { name: 'Pending', value: stats.rsvp?.pending || 0, color: '#eab308' },
+  ] : [];
+
+  // Prepare budget data for bar chart
+  const budgetData = budgetOverview || [];
+
+  // Events from summary
+  const events = summary?.events || [];
+
+  // Loading state
+  if (statsLoading || summaryLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Countdown Section */}
       <div className="bg-gradient-wedding rounded-2xl p-8 text-white shadow-lg">
         <div className="text-center">
-          <h2 className="font-script text-4xl mb-2">Sakshi & Ayush</h2>
-          <p className="text-gold-300 mb-6">November 26, 2026</p>
+          <h2 className="font-script text-4xl mb-2">{brideName} & {groomName}</h2>
+          <p className="text-gold-300 mb-6">{weddingDateStr ? new Date(weddingDateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Wedding Date'}</p>
 
           <div className="flex justify-center gap-4 md:gap-8">
             {[
@@ -98,41 +111,41 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card">
           <HiOutlineUserGroup className="w-8 h-8 text-gold-500 mb-2" />
-          <div className="stat-value">{mockStats.guests.total}</div>
+          <div className="stat-value">{stats?.guests?.total || 0}</div>
           <div className="stat-label">Total Guests</div>
           <div className="text-xs text-gray-400 mt-1">
-            <span className="text-pink-500">{mockStats.guests.bride} Bride</span>
+            <span className="text-pink-500">{stats?.guests?.bride || 0} Bride</span>
             {' • '}
-            <span className="text-blue-500">{mockStats.guests.groom} Groom</span>
+            <span className="text-blue-500">{stats?.guests?.groom || 0} Groom</span>
           </div>
         </div>
 
         {canViewFinance && (
           <div className="stat-card">
             <HiOutlineCurrencyRupee className="w-8 h-8 text-gold-500 mb-2" />
-            <div className="stat-value">{formatCurrency(mockStats.budget.spent)}</div>
+            <div className="stat-value">{formatCurrency(stats?.budget?.spent || 0)}</div>
             <div className="stat-label">Spent</div>
             <div className="text-xs text-gray-400 mt-1">
-              of {formatCurrency(mockStats.budget.total)}
+              of {formatCurrency(stats?.budget?.total || 0)}
             </div>
           </div>
         )}
 
         <div className="stat-card">
           <HiOutlineClipboardList className="w-8 h-8 text-gold-500 mb-2" />
-          <div className="stat-value">{mockStats.tasks.pending}</div>
+          <div className="stat-value">{stats?.tasks?.pending || 0}</div>
           <div className="stat-label">Pending Tasks</div>
           <div className="text-xs text-gray-400 mt-1">
-            {mockStats.tasks.completed} completed
+            {stats?.tasks?.completed || 0} completed
           </div>
         </div>
 
         <div className="stat-card">
           <HiOutlineCalendar className="w-8 h-8 text-gold-500 mb-2" />
-          <div className="stat-value">4</div>
+          <div className="stat-value">{events.length}</div>
           <div className="stat-label">Events</div>
           <div className="text-xs text-gray-400 mt-1">
-            3 days of celebration
+            {events.length > 0 ? `${Math.ceil((new Date(events[events.length - 1]?.event_date) - new Date(events[0]?.event_date)) / (1000 * 60 * 60 * 24)) + 1} days of celebration` : 'No events'}
           </div>
         </div>
       </div>
@@ -206,7 +219,7 @@ export default function Dashboard() {
           <div className="card">
             <h3 className="section-title mb-4">Budget Overview</h3>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={mockBudgetData} layout="vertical">
+              <BarChart data={budgetData} layout="vertical">
                 <XAxis type="number" tickFormatter={(v) => `₹${v / 100000}L`} />
                 <YAxis type="category" dataKey="name" width={80} />
                 <Tooltip formatter={(v) => formatCurrency(v)} />
@@ -222,26 +235,37 @@ export default function Dashboard() {
       <div className="card">
         <h3 className="section-title mb-4">Events Timeline</h3>
         <div className="space-y-4">
-          {mockEvents.map((event, index) => (
-            <div
-              key={event.name}
-              className="flex items-center gap-4 p-4 rounded-lg hover:bg-gold-50 transition-colors"
-            >
+          {events.map((event, index) => {
+            const colorPalette = typeof event.color_palette === 'string'
+              ? JSON.parse(event.color_palette)
+              : (event.color_palette || {});
+            const eventColor = colorPalette.primary || '#8B0000';
+            return (
               <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold"
-                style={{ backgroundColor: event.color }}
+                key={event.id || index}
+                className="flex items-center gap-4 p-4 rounded-lg hover:bg-gold-50 transition-colors"
               >
-                {index + 1}
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold"
+                  style={{ backgroundColor: eventColor }}
+                >
+                  {index + 1}
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-maroon-800">{event.name}</h4>
+                  <p className="text-sm text-gray-500">
+                    {new Date(event.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} • {event.start_time?.slice(0, 5)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="badge bg-gold-100 text-gold-700">{event.theme || 'Theme'}</span>
+                </div>
               </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-maroon-800">{event.name}</h4>
-                <p className="text-sm text-gray-500">{event.date} • {event.time}</p>
-              </div>
-              <div className="text-right">
-                <span className="badge bg-gold-100 text-gold-700">{event.theme}</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
+          {events.length === 0 && (
+            <p className="text-gray-500 text-center py-4">No events found</p>
+          )}
         </div>
       </div>
     </div>

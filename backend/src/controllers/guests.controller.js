@@ -6,7 +6,7 @@ const getAll = async (req, res, next) => {
 
     let query = supabase
       .from('guests')
-      .select('*, guest_groups(name), room_allocations(*, rooms(*, accommodations(name)))');
+      .select('*, guest_groups!group_id(name), room_allocations(*, rooms(*, accommodations(name)))');
 
     if (side && side !== 'all') {
       query = query.eq('side', side);
@@ -96,7 +96,7 @@ const getById = async (req, res, next) => {
     const { id } = req.params;
     const { data, error } = await supabase
       .from('guests')
-      .select('*, guest_groups(*), guest_event_rsvp(*), room_allocations(*, rooms(*, accommodations(*)))')
+      .select('*, guest_groups!group_id(*), guest_event_rsvp(*), room_allocations(*, rooms(*, accommodations(*)))')
       .eq('id', id)
       .single();
 

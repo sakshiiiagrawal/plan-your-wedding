@@ -6,7 +6,7 @@
 -- =====================================================
 
 INSERT INTO budget_summary (id, total_budget, bride_side_contribution, groom_side_contribution, currency)
-VALUES ('00000000-0000-0000-0000-000000000001', 5000000, 2500000, 2500000, 'INR');
+VALUES ('00000000-0000-0000-0000-000000000001', 3000000, 1500000, 1500000, 'INR');
 
 -- =====================================================
 -- BUDGET CATEGORIES

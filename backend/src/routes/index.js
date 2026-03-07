@@ -10,6 +10,7 @@ const vendorsRoutes = require('./vendors.routes');
 const budgetRoutes = require('./budget.routes');
 const tasksRoutes = require('./tasks.routes');
 const authRoutes = require('./auth.routes');
+const websiteContentRoutes = require('./websiteContent.routes');
 
 // API Routes
 router.use('/auth', authRoutes);
@@ -21,5 +22,6 @@ router.use('/accommodations', accommodationsRoutes);
 router.use('/vendors', vendorsRoutes);
 router.use('/budget', budgetRoutes);
 router.use('/tasks', tasksRoutes);
+router.use('/website-content', websiteContentRoutes);
 
 module.exports = router;

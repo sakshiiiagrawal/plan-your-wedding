@@ -1,36 +1,19 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTasks, useTaskStats } from '../../hooks/useApi';
 import { HiOutlinePlus, HiOutlineCheck, HiOutlineClock, HiOutlineExclamation } from 'react-icons/hi';
-
-const mockTasks = [
-  { id: 1, title: 'Finalize caterer menu', priority: 'high', status: 'in_progress', due_date: '2026-08-01', assigned_to: 'Mummy', event: 'All', category: 'vendor' },
-  { id: 2, title: 'Order wedding invitations', priority: 'high', status: 'pending', due_date: '2026-09-01', assigned_to: 'Sakshi', event: null, category: 'invitation' },
-  { id: 3, title: 'Book mehendi artist', priority: 'medium', status: 'pending', due_date: '2026-09-15', assigned_to: 'Sakshi', event: 'Mehendi', category: 'vendor' },
-  { id: 4, title: 'Finalize wedding venue booking', priority: 'urgent', status: 'completed', due_date: '2026-06-01', assigned_to: 'Papa', event: 'Wedding', category: 'venue' },
-  { id: 5, title: 'Book photographer', priority: 'high', status: 'completed', due_date: '2026-07-01', assigned_to: 'Ayush', event: 'All', category: 'vendor' },
-  { id: 6, title: 'Arrange hotel rooms', priority: 'high', status: 'pending', due_date: '2026-10-01', assigned_to: 'Papa', event: null, category: 'accommodation' },
-  { id: 7, title: 'Buy wedding lehenga', priority: 'urgent', status: 'pending', due_date: '2026-08-01', assigned_to: 'Sakshi', event: 'Wedding', category: 'shopping' },
-  { id: 8, title: 'Finalize pandit ji', priority: 'high', status: 'pending', due_date: '2026-10-01', assigned_to: 'Papa', event: 'Wedding', category: 'ritual' },
-];
-
-const stats = {
-  total: 85,
-  pending: 25,
-  in_progress: 8,
-  completed: 48,
-  overdue: 4
-};
 
 export default function Tasks() {
   const { canEdit } = useAuth();
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
 
-  const filteredTasks = mockTasks.filter(task => {
-    const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
-    const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
-    return matchesStatus && matchesPriority;
+  // API hooks
+  const { data: tasks = [], isLoading: tasksLoading } = useTasks({
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    priority: priorityFilter !== 'all' ? priorityFilter : undefined,
   });
+  const { data: stats } = useTaskStats();
 
   const getPriorityColor = (priority) => {
     const colors = {
@@ -48,6 +31,15 @@ export default function Tasks() {
     return <HiOutlineExclamation className="w-5 h-5 text-gray-400" />;
   };
 
+  // Loading state
+  if (tasksLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -63,23 +55,23 @@ export default function Tasks() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <div className="card text-center">
-          <div className="text-2xl font-bold text-maroon-800">{stats.total}</div>
+          <div className="text-2xl font-bold text-maroon-800">{stats?.total || 0}</div>
           <div className="text-sm text-gray-500">Total</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-gray-600">{stats.pending}</div>
+          <div className="text-2xl font-bold text-gray-600">{stats?.pending || 0}</div>
           <div className="text-sm text-gray-500">Pending</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-yellow-600">{stats.in_progress}</div>
+          <div className="text-2xl font-bold text-yellow-600">{stats?.in_progress || 0}</div>
           <div className="text-sm text-gray-500">In Progress</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+          <div className="text-2xl font-bold text-green-600">{stats?.completed || 0}</div>
           <div className="text-sm text-gray-500">Completed</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-red-600">{stats.overdue}</div>
+          <div className="text-2xl font-bold text-red-600">{stats?.overdue || 0}</div>
           <div className="text-sm text-gray-500">Overdue</div>
         </div>
       </div>
@@ -113,7 +105,7 @@ export default function Tasks() {
 
       {/* Task List */}
       <div className="space-y-3">
-        {filteredTasks.map((task) => (
+        {tasks.map((task) => (
           <div
             key={task.id}
             className={`card flex items-center gap-4 ${
@@ -143,9 +135,9 @@ export default function Tasks() {
                 {task.title}
               </div>
               <div className="flex flex-wrap gap-3 mt-1 text-sm text-gray-500">
-                <span>Due: {task.due_date}</span>
-                <span>Assigned: {task.assigned_to}</span>
-                {task.event && <span className="text-gold-600">{task.event}</span>}
+                <span>Due: {new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                {task.assigned_to && <span>Assigned: {task.assigned_to}</span>}
+                {task.events?.name && <span className="text-gold-600">{task.events.name}</span>}
               </div>
             </div>
 
@@ -165,6 +157,11 @@ export default function Tasks() {
             {getStatusIcon(task.status)}
           </div>
         ))}
+        {tasks.length === 0 && (
+          <div className="card text-center py-8 text-gray-500">
+            No tasks found
+          </div>
+        )}
       </div>
     </div>
   );

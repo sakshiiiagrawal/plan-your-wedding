@@ -3,6 +3,7 @@ const router = express.Router();
 const tasksController = require('../controllers/tasks.controller');
 
 router.get('/', tasksController.getAll);
+router.get('/stats', tasksController.getStats);
 router.get('/overdue', tasksController.getOverdue);
 router.get('/upcoming', tasksController.getUpcoming);
 router.get('/:id', tasksController.getById);

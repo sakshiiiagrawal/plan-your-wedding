@@ -3,43 +3,19 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { HiOutlinePlus, HiOutlineCurrencyRupee } from 'react-icons/hi';
-
-const budgetData = {
-  total: 5000000,
-  brideContribution: 2500000,
-  groomContribution: 2500000,
-  spent: 3245000,
-  pending: 820000
-};
-
-const categoryData = [
-  { name: 'Venue', allocated: 1000000, spent: 850000 },
-  { name: 'Catering', allocated: 1500000, spent: 1200000 },
-  { name: 'Decoration', allocated: 500000, spent: 450000 },
-  { name: 'Photography', allocated: 400000, spent: 300000 },
-  { name: 'Bridal Attire', allocated: 300000, spent: 280000 },
-  { name: 'Music & DJ', allocated: 200000, spent: 100000 },
-  { name: 'Others', allocated: 1100000, spent: 65000 },
-];
-
-const recentExpenses = [
-  { id: 1, description: 'Photographer advance', category: 'Photography', amount: 175000, date: '2026-03-01', paid_by: 'Papa', side: 'bride' },
-  { id: 2, description: 'Decorator booking', category: 'Decoration', amount: 200000, date: '2026-02-28', paid_by: 'Chacha', side: 'groom' },
-  { id: 3, description: 'Venue advance payment', category: 'Venue', amount: 500000, date: '2026-02-25', paid_by: 'Papa', side: 'bride' },
-  { id: 4, description: 'Caterer first installment', category: 'Catering', amount: 400000, date: '2026-02-20', paid_by: 'Uncle', side: 'groom' },
-];
-
-const pendingPayments = [
-  { id: 1, vendor: 'Sharma Caterers', amount: 400000, due_date: '2026-11-15' },
-  { id: 2, vendor: 'Flower Power Decorators', amount: 250000, due_date: '2026-11-20' },
-  { id: 3, vendor: 'Capture Dreams Photography', amount: 175000, due_date: '2026-11-25' },
-];
+import { useBudgetSummary, useBudgetOverview, useExpenses, usePendingPayments } from '../../hooks/useApi';
 
 const COLORS = ['#8B0000', '#D4AF37', '#228B22', '#1A237E', '#E91E63', '#FF6F00', '#607D8B'];
 
 export default function Budget() {
   const { canEdit, canViewFinance } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Fetch data from API
+  const { data: budgetSummary, isLoading: loadingSummary } = useBudgetSummary();
+  const { data: budgetOverview, isLoading: loadingOverview } = useBudgetOverview();
+  const { data: expenses, isLoading: loadingExpenses } = useExpenses();
+  const { data: pendingPayments, isLoading: loadingPayments } = usePendingPayments();
 
   // Redirect if user doesn't have permission to view finance
   if (!canViewFinance) {
@@ -53,6 +29,30 @@ export default function Budget() {
       maximumFractionDigits: 0,
     }).format(amount);
   };
+
+  // Show loading state
+  if (loadingSummary || loadingOverview) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-gray-500">Loading budget data...</div>
+      </div>
+    );
+  }
+
+  // Prepare data for charts
+  const budgetData = {
+    total: budgetSummary?.totalBudget || 0,
+    brideContribution: budgetSummary?.brideContribution || 0,
+    groomContribution: budgetSummary?.groomContribution || 0,
+    spent: budgetSummary?.totalSpent || 0,
+    pending: budgetSummary?.pendingPayments || 0
+  };
+
+  const categoryData = budgetOverview?.map(cat => ({
+    name: cat.name,
+    allocated: parseFloat(cat.allocated_amount || 0),
+    spent: parseFloat(cat.spent || 0)
+  })) || [];
 
   const pieData = categoryData.map((cat, i) => ({
     name: cat.name,
@@ -171,54 +171,66 @@ export default function Budget() {
 
       {activeTab === 'expenses' && (
         <div className="card overflow-hidden p-0">
-          <table className="w-full">
-            <thead className="table-header">
-              <tr>
-                <th className="text-left p-4">Description</th>
-                <th className="text-left p-4">Category</th>
-                <th className="text-left p-4">Amount</th>
-                <th className="text-left p-4">Date</th>
-                <th className="text-left p-4">Paid By</th>
-                <th className="text-left p-4">Side</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentExpenses.map((expense) => (
-                <tr key={expense.id} className="table-row">
-                  <td className="p-4 font-medium">{expense.description}</td>
-                  <td className="p-4 text-gray-600">{expense.category}</td>
-                  <td className="p-4 font-medium text-maroon-800">{formatCurrency(expense.amount)}</td>
-                  <td className="p-4 text-gray-600">{expense.date}</td>
-                  <td className="p-4 text-gray-600">{expense.paid_by}</td>
-                  <td className="p-4">
-                    <span className={expense.side === 'bride' ? 'badge-bride' : 'badge-groom'}>
-                      {expense.side === 'bride' ? 'Bride' : 'Groom'}
-                    </span>
-                  </td>
+          {loadingExpenses ? (
+            <div className="p-8 text-center text-gray-500">Loading expenses...</div>
+          ) : expenses && expenses.length > 0 ? (
+            <table className="w-full">
+              <thead className="table-header">
+                <tr>
+                  <th className="text-left p-4">Description</th>
+                  <th className="text-left p-4">Category</th>
+                  <th className="text-left p-4">Amount</th>
+                  <th className="text-left p-4">Date</th>
+                  <th className="text-left p-4">Paid By</th>
+                  <th className="text-left p-4">Side</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {expenses.map((expense) => (
+                  <tr key={expense.id} className="table-row">
+                    <td className="p-4 font-medium">{expense.description}</td>
+                    <td className="p-4 text-gray-600">{expense.budget_categories?.name || 'N/A'}</td>
+                    <td className="p-4 font-medium text-maroon-800">{formatCurrency(expense.amount)}</td>
+                    <td className="p-4 text-gray-600">{new Date(expense.expense_date).toLocaleDateString('en-IN')}</td>
+                    <td className="p-4 text-gray-600">{expense.paid_by}</td>
+                    <td className="p-4">
+                      <span className={expense.side === 'bride' ? 'badge-bride' : 'badge-groom'}>
+                        {expense.side === 'bride' ? 'Bride' : 'Groom'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="p-8 text-center text-gray-500">No expenses recorded yet.</div>
+          )}
         </div>
       )}
 
       {activeTab === 'payments' && (
         <div className="card">
           <h3 className="section-title mb-4">Pending Payments</h3>
-          <div className="space-y-4">
-            {pendingPayments.map((payment) => (
-              <div key={payment.id} className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
-                <div>
-                  <div className="font-medium text-gray-800">{payment.vendor}</div>
-                  <div className="text-sm text-gray-500">Due: {payment.due_date}</div>
+          {loadingPayments ? (
+            <div className="p-8 text-center text-gray-500">Loading pending payments...</div>
+          ) : pendingPayments && pendingPayments.length > 0 ? (
+            <div className="space-y-4">
+              {pendingPayments.map((payment) => (
+                <div key={payment.id} className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
+                  <div>
+                    <div className="font-medium text-gray-800">{payment.vendors?.name || 'N/A'}</div>
+                    <div className="text-sm text-gray-500">Due: {new Date(payment.due_date).toLocaleDateString('en-IN')}</div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-lg font-bold text-red-600">{formatCurrency(payment.amount)}</span>
+                    {canEdit && <button className="btn-primary text-sm py-2">Record Payment</button>}
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-lg font-bold text-red-600">{formatCurrency(payment.amount)}</span>
-                  {canEdit && <button className="btn-primary text-sm py-2">Record Payment</button>}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-8 text-center text-gray-500">No pending payments.</div>
+          )}
         </div>
       )}
     </div>

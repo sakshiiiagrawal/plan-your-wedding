@@ -2,55 +2,27 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { HiOutlineCalendar, HiOutlineLocationMarker, HiOutlineClock } from 'react-icons/hi';
 import Gallery from '../../components/Gallery';
-
-const WEDDING_DATE = new Date('2026-11-26T07:00:00');
-
-const events = [
-  {
-    name: 'Mehendi',
-    date: 'November 24, 2026',
-    time: '6:00 PM onwards',
-    venue: 'Hotel Malsi Mist',
-    dress: 'Multi-Color Traditional',
-    description: 'Join us for an evening of henna, music, and celebration.',
-    color: '#228B22'
-  },
-  {
-    name: 'Haldi Carnival',
-    date: 'November 25, 2026',
-    time: '11:00 AM - 3:00 PM',
-    venue: 'Hotel Malsi Mist',
-    dress: 'Yellow Attire',
-    description: 'A colorful morning filled with turmeric rituals and fun.',
-    color: '#FFD700'
-  },
-  {
-    name: 'Engagement & Sangeet',
-    date: 'November 25, 2026',
-    time: '7:00 PM onwards',
-    venue: 'Hotel Malsi Mist',
-    dress: 'Indo-Western Bling',
-    description: 'Ring ceremony followed by dance performances and party.',
-    color: '#1A237E'
-  },
-  {
-    name: 'Wedding',
-    date: 'November 26, 2026',
-    time: '11:00 AM onwards',
-    venue: 'Regal Manor by Grand Dreams',
-    dress: 'Traditional',
-    description: 'The sacred union of two souls in a traditional ceremony.',
-    color: '#8B0000'
-  },
-];
+import { useHeroContent, useEvents } from '../../hooks/useApi';
 
 export default function Home() {
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
+  // API hooks
+  const { data: heroContent } = useHeroContent();
+  const { data: events = [] } = useEvents();
+
+  // Get wedding details from hero content
+  const brideName = heroContent?.bride_name || 'Bride';
+  const groomName = heroContent?.groom_name || 'Groom';
+  const weddingDateStr = heroContent?.wedding_date || '2026-11-26';
+  const weddingDate = new Date(weddingDateStr);
+
   useEffect(() => {
+    if (!weddingDateStr) return;
+
     const timer = setInterval(() => {
       const now = new Date();
-      const diff = WEDDING_DATE - now;
+      const diff = weddingDate - now;
 
       if (diff > 0) {
         setCountdown({
@@ -63,7 +35,7 @@ export default function Home() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [weddingDateStr, weddingDate]);
 
   return (
     <div>
@@ -82,9 +54,11 @@ export default function Home() {
           >
             <p className="text-gold-300 text-lg mb-4">We're getting married!</p>
             <h1 className="font-script text-6xl md:text-8xl text-cream mb-4">
-              Sakshi & Ayush
+              {brideName} & {groomName}
             </h1>
-            <p className="text-gold-300 text-xl mb-12">November 26, 2026</p>
+            <p className="text-gold-300 text-xl mb-12">
+              {weddingDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+            </p>
 
             {/* Countdown */}
             <div className="flex justify-center gap-4 md:gap-8 mb-12">

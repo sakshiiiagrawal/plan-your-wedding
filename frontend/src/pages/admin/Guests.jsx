@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useGuests, useGuestSummary } from '../../hooks/useApi';
 import {
   HiOutlineSearch,
   HiOutlinePlus,
@@ -11,26 +12,6 @@ import {
   HiOutlineX,
 } from 'react-icons/hi';
 
-const mockGuests = [
-  { id: 1, first_name: 'Rakesh', last_name: 'Agrawal', side: 'bride', phone: '9876543210', rsvp_status: 'confirmed', meal_preference: 'vegetarian', needs_accommodation: true, relationship: 'Father' },
-  { id: 2, first_name: 'Sunita', last_name: 'Agrawal', side: 'bride', phone: '9876543211', rsvp_status: 'confirmed', meal_preference: 'jain', needs_accommodation: true, relationship: 'Mother' },
-  { id: 3, first_name: 'Vinod', last_name: 'Dangwal', side: 'groom', phone: '9876543212', rsvp_status: 'confirmed', meal_preference: 'vegetarian', needs_accommodation: false, relationship: 'Uncle' },
-  { id: 4, first_name: 'Meera', last_name: 'Dangwal', side: 'groom', phone: '9876543213', rsvp_status: 'confirmed', meal_preference: 'vegetarian', needs_accommodation: false, relationship: 'Mother' },
-  { id: 5, first_name: 'Priya', last_name: 'Sharma', side: 'bride', phone: '9876543214', rsvp_status: 'pending', meal_preference: 'vegetarian', needs_accommodation: true, relationship: 'Cousin' },
-  { id: 6, first_name: 'Amit', last_name: 'Kumar', side: 'groom', phone: '9876543215', rsvp_status: 'pending', meal_preference: 'non_vegetarian', needs_accommodation: false, relationship: 'Friend' },
-  { id: 7, first_name: 'Neha', last_name: 'Gupta', side: 'bride', phone: '9876543216', rsvp_status: 'declined', meal_preference: 'vegetarian', needs_accommodation: false, relationship: 'Colleague' },
-  { id: 8, first_name: 'Rahul', last_name: 'Verma', side: 'groom', phone: '9876543217', rsvp_status: 'confirmed', meal_preference: 'vegan', needs_accommodation: true, relationship: 'Best Friend' },
-];
-
-const stats = {
-  total: 245,
-  bride: 120,
-  groom: 125,
-  confirmed: 180,
-  pending: 55,
-  declined: 10
-};
-
 export default function Guests() {
   const { canEdit } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,11 +19,21 @@ export default function Guests() {
   const [rsvpFilter, setRsvpFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const filteredGuests = mockGuests.filter(guest => {
-    const matchesSearch = `${guest.first_name} ${guest.last_name}`.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSide = sideFilter === 'all' || guest.side === sideFilter;
-    const matchesRsvp = rsvpFilter === 'all' || guest.rsvp_status === rsvpFilter;
-    return matchesSearch && matchesSide && matchesRsvp;
+  // API hooks
+  const { data: guests = [], isLoading: guestsLoading } = useGuests({
+    side: sideFilter !== 'all' ? sideFilter : undefined,
+    search: searchTerm || undefined,
+  });
+  const { data: summary } = useGuestSummary();
+
+  // Client-side filtering for RSVP (since guest_event_rsvp is separate)
+  const filteredGuests = guests.filter(guest => {
+    if (rsvpFilter !== 'all') {
+      // For now, skip RSVP filter since it requires join with guest_event_rsvp
+      // This would need backend support to filter by RSVP status
+      return true;
+    }
+    return true;
   });
 
   const getRsvpBadge = (status) => {
@@ -54,6 +45,15 @@ export default function Guests() {
     };
     return badges[status] || 'badge-info';
   };
+
+  // Loading state
+  if (guestsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -86,27 +86,27 @@ export default function Guests() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         <div className="card text-center">
-          <div className="text-2xl font-bold text-maroon-800">{stats.total}</div>
+          <div className="text-2xl font-bold text-maroon-800">{summary?.total || 0}</div>
           <div className="text-sm text-gray-500">Total</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-pink-600">{stats.bride}</div>
+          <div className="text-2xl font-bold text-pink-600">{summary?.bride || 0}</div>
           <div className="text-sm text-gray-500">Bride Side</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-blue-600">{stats.groom}</div>
+          <div className="text-2xl font-bold text-blue-600">{summary?.groom || 0}</div>
           <div className="text-sm text-gray-500">Groom Side</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-green-600">{stats.confirmed}</div>
+          <div className="text-2xl font-bold text-green-600">{summary?.confirmed || 0}</div>
           <div className="text-sm text-gray-500">Confirmed</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+          <div className="text-2xl font-bold text-yellow-600">{summary?.pending || 0}</div>
           <div className="text-sm text-gray-500">Pending</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-red-600">{stats.declined}</div>
+          <div className="text-2xl font-bold text-red-600">{summary?.declined || 0}</div>
           <div className="text-sm text-gray-500">Declined</div>
         </div>
       </div>
@@ -155,7 +155,6 @@ export default function Guests() {
                 <th className="text-left p-4">Name</th>
                 <th className="text-left p-4">Side</th>
                 <th className="text-left p-4">Phone</th>
-                <th className="text-left p-4">RSVP</th>
                 <th className="text-left p-4">Diet</th>
                 <th className="text-left p-4">Accommodation</th>
                 {canEdit && <th className="text-left p-4">Actions</th>}
@@ -173,18 +172,13 @@ export default function Guests() {
                     </div>
                   </td>
                   <td className="p-4">
-                    <span className={guest.side === 'bride' ? 'badge-bride' : 'badge-groom'}>
-                      {guest.side === 'bride' ? 'Bride' : 'Groom'}
+                    <span className={guest.side === 'bride' ? 'badge-bride' : guest.side === 'groom' ? 'badge-groom' : 'badge bg-purple-100 text-purple-700'}>
+                      {guest.side === 'bride' ? 'Bride' : guest.side === 'groom' ? 'Groom' : 'Mutual'}
                     </span>
                   </td>
-                  <td className="p-4 text-gray-600">{guest.phone}</td>
-                  <td className="p-4">
-                    <span className={getRsvpBadge(guest.rsvp_status)}>
-                      {guest.rsvp_status.charAt(0).toUpperCase() + guest.rsvp_status.slice(1)}
-                    </span>
-                  </td>
+                  <td className="p-4 text-gray-600">{guest.phone || '—'}</td>
                   <td className="p-4 text-gray-600 capitalize">
-                    {guest.meal_preference.replace('_', ' ')}
+                    {guest.meal_preference?.replace('_', ' ') || '—'}
                   </td>
                   <td className="p-4">
                     {guest.needs_accommodation ? (
@@ -207,6 +201,13 @@ export default function Guests() {
                   )}
                 </tr>
               ))}
+              {filteredGuests.length === 0 && (
+                <tr>
+                  <td colSpan={canEdit ? 6 : 5} className="p-8 text-center text-gray-500">
+                    No guests found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

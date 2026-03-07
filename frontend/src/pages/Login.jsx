@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useHeroContent } from '../hooks/useApi';
 import toast from 'react-hot-toast';
 
 export default function Login() {
@@ -9,6 +10,11 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  // API hooks
+  const { data: heroContent } = useHeroContent();
+  const brideName = heroContent?.bride_name || 'Bride';
+  const groomName = heroContent?.groom_name || 'Groom';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,7 +35,7 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-maroon-800 via-maroon-700 to-gold-600 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="font-script text-5xl text-cream mb-2">Sakshi & Ayush</h1>
+          <h1 className="font-script text-5xl text-cream mb-2">{brideName} & {groomName}</h1>
           <p className="text-gold-300">Wedding Planner Admin</p>
         </div>
 

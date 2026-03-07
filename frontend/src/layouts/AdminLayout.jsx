@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useHeroContent } from '../hooks/useApi';
 import {
   HiOutlineHome,
   HiOutlineCalendar,
@@ -29,6 +30,12 @@ export default function AdminLayout() {
   const { logout, user, isAuthenticated, loading, canViewFinance, isReadOnly, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // API hooks
+  const { data: heroContent } = useHeroContent();
+  const brideName = heroContent?.bride_name || 'Bride';
+  const groomName = heroContent?.groom_name || 'Groom';
+  const initials = `${brideName.charAt(0)}${groomName.charAt(0)}`;
 
   // Filter nav items based on role permissions
   const navItems = allNavItems.filter(item => {
@@ -81,10 +88,10 @@ export default function AdminLayout() {
           <div className="p-6 border-b border-gold-200">
             <NavLink to="/admin" className="flex items-center gap-2">
               <div className="w-10 h-10 bg-gradient-to-r from-maroon-800 to-gold-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-script text-xl">S&A</span>
+                <span className="text-white font-script text-xl">{initials}</span>
               </div>
               <div>
-                <h1 className="font-display font-bold text-maroon-800">Sakshi & Ayush</h1>
+                <h1 className="font-display font-bold text-maroon-800">{brideName} & {groomName}</h1>
                 <p className="text-xs text-gray-500">Wedding Planner</p>
               </div>
             </NavLink>
