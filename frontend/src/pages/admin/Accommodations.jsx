@@ -4,39 +4,27 @@ import { HiOutlineOfficeBuilding, HiOutlineUsers, HiOutlineHome } from 'react-ic
 const mockAccommodations = [
   {
     id: 1,
-    name: 'Hotel Radisson Blu',
+    name: 'Hotel Malsi Mist',
     type: 'hotel',
-    distance: '0 km (Main Venue)',
-    rooms_booked: 25,
+    distance: '0.5 km (Main Venue)',
+    rooms_booked: 24,
     total_capacity: 60,
-    guests_allocated: 48,
-    total_cost: 375000,
+    guests_allocated: 0,
+    total_cost: 741000,
     check_in: '2026-11-24',
     check_out: '2026-11-27'
   },
   {
     id: 2,
-    name: 'Lemon Tree Premier',
+    name: 'Hotel White Rock',
     type: 'hotel',
-    distance: '2 km',
-    rooms_booked: 15,
-    total_capacity: 36,
-    guests_allocated: 30,
-    total_cost: 180000,
-    check_in: '2026-11-24',
-    check_out: '2026-11-27'
-  },
-  {
-    id: 3,
-    name: 'OYO Townhouse',
-    type: 'hotel',
-    distance: '3 km',
-    rooms_booked: 10,
-    total_capacity: 24,
-    guests_allocated: 18,
-    total_cost: 90000,
-    check_in: '2026-11-24',
-    check_out: '2026-11-27'
+    distance: '0.7 km',
+    rooms_booked: 28,
+    total_capacity: 70,
+    guests_allocated: 0,
+    total_cost: 120000,
+    check_in: '2026-11-25',
+    check_out: '2026-11-26'
   },
 ];
 

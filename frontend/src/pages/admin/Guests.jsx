@@ -13,7 +13,7 @@ import {
 const mockGuests = [
   { id: 1, first_name: 'Rakesh', last_name: 'Agrawal', side: 'bride', phone: '9876543210', rsvp_status: 'confirmed', meal_preference: 'vegetarian', needs_accommodation: true, relationship: 'Father' },
   { id: 2, first_name: 'Sunita', last_name: 'Agrawal', side: 'bride', phone: '9876543211', rsvp_status: 'confirmed', meal_preference: 'jain', needs_accommodation: true, relationship: 'Mother' },
-  { id: 3, first_name: 'Vinod', last_name: 'Dangwal', side: 'groom', phone: '9876543212', rsvp_status: 'confirmed', meal_preference: 'vegetarian', needs_accommodation: false, relationship: 'Father' },
+  { id: 3, first_name: 'Vinod', last_name: 'Dangwal', side: 'groom', phone: '9876543212', rsvp_status: 'confirmed', meal_preference: 'vegetarian', needs_accommodation: false, relationship: 'Uncle' },
   { id: 4, first_name: 'Meera', last_name: 'Dangwal', side: 'groom', phone: '9876543213', rsvp_status: 'confirmed', meal_preference: 'vegetarian', needs_accommodation: false, relationship: 'Mother' },
   { id: 5, first_name: 'Priya', last_name: 'Sharma', side: 'bride', phone: '9876543214', rsvp_status: 'pending', meal_preference: 'vegetarian', needs_accommodation: true, relationship: 'Cousin' },
   { id: 6, first_name: 'Amit', last_name: 'Kumar', side: 'groom', phone: '9876543215', rsvp_status: 'pending', meal_preference: 'non_vegetarian', needs_accommodation: false, relationship: 'Friend' },
