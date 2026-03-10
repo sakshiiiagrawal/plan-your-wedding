@@ -21,9 +21,12 @@ app.use(cors({
   origin: function(origin, callback) {
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
-      return callback(null, true);
-    }
+    // Allow localhost in development
+    if (process.env.NODE_ENV === 'development') return callback(null, true);
+    // Allow any vercel.app subdomain
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    // Allow explicitly configured origins
+    if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true
