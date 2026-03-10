@@ -1,4 +1,4 @@
-const { supabase } = require('../src/config/database');
+const { supabase } = require('../api/_src/config/database');
 const fs = require('fs');
 const path = require('path');
 

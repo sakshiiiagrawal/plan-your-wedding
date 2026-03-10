@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { supabase } = require('../src/config/database');
+const { supabase } = require('../api/_src/config/database');
 
 async function checkColumns() {
   console.log('🔍 Checking vendors table columns...\n');
