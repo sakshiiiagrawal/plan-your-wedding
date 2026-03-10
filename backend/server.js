@@ -3,11 +3,8 @@ const app = require('./src/app');
 
 const PORT = process.env.PORT || 3001;
 
-// For Vercel serverless deployment
-if (process.env.VERCEL) {
-  module.exports = app;
-} else {
-  // For local development
+// Start server only in local development
+if (!process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`
   ╔═══════════════════════════════════════════════════╗
@@ -20,5 +17,4 @@ if (process.env.VERCEL) {
   });
 }
 
-// Export for Vercel
 module.exports = app;
