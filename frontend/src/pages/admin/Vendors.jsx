@@ -15,7 +15,8 @@ export default function Vendors() {
     phone: '',
     email: '',
     total_cost: '',
-    advance_paid: '',
+    side: 'mutual',
+    is_shared: true,
     is_confirmed: false,
     contract_signed: false,
     rating: ''
@@ -48,6 +49,8 @@ export default function Vendors() {
       phone: '',
       email: '',
       total_cost: '',
+      side: 'mutual',
+      is_shared: true,
       advance_paid: '',
       is_confirmed: false,
       contract_signed: false,
@@ -65,7 +68,8 @@ export default function Vendors() {
       phone: vendor.phone || '',
       email: vendor.email || '',
       total_cost: vendor.total_cost || '',
-      advance_paid: vendor.advance_paid || '',
+      side: vendor.side || 'mutual',
+      is_shared: vendor.is_shared !== undefined ? vendor.is_shared : true,
       is_confirmed: vendor.is_confirmed || false,
       contract_signed: vendor.contract_signed || false,
       rating: vendor.rating || ''
@@ -356,26 +360,53 @@ export default function Vendors() {
                 </div>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Total Cost</label>
-                  <input
-                    type="number"
-                    value={formData.total_cost}
-                    onChange={(e) => setFormData({ ...formData, total_cost: e.target.value })}
-                    className="input"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="label">Advance Paid</label>
-                  <input
-                    type="number"
-                    value={formData.advance_paid}
-                    onChange={(e) => setFormData({ ...formData, advance_paid: e.target.value })}
-                    className="input"
-                    placeholder="0"
-                  />
+              <div>
+                <label className="label">Total Cost</label>
+                <input
+                  type="number"
+                  value={formData.total_cost}
+                  onChange={(e) => setFormData({ ...formData, total_cost: e.target.value })}
+                  className="input"
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <label className="label">Responsible Side</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, side: 'bride', is_shared: false })}
+                    className={`flex-1 py-2 rounded-lg border-2 transition-colors ${
+                      formData.side === 'bride' && !formData.is_shared
+                        ? 'border-pink-500 bg-pink-50 text-pink-700'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    Bride Side
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, side: 'groom', is_shared: false })}
+                    className={`flex-1 py-2 rounded-lg border-2 transition-colors ${
+                      formData.side === 'groom' && !formData.is_shared
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    Groom Side
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, side: 'mutual', is_shared: true })}
+                    className={`flex-1 py-2 rounded-lg border-2 transition-colors ${
+                      formData.side === 'mutual' || formData.is_shared
+                        ? 'border-gold-500 bg-gold-50 text-gold-700'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    Shared/Mutual
+                  </button>
                 </div>
               </div>
 

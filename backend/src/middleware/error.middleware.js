@@ -228,5 +228,3 @@ module.exports = (err, req, res, next) => {
   const { status, body } = errorMiddleware(err);
   res.status(status).json(body);
 };
-
-module.exports = errorMiddleware;

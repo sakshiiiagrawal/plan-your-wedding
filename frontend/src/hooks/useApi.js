@@ -394,19 +394,35 @@ export const useBudgetCategories = () => useQuery({
   queryFn: () => api.get('/budget/categories').then(res => res.data),
 });
 
+export const useCategoryTree = () => useQuery({
+  queryKey: ['budget', 'categories', 'tree'],
+  queryFn: () => api.get('/budget/categories/tree').then(res => res.data),
+});
+
+export const useExpensesByCategoryTree = () => useQuery({
+  queryKey: ['budget', 'expenses', 'by-category-tree'],
+  queryFn: () => api.get('/budget/expenses/by-category-tree').then(res => res.data),
+});
+
 export const useExpenses = (filters = {}) => useQuery({
   queryKey: ['budget', 'expenses', filters],
   queryFn: () => api.get('/budget/expenses', { params: filters }).then(res => res.data),
 });
 
-export const usePendingPayments = () => useQuery({
-  queryKey: ['budget', 'payments', 'pending'],
-  queryFn: () => api.get('/budget/payments/pending').then(res => res.data),
+
+export const useVendorBudgetSummary = () => useQuery({
+  queryKey: ['budget', 'vendors', 'summary'],
+  queryFn: () => api.get('/budget/vendors/summary').then(res => res.data),
 });
 
-export const useAllPayments = () => useQuery({
-  queryKey: ['budget', 'payments'],
-  queryFn: () => api.get('/budget/payments').then(res => res.data),
+export const useVendorsBySide = () => useQuery({
+  queryKey: ['budget', 'vendors', 'by-side'],
+  queryFn: () => api.get('/budget/vendors/by-side').then(res => res.data),
+});
+
+export const useSideSummary = () => useQuery({
+  queryKey: ['budget', 'side-summary'],
+  queryFn: () => api.get('/budget/side-summary').then(res => res.data),
 });
 
 export const useCreateExpense = () => {
@@ -439,13 +455,13 @@ export const useDeleteExpense = () => {
   });
 };
 
-export const useCreatePayment = () => {
+
+export const useCreateCustomCategory = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (paymentData) => api.post('/budget/payments', paymentData).then(res => res.data),
+    mutationFn: (categoryData) => api.post('/budget/categories/custom', categoryData).then(res => res.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['budget'] });
-      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['budget', 'categories'] });
     },
   });
 };

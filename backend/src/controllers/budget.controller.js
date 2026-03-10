@@ -12,14 +12,9 @@ const getSummary = async (req, res, next) => {
       .from('expenses')
       .select('amount, side');
 
-    const { data: payments, error: paymentError } = await supabase
-      .from('payments')
-      .select('amount, status');
-
     const totalSpent = expenses?.reduce((sum, e) => sum + parseFloat(e.amount), 0) || 0;
     const brideSpent = expenses?.filter(e => e.side === 'bride').reduce((sum, e) => sum + parseFloat(e.amount), 0) || 0;
     const groomSpent = expenses?.filter(e => e.side === 'groom').reduce((sum, e) => sum + parseFloat(e.amount), 0) || 0;
-    const pendingPayments = payments?.filter(p => p.status === 'pending').reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0;
 
     res.json({
       totalBudget: budget?.total_budget || 0,
@@ -29,7 +24,6 @@ const getSummary = async (req, res, next) => {
       brideSpent,
       groomSpent,
       remaining: (budget?.total_budget || 0) - totalSpent,
-      pendingPayments
     });
   } catch (error) {
     next(error);
@@ -194,7 +188,20 @@ const getExpenses = async (req, res, next) => {
     const { data, error } = await query.order('expense_date', { ascending: false });
 
     if (error) throw error;
-    res.json(data);
+
+    const enriched = (data || []).map(expense => {
+      const total = parseFloat(expense.amount || 0);
+      const paid = expense.paid_amount !== null && expense.paid_amount !== undefined
+        ? parseFloat(expense.paid_amount)
+        : total;
+      return {
+        ...expense,
+        paidAmount: paid,
+        remainingAmount: total - paid,
+      };
+    });
+
+    res.json(enriched);
   } catch (error) {
     next(error);
   }
@@ -315,83 +322,317 @@ const getExpensesByVendor = async (req, res, next) => {
   }
 };
 
-const getPayments = async (req, res, next) => {
+// Get vendor budget summary
+const getVendorBudgetSummary = async (req, res, next) => {
   try {
-    const { data, error } = await supabase
-      .from('payments')
-      .select('*, vendors(name), accommodations(name), venues(name)')
-      .order('payment_date', { ascending: false });
+    const { data: vendors, error: vendorError } = await supabase
+      .from('vendors')
+      .select('id, name, category, total_cost, side, is_shared, is_confirmed')
+      .order('name', { ascending: true });
 
-    if (error) throw error;
-    res.json(data);
+    if (vendorError) throw vendorError;
+
+    const vendorSummary = vendors?.map(vendor => {
+      const totalCost = parseFloat(vendor.total_cost || 0);
+      return {
+        ...vendor,
+        totalCost,
+      };
+    });
+
+    res.json(vendorSummary || []);
   } catch (error) {
     next(error);
   }
 };
 
-const getPendingPayments = async (req, res, next) => {
+// Get vendors grouped by side (bride/groom/mutual)
+const getVendorsBySide = async (req, res, next) => {
   try {
-    const { data, error } = await supabase
-      .from('payments')
-      .select('*, vendors(name), accommodations(name), venues(name)')
-      .eq('status', 'pending')
-      .order('payment_date', { ascending: true });
+    const { data: vendors, error: vendorError } = await supabase
+      .from('vendors')
+      .select('id, name, category, total_cost, side, is_shared, is_confirmed')
+      .order('name', { ascending: true });
 
-    if (error) throw error;
-    res.json(data);
+    if (vendorError) throw vendorError;
+
+    const result = {
+      bride: { vendors: [], totalCost: 0 },
+      groom: { vendors: [], totalCost: 0 },
+      mutual: { vendors: [], totalCost: 0 }
+    };
+
+    vendors?.forEach(vendor => {
+      const totalCost = parseFloat(vendor.total_cost || 0);
+      const vendorData = { ...vendor, totalCost };
+      const side = vendor.side || 'mutual';
+      result[side].vendors.push(vendorData);
+      result[side].totalCost += totalCost;
+    });
+
+    res.json(result);
   } catch (error) {
     next(error);
   }
 };
 
-const createPayment = async (req, res, next) => {
+// Get comprehensive side-wise summary
+const getSideSummary = async (req, res, next) => {
   try {
+    // Get expenses by side
+    const { data: expenses, error: expenseError } = await supabase
+      .from('expenses')
+      .select('amount, side, is_shared, share_percentage');
+
+    if (expenseError) throw expenseError;
+
+    // Get vendors by side
+    const { data: vendors, error: vendorError } = await supabase
+      .from('vendors')
+      .select('total_cost, side, is_shared');
+
+    if (vendorError) throw vendorError;
+
+    // Calculate side-wise totals
+    const summary = {
+      bride: {
+        expenses: 0,
+        vendorCosts: 0,
+        sharedExpenses: 0,
+        total: 0
+      },
+      groom: {
+        expenses: 0,
+        vendorCosts: 0,
+        sharedExpenses: 0,
+        total: 0
+      },
+      shared: {
+        expenses: 0,
+        vendorCosts: 0,
+        total: 0
+      }
+    };
+
+    // Process expenses
+    expenses?.forEach(exp => {
+      const amount = parseFloat(exp.amount || 0);
+      if (exp.is_shared) {
+        summary.shared.expenses += amount;
+        const sharePercent = parseFloat(exp.share_percentage || 50);
+        summary.bride.sharedExpenses += amount * (sharePercent / 100);
+        summary.groom.sharedExpenses += amount * ((100 - sharePercent) / 100);
+      } else if (exp.side === 'bride') {
+        summary.bride.expenses += amount;
+      } else if (exp.side === 'groom') {
+        summary.groom.expenses += amount;
+      }
+    });
+
+    // Process vendor costs
+    vendors?.forEach(v => {
+      const cost = parseFloat(v.total_cost || 0);
+      if (v.side === 'bride') {
+        summary.bride.vendorCosts += cost;
+      } else if (v.side === 'groom') {
+        summary.groom.vendorCosts += cost;
+      } else {
+        summary.shared.vendorCosts += cost;
+      }
+    });
+
+    // Calculate totals
+    summary.bride.total = summary.bride.expenses + summary.bride.vendorCosts + summary.bride.sharedExpenses;
+    summary.groom.total = summary.groom.expenses + summary.groom.vendorCosts + summary.groom.sharedExpenses;
+    summary.shared.total = summary.shared.expenses + summary.shared.vendorCosts;
+
+    res.json(summary);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get hierarchical category tree with parent and children
+const getCategoryTree = async (req, res, next) => {
+  try {
+    // Fetch all categories
+    const { data: allCategories, error } = await supabase
+      .from('budget_categories')
+      .select('*')
+      .order('display_order', { ascending: true });
+
+    if (error) throw error;
+
+    // Fetch expenses to calculate spent amounts
+    const { data: expenses } = await supabase
+      .from('expenses')
+      .select('category_id, amount');
+
+    // Calculate spending per category
+    const categorySpending = {};
+    expenses?.forEach(exp => {
+      if (!categorySpending[exp.category_id]) {
+        categorySpending[exp.category_id] = 0;
+      }
+      categorySpending[exp.category_id] += parseFloat(exp.amount || 0);
+    });
+
+    // Separate parent and child categories
+    const parents = allCategories?.filter(cat => !cat.parent_category_id) || [];
+    const children = allCategories?.filter(cat => cat.parent_category_id) || [];
+
+    // Build hierarchical tree
+    const categoryTree = parents.map(parent => {
+      const parentChildren = children.filter(child => child.parent_category_id === parent.id);
+
+      // Calculate spent for children
+      const childrenWithSpent = parentChildren.map(child => ({
+        ...child,
+        spent: categorySpending[child.id] || 0,
+        remaining: (child.allocated_amount || 0) - (categorySpending[child.id] || 0),
+        percentage: child.allocated_amount > 0
+          ? Math.round((categorySpending[child.id] || 0) / child.allocated_amount * 100)
+          : 0
+      }));
+
+      // Calculate total spent for parent (includes direct parent expenses + all children)
+      const parentSpent = (categorySpending[parent.id] || 0) +
+        childrenWithSpent.reduce((sum, child) => sum + (child.spent || 0), 0);
+
+      return {
+        ...parent,
+        spent: parentSpent,
+        remaining: (parent.allocated_amount || 0) - parentSpent,
+        percentage: parent.allocated_amount > 0
+          ? Math.round(parentSpent / parent.allocated_amount * 100)
+          : 0,
+        children: childrenWithSpent.length > 0 ? childrenWithSpent : undefined
+      };
+    });
+
+    res.json(categoryTree);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Create custom category or subcategory
+const createCustomCategory = async (req, res, next) => {
+  try {
+    const { name, parent_category_id, allocated_amount, description } = req.body;
+
     // Validate required fields
-    const validation = validateRequiredFields(req.body, ['amount', 'payment_date', 'payment_method']);
-    if (!validation.isValid) {
-      return res.status(400).json(createValidationError(validation.missingFields));
+    if (!name) {
+      return res.status(400).json({ error: 'Category name is required' });
     }
 
-    const { data, error } = await supabase
-      .from('payments')
-      .insert([req.body])
+    // If parent_category_id provided, verify it exists
+    if (parent_category_id) {
+      const { data: parentCat, error: parentError } = await supabase
+        .from('budget_categories')
+        .select('id')
+        .eq('id', parent_category_id)
+        .single();
+
+      if (parentError || !parentCat) {
+        return res.status(400).json({ error: 'Parent category not found' });
+      }
+    }
+
+    // Get max display_order for proper ordering
+    const { data: categories } = await supabase
+      .from('budget_categories')
+      .select('display_order')
+      .eq('parent_category_id', parent_category_id || null)
+      .order('display_order', { ascending: false })
+      .limit(1);
+
+    const nextDisplayOrder = categories && categories.length > 0
+      ? (categories[0].display_order || 0) + 1
+      : 1;
+
+    // Create the category
+    const { data: newCategory, error } = await supabase
+      .from('budget_categories')
+      .insert({
+        name,
+        parent_category_id: parent_category_id || null,
+        allocated_amount: allocated_amount || 0,
+        description: description || null,
+        display_order: nextDisplayOrder
+      })
       .select()
       .single();
 
     if (error) throw error;
-    res.status(201).json(data);
+
+    res.status(201).json(newCategory);
   } catch (error) {
     next(error);
   }
 };
 
-const updatePayment = async (req, res, next) => {
+// Get expenses grouped by category tree
+const getExpensesByCategoryTree = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { data, error } = await supabase
-      .from('payments')
-      .update(req.body)
-      .eq('id', id)
-      .select()
-      .single();
+    // Fetch all categories
+    const { data: allCategories, error: catError } = await supabase
+      .from('budget_categories')
+      .select('*')
+      .order('display_order', { ascending: true });
 
-    if (error) throw error;
-    res.json(data);
-  } catch (error) {
-    next(error);
-  }
-};
+    if (catError) throw catError;
 
-const deletePayment = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { error } = await supabase
-      .from('payments')
-      .delete()
-      .eq('id', id);
+    // Fetch all expenses with category details
+    const { data: expenses, error: expError } = await supabase
+      .from('expenses')
+      .select('*, budget_categories(id, name, parent_category_id)')
+      .order('expense_date', { ascending: false });
 
-    if (error) throw error;
-    res.status(204).send();
+    if (expError) throw expError;
+
+    // Group expenses by category
+    const expensesByCategory = {};
+    expenses?.forEach(expense => {
+      const categoryId = expense.category_id;
+      if (!expensesByCategory[categoryId]) {
+        expensesByCategory[categoryId] = [];
+      }
+      expensesByCategory[categoryId].push(expense);
+    });
+
+    // Build tree structure
+    const parents = allCategories?.filter(cat => !cat.parent_category_id) || [];
+    const children = allCategories?.filter(cat => cat.parent_category_id) || [];
+
+    const tree = parents.map(parent => {
+      const parentChildren = children.filter(child => child.parent_category_id === parent.id);
+
+      // Get expenses for each child
+      const childrenWithExpenses = parentChildren.map(child => ({
+        ...child,
+        expenses: expensesByCategory[child.id] || [],
+        totalSpent: (expensesByCategory[child.id] || []).reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0)
+      }));
+
+      // Get direct parent expenses
+      const parentExpenses = expensesByCategory[parent.id] || [];
+      const parentDirectSpent = parentExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
+
+      // Calculate total (parent + children)
+      const childrenTotalSpent = childrenWithExpenses.reduce((sum, child) => sum + child.totalSpent, 0);
+      const totalSpent = parentDirectSpent + childrenTotalSpent;
+
+      return {
+        ...parent,
+        expenses: parentExpenses,
+        directSpent: parentDirectSpent,
+        totalSpent,
+        children: childrenWithExpenses.length > 0 ? childrenWithExpenses : undefined
+      };
+    });
+
+    res.json(tree);
   } catch (error) {
     next(error);
   }
@@ -412,9 +653,10 @@ module.exports = {
   deleteExpense,
   getExpensesByCategory,
   getExpensesByVendor,
-  getPayments,
-  getPendingPayments,
-  createPayment,
-  updatePayment,
-  deletePayment
+  getVendorBudgetSummary,
+  getVendorsBySide,
+  getSideSummary,
+  getCategoryTree,
+  createCustomCategory,
+  getExpensesByCategoryTree
 };

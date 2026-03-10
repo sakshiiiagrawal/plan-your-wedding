@@ -10,7 +10,9 @@ router.put('/total', budgetController.updateTotalBudget);
 
 // Categories
 router.get('/categories', budgetController.getCategories);
+router.get('/categories/tree', budgetController.getCategoryTree);
 router.post('/categories', budgetController.createCategory);
+router.post('/categories/custom', budgetController.createCustomCategory);
 router.put('/categories/:id', budgetController.updateCategory);
 
 // Expenses
@@ -21,12 +23,11 @@ router.put('/expenses/:id', budgetController.updateExpense);
 router.delete('/expenses/:id', budgetController.deleteExpense);
 router.get('/expenses/by-category', budgetController.getExpensesByCategory);
 router.get('/expenses/by-vendor', budgetController.getExpensesByVendor);
+router.get('/expenses/by-category-tree', budgetController.getExpensesByCategoryTree);
 
-// Payments
-router.get('/payments', budgetController.getPayments);
-router.get('/payments/pending', budgetController.getPendingPayments);
-router.post('/payments', budgetController.createPayment);
-router.put('/payments/:id', budgetController.updatePayment);
-router.delete('/payments/:id', budgetController.deletePayment);
+// Vendor Budget Tracking
+router.get('/vendors/summary', budgetController.getVendorBudgetSummary);
+router.get('/vendors/by-side', budgetController.getVendorsBySide);
+router.get('/side-summary', budgetController.getSideSummary);
 
 module.exports = router;
