@@ -1,4 +1,4 @@
-const { supabase } = require('./src/config/database');
+const { supabase } = require('../src/config/database');
 const fs = require('fs');
 const path = require('path');
 
@@ -8,7 +8,7 @@ async function runMigration() {
     process.exit(1);
   }
 
-  const migrationPath = path.join(__dirname, 'supabase/migrations/004_vendor_budget_fields.sql');
+  const migrationPath = path.join(__dirname, '../api/supabase/migrations/004_vendor_budget_fields.sql');
   const sql = fs.readFileSync(migrationPath, 'utf8');
 
   console.log('Running migration: 004_vendor_budget_fields.sql');
