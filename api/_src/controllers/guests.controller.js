@@ -1,14 +1,17 @@
 const { supabase } = require('../config/database');
 const { validateRequiredFields, createValidationError } = require('../utils/validation');
 const { generateGuestTemplate, parseGuestExcel, validateGuest } = require('../utils/excel.utils');
+const { getWeddingOwnerId } = require('../utils/auth');
 
 const getAll = async (req, res, next) => {
   try {
     const { side, rsvp_status, event_id, needs_accommodation, search } = req.query;
+    const ownerId = getWeddingOwnerId(req);
 
     let query = supabase
       .from('guests')
-      .select('*, guest_groups!group_id(name), room_allocations(*, rooms(*, accommodations(name)))');
+      .select('*, guest_groups!group_id(name), room_allocations(*, rooms(*, accommodations(name)))')
+      .eq('user_id', ownerId);
 
     if (side && side !== 'all') {
       query = query.eq('side', side);
@@ -33,9 +36,12 @@ const getAll = async (req, res, next) => {
 
 const getSummary = async (req, res, next) => {
   try {
+    const ownerId = getWeddingOwnerId(req);
+
     const { data: guests, error: guestError } = await supabase
       .from('guests')
-      .select('id, side');
+      .select('id, side')
+      .eq('user_id', ownerId);
 
     const { data: rsvps, error: rsvpError } = await supabase
       .from('guest_event_rsvp')
@@ -66,9 +72,11 @@ const getSummary = async (req, res, next) => {
 
 const getGroups = async (req, res, next) => {
   try {
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('guest_groups')
       .select('*, guests(count)')
+      .eq('user_id', ownerId)
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -80,15 +88,15 @@ const getGroups = async (req, res, next) => {
 
 const createGroup = async (req, res, next) => {
   try {
-    // Validate required fields
     const validation = validateRequiredFields(req.body, ['name', 'side']);
     if (!validation.isValid) {
       return res.status(400).json(createValidationError(validation.missingFields));
     }
 
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('guest_groups')
-      .insert([req.body])
+      .insert([{ ...req.body, user_id: ownerId }])
       .select()
       .single();
 
@@ -102,10 +110,12 @@ const createGroup = async (req, res, next) => {
 const getById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('guests')
       .select('*, guest_groups!group_id(*), guest_event_rsvp(*), room_allocations(*, rooms(*, accommodations(*)))')
       .eq('id', id)
+      .eq('user_id', ownerId)
       .single();
 
     if (error) throw error;
@@ -120,22 +130,21 @@ const create = async (req, res, next) => {
   try {
     const { events, ...guestData } = req.body;
 
-    // Validate required fields
     const validation = validateRequiredFields(guestData, ['first_name', 'side']);
     if (!validation.isValid) {
       return res.status(400).json(createValidationError(validation.missingFields));
     }
 
-    // Create guest
+    const ownerId = getWeddingOwnerId(req);
+
     const { data: guest, error: guestError } = await supabase
       .from('guests')
-      .insert([guestData])
+      .insert([{ ...guestData, user_id: ownerId }])
       .select()
       .single();
 
     if (guestError) throw guestError;
 
-    // Create RSVP entries for selected events
     if (events && events.length > 0) {
       const rsvpEntries = events.map(eventId => ({
         guest_id: guest.id,
@@ -159,10 +168,13 @@ const create = async (req, res, next) => {
 const bulkCreate = async (req, res, next) => {
   try {
     const { guests } = req.body;
+    const ownerId = getWeddingOwnerId(req);
+
+    const guestsWithOwner = guests.map(g => ({ ...g, user_id: ownerId }));
 
     const { data, error } = await supabase
       .from('guests')
-      .insert(guests)
+      .insert(guestsWithOwner)
       .select();
 
     if (error) throw error;
@@ -175,10 +187,12 @@ const bulkCreate = async (req, res, next) => {
 const update = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('guests')
       .update(req.body)
       .eq('id', id)
+      .eq('user_id', ownerId)
       .select()
       .single();
 
@@ -192,10 +206,12 @@ const update = async (req, res, next) => {
 const deleteGuest = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { error } = await supabase
       .from('guests')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', ownerId);
 
     if (error) throw error;
     res.status(204).send();
@@ -248,10 +264,8 @@ const importGuests = async (req, res, next) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    // Parse Excel file
     const guests = parseGuestExcel(req.file.buffer);
 
-    // Check if any guests were found
     if (guests.length === 0) {
       return res.status(400).json({
         error: 'No valid guest data found in the Excel file',
@@ -260,7 +274,6 @@ const importGuests = async (req, res, next) => {
       });
     }
 
-    // Validate all guests
     const validationResults = guests.map((guest, index) => ({
       index: index + 1,
       guest,
@@ -279,10 +292,12 @@ const importGuests = async (req, res, next) => {
       });
     }
 
-    // Insert guests into database
+    const ownerId = getWeddingOwnerId(req);
+    const guestsWithOwner = guests.map(g => ({ ...g, user_id: ownerId }));
+
     const { data, error } = await supabase
       .from('guests')
-      .insert(guests)
+      .insert(guestsWithOwner)
       .select();
 
     if (error) throw error;

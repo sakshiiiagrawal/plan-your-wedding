@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { HiOutlinePlus, HiOutlineCurrencyRupee } from 'react-icons/hi';
 import { useBudgetSummary, useBudgetOverview, useExpenses, useCreateExpense, useUpdateExpense, useVendorBudgetSummary, useSideSummary, useVendors, useUpdateVendor } from '../../hooks/useApi';
@@ -23,6 +23,7 @@ const formatCurrency = (amount) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
 
 export default function Budget() {
+  const { slug } = useParams();
   const { canEdit, canViewFinance } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -143,7 +144,7 @@ export default function Budget() {
     }
   };
 
-  if (!canViewFinance) return <Navigate to="/admin" replace />;
+  if (!canViewFinance) return <Navigate to={`/${slug}/admin`} replace />;
 
   if (loadingSummary || loadingOverview) {
     return (

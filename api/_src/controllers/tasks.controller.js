@@ -1,13 +1,16 @@
 const { supabase } = require('../config/database');
 const { validateRequiredFields, createValidationError } = require('../utils/validation');
+const { getWeddingOwnerId } = require('../utils/auth');
 
 const getAll = async (req, res, next) => {
   try {
     const { status, priority, event_id, assigned_to } = req.query;
+    const ownerId = getWeddingOwnerId(req);
 
     let query = supabase
       .from('tasks')
-      .select('*, events(name)');
+      .select('*, events(name)')
+      .eq('user_id', ownerId);
 
     if (status && status !== 'all') {
       query = query.eq('status', status);
@@ -34,9 +37,11 @@ const getAll = async (req, res, next) => {
 const getOverdue = async (req, res, next) => {
   try {
     const today = new Date().toISOString().split('T')[0];
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('tasks')
       .select('*, events(name)')
+      .eq('user_id', ownerId)
       .lt('due_date', today)
       .in('status', ['pending', 'in_progress'])
       .order('due_date', { ascending: true });
@@ -52,10 +57,12 @@ const getUpcoming = async (req, res, next) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const ownerId = getWeddingOwnerId(req);
 
     const { data, error } = await supabase
       .from('tasks')
       .select('*, events(name)')
+      .eq('user_id', ownerId)
       .gte('due_date', today)
       .lte('due_date', nextWeek)
       .in('status', ['pending', 'in_progress'])
@@ -71,10 +78,12 @@ const getUpcoming = async (req, res, next) => {
 const getById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('tasks')
       .select('*, events(*)')
       .eq('id', id)
+      .eq('user_id', ownerId)
       .single();
 
     if (error) throw error;
@@ -87,15 +96,15 @@ const getById = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
-    // Validate required fields
     const validation = validateRequiredFields(req.body, ['title']);
     if (!validation.isValid) {
       return res.status(400).json(createValidationError(validation.missingFields));
     }
 
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('tasks')
-      .insert([req.body])
+      .insert([{ ...req.body, user_id: ownerId }])
       .select()
       .single();
 
@@ -109,10 +118,12 @@ const create = async (req, res, next) => {
 const update = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('tasks')
       .update(req.body)
       .eq('id', id)
+      .eq('user_id', ownerId)
       .select()
       .single();
 
@@ -127,6 +138,7 @@ const updateStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const ownerId = getWeddingOwnerId(req);
 
     const updateData = { status };
     if (status === 'completed') {
@@ -137,6 +149,7 @@ const updateStatus = async (req, res, next) => {
       .from('tasks')
       .update(updateData)
       .eq('id', id)
+      .eq('user_id', ownerId)
       .select()
       .single();
 
@@ -150,10 +163,12 @@ const updateStatus = async (req, res, next) => {
 const deleteTask = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { error } = await supabase
       .from('tasks')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', ownerId);
 
     if (error) throw error;
     res.status(204).send();
@@ -164,9 +179,11 @@ const deleteTask = async (req, res, next) => {
 
 const getStats = async (req, res, next) => {
   try {
+    const ownerId = getWeddingOwnerId(req);
     const { data: tasks, error } = await supabase
       .from('tasks')
-      .select('status, due_date');
+      .select('status, due_date')
+      .eq('user_id', ownerId);
 
     if (error) throw error;
 

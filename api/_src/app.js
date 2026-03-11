@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const routes = require('./routes');
 const errorMiddleware = require('./middleware/error.middleware');
+const { verifyToken } = require('./middleware/auth.middleware');
 
 const app = express();
 
@@ -19,13 +20,9 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
-    // Allow localhost in development
     if (process.env.NODE_ENV === 'development') return callback(null, true);
-    // Allow any vercel.app subdomain
     if (origin.endsWith('.vercel.app')) return callback(null, true);
-    // Allow explicitly configured origins
     if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
     return callback(new Error('Not allowed by CORS'));
   },
@@ -42,6 +39,36 @@ app.use(express.urlencoded({ extended: true }));
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Public paths that do NOT require a token
+const PUBLIC_PATHS = [
+  '/api/v1/auth/login',
+  '/api/v1/auth/register',
+  '/api/v1/setup-status',
+];
+
+// Public path prefixes (any path starting with these is public)
+const PUBLIC_PREFIXES = [
+  '/api/v1/weddings/',
+  '/api/v1/public/',
+];
+
+// Global auth middleware — skips public paths and public GET website-content
+app.use((req, res, next) => {
+  const path = req.path;
+
+  // Exact public paths
+  if (PUBLIC_PATHS.includes(path)) return next();
+
+  // Public path prefixes (weddings lookup, public slug-scoped data)
+  if (PUBLIC_PREFIXES.some(prefix => path.startsWith(prefix))) return next();
+
+  // Public GET on website-content (wedding website reads)
+  if (req.method === 'GET' && path.startsWith('/api/v1/website-content')) return next();
+
+  // Everything else requires a valid token
+  return verifyToken(req, res, next);
 });
 
 // API routes

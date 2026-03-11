@@ -1,16 +1,21 @@
 const { supabase } = require('../config/database');
 const { validateRequiredFields, createValidationError } = require('../utils/validation');
+const { getWeddingOwnerId } = require('../utils/auth');
 
 const getSummary = async (req, res, next) => {
   try {
+    const ownerId = getWeddingOwnerId(req);
+
     const { data: budget, error: budgetError } = await supabase
       .from('budget_summary')
       .select('*')
+      .eq('user_id', ownerId)
       .single();
 
     const { data: expenses, error: expenseError } = await supabase
       .from('expenses')
-      .select('amount, side');
+      .select('amount, side')
+      .eq('user_id', ownerId);
 
     const totalSpent = expenses?.reduce((sum, e) => sum + parseFloat(e.amount), 0) || 0;
     const brideSpent = expenses?.filter(e => e.side === 'bride').reduce((sum, e) => sum + parseFloat(e.amount), 0) || 0;
@@ -32,16 +37,19 @@ const getSummary = async (req, res, next) => {
 
 const getOverview = async (req, res, next) => {
   try {
+    const ownerId = getWeddingOwnerId(req);
+
     const { data: categories, error: catError } = await supabase
       .from('budget_categories')
       .select('*')
+      .eq('user_id', ownerId)
       .order('display_order', { ascending: true });
 
     const { data: expenses, error: expError } = await supabase
       .from('expenses')
-      .select('category_id, amount');
+      .select('category_id, amount')
+      .eq('user_id', ownerId);
 
-    // Calculate spent per category
     const categorySpending = {};
     expenses?.forEach(exp => {
       if (!categorySpending[exp.category_id]) {
@@ -67,9 +75,12 @@ const getOverview = async (req, res, next) => {
 
 const getBySide = async (req, res, next) => {
   try {
+    const ownerId = getWeddingOwnerId(req);
+
     const { data: expenses, error } = await supabase
       .from('expenses')
       .select('*, budget_categories(name)')
+      .eq('user_id', ownerId)
       .order('expense_date', { ascending: false });
 
     if (error) throw error;
@@ -100,16 +111,16 @@ const getBySide = async (req, res, next) => {
 const updateTotalBudget = async (req, res, next) => {
   try {
     const { total_budget, bride_side_contribution, groom_side_contribution } = req.body;
+    const ownerId = getWeddingOwnerId(req);
 
-    // Upsert budget summary
     const { data, error } = await supabase
       .from('budget_summary')
       .upsert({
-        id: '00000000-0000-0000-0000-000000000001', // Fixed ID for single row
+        user_id: ownerId,
         total_budget,
         bride_side_contribution,
         groom_side_contribution
-      })
+      }, { onConflict: 'user_id' })
       .select()
       .single();
 
@@ -122,9 +133,11 @@ const updateTotalBudget = async (req, res, next) => {
 
 const getCategories = async (req, res, next) => {
   try {
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('budget_categories')
       .select('*')
+      .eq('user_id', ownerId)
       .order('display_order', { ascending: true });
 
     if (error) throw error;
@@ -136,15 +149,15 @@ const getCategories = async (req, res, next) => {
 
 const createCategory = async (req, res, next) => {
   try {
-    // Validate required fields
     const validation = validateRequiredFields(req.body, ['name']);
     if (!validation.isValid) {
       return res.status(400).json(createValidationError(validation.missingFields));
     }
 
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('budget_categories')
-      .insert([req.body])
+      .insert([{ ...req.body, user_id: ownerId }])
       .select()
       .single();
 
@@ -158,10 +171,12 @@ const createCategory = async (req, res, next) => {
 const updateCategory = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('budget_categories')
       .update(req.body)
       .eq('id', id)
+      .eq('user_id', ownerId)
       .select()
       .single();
 
@@ -175,10 +190,12 @@ const updateCategory = async (req, res, next) => {
 const getExpenses = async (req, res, next) => {
   try {
     const { category_id, vendor_id, event_id, side } = req.query;
+    const ownerId = getWeddingOwnerId(req);
 
     let query = supabase
       .from('expenses')
-      .select('*, budget_categories(name), vendors(name), events(name)');
+      .select('*, budget_categories(name), vendors(name), events(name)')
+      .eq('user_id', ownerId);
 
     if (category_id) query = query.eq('category_id', category_id);
     if (vendor_id) query = query.eq('vendor_id', vendor_id);
@@ -210,10 +227,12 @@ const getExpenses = async (req, res, next) => {
 const getExpenseById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('expenses')
       .select('*, budget_categories(*), vendors(*), events(*)')
       .eq('id', id)
+      .eq('user_id', ownerId)
       .single();
 
     if (error) throw error;
@@ -225,15 +244,15 @@ const getExpenseById = async (req, res, next) => {
 
 const createExpense = async (req, res, next) => {
   try {
-    // Validate required fields
     const validation = validateRequiredFields(req.body, ['description', 'amount', 'expense_date']);
     if (!validation.isValid) {
       return res.status(400).json(createValidationError(validation.missingFields));
     }
 
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('expenses')
-      .insert([req.body])
+      .insert([{ ...req.body, user_id: ownerId }])
       .select()
       .single();
 
@@ -247,10 +266,12 @@ const createExpense = async (req, res, next) => {
 const updateExpense = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('expenses')
       .update(req.body)
       .eq('id', id)
+      .eq('user_id', ownerId)
       .select()
       .single();
 
@@ -264,10 +285,12 @@ const updateExpense = async (req, res, next) => {
 const deleteExpense = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { error } = await supabase
       .from('expenses')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', ownerId);
 
     if (error) throw error;
     res.status(204).send();
@@ -278,9 +301,11 @@ const deleteExpense = async (req, res, next) => {
 
 const getExpensesByCategory = async (req, res, next) => {
   try {
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('expenses')
-      .select('category_id, amount, budget_categories(name)');
+      .select('category_id, amount, budget_categories(name)')
+      .eq('user_id', ownerId);
 
     if (error) throw error;
 
@@ -301,9 +326,11 @@ const getExpensesByCategory = async (req, res, next) => {
 
 const getExpensesByVendor = async (req, res, next) => {
   try {
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('expenses')
-      .select('vendor_id, amount, vendors(name)');
+      .select('vendor_id, amount, vendors(name)')
+      .eq('user_id', ownerId);
 
     if (error) throw error;
 
@@ -322,12 +349,13 @@ const getExpensesByVendor = async (req, res, next) => {
   }
 };
 
-// Get vendor budget summary
 const getVendorBudgetSummary = async (req, res, next) => {
   try {
+    const ownerId = getWeddingOwnerId(req);
     const { data: vendors, error: vendorError } = await supabase
       .from('vendors')
       .select('id, name, category, total_cost, side, is_shared, is_confirmed')
+      .eq('user_id', ownerId)
       .order('name', { ascending: true });
 
     if (vendorError) throw vendorError;
@@ -346,12 +374,13 @@ const getVendorBudgetSummary = async (req, res, next) => {
   }
 };
 
-// Get vendors grouped by side (bride/groom/mutual)
 const getVendorsBySide = async (req, res, next) => {
   try {
+    const ownerId = getWeddingOwnerId(req);
     const { data: vendors, error: vendorError } = await supabase
       .from('vendors')
       .select('id, name, category, total_cost, side, is_shared, is_confirmed')
+      .eq('user_id', ownerId)
       .order('name', { ascending: true });
 
     if (vendorError) throw vendorError;
@@ -376,24 +405,24 @@ const getVendorsBySide = async (req, res, next) => {
   }
 };
 
-// Get comprehensive side-wise summary
 const getSideSummary = async (req, res, next) => {
   try {
-    // Get expenses by side
+    const ownerId = getWeddingOwnerId(req);
+
     const { data: expenses, error: expenseError } = await supabase
       .from('expenses')
-      .select('amount, side, is_shared, share_percentage');
+      .select('amount, side, is_shared, share_percentage')
+      .eq('user_id', ownerId);
 
     if (expenseError) throw expenseError;
 
-    // Get vendors by side
     const { data: vendors, error: vendorError } = await supabase
       .from('vendors')
-      .select('total_cost, side, is_shared');
+      .select('total_cost, side, is_shared')
+      .eq('user_id', ownerId);
 
     if (vendorError) throw vendorError;
 
-    // Calculate side-wise totals
     const summary = {
       bride: {
         expenses: 0,
@@ -414,7 +443,6 @@ const getSideSummary = async (req, res, next) => {
       }
     };
 
-    // Process expenses
     expenses?.forEach(exp => {
       const amount = parseFloat(exp.amount || 0);
       if (exp.is_shared) {
@@ -429,7 +457,6 @@ const getSideSummary = async (req, res, next) => {
       }
     });
 
-    // Process vendor costs
     vendors?.forEach(v => {
       const cost = parseFloat(v.total_cost || 0);
       if (v.side === 'bride') {
@@ -441,7 +468,6 @@ const getSideSummary = async (req, res, next) => {
       }
     });
 
-    // Calculate totals
     summary.bride.total = summary.bride.expenses + summary.bride.vendorCosts + summary.bride.sharedExpenses;
     summary.groom.total = summary.groom.expenses + summary.groom.vendorCosts + summary.groom.sharedExpenses;
     summary.shared.total = summary.shared.expenses + summary.shared.vendorCosts;
@@ -452,23 +478,23 @@ const getSideSummary = async (req, res, next) => {
   }
 };
 
-// Get hierarchical category tree with parent and children
 const getCategoryTree = async (req, res, next) => {
   try {
-    // Fetch all categories
+    const ownerId = getWeddingOwnerId(req);
+
     const { data: allCategories, error } = await supabase
       .from('budget_categories')
       .select('*')
+      .eq('user_id', ownerId)
       .order('display_order', { ascending: true });
 
     if (error) throw error;
 
-    // Fetch expenses to calculate spent amounts
     const { data: expenses } = await supabase
       .from('expenses')
-      .select('category_id, amount');
+      .select('category_id, amount')
+      .eq('user_id', ownerId);
 
-    // Calculate spending per category
     const categorySpending = {};
     expenses?.forEach(exp => {
       if (!categorySpending[exp.category_id]) {
@@ -477,15 +503,12 @@ const getCategoryTree = async (req, res, next) => {
       categorySpending[exp.category_id] += parseFloat(exp.amount || 0);
     });
 
-    // Separate parent and child categories
     const parents = allCategories?.filter(cat => !cat.parent_category_id) || [];
     const children = allCategories?.filter(cat => cat.parent_category_id) || [];
 
-    // Build hierarchical tree
     const categoryTree = parents.map(parent => {
       const parentChildren = children.filter(child => child.parent_category_id === parent.id);
 
-      // Calculate spent for children
       const childrenWithSpent = parentChildren.map(child => ({
         ...child,
         spent: categorySpending[child.id] || 0,
@@ -495,7 +518,6 @@ const getCategoryTree = async (req, res, next) => {
           : 0
       }));
 
-      // Calculate total spent for parent (includes direct parent expenses + all children)
       const parentSpent = (categorySpending[parent.id] || 0) +
         childrenWithSpent.reduce((sum, child) => sum + (child.spent || 0), 0);
 
@@ -516,22 +538,22 @@ const getCategoryTree = async (req, res, next) => {
   }
 };
 
-// Create custom category or subcategory
 const createCustomCategory = async (req, res, next) => {
   try {
     const { name, parent_category_id, allocated_amount, description } = req.body;
 
-    // Validate required fields
     if (!name) {
       return res.status(400).json({ error: 'Category name is required' });
     }
 
-    // If parent_category_id provided, verify it exists
+    const ownerId = getWeddingOwnerId(req);
+
     if (parent_category_id) {
       const { data: parentCat, error: parentError } = await supabase
         .from('budget_categories')
         .select('id')
         .eq('id', parent_category_id)
+        .eq('user_id', ownerId)
         .single();
 
       if (parentError || !parentCat) {
@@ -539,10 +561,10 @@ const createCustomCategory = async (req, res, next) => {
       }
     }
 
-    // Get max display_order for proper ordering
     const { data: categories } = await supabase
       .from('budget_categories')
       .select('display_order')
+      .eq('user_id', ownerId)
       .eq('parent_category_id', parent_category_id || null)
       .order('display_order', { ascending: false })
       .limit(1);
@@ -551,7 +573,6 @@ const createCustomCategory = async (req, res, next) => {
       ? (categories[0].display_order || 0) + 1
       : 1;
 
-    // Create the category
     const { data: newCategory, error } = await supabase
       .from('budget_categories')
       .insert({
@@ -559,7 +580,8 @@ const createCustomCategory = async (req, res, next) => {
         parent_category_id: parent_category_id || null,
         allocated_amount: allocated_amount || 0,
         description: description || null,
-        display_order: nextDisplayOrder
+        display_order: nextDisplayOrder,
+        user_id: ownerId
       })
       .select()
       .single();
@@ -572,26 +594,26 @@ const createCustomCategory = async (req, res, next) => {
   }
 };
 
-// Get expenses grouped by category tree
 const getExpensesByCategoryTree = async (req, res, next) => {
   try {
-    // Fetch all categories
+    const ownerId = getWeddingOwnerId(req);
+
     const { data: allCategories, error: catError } = await supabase
       .from('budget_categories')
       .select('*')
+      .eq('user_id', ownerId)
       .order('display_order', { ascending: true });
 
     if (catError) throw catError;
 
-    // Fetch all expenses with category details
     const { data: expenses, error: expError } = await supabase
       .from('expenses')
       .select('*, budget_categories(id, name, parent_category_id)')
+      .eq('user_id', ownerId)
       .order('expense_date', { ascending: false });
 
     if (expError) throw expError;
 
-    // Group expenses by category
     const expensesByCategory = {};
     expenses?.forEach(expense => {
       const categoryId = expense.category_id;
@@ -601,25 +623,21 @@ const getExpensesByCategoryTree = async (req, res, next) => {
       expensesByCategory[categoryId].push(expense);
     });
 
-    // Build tree structure
     const parents = allCategories?.filter(cat => !cat.parent_category_id) || [];
     const children = allCategories?.filter(cat => cat.parent_category_id) || [];
 
     const tree = parents.map(parent => {
       const parentChildren = children.filter(child => child.parent_category_id === parent.id);
 
-      // Get expenses for each child
       const childrenWithExpenses = parentChildren.map(child => ({
         ...child,
         expenses: expensesByCategory[child.id] || [],
         totalSpent: (expensesByCategory[child.id] || []).reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0)
       }));
 
-      // Get direct parent expenses
       const parentExpenses = expensesByCategory[parent.id] || [];
       const parentDirectSpent = parentExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
 
-      // Calculate total (parent + children)
       const childrenTotalSpent = childrenWithExpenses.reduce((sum, child) => sum + child.totalSpent, 0);
       const totalSpent = parentDirectSpent + childrenTotalSpent;
 

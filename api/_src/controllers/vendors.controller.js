@@ -1,14 +1,17 @@
 const { supabase } = require('../config/database');
 const { VENDOR_CATEGORIES } = require('../config/constants');
 const { validateRequiredFields, createValidationError } = require('../utils/validation');
+const { getWeddingOwnerId } = require('../utils/auth');
 
 const getAll = async (req, res, next) => {
   try {
     const { category } = req.query;
+    const ownerId = getWeddingOwnerId(req);
 
     let query = supabase
       .from('vendors')
-      .select('*, vendor_event_assignments(event_id, events(name))');
+      .select('*, vendor_event_assignments(event_id, events(name))')
+      .eq('user_id', ownerId);
 
     if (category && category !== 'all') {
       query = query.eq('category', category);
@@ -37,10 +40,12 @@ const getCategories = async (req, res, next) => {
 const getById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('vendors')
       .select('*, vendor_event_assignments(*, events(*)), payments(*)')
       .eq('id', id)
+      .eq('user_id', ownerId)
       .single();
 
     if (error) throw error;
@@ -53,15 +58,15 @@ const getById = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
-    // Validate required fields
     const validation = validateRequiredFields(req.body, ['name', 'category']);
     if (!validation.isValid) {
       return res.status(400).json(createValidationError(validation.missingFields));
     }
 
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('vendors')
-      .insert([req.body])
+      .insert([{ ...req.body, user_id: ownerId }])
       .select()
       .single();
 
@@ -75,10 +80,12 @@ const create = async (req, res, next) => {
 const update = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('vendors')
       .update(req.body)
       .eq('id', id)
+      .eq('user_id', ownerId)
       .select()
       .single();
 
@@ -92,10 +99,12 @@ const update = async (req, res, next) => {
 const deleteVendor = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { error } = await supabase
       .from('vendors')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', ownerId);
 
     if (error) throw error;
     res.status(204).send();

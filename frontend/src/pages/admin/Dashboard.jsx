@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   useDashboardStats,
@@ -18,6 +18,7 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 
 export default function Dashboard() {
+  const { slug } = useParams();
   const { canEdit, canViewFinance } = useAuth();
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
@@ -25,7 +26,7 @@ export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: summary, isLoading: summaryLoading } = useDashboardSummary();
   const { data: countdownData } = useCountdown();
-  const { data: heroContent } = useHeroContent();
+  const { data: heroContent } = useHeroContent(slug);
   const { data: budgetOverview } = useBudgetOverview();
 
   // Get names from hero content or use defaults
@@ -153,10 +154,10 @@ export default function Dashboard() {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Add Guest', path: '/admin/guests', icon: HiOutlineUserGroup, requiresEdit: true },
-          { label: 'Add Expense', path: '/admin/budget', icon: HiOutlineCurrencyRupee, requiresEdit: true, requiresFinance: true },
-          { label: 'Add Task', path: '/admin/tasks', icon: HiOutlineClipboardList, requiresEdit: true },
-          { label: 'View Events', path: '/admin/events', icon: HiOutlineCalendar },
+          { label: 'Add Guest', path: `/${slug}/admin/guests`, icon: HiOutlineUserGroup, requiresEdit: true },
+          { label: 'Add Expense', path: `/${slug}/admin/budget`, icon: HiOutlineCurrencyRupee, requiresEdit: true, requiresFinance: true },
+          { label: 'Add Task', path: `/${slug}/admin/tasks`, icon: HiOutlineClipboardList, requiresEdit: true },
+          { label: 'View Events', path: `/${slug}/admin/events`, icon: HiOutlineCalendar },
         ]
           .filter(action => {
             if (action.requiresEdit && !canEdit) return false;

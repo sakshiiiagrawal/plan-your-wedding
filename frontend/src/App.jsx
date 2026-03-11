@@ -15,10 +15,16 @@ import Accommodations from './pages/admin/Accommodations';
 import Vendors from './pages/admin/Vendors';
 import Budget from './pages/admin/Budget';
 import Tasks from './pages/admin/Tasks';
+import Team from './pages/admin/Team';
 import Login from './pages/Login';
+import Onboard from './pages/Onboard';
+import Marketing from './pages/Marketing';
 
 // Public Pages
 import Home from './pages/public/Home';
+
+// Guards
+import SlugGuard from './components/SlugGuard';
 
 // Context
 import { AuthProvider } from './contexts/AuthContext';
@@ -26,7 +32,7 @@ import { AuthProvider } from './contexts/AuthContext';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 60 * 5,
       refetchOnWindowFocus: false,
     },
   },
@@ -38,16 +44,22 @@ function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            {/* Public Wedding Website */}
-            <Route path="/" element={<PublicLayout />}>
+            {/* Marketing landing page */}
+            <Route path="/" element={<Marketing />} />
+
+            {/* Onboarding wizard */}
+            <Route path="/onboard" element={<Onboard />} />
+
+            {/* Slug-scoped public wedding website */}
+            <Route path="/:slug" element={<SlugGuard><PublicLayout /></SlugGuard>}>
               <Route index element={<Home />} />
             </Route>
 
-            {/* Admin Login */}
-            <Route path="/login" element={<Login />} />
+            {/* Slug-scoped admin login */}
+            <Route path="/:slug/login" element={<SlugGuard><Login /></SlugGuard>} />
 
-            {/* Admin Dashboard */}
-            <Route path="/admin" element={<AdminLayout />}>
+            {/* Slug-scoped admin dashboard */}
+            <Route path="/:slug/admin" element={<SlugGuard><AdminLayout /></SlugGuard>}>
               <Route index element={<Dashboard />} />
               <Route path="events" element={<Events />} />
               <Route path="guests" element={<Guests />} />
@@ -56,9 +68,10 @@ function App() {
               <Route path="vendors" element={<Vendors />} />
               <Route path="budget" element={<Budget />} />
               <Route path="tasks" element={<Tasks />} />
+              <Route path="team" element={<Team />} />
             </Route>
 
-            {/* Catch all - redirect to home */}
+            {/* Catch all */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>

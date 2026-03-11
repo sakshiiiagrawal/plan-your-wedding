@@ -1,11 +1,24 @@
 const { supabase } = require('../config/database');
 const { validateRequiredFields, createValidationError } = require('../utils/validation');
+const { getWeddingOwnerId } = require('../utils/auth');
+
+async function resolveOwnerBySlug(slug) {
+  const { data } = await supabase
+    .from('users')
+    .select('id')
+    .eq('slug', slug)
+    .eq('role', 'admin')
+    .maybeSingle();
+  return data?.id || null;
+}
 
 const getAll = async (req, res, next) => {
   try {
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('events')
       .select('*, venues(*)')
+      .eq('user_id', ownerId)
       .order('event_date', { ascending: true });
 
     if (error) throw error;
@@ -18,10 +31,12 @@ const getAll = async (req, res, next) => {
 const getById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('events')
       .select('*, venues(*)')
       .eq('id', id)
+      .eq('user_id', ownerId)
       .single();
 
     if (error) throw error;
@@ -34,15 +49,15 @@ const getById = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
-    // Validate required fields
     const validation = validateRequiredFields(req.body, ['name', 'event_type', 'event_date', 'start_time']);
     if (!validation.isValid) {
       return res.status(400).json(createValidationError(validation.missingFields));
     }
 
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('events')
-      .insert([req.body])
+      .insert([{ ...req.body, user_id: ownerId }])
       .select()
       .single();
 
@@ -56,10 +71,12 @@ const create = async (req, res, next) => {
 const update = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('events')
       .update(req.body)
       .eq('id', id)
+      .eq('user_id', ownerId)
       .select()
       .single();
 
@@ -73,10 +90,12 @@ const update = async (req, res, next) => {
 const deleteEvent = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { error } = await supabase
       .from('events')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', ownerId);
 
     if (error) throw error;
     res.status(204).send();
@@ -85,6 +104,7 @@ const deleteEvent = async (req, res, next) => {
   }
 };
 
+// Child table operations — scoped via parent event_id
 const getGuests = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -131,6 +151,26 @@ const getRituals = async (req, res, next) => {
   }
 };
 
+// Public: GET /api/v1/public/:slug/events
+const getPublicEvents = async (req, res, next) => {
+  try {
+    const { slug } = req.params;
+    const userId = await resolveOwnerBySlug(slug);
+    if (!userId) return res.status(404).json({ error: 'Wedding not found' });
+
+    const { data, error } = await supabase
+      .from('events')
+      .select('*, venues(*)')
+      .eq('user_id', userId)
+      .order('event_date', { ascending: true });
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAll,
   getById,
@@ -139,5 +179,6 @@ module.exports = {
   delete: deleteEvent,
   getGuests,
   getVendors,
-  getRituals
+  getRituals,
+  getPublicEvents,
 };

@@ -1,8 +1,9 @@
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, useParams } from 'react-router-dom';
 import { useHeroContent } from '../hooks/useApi';
 
 export default function PublicLayout() {
-  const { data: heroContent } = useHeroContent();
+  const { slug } = useParams();
+  const { data: heroContent } = useHeroContent(slug);
   const brideName = heroContent?.bride_name || 'Bride';
   const groomName = heroContent?.groom_name || 'Groom';
   const coupleNames = `${brideName} & ${groomName}`;
@@ -16,7 +17,7 @@ export default function PublicLayout() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-sm border-b border-gold-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <NavLink to="/" className="flex items-center gap-2">
+            <NavLink to={`/${slug}`} className="flex items-center gap-2">
               <span className="font-script text-2xl text-maroon-800">{coupleNames}</span>
             </NavLink>
 
@@ -36,7 +37,7 @@ export default function PublicLayout() {
             </div>
 
             <NavLink
-              to="/admin"
+              to={`/${slug}/admin`}
               className="text-sm text-gold-600 hover:text-gold-700"
             >
               Admin

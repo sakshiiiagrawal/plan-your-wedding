@@ -1,12 +1,15 @@
 const { supabase } = require('../config/database');
 const { validateRequiredFields, createValidationError } = require('../utils/validation');
 const { generateRoomAllocationTemplate, generateAllVenuesAllocationTemplate, parseRoomAllocationExcel, parseMultiVenueAllocationExcel, validateRoomAllocation, findSimilarGuests } = require('../utils/excel.utils');
+const { getWeddingOwnerId } = require('../utils/auth');
 
 const getAll = async (req, res, next) => {
   try {
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('accommodations')
       .select('*, rooms(count)')
+      .eq('user_id', ownerId)
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -19,10 +22,12 @@ const getAll = async (req, res, next) => {
 const getById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('accommodations')
       .select('*, rooms(*)')
       .eq('id', id)
+      .eq('user_id', ownerId)
       .single();
 
     if (error) throw error;
@@ -35,15 +40,15 @@ const getById = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
-    // Validate required fields
     const validation = validateRequiredFields(req.body, ['name']);
     if (!validation.isValid) {
       return res.status(400).json(createValidationError(validation.missingFields));
     }
 
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('accommodations')
-      .insert([req.body])
+      .insert([{ ...req.body, user_id: ownerId }])
       .select()
       .single();
 
@@ -57,10 +62,12 @@ const create = async (req, res, next) => {
 const update = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('accommodations')
       .update(req.body)
       .eq('id', id)
+      .eq('user_id', ownerId)
       .select()
       .single();
 
@@ -74,10 +81,12 @@ const update = async (req, res, next) => {
 const deleteAccommodation = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ownerId = getWeddingOwnerId(req);
     const { error } = await supabase
       .from('accommodations')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', ownerId);
 
     if (error) throw error;
     res.status(204).send();
@@ -106,7 +115,6 @@ const addRoom = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Validate required fields
     const validation = validateRequiredFields(req.body, ['room_number', 'room_type']);
     if (!validation.isValid) {
       return res.status(400).json(createValidationError(validation.missingFields));
@@ -141,7 +149,7 @@ const getAllocations = async (req, res, next) => {
 
 const getAllocationMatrix = async (req, res, next) => {
   try {
-    // Get all accommodations with rooms and allocations
+    const ownerId = getWeddingOwnerId(req);
     const { data, error } = await supabase
       .from('accommodations')
       .select(`
@@ -154,6 +162,7 @@ const getAllocationMatrix = async (req, res, next) => {
           )
         )
       `)
+      .eq('user_id', ownerId)
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -165,7 +174,6 @@ const getAllocationMatrix = async (req, res, next) => {
 
 const createAllocation = async (req, res, next) => {
   try {
-    // Validate required fields
     const validation = validateRequiredFields(req.body, ['room_id', 'guest_id', 'check_in_date', 'check_out_date']);
     if (!validation.isValid) {
       return res.status(400).json(createValidationError(validation.missingFields));
@@ -218,10 +226,12 @@ const deleteAllocation = async (req, res, next) => {
 
 const getUnassignedGuests = async (req, res, next) => {
   try {
-    // Get guests who need accommodation but don't have a room allocation
+    const ownerId = getWeddingOwnerId(req);
+
     const { data: allGuests, error: guestError } = await supabase
       .from('guests')
       .select('*')
+      .eq('user_id', ownerId)
       .eq('needs_accommodation', true);
 
     const { data: allocations, error: allocError } = await supabase
@@ -242,15 +252,16 @@ const getUnassignedGuests = async (req, res, next) => {
 const downloadAllocationTemplate = async (req, res, next) => {
   try {
     const { hotel_id, hotel_name } = req.query;
+    const ownerId = getWeddingOwnerId(req);
 
     let hotelName = hotel_name;
 
-    // If hotel_id is provided, fetch the hotel name
     if (hotel_id && !hotel_name) {
       const { data: hotel, error } = await supabase
         .from('accommodations')
         .select('name')
         .eq('id', hotel_id)
+        .eq('user_id', ownerId)
         .single();
 
       if (error || !hotel) {
@@ -260,10 +271,10 @@ const downloadAllocationTemplate = async (req, res, next) => {
       hotelName = hotel.name;
     }
 
-    // Fetch all guests to include in the template
     const { data: guests, error: guestsError } = await supabase
       .from('guests')
       .select('first_name, last_name, side, needs_accommodation')
+      .eq('user_id', ownerId)
       .order('side', { ascending: true })
       .order('first_name', { ascending: true });
 
@@ -288,8 +299,8 @@ const importAllocations = async (req, res, next) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    // Get hotel info from request body or query
     const { hotel_id, hotel_name } = req.body || req.query;
+    const ownerId = getWeddingOwnerId(req);
 
     if (!hotel_id && !hotel_name) {
       return res.status(400).json({
@@ -297,8 +308,7 @@ const importAllocations = async (req, res, next) => {
       });
     }
 
-    // Find accommodation by ID or name
-    let accommodationQuery = supabase.from('accommodations').select('id, name');
+    let accommodationQuery = supabase.from('accommodations').select('id, name').eq('user_id', ownerId);
 
     if (hotel_id) {
       accommodationQuery = accommodationQuery.eq('id', hotel_id);
@@ -318,10 +328,8 @@ const importAllocations = async (req, res, next) => {
 
     const accommodation = accommodations[0];
 
-    // Parse Excel file with hotel name
     const allocations = parseRoomAllocationExcel(req.file.buffer, accommodation.name);
 
-    // Check if any allocations were found
     if (allocations.length === 0) {
       return res.status(400).json({
         error: 'No valid room allocation data found in the Excel file',
@@ -330,7 +338,6 @@ const importAllocations = async (req, res, next) => {
       });
     }
 
-    // Validate all allocations
     const validationResults = allocations.map((allocation, index) => ({
       index: index + 1,
       allocation,
@@ -350,20 +357,19 @@ const importAllocations = async (req, res, next) => {
       });
     }
 
-    // Fetch all guests for fuzzy matching
     const { data: allGuests, error: allGuestsError } = await supabase
       .from('guests')
-      .select('id, first_name, last_name, side');
+      .select('id, first_name, last_name, side')
+      .eq('user_id', ownerId);
 
     if (allGuestsError) throw allGuestsError;
 
-    // Process allocations and match with database entities
     const processedAllocations = [];
     const allocationsToUpdate = [];
     const errors = [];
     const warnings = [];
     const createdRooms = [];
-    const roomCache = {}; // Cache to avoid duplicate room creation
+    const roomCache = {};
 
     for (let i = 0; i < allocations.length; i++) {
       const allocation = allocations[i];
@@ -372,11 +378,9 @@ const importAllocations = async (req, res, next) => {
       try {
         let room;
 
-        // Check if we already created this room in this import batch
         if (roomCache[allocation.room_number]) {
           room = roomCache[allocation.room_number];
         } else {
-          // Find or create room by number and accommodation
           const { data: existingRooms, error: roomError } = await supabase
             .from('rooms')
             .select('id, capacity, room_number')
@@ -387,20 +391,17 @@ const importAllocations = async (req, res, next) => {
           if (roomError) throw roomError;
 
           if (existingRooms && existingRooms.length > 0) {
-            // Room already exists, use it
             room = existingRooms[0];
           } else {
-            // Room doesn't exist, create it
-            // Default room type and capacity based on number of guests
             const guestsInRoom = allocations.filter(a => a.room_number === allocation.room_number).length;
-            const defaultCapacity = Math.max(guestsInRoom, 2); // At least 2, or more if needed
+            const defaultCapacity = Math.max(guestsInRoom, 2);
 
             const { data: newRoom, error: createError } = await supabase
               .from('rooms')
               .insert([{
                 accommodation_id: accommodation.id,
                 room_number: allocation.room_number,
-                room_type: 'double', // Default type
+                room_type: 'double',
                 capacity: defaultCapacity,
                 rate_per_night: 0
               }])
@@ -413,12 +414,10 @@ const importAllocations = async (req, res, next) => {
             createdRooms.push(room);
           }
 
-          // Cache the room
           roomCache[allocation.room_number] = room;
         }
 
-        // Find guest by name - try exact match first
-        let guestQuery = supabase.from('guests').select('id, first_name, last_name');
+        let guestQuery = supabase.from('guests').select('id, first_name, last_name').eq('user_id', ownerId);
 
         if (allocation.guest_last_name) {
           guestQuery = guestQuery
@@ -435,14 +434,11 @@ const importAllocations = async (req, res, next) => {
         let guest = null;
 
         if (guests && guests.length > 0) {
-          // Exact match found
           guest = guests[0];
         } else {
-          // No exact match - try fuzzy matching
           const similarGuests = findSimilarGuests(allocation.guest_full_name, allGuests);
 
           if (similarGuests.length > 0) {
-            // Found similar guests - suggest them
             errors.push({
               row: rowNum,
               guest: allocation.guest_full_name,
@@ -454,7 +450,6 @@ const importAllocations = async (req, res, next) => {
               }))
             });
           } else {
-            // No similar guests found
             errors.push({
               row: rowNum,
               guest: allocation.guest_full_name,
@@ -464,7 +459,6 @@ const importAllocations = async (req, res, next) => {
           continue;
         }
 
-        // Check if guest is already allocated to this room - if yes, update it
         const { data: existingAllocations, error: existingError } = await supabase
           .from('room_allocations')
           .select('id, guest_id')
@@ -472,11 +466,9 @@ const importAllocations = async (req, res, next) => {
 
         if (existingError) throw existingError;
 
-        // Check if guest is already allocated to this room
         const existingAllocation = existingAllocations?.find(a => a.guest_id === guest.id);
 
         if (existingAllocation) {
-          // Update existing allocation with new dates
           allocationsToUpdate.push({
             id: existingAllocation.id,
             check_in_date: allocation.check_in_date,
@@ -485,7 +477,6 @@ const importAllocations = async (req, res, next) => {
           continue;
         }
 
-        // Check if room has capacity for new allocation
         if (existingAllocations && existingAllocations.length >= room.capacity) {
           errors.push({
             row: rowNum,
@@ -519,7 +510,6 @@ const importAllocations = async (req, res, next) => {
 
     let allFormattedAllocations = [];
 
-    // Insert new allocations
     if (processedAllocations.length > 0) {
       const { data, error: insertError } = await supabase
         .from('room_allocations')
@@ -528,7 +518,6 @@ const importAllocations = async (req, res, next) => {
 
       if (insertError) throw insertError;
 
-      // Format allocations for response
       const formattedNew = data.map(allocation => ({
         guest: `${allocation.guests.first_name} ${allocation.guests.last_name}`.trim(),
         room: allocation.rooms.room_number,
@@ -541,7 +530,6 @@ const importAllocations = async (req, res, next) => {
       allFormattedAllocations = [...allFormattedAllocations, ...formattedNew];
     }
 
-    // Update existing allocations
     if (allocationsToUpdate.length > 0) {
       for (const updateData of allocationsToUpdate) {
         const { data, error: updateError } = await supabase
@@ -601,18 +589,20 @@ const importAllocations = async (req, res, next) => {
 
 const downloadAllVenuesTemplate = async (req, res, next) => {
   try {
-    // Fetch all accommodations/venues
+    const ownerId = getWeddingOwnerId(req);
+
     const { data: venues, error: venuesError } = await supabase
       .from('accommodations')
       .select('id, name')
+      .eq('user_id', ownerId)
       .order('name', { ascending: true });
 
     if (venuesError) throw venuesError;
 
-    // Fetch all guests to include in the template
     const { data: guests, error: guestsError } = await supabase
       .from('guests')
       .select('first_name, last_name, side, needs_accommodation')
+      .eq('user_id', ownerId)
       .order('side', { ascending: true })
       .order('first_name', { ascending: true });
 
@@ -635,10 +625,12 @@ const importAllVenuesAllocations = async (req, res, next) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    // Fetch all accommodations/venues to create a lookup map
+    const ownerId = getWeddingOwnerId(req);
+
     const { data: venues, error: venuesError } = await supabase
       .from('accommodations')
       .select('id, name')
+      .eq('user_id', ownerId)
       .order('name', { ascending: true });
 
     if (venuesError) throw venuesError;
@@ -649,13 +641,11 @@ const importAllVenuesAllocations = async (req, res, next) => {
       });
     }
 
-    // Create a map of venue names to IDs
     const venuesMap = {};
     venues.forEach(venue => {
       venuesMap[venue.name.toLowerCase()] = venue;
     });
 
-    // Parse Excel file
     const allocations = parseMultiVenueAllocationExcel(req.file.buffer, venuesMap);
 
     if (allocations.length === 0) {
@@ -666,7 +656,6 @@ const importAllVenuesAllocations = async (req, res, next) => {
       });
     }
 
-    // Validate all allocations
     const validationResults = allocations.map((allocation, index) => ({
       index: index + 1,
       allocation,
@@ -687,26 +676,24 @@ const importAllVenuesAllocations = async (req, res, next) => {
       });
     }
 
-    // Fetch all guests for fuzzy matching
     const { data: allGuests, error: allGuestsError } = await supabase
       .from('guests')
-      .select('id, first_name, last_name, side');
+      .select('id, first_name, last_name, side')
+      .eq('user_id', ownerId);
 
     if (allGuestsError) throw allGuestsError;
 
-    // Process allocations
     const processedAllocations = [];
     const allocationsToUpdate = [];
     const errors = [];
     const createdRooms = [];
-    const roomCache = {}; // Cache to avoid duplicate room creation
+    const roomCache = {};
 
     for (let i = 0; i < allocations.length; i++) {
       const allocation = allocations[i];
       const rowNum = i + 1;
 
       try {
-        // Find the venue/accommodation
         const venueName = allocation.hotel_name.toLowerCase();
         const venue = venuesMap[venueName] || Object.values(venuesMap).find(v =>
           v.name.toLowerCase().includes(venueName) || venueName.includes(v.name.toLowerCase())
@@ -722,7 +709,6 @@ const importAllVenuesAllocations = async (req, res, next) => {
           continue;
         }
 
-        // Find or create room
         const roomKey = `${venue.id}_${allocation.room_number}`;
         let room;
 
@@ -741,7 +727,6 @@ const importAllVenuesAllocations = async (req, res, next) => {
           if (existingRooms && existingRooms.length > 0) {
             room = existingRooms[0];
           } else {
-            // Create new room
             const guestsInRoom = allocations.filter(a =>
               a.hotel_name === allocation.hotel_name && a.room_number === allocation.room_number
             ).length;
@@ -768,8 +753,7 @@ const importAllVenuesAllocations = async (req, res, next) => {
           roomCache[roomKey] = room;
         }
 
-        // Find guest
-        let guestQuery = supabase.from('guests').select('id, first_name, last_name');
+        let guestQuery = supabase.from('guests').select('id, first_name, last_name').eq('user_id', ownerId);
 
         if (allocation.guest_last_name) {
           guestQuery = guestQuery
@@ -788,7 +772,6 @@ const importAllVenuesAllocations = async (req, res, next) => {
         if (guests && guests.length > 0) {
           guest = guests[0];
         } else {
-          // Try fuzzy matching
           const similarGuests = findSimilarGuests(allocation.guest_full_name, allGuests);
 
           if (similarGuests.length > 0) {
@@ -814,7 +797,6 @@ const importAllVenuesAllocations = async (req, res, next) => {
           continue;
         }
 
-        // Check if guest is already allocated to this room - if yes, update it
         const { data: existingAllocations, error: existingError } = await supabase
           .from('room_allocations')
           .select('id, guest_id')
@@ -822,11 +804,9 @@ const importAllVenuesAllocations = async (req, res, next) => {
 
         if (existingError) throw existingError;
 
-        // Check if guest is already allocated to this room
         const existingAllocation = existingAllocations?.find(a => a.guest_id === guest.id);
 
         if (existingAllocation) {
-          // Update existing allocation with new dates
           allocationsToUpdate.push({
             id: existingAllocation.id,
             check_in_date: allocation.check_in_date,
@@ -835,7 +815,6 @@ const importAllVenuesAllocations = async (req, res, next) => {
           continue;
         }
 
-        // Check if room has capacity for new allocation
         if (existingAllocations && existingAllocations.length >= room.capacity) {
           errors.push({
             row: rowNum,
@@ -871,7 +850,6 @@ const importAllVenuesAllocations = async (req, res, next) => {
 
     let allFormattedAllocations = [];
 
-    // Insert new allocations
     if (processedAllocations.length > 0) {
       const { data, error: insertError } = await supabase
         .from('room_allocations')
@@ -880,7 +858,6 @@ const importAllVenuesAllocations = async (req, res, next) => {
 
       if (insertError) throw insertError;
 
-      // Format allocations for response
       const formattedNew = data.map(allocation => ({
         guest: `${allocation.guests.first_name} ${allocation.guests.last_name}`.trim(),
         room: allocation.rooms.room_number,
@@ -893,7 +870,6 @@ const importAllVenuesAllocations = async (req, res, next) => {
       allFormattedAllocations = [...allFormattedAllocations, ...formattedNew];
     }
 
-    // Update existing allocations
     if (allocationsToUpdate.length > 0) {
       for (const updateData of allocationsToUpdate) {
         const { data, error: updateError } = await supabase

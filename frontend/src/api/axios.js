@@ -26,8 +26,18 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      const path = window.location.pathname;
+      // Don't redirect if already on a login or onboarding screen
+      const isLoginPage = path.endsWith('/login');
+      const isOnboard = path === '/onboard';
+      if (!isLoginPage && !isOnboard) {
+        const slug = localStorage.getItem('slug');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('slug');
+        // Redirect to slug-scoped login if we have a slug, otherwise home
+        window.location.href = slug ? `/${slug}/login` : '/';
+      }
     }
     return Promise.reject(error);
   }

@@ -1,15 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/auth.controller');
 const usersController = require('../controllers/users.controller');
 const { requireAdmin } = require('../middleware/auth.middleware');
 
-router.post('/register', authController.register);
-router.post('/login', authController.login);
-router.post('/logout', authController.logout);
-router.get('/me', authController.getCurrentUser);
-
-// User management (admin only — verifyToken applied globally in app.js)
 router.get('/users', requireAdmin, usersController.listUsers);
 router.post('/create-user', requireAdmin, usersController.createUser);
 router.delete('/users/:id', requireAdmin, usersController.deleteUser);

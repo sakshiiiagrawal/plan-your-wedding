@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useParams } from 'react-router-dom';
 import { HiOutlineCalendar, HiOutlineLocationMarker, HiOutlineClock } from 'react-icons/hi';
 import Gallery from '../../components/Gallery';
-import { useHeroContent, useEvents } from '../../hooks/useApi';
+import { useHeroContent, usePublicEvents } from '../../hooks/useApi';
 
 export default function Home() {
+  const { slug } = useParams();
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
-  // API hooks
-  const { data: heroContent } = useHeroContent();
-  const { data: events = [] } = useEvents();
+  // API hooks — use public slug-based endpoints
+  const { data: heroContent } = useHeroContent(slug);
+  const { data: events = [] } = usePublicEvents(slug);
 
   // Get wedding details from hero content
   const brideName = heroContent?.bride_name || 'Bride';
@@ -259,7 +261,7 @@ export default function Home() {
         </div>
       </section>
 
-      <Gallery />
+      <Gallery slug={slug} />
     </div>
   );
 }

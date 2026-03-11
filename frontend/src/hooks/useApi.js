@@ -2,25 +2,92 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
 
 // =====================================================
+// SETUP HOOKS
+// =====================================================
+
+export const useSetupStatus = () => useQuery({
+  queryKey: ['setup-status'],
+  queryFn: () => api.get('/setup-status').then(res => res.data),
+  staleTime: Infinity,
+});
+
+// =====================================================
+// USER MANAGEMENT HOOKS
+// =====================================================
+
+export const useUsers = () => useQuery({
+  queryKey: ['users'],
+  queryFn: () => api.get('/auth/users').then(res => res.data),
+});
+
+export const useCreateUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userData) => api.post('/auth/create-user', userData).then(res => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+};
+
+export const useDeleteUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => api.delete(`/auth/users/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+};
+
+// =====================================================
 // WEBSITE CONTENT HOOKS
 // =====================================================
 
-export const useHeroContent = () => useQuery({
-  queryKey: ['website-content', 'hero'],
-  queryFn: () => api.get('/website-content/hero').then(res => res.data),
+// When a slug is provided, fetches public content (no auth required).
+// When called without slug (e.g. from admin pages), falls back to authenticated endpoint.
+export const useHeroContent = (slug) => useQuery({
+  queryKey: ['website-content', 'hero', slug || 'authed'],
+  queryFn: () =>
+    slug
+      ? api.get(`/public/${slug}/website-content/hero`).then(res => res.data)
+      : api.get('/website-content/hero').then(res => res.data),
   staleTime: 10 * 60 * 1000, // 10 minutes
+  enabled: true,
 });
 
-export const useCoupleContent = () => useQuery({
-  queryKey: ['website-content', 'couple'],
-  queryFn: () => api.get('/website-content/couple').then(res => res.data),
+export const useCoupleContent = (slug) => useQuery({
+  queryKey: ['website-content', 'couple', slug || 'authed'],
+  queryFn: () =>
+    slug
+      ? api.get(`/public/${slug}/website-content/couple`).then(res => res.data)
+      : api.get('/website-content/couple').then(res => res.data),
   staleTime: 10 * 60 * 1000,
 });
 
-export const useOurStory = () => useQuery({
-  queryKey: ['website-content', 'story'],
-  queryFn: () => api.get('/website-content/story').then(res => res.data),
+export const useOurStory = (slug) => useQuery({
+  queryKey: ['website-content', 'story', slug || 'authed'],
+  queryFn: () =>
+    slug
+      ? api.get(`/public/${slug}/website-content/our_story`).then(res => res.data)
+      : api.get('/website-content/story').then(res => res.data),
   staleTime: 10 * 60 * 1000,
+});
+
+export const useGalleryContent = (slug) => useQuery({
+  queryKey: ['website-content', 'gallery', slug || 'authed'],
+  queryFn: () =>
+    slug
+      ? api.get(`/public/${slug}/website-content/gallery`).then(res => res.data)
+      : api.get('/website-content/gallery').then(res => res.data),
+  staleTime: 10 * 60 * 1000,
+});
+
+export const usePublicEvents = (slug) => useQuery({
+  queryKey: ['public-events', slug],
+  queryFn: () => api.get(`/public/${slug}/events`).then(res => res.data),
+  enabled: !!slug,
+  staleTime: 5 * 60 * 1000,
 });
 
 // =====================================================

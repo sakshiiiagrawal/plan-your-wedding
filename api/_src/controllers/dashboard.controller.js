@@ -1,10 +1,35 @@
 const { supabase } = require('../config/database');
-const { WEDDING_DATE, BRIDE_NAME, GROOM_NAME } = require('../config/constants');
+const { getWeddingOwnerId } = require('../utils/auth');
 
 const getCountdown = async (req, res, next) => {
   try {
+    const ownerId = getWeddingOwnerId(req);
+    const { data: heroRow } = await supabase
+      .from('website_content')
+      .select('content')
+      .eq('section_name', 'hero')
+      .eq('user_id', ownerId)
+      .single();
+
+    const content = heroRow?.content || {};
+    const brideName = content.bride_name || 'Bride';
+    const groomName = content.groom_name || 'Groom';
+    const weddingDateStr = content.wedding_date;
+
+    if (!weddingDateStr) {
+      return res.json({
+        bride: brideName,
+        groom: groomName,
+        weddingDate: null,
+        countdown: null,
+        totalDays: null,
+        isPast: false
+      });
+    }
+
+    const weddingDate = new Date(weddingDateStr);
     const now = new Date();
-    const diff = WEDDING_DATE - now;
+    const diff = weddingDate - now;
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -12,9 +37,9 @@ const getCountdown = async (req, res, next) => {
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
     res.json({
-      bride: BRIDE_NAME,
-      groom: GROOM_NAME,
-      weddingDate: WEDDING_DATE.toISOString(),
+      bride: brideName,
+      groom: groomName,
+      weddingDate: weddingDate.toISOString(),
       countdown: { days, hours, minutes, seconds },
       totalDays: days,
       isPast: diff < 0
@@ -26,27 +51,32 @@ const getCountdown = async (req, res, next) => {
 
 const getStats = async (req, res, next) => {
   try {
-    // Get guest counts
-    const { data: guests, error: guestError } = await supabase
-      .from('guests')
-      .select('id, side');
+    const ownerId = getWeddingOwnerId(req);
 
-    const { data: rsvps, error: rsvpError } = await supabase
+    const { data: guests } = await supabase
+      .from('guests')
+      .select('id, side')
+      .eq('user_id', ownerId);
+
+    const { data: rsvps } = await supabase
       .from('guest_event_rsvp')
       .select('rsvp_status');
 
-    const { data: tasks, error: taskError } = await supabase
+    const { data: tasks } = await supabase
       .from('tasks')
-      .select('status');
+      .select('status')
+      .eq('user_id', ownerId);
 
-    const { data: budget, error: budgetError } = await supabase
+    const { data: budget } = await supabase
       .from('budget_summary')
       .select('*')
+      .eq('user_id', ownerId)
       .single();
 
-    const { data: expenses, error: expenseError } = await supabase
+    const { data: expenses } = await supabase
       .from('expenses')
-      .select('amount');
+      .select('amount')
+      .eq('user_id', ownerId);
 
     const totalGuests = guests?.length || 0;
     const brideGuests = guests?.filter(g => g.side === 'bride').length || 0;
@@ -88,24 +118,26 @@ const getStats = async (req, res, next) => {
 
 const getSummary = async (req, res, next) => {
   try {
-    // Get events
+    const ownerId = getWeddingOwnerId(req);
+
     const { data: events } = await supabase
       .from('events')
       .select('*')
+      .eq('user_id', ownerId)
       .order('event_date', { ascending: true });
 
-    // Get upcoming tasks
     const { data: upcomingTasks } = await supabase
       .from('tasks')
       .select('*')
+      .eq('user_id', ownerId)
       .in('status', ['pending', 'in_progress'])
       .order('due_date', { ascending: true })
       .limit(5);
 
-    // Get pending payments
     const { data: pendingPayments } = await supabase
       .from('payments')
       .select('*, vendors(name)')
+      .eq('user_id', ownerId)
       .eq('status', 'pending')
       .limit(5);
 

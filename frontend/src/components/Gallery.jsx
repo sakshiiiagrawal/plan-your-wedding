@@ -1,20 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineX, HiOutlineChevronLeft, HiOutlineChevronRight } from 'react-icons/hi';
+import { useGalleryContent } from '../hooks/useApi';
 
-import roka1 from '../assets/roka/1.jpeg';
-import roka2 from '../assets/roka/2.jpeg';
-import roka3 from '../assets/roka/3.jpeg';
-
-const rokaImages = [
-  { src: roka1, alt: 'Roka Ceremony Photo 1' },
-  { src: roka2, alt: 'Roka Ceremony Photo 2' },
-  { src: roka3, alt: 'Roka Ceremony Photo 3' },
-];
-
-export default function Gallery() {
+export default function Gallery({ slug }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  const { data: galleryData } = useGalleryContent(slug);
+  const images = galleryData?.images || [];
+  const subtitle = galleryData?.subtitle || '';
 
   const openLightbox = (index) => {
     setCurrentIndex(index);
@@ -26,12 +21,12 @@ export default function Gallery() {
   };
 
   const goToPrevious = useCallback(() => {
-    setCurrentIndex((prev) => (prev === 0 ? rokaImages.length - 1 : prev - 1));
-  }, []);
+    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  }, [images.length]);
 
   const goToNext = useCallback(() => {
-    setCurrentIndex((prev) => (prev === rokaImages.length - 1 ? 0 : prev + 1));
-  }, []);
+    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  }, [images.length]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -62,11 +57,18 @@ export default function Gallery() {
         <div className="text-center mb-12">
           <h2 className="font-script text-5xl text-maroon-800 mb-4">Gallery</h2>
           <div className="w-24 h-1 bg-gold-500 mx-auto mb-4" />
-          <p className="text-gray-600">Moments from our Roka Ceremony</p>
+          {subtitle && <p className="text-gray-600">{subtitle}</p>}
         </div>
 
+        {!images.length ? (
+          <div className="text-center py-16 text-gray-400">
+            <p className="text-xl font-script text-maroon-300">Pictures coming soon</p>
+            <p className="text-sm mt-2">Check back as we add memories from our celebrations.</p>
+          </div>
+        ) : null}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {rokaImages.map((image, index) => (
+          {images.map((image, index) => (
             <motion.div
               key={index}
               initial={{ opacity: 0, scale: 0.9 }}
@@ -77,8 +79,8 @@ export default function Gallery() {
               onClick={() => openLightbox(index)}
             >
               <img
-                src={image.src}
-                alt={image.alt}
+                src={image.url}
+                alt={image.alt || `Gallery photo ${index + 1}`}
                 className="w-full h-72 object-cover hover:scale-105 transition-transform duration-300"
               />
             </motion.div>
@@ -96,7 +98,6 @@ export default function Gallery() {
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
             onClick={closeLightbox}
           >
-            {/* Close button */}
             <button
               onClick={closeLightbox}
               className="absolute top-4 right-4 text-white hover:text-gold-400 transition-colors z-10"
@@ -104,7 +105,6 @@ export default function Gallery() {
               <HiOutlineX className="w-8 h-8" />
             </button>
 
-            {/* Previous button */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -115,20 +115,18 @@ export default function Gallery() {
               <HiOutlineChevronLeft className="w-10 h-10" />
             </button>
 
-            {/* Image */}
             <motion.img
               key={currentIndex}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.2 }}
-              src={rokaImages[currentIndex].src}
-              alt={rokaImages[currentIndex].alt}
+              src={images[currentIndex].url}
+              alt={images[currentIndex].alt || `Gallery photo ${currentIndex + 1}`}
               className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg"
               onClick={(e) => e.stopPropagation()}
             />
 
-            {/* Next button */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -139,9 +137,8 @@ export default function Gallery() {
               <HiOutlineChevronRight className="w-10 h-10" />
             </button>
 
-            {/* Image counter */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm">
-              {currentIndex + 1} / {rokaImages.length}
+              {currentIndex + 1} / {images.length}
             </div>
           </motion.div>
         )}

@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useHeroContent } from '../hooks/useApi';
 import {
@@ -12,42 +12,44 @@ import {
   HiOutlineClipboardList,
   HiOutlineLogout,
   HiOutlineMenu,
+  HiOutlineLockClosed,
 } from 'react-icons/hi';
 import { useState } from 'react';
-
-const allNavItems = [
-  { path: '/admin', label: 'Dashboard', icon: HiOutlineHome, end: true },
-  { path: '/admin/events', label: 'Events', icon: HiOutlineCalendar },
-  { path: '/admin/guests', label: 'Guests', icon: HiOutlineUserGroup },
-  { path: '/admin/venues', label: 'Venues', icon: HiOutlineLocationMarker },
-  { path: '/admin/accommodations', label: 'Accommodations', icon: HiOutlineOfficeBuilding },
-  { path: '/admin/vendors', label: 'Vendors', icon: HiOutlineBriefcase },
-  { path: '/admin/budget', label: 'Budget', icon: HiOutlineCurrencyRupee, requiresFinanceAccess: true },
-  { path: '/admin/tasks', label: 'Tasks', icon: HiOutlineClipboardList },
-];
 
 export default function AdminLayout() {
   const { logout, user, isAuthenticated, loading, canViewFinance, isReadOnly, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const { slug } = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // API hooks
-  const { data: heroContent } = useHeroContent();
+  const { data: heroContent } = useHeroContent(slug);
   const brideName = heroContent?.bride_name || 'Bride';
   const groomName = heroContent?.groom_name || 'Groom';
   const initials = `${brideName.charAt(0)}${groomName.charAt(0)}`;
 
+  const allNavItems = [
+    { path: `/${slug}/admin`, label: 'Dashboard', icon: HiOutlineHome, end: true },
+    { path: `/${slug}/admin/events`, label: 'Events', icon: HiOutlineCalendar },
+    { path: `/${slug}/admin/guests`, label: 'Guests', icon: HiOutlineUserGroup },
+    { path: `/${slug}/admin/venues`, label: 'Venues', icon: HiOutlineLocationMarker },
+    { path: `/${slug}/admin/accommodations`, label: 'Accommodations', icon: HiOutlineOfficeBuilding },
+    { path: `/${slug}/admin/vendors`, label: 'Vendors', icon: HiOutlineBriefcase },
+    { path: `/${slug}/admin/budget`, label: 'Budget', icon: HiOutlineCurrencyRupee, requiresFinanceAccess: true },
+    { path: `/${slug}/admin/tasks`, label: 'Tasks', icon: HiOutlineClipboardList },
+    { path: `/${slug}/admin/team`, label: 'Team Access', icon: HiOutlineLockClosed, adminOnly: true },
+  ];
+
   // Filter nav items based on role permissions
   const navItems = allNavItems.filter(item => {
-    if (item.requiresFinanceAccess && !canViewFinance) {
-      return false;
-    }
+    if (item.requiresFinanceAccess && !canViewFinance) return false;
+    if (item.adminOnly && !isAdmin) return false;
     return true;
   });
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate(`/${slug}/login`);
   };
 
   // Show loading state
@@ -62,9 +64,9 @@ export default function AdminLayout() {
     );
   }
 
-  // Redirect to login if not authenticated
+  // Redirect to slug-scoped login if not authenticated
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={`/${slug}/login`} replace />;
   }
 
   return (
@@ -86,7 +88,7 @@ export default function AdminLayout() {
         <div className="h-full flex flex-col">
           {/* Logo */}
           <div className="p-6 border-b border-gold-200">
-            <NavLink to="/admin" className="flex items-center gap-2">
+            <NavLink to={`/${slug}/admin`} className="flex items-center gap-2">
               <div className="w-10 h-10 bg-gradient-to-r from-maroon-800 to-gold-600 rounded-full flex items-center justify-center">
                 <span className="text-white font-script text-xl">{initials}</span>
               </div>
@@ -163,7 +165,7 @@ export default function AdminLayout() {
           </div>
           <div className="flex items-center gap-4">
             <NavLink
-              to="/"
+              to={`/${slug}`}
               className="text-sm text-gold-600 hover:text-gold-700 font-medium"
             >
               View Wedding Website →
