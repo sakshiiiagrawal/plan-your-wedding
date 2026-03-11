@@ -1,6 +1,15 @@
 import { Outlet, NavLink } from 'react-router-dom';
+import { useHeroContent } from '../hooks/useApi';
 
 export default function PublicLayout() {
+  const { data: heroContent } = useHeroContent();
+  const brideName = heroContent?.bride_name || 'Bride';
+  const groomName = heroContent?.groom_name || 'Groom';
+  const coupleNames = `${brideName} & ${groomName}`;
+  const weddingDate = heroContent?.wedding_date
+    ? new Date(heroContent.wedding_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : '';
+
   return (
     <div className="min-h-screen bg-cream">
       {/* Navigation */}
@@ -8,7 +17,7 @@ export default function PublicLayout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <NavLink to="/" className="flex items-center gap-2">
-              <span className="font-script text-2xl text-maroon-800">Sakshi & Ayush</span>
+              <span className="font-script text-2xl text-maroon-800">{coupleNames}</span>
             </NavLink>
 
             <div className="hidden md:flex items-center gap-8">
@@ -44,8 +53,8 @@ export default function PublicLayout() {
       {/* Footer */}
       <footer className="bg-maroon-800 text-cream py-12">
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <h3 className="font-script text-4xl mb-4">Sakshi & Ayush</h3>
-          <p className="text-gold-300 mb-6">November 26, 2026</p>
+          <h3 className="font-script text-4xl mb-4">{coupleNames}</h3>
+          {weddingDate && <p className="text-gold-300 mb-6">{weddingDate}</p>}
           <div className="flex justify-center gap-6 text-sm text-cream/70">
             <a href="#" className="hover:text-gold-300 transition-colors">Privacy</a>
             <a href="#" className="hover:text-gold-300 transition-colors">Contact</a>
