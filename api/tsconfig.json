@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "lib": ["ES2022"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "paths": {
+      "@wedding-planner/shared": ["../shared/src/index.ts"],
+      "@wedding-planner/shared/*": ["../shared/src/*"]
+    }
+  },
+  "include": ["./_src/**/*", "./index.ts"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,5 +1,41 @@
 {
+  "name": "wedding-planner",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Open-source wedding planning SaaS — multi-tenant, React + Express + Supabase",
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.1"
+  },
+  "scripts": {
+    "dev:api": "cd api && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "typecheck:shared": "cd shared && npx tsc --noEmit",
+    "typecheck:api": "cd api && npx tsc --noEmit",
+    "typecheck:frontend": "cd frontend && npx tsc --noEmit",
+    "typecheck": "npm run typecheck:shared && npm run typecheck:api && npm run typecheck:frontend",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-react": "^7.37.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.5.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,css}": [
+      "prettier --write"
+    ]
   }
 }
