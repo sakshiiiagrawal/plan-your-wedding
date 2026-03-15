@@ -1,9 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useEvents, useVenues, useCreateEvent, useUpdateEvent, useDeleteEvent } from '../../hooks/useApi';
+import {
+  useEvents,
+  useVenues,
+  useCreateEvent,
+  useUpdateEvent,
+  useDeleteEvent,
+} from '../../hooks/useApi';
 import toast from 'react-hot-toast';
-import { HiOutlineCalendar, HiOutlineLocationMarker, HiOutlineClock, HiOutlineSparkles, HiOutlinePlus, HiOutlineX, HiOutlineTrash } from 'react-icons/hi';
+import {
+  HiOutlineCalendar,
+  HiOutlineLocationMarker,
+  HiOutlineClock,
+  HiOutlineSparkles,
+  HiOutlinePlus,
+  HiOutlineX,
+  HiOutlineTrash,
+} from 'react-icons/hi';
 
 interface EventFormData {
   name: string;
@@ -54,9 +68,10 @@ export default function Events() {
 
   const handleEdit = (event: any) => {
     setEditingEvent(event);
-    const colorPalette = typeof event.color_palette === 'string'
-      ? JSON.parse(event.color_palette)
-      : (event.color_palette || {});
+    const colorPalette =
+      typeof event.color_palette === 'string'
+        ? JSON.parse(event.color_palette)
+        : event.color_palette || {};
     setFormData({
       name: event.name || '',
       event_type: event.event_type || '',
@@ -90,7 +105,8 @@ export default function Events() {
       setShowEventModal(false);
       resetForm();
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || 'Failed to save event';
+      const errorMessage =
+        error?.response?.data?.message || error?.response?.data?.error || 'Failed to save event';
       toast.error(errorMessage);
     }
   };
@@ -107,7 +123,10 @@ export default function Events() {
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-IN', {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
     });
   };
 
@@ -135,7 +154,10 @@ export default function Events() {
       <div className="flex items-center justify-between">
         <h1 className="page-title">Events & Itinerary</h1>
         {canEdit && (
-          <button onClick={() => setShowEventModal(true)} className="btn-primary flex items-center gap-2">
+          <button
+            onClick={() => setShowEventModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
             <HiOutlinePlus className="w-4 h-4" />
             Add Event
           </button>
@@ -147,9 +169,10 @@ export default function Events() {
 
         <div className="space-y-6">
           {events.map((event, index) => {
-            const colorPalette = typeof event.color_palette === 'string'
-              ? JSON.parse(event.color_palette)
-              : (event.color_palette || {});
+            const colorPalette =
+              typeof event.color_palette === 'string'
+                ? JSON.parse(event.color_palette)
+                : event.color_palette || {};
             const eventColor = (colorPalette as any).primary || '#8B0000';
 
             return (
@@ -161,7 +184,9 @@ export default function Events() {
 
                 <div
                   className="card-hover cursor-pointer overflow-hidden"
-                  onClick={() => setSelectedEvent((selectedEvent as any)?.id === event.id ? null : event)}
+                  onClick={() =>
+                    setSelectedEvent((selectedEvent as any)?.id === event.id ? null : event)
+                  }
                 >
                   <div className="h-2 -mx-6 -mt-6 mb-4" style={{ backgroundColor: eventColor }} />
 
@@ -174,7 +199,9 @@ export default function Events() {
                     </div>
 
                     <div className="flex-1">
-                      <h3 className="text-xl font-display font-bold text-maroon-800">{event.name}</h3>
+                      <h3 className="text-xl font-display font-bold text-maroon-800">
+                        {event.name}
+                      </h3>
                       <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-600">
                         <span className="flex items-center gap-1">
                           <HiOutlineCalendar className="w-4 h-4" />
@@ -197,7 +224,9 @@ export default function Events() {
                         {event.theme || 'Theme'}
                       </span>
                       {event.estimated_guests && (
-                        <span className="text-sm text-gray-500">~{event.estimated_guests} guests</span>
+                        <span className="text-sm text-gray-500">
+                          ~{event.estimated_guests} guests
+                        </span>
                       )}
                     </div>
                   </div>
@@ -207,7 +236,9 @@ export default function Events() {
                       <div className="grid md:grid-cols-2 gap-6">
                         <div>
                           <h4 className="font-semibold text-maroon-800 mb-2">Description</h4>
-                          <p className="text-gray-600">{event.description || 'No description available'}</p>
+                          <p className="text-gray-600">
+                            {event.description || 'No description available'}
+                          </p>
                         </div>
                         <div>
                           <h4 className="font-semibold text-maroon-800 mb-2">Dress Code</h4>
@@ -249,7 +280,13 @@ export default function Events() {
               <h2 className="text-xl font-display font-bold text-maroon-800">
                 {editingEvent ? 'Edit Event' : 'Add New Event'}
               </h2>
-              <button onClick={() => { setShowEventModal(false); resetForm(); }} className="p-2 hover:bg-gray-100 rounded-lg">
+              <button
+                onClick={() => {
+                  setShowEventModal(false);
+                  resetForm();
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
                 <HiOutlineX className="w-5 h-5" />
               </button>
             </div>
@@ -307,7 +344,9 @@ export default function Events() {
                   >
                     <option value="">Select Venue</option>
                     {venues.map((venue) => (
-                      <option key={venue.id} value={venue.id}>{venue.name}</option>
+                      <option key={venue.id} value={venue.id}>
+                        {venue.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -361,7 +400,9 @@ export default function Events() {
                   <input
                     type="color"
                     value={formData.color_palette.primary}
-                    onChange={(e) => setFormData({ ...formData, color_palette: { primary: e.target.value } })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, color_palette: { primary: e.target.value } })
+                    }
                     className="input h-10"
                   />
                 </div>
@@ -391,7 +432,14 @@ export default function Events() {
             </form>
 
             <div className="flex gap-3 p-6 border-t border-gold-200">
-              <button type="button" onClick={() => { setShowEventModal(false); resetForm(); }} className="btn-outline flex-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEventModal(false);
+                  resetForm();
+                }}
+                className="btn-outline flex-1"
+              >
                 Cancel
               </button>
               <button
@@ -402,7 +450,9 @@ export default function Events() {
               >
                 {createMutation.isPending || updateMutation.isPending
                   ? 'Saving...'
-                  : editingEvent ? 'Update Event' : 'Create Event'}
+                  : editingEvent
+                    ? 'Update Event'
+                    : 'Create Event'}
               </button>
             </div>
           </div>
@@ -413,9 +463,13 @@ export default function Events() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md">
             <h3 className="text-lg font-bold text-maroon-800 mb-2">Confirm Deletion</h3>
-            <p className="text-gray-600 mb-6">Are you sure you want to delete this event? This action cannot be undone.</p>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this event? This action cannot be undone.
+            </p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">Cancel</button>
+              <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">
+                Cancel
+              </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
                 disabled={deleteMutation.isPending}

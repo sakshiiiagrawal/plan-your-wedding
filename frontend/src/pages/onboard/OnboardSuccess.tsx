@@ -32,21 +32,15 @@ export default function OnboardSuccess({ brideName, groomName, slug }: OnboardSu
       </div>
 
       <p className="text-gray-500">
-        Your account has been created and your wedding website is live.
-        What would you like to do first?
+        Your account has been created and your wedding website is live. What would you like to do
+        first?
       </p>
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-        <button
-          onClick={() => navigate(`/${slug}`)}
-          className="btn-secondary px-8 py-3"
-        >
+        <button onClick={() => navigate(`/${slug}`)} className="btn-secondary px-8 py-3">
           View Wedding Website
         </button>
-        <button
-          onClick={() => navigate(`/${slug}/admin`)}
-          className="btn-primary px-8 py-3"
-        >
+        <button onClick={() => navigate(`/${slug}/admin`)} className="btn-primary px-8 py-3">
           Go to Admin Portal →
         </button>
       </div>

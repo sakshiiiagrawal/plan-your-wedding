@@ -44,12 +44,12 @@ Open `http://localhost:5173/onboard` to create your admin account.
 
 ## Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS, React Query |
-| Backend | Node.js, Express 5, TypeScript, `tsx` runtime |
-| Database | Supabase (PostgreSQL) |
-| Auth | JWT + bcrypt |
+| Layer      | Technology                                                 |
+| ---------- | ---------------------------------------------------------- |
+| Frontend   | React 18, TypeScript, Vite, Tailwind CSS, React Query      |
+| Backend    | Node.js, Express 5, TypeScript, `tsx` runtime              |
+| Database   | Supabase (PostgreSQL)                                      |
+| Auth       | JWT + bcrypt                                               |
 | Deployment | Vercel (frontend + serverless API) or Docker (self-hosted) |
 
 ## Architecture

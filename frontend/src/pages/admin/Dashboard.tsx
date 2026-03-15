@@ -15,7 +15,17 @@ import {
   HiOutlineClipboardList,
   HiOutlineCalendar,
 } from 'react-icons/hi';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from 'recharts';
 
 interface Countdown {
   days: number;
@@ -27,7 +37,12 @@ interface Countdown {
 export default function Dashboard() {
   const { slug } = useParams<{ slug: string }>();
   const { canEdit, canViewFinance } = useAuth();
-  const [countdown, setCountdown] = useState<Countdown>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [countdown, setCountdown] = useState<Countdown>({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
 
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: summary, isLoading: summaryLoading } = useDashboardSummary();
@@ -62,14 +77,18 @@ export default function Dashboard() {
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
-      style: 'currency', currency: 'INR', maximumFractionDigits: 0,
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 
-  const rsvpData = stats ? [
-    { name: 'Confirmed', value: stats.rsvp?.confirmed || 0, color: '#22c55e' },
-    { name: 'Pending', value: stats.rsvp?.pending || 0, color: '#eab308' },
-  ] : [];
+  const rsvpData = stats
+    ? [
+        { name: 'Confirmed', value: stats.rsvp?.confirmed || 0, color: '#22c55e' },
+        { name: 'Pending', value: stats.rsvp?.pending || 0, color: '#eab308' },
+      ]
+    : [];
 
   const budgetData = budgetOverview || [];
   const events = summary?.events || [];
@@ -86,10 +105,16 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="bg-gradient-wedding rounded-2xl p-8 text-white shadow-lg">
         <div className="text-center">
-          <h2 className="font-script text-4xl mb-2">{brideName} & {groomName}</h2>
+          <h2 className="font-script text-4xl mb-2">
+            {brideName} & {groomName}
+          </h2>
           <p className="text-gold-300 mb-6">
             {weddingDateStr
-              ? new Date(weddingDateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+              ? new Date(weddingDateStr).toLocaleDateString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                })
               : 'Wedding Date'}
           </p>
 
@@ -100,7 +125,10 @@ export default function Dashboard() {
               { value: countdown.minutes, label: 'Minutes' },
               { value: countdown.seconds, label: 'Seconds' },
             ].map((item) => (
-              <div key={item.label} className="bg-white/10 backdrop-blur rounded-xl p-4 min-w-[80px]">
+              <div
+                key={item.label}
+                className="bg-white/10 backdrop-blur rounded-xl p-4 min-w-[80px]"
+              >
                 <div className="text-3xl md:text-4xl font-bold">{item.value}</div>
                 <div className="text-sm text-gold-300">{item.label}</div>
               </div>
@@ -126,7 +154,9 @@ export default function Dashboard() {
             <HiOutlineCurrencyRupee className="w-8 h-8 text-gold-500 mb-2" />
             <div className="stat-value">{formatCurrency(stats?.budget?.spent || 0)}</div>
             <div className="stat-label">Spent</div>
-            <div className="text-xs text-gray-400 mt-1">of {formatCurrency(stats?.budget?.total || 0)}</div>
+            <div className="text-xs text-gray-400 mt-1">
+              of {formatCurrency(stats?.budget?.total || 0)}
+            </div>
           </div>
         )}
 
@@ -147,7 +177,8 @@ export default function Dashboard() {
                   const first = events[0];
                   const last = events[events.length - 1];
                   if (!first || !last) return 'No events';
-                  const diff = new Date(last.event_date).getTime() - new Date(first.event_date).getTime();
+                  const diff =
+                    new Date(last.event_date).getTime() - new Date(first.event_date).getTime();
                   return `${Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1} days of celebration`;
                 })()
               : 'No events'}
@@ -157,18 +188,38 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Add Guest', path: `/${slug}/admin/guests`, icon: HiOutlineUserGroup, requiresEdit: true },
-          { label: 'Add Expense', path: `/${slug}/admin/budget`, icon: HiOutlineCurrencyRupee, requiresEdit: true, requiresFinance: true },
-          { label: 'Add Task', path: `/${slug}/admin/tasks`, icon: HiOutlineClipboardList, requiresEdit: true },
+          {
+            label: 'Add Guest',
+            path: `/${slug}/admin/guests`,
+            icon: HiOutlineUserGroup,
+            requiresEdit: true,
+          },
+          {
+            label: 'Add Expense',
+            path: `/${slug}/admin/budget`,
+            icon: HiOutlineCurrencyRupee,
+            requiresEdit: true,
+            requiresFinance: true,
+          },
+          {
+            label: 'Add Task',
+            path: `/${slug}/admin/tasks`,
+            icon: HiOutlineClipboardList,
+            requiresEdit: true,
+          },
           { label: 'View Events', path: `/${slug}/admin/events`, icon: HiOutlineCalendar },
         ]
-          .filter(action => {
+          .filter((action) => {
             if (action.requiresEdit && !canEdit) return false;
             if (action.requiresFinance && !canViewFinance) return false;
             return true;
           })
           .map((action) => (
-            <Link key={action.label} to={action.path} className="card-hover flex items-center gap-3 p-4">
+            <Link
+              key={action.label}
+              to={action.path}
+              className="card-hover flex items-center gap-3 p-4"
+            >
               <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center">
                 <action.icon className="w-5 h-5 text-gold-600" />
               </div>
@@ -232,9 +283,10 @@ export default function Dashboard() {
         <h3 className="section-title mb-4">Events Timeline</h3>
         <div className="space-y-4">
           {events.map((event, index) => {
-            const colorPalette = typeof event.color_palette === 'string'
-              ? JSON.parse(event.color_palette as string)
-              : (event.color_palette || {});
+            const colorPalette =
+              typeof event.color_palette === 'string'
+                ? JSON.parse(event.color_palette as string)
+                : event.color_palette || {};
             const eventColor = (colorPalette as any).primary || '#8B0000';
             return (
               <div
@@ -250,19 +302,23 @@ export default function Dashboard() {
                 <div className="flex-1">
                   <h4 className="font-semibold text-maroon-800">{event.name}</h4>
                   <p className="text-sm text-gray-500">
-                    {new Date(event.event_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    {new Date(event.event_date).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
                     {event.start_time && ` • ${event.start_time.slice(0, 5)}`}
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="badge bg-gold-100 text-gold-700">{(event as any).theme || 'Theme'}</span>
+                  <span className="badge bg-gold-100 text-gold-700">
+                    {(event as any).theme || 'Theme'}
+                  </span>
                 </div>
               </div>
             );
           })}
-          {events.length === 0 && (
-            <p className="text-gray-500 text-center py-4">No events found</p>
-          )}
+          {events.length === 0 && <p className="text-gray-500 text-center py-4">No events found</p>}
         </div>
       </div>
     </div>

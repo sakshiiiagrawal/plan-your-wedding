@@ -11,7 +11,11 @@ function tryGetOwnerId(req: Request): string | null {
 }
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try { res.json(await service.listContent(tryGetOwnerId(req))); } catch (e) { next(e); }
+  try {
+    res.json(await service.listContent(tryGetOwnerId(req)));
+  } catch (e) {
+    next(e);
+  }
 };
 
 export const getBySection = async (
@@ -19,19 +23,47 @@ export const getBySection = async (
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
-  try { res.json(await service.getSection(req.params.section, tryGetOwnerId(req))); } catch (e) { next(e); }
+  try {
+    res.json(await service.getSection(req.params.section, tryGetOwnerId(req)));
+  } catch (e) {
+    next(e);
+  }
 };
 
-export const getHeroContent = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try { res.json(await service.getSectionContent('hero', tryGetOwnerId(req))); } catch (e) { next(e); }
+export const getHeroContent = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res.json(await service.getSectionContent('hero', tryGetOwnerId(req)));
+  } catch (e) {
+    next(e);
+  }
 };
 
-export const getCoupleContent = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try { res.json(await service.getSectionContent('couple', tryGetOwnerId(req))); } catch (e) { next(e); }
+export const getCoupleContent = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res.json(await service.getSectionContent('couple', tryGetOwnerId(req)));
+  } catch (e) {
+    next(e);
+  }
 };
 
-export const getOurStory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try { res.json(await service.getSectionContent('our_story', tryGetOwnerId(req))); } catch (e) { next(e); }
+export const getOurStory = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res.json(await service.getSectionContent('our_story', tryGetOwnerId(req)));
+  } catch (e) {
+    next(e);
+  }
 };
 
 export const update = async (
@@ -39,7 +71,11 @@ export const update = async (
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
-  try { res.json(await service.upsertSection(req.params.section, getWeddingOwnerId(req), req.body)); } catch (e) { next(e); }
+  try {
+    res.json(await service.upsertSection(req.params.section, getWeddingOwnerId(req), req.body));
+  } catch (e) {
+    next(e);
+  }
 };
 
 export const getPublicWebsiteContent = async (
@@ -47,5 +83,9 @@ export const getPublicWebsiteContent = async (
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
-  try { res.json(await service.getPublicContent(req.params.slug, req.params.section)); } catch (e) { next(e); }
+  try {
+    res.json(await service.getPublicContent(req.params.slug, req.params.section));
+  } catch (e) {
+    next(e);
+  }
 };

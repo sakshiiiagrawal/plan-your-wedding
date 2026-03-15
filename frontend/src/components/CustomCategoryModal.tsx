@@ -9,7 +9,11 @@ interface CustomCategoryModalProps {
   defaultParentId?: string | null;
 }
 
-export default function CustomCategoryModal({ isOpen, onClose, defaultParentId = null }: CustomCategoryModalProps) {
+export default function CustomCategoryModal({
+  isOpen,
+  onClose,
+  defaultParentId = null,
+}: CustomCategoryModalProps) {
   const { data: categoryTree = [] } = useCategoryTree();
   const createMutation = useCreateCustomCategory();
 
@@ -41,8 +45,9 @@ export default function CustomCategoryModal({ isOpen, onClose, defaultParentId =
       });
 
       onClose();
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.error || 'Failed to create category';
+    } catch (error) {
+      const err = error as { response?: { data?: { error?: string } } };
+      const errorMessage = err?.response?.data?.error || 'Failed to create category';
       toast.error(errorMessage);
     }
   };
@@ -53,9 +58,7 @@ export default function CustomCategoryModal({ isOpen, onClose, defaultParentId =
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-md">
         <div className="flex items-center justify-between p-6 border-b border-gold-200">
-          <h2 className="text-xl font-display font-bold text-maroon-800">
-            Add Custom Category
-          </h2>
+          <h2 className="text-xl font-display font-bold text-maroon-800">Add Custom Category</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
             <HiOutlineX className="w-5 h-5" />
           </button>
@@ -83,15 +86,13 @@ export default function CustomCategoryModal({ isOpen, onClose, defaultParentId =
               className="input"
             >
               <option value="">-- Top Level Category --</option>
-              {categoryTree.map((parent: any) => (
+              {categoryTree.map((parent) => (
                 <option key={parent.id} value={parent.id}>
                   {parent.name}
                 </option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 mt-1">
-              Leave empty to create a top-level category
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Leave empty to create a top-level category</p>
           </div>
 
           <div>

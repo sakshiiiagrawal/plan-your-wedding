@@ -69,8 +69,7 @@ export function parseGuestExcel(buffer: Buffer): ParsedGuest[] {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data: Record<string, any>[] = XLSX.utils.sheet_to_json(worksheet);
 
-  const getString = (value: unknown): string =>
-    value != null ? String(value).trim() : '';
+  const getString = (value: unknown): string => (value != null ? String(value).trim() : '');
 
   const parseYesNo = (value: unknown): boolean => {
     if (typeof value === 'boolean') return value;
@@ -91,13 +90,17 @@ export function parseGuestExcel(buffer: Buffer): ParsedGuest[] {
   };
 
   const filtered = data.filter((row) => {
-    const firstName = getString(row['First Name*'] ?? row['First Name'] ?? row['first_name*'] ?? row['first_name']);
+    const firstName = getString(
+      row['First Name*'] ?? row['First Name'] ?? row['first_name*'] ?? row['first_name'],
+    );
     const side = getString(row['Side*'] ?? row['Side'] ?? row['side*'] ?? row['side']);
     return firstName !== '' || side !== '';
   });
 
   return filtered.map((row) => ({
-    first_name: getString(row['First Name*'] ?? row['First Name'] ?? row['first_name*'] ?? row['first_name']),
+    first_name: getString(
+      row['First Name*'] ?? row['First Name'] ?? row['first_name*'] ?? row['first_name'],
+    ),
     last_name: getString(row['Last Name'] ?? row['last_name']),
     phone: getString(row['Phone'] ?? row['phone']),
     email: getString(row['Email'] ?? row['email']),

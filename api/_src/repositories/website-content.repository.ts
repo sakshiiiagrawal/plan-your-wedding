@@ -1,5 +1,5 @@
 import { supabase } from '../config/database';
-import type { WebsiteContentInsert, WebsiteContentRow } from '@wedding-planner/shared';
+import type { WebsiteContentRow } from '@wedding-planner/shared';
 
 export async function findOwnerBySlug(slug: string): Promise<string | null> {
   const { data } = await supabase
@@ -28,10 +28,7 @@ export async function findSection(
   section: string,
   ownerId: string | null,
 ): Promise<WebsiteContentRow | null> {
-  let query = supabase
-    .from('website_content')
-    .select('*')
-    .eq('section_name', section);
+  let query = supabase.from('website_content').select('*').eq('section_name', section);
 
   if (ownerId) query = query.eq('user_id', ownerId);
 
@@ -44,10 +41,7 @@ export async function findSectionContent(
   section: string,
   ownerId: string | null,
 ): Promise<unknown> {
-  let query = supabase
-    .from('website_content')
-    .select('content')
-    .eq('section_name', section);
+  let query = supabase.from('website_content').select('content').eq('section_name', section);
 
   if (ownerId) query = query.eq('user_id', ownerId);
 

@@ -2,6 +2,12 @@ import { useState, useMemo } from 'react';
 import { HiOutlinePlus } from 'react-icons/hi';
 import { useCategoryTree } from '../hooks/useApi';
 
+interface Category {
+  id: string;
+  name: string;
+  children?: Category[];
+}
+
 interface CategorySelectorProps {
   value: string;
   onChange: (value: string) => void;
@@ -17,11 +23,13 @@ export default function CategorySelector({
   onChange,
   allowCustom = false,
   onAddCustom,
-  placeholder = 'Select category',
   required = false,
   disabled = false,
 }: CategorySelectorProps) {
-  const { data: categoryTree = [], isLoading } = useCategoryTree();
+  const { data: categoryTree = [], isLoading } = useCategoryTree() as {
+    data: Category[];
+    isLoading: boolean;
+  };
   const [selectedParent, setSelectedParent] = useState('');
 
   const selectedCategory = useMemo(() => {
@@ -32,7 +40,7 @@ export default function CategorySelector({
         return { parent, child: null };
       }
       if (parent.children) {
-        const child = parent.children.find((c: any) => c.id === value);
+        const child = parent.children.find((c) => c.id === value);
         if (child) {
           return { parent, child };
         }
@@ -49,13 +57,13 @@ export default function CategorySelector({
 
   const subcategories = useMemo(() => {
     if (!selectedParent) return [];
-    const parent = categoryTree.find((cat: any) => cat.id === selectedParent);
-    return (parent?.children as any[]) || [];
+    const parent = categoryTree.find((cat) => cat.id === selectedParent);
+    return parent?.children || [];
   }, [selectedParent, categoryTree]);
 
   const handleParentChange = (parentId: string) => {
     setSelectedParent(parentId);
-    const parent = categoryTree.find((cat: any) => cat.id === parentId);
+    const parent = categoryTree.find((cat) => cat.id === parentId);
     if (!parent?.children || parent.children.length === 0) {
       onChange(parentId);
     } else {
@@ -83,7 +91,7 @@ export default function CategorySelector({
           disabled={disabled}
         >
           <option value="">-- Select Category --</option>
-          {categoryTree.map((parent: any) => (
+          {categoryTree.map((parent) => (
             <option key={parent.id} value={parent.id}>
               {parent.name}
             </option>
@@ -103,7 +111,7 @@ export default function CategorySelector({
               disabled={disabled}
             >
               <option value="">-- Select Subcategory --</option>
-              {subcategories.map((sub: any) => (
+              {subcategories.map((sub) => (
                 <option key={sub.id} value={sub.id}>
                   {sub.name}
                 </option>
@@ -139,7 +147,8 @@ export default function CategorySelector({
 
       {selectedCategory && (
         <div className="text-xs text-gray-500">
-          Selected: <span className="font-medium text-maroon-800">
+          Selected:{' '}
+          <span className="font-medium text-maroon-800">
             {selectedCategory.parent.name}
             {selectedCategory.child && ` → ${selectedCategory.child.name}`}
           </span>

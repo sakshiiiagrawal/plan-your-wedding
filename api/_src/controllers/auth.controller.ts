@@ -67,7 +67,7 @@ export const logout = async (_req: Request, res: Response, next: NextFunction): 
 export const getCurrentUser = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     res.json(req.user);

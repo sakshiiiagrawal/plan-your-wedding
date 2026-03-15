@@ -1,4 +1,4 @@
-import type { UserRole } from "../domain/user.types";
+import type { UserRole } from '../domain/user.types';
 
 // ---------------------------------------------------------------------------
 // Auth DTOs — request/response shapes for /api/v1/auth/* endpoints

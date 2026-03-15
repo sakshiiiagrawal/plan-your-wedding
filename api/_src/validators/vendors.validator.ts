@@ -11,7 +11,10 @@ export const createVendorSchema = z.object({
   address: z.string().optional().nullable(),
   total_cost: z.number().nonnegative().optional().nullable(),
   advance_paid: z.number().nonnegative().optional().nullable(),
-  payment_status: z.enum(['pending', 'partial', 'paid', 'overdue', 'cancelled']).optional().nullable(),
+  payment_status: z
+    .enum(['pending', 'partial', 'paid', 'overdue', 'cancelled'])
+    .optional()
+    .nullable(),
   side: z.enum(['bride', 'groom', 'mutual']).optional().nullable(),
   is_shared: z.boolean().optional(),
   is_confirmed: z.boolean().optional(),

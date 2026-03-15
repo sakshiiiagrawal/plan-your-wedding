@@ -32,7 +32,7 @@ const INITIAL_FORM: FormData = {
   description: '',
   amount: '',
   category_id: null,
-  expense_date: new Date().toISOString().split('T')[0],
+  expense_date: new Date().toISOString().split('T')[0] ?? '',
   paid_by: '',
   side: 'bride',
   is_shared: false,
@@ -44,7 +44,14 @@ const INITIAL_FORM: FormData = {
   paid_amount: '',
 };
 
-export default function AddExpenseModal({ show, onClose, onSubmit, isPending, vendors, canEdit }: AddExpenseModalProps) {
+export default function AddExpenseModal({
+  show,
+  onClose,
+  onSubmit,
+  isPending,
+  vendors,
+  canEdit,
+}: AddExpenseModalProps) {
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM);
   const [showCustomCategoryModal, setShowCustomCategoryModal] = useState(false);
   const [customCategoryParentId, setCustomCategoryParentId] = useState<string | null>(null);
@@ -128,7 +135,10 @@ export default function AddExpenseModal({ show, onClose, onSubmit, isPending, ve
                   />
                   {formData.amount && formData.paid_amount && (
                     <p className="text-sm text-gray-500 mt-1">
-                      Remaining: ₹{(parseFloat(formData.amount) - parseFloat(formData.paid_amount || '0')).toLocaleString('en-IN')}
+                      Remaining: ₹
+                      {(
+                        parseFloat(formData.amount) - parseFloat(formData.paid_amount || '0')
+                      ).toLocaleString('en-IN')}
                     </p>
                   )}
                 </div>
@@ -136,7 +146,7 @@ export default function AddExpenseModal({ show, onClose, onSubmit, isPending, ve
             </div>
 
             <CategorySelector
-              value={formData.category_id}
+              value={formData.category_id ?? ''}
               onChange={(categoryId: string | null) => set({ category_id: categoryId })}
               allowCustom={canEdit}
               onAddCustom={(parentId: string | null) => {

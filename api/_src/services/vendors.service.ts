@@ -23,18 +23,11 @@ export async function getVendor(id: string, ownerId: string) {
   return vendor;
 }
 
-export async function createVendor(
-  payload: Omit<VendorInsert, 'user_id'>,
-  ownerId: string,
-) {
+export async function createVendor(payload: Omit<VendorInsert, 'user_id'>, ownerId: string) {
   return repo.insertVendor({ ...payload, user_id: ownerId });
 }
 
-export async function updateVendor(
-  id: string,
-  ownerId: string,
-  payload: Partial<VendorInsert>,
-) {
+export async function updateVendor(id: string, ownerId: string, payload: Partial<VendorInsert>) {
   await getVendor(id, ownerId);
   return repo.updateVendor(id, ownerId, payload);
 }

@@ -9,13 +9,11 @@ export interface TaskFilters {
 }
 
 export async function findAllByOwner(ownerId: string, filters: TaskFilters) {
-  let query = supabase
-    .from('tasks')
-    .select('*, events(name)')
-    .eq('user_id', ownerId);
+  let query = supabase.from('tasks').select('*, events(name)').eq('user_id', ownerId);
 
   if (filters.status && filters.status !== 'all') query = query.eq('status', filters.status);
-  if (filters.priority && filters.priority !== 'all') query = query.eq('priority', filters.priority);
+  if (filters.priority && filters.priority !== 'all')
+    query = query.eq('priority', filters.priority);
   if (filters.event_id) query = query.eq('event_id', filters.event_id);
   if (filters.assigned_to) query = query.eq('assigned_to', filters.assigned_to);
 

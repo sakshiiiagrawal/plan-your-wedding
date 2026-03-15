@@ -9,67 +9,121 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   try {
     const category = typeof req.query['category'] === 'string' ? req.query['category'] : undefined;
     res.json(await service.listVendors(getWeddingOwnerId(req), category));
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 };
 
 export const getCategories = (_req: Request, res: Response, next: NextFunction): void => {
   try {
     res.json(service.getCategories());
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 };
 
-export const getById = async (req: Request<IdParam>, res: Response, next: NextFunction): Promise<void> => {
+export const getById = async (
+  req: Request<IdParam>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     res.json(await service.getVendor(req.params.id, getWeddingOwnerId(req)));
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 };
 
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     res.status(201).json(await service.createVendor(req.body, getWeddingOwnerId(req)));
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 };
 
-export const update = async (req: Request<IdParam>, res: Response, next: NextFunction): Promise<void> => {
+export const update = async (
+  req: Request<IdParam>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     res.json(await service.updateVendor(req.params.id, getWeddingOwnerId(req), req.body));
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 };
 
-export const remove = async (req: Request<IdParam>, res: Response, next: NextFunction): Promise<void> => {
+export const remove = async (
+  req: Request<IdParam>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     await service.deleteVendor(req.params.id, getWeddingOwnerId(req));
     res.status(204).send();
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 };
 
-export const assignToEvent = async (req: Request<IdEventParam>, res: Response, next: NextFunction): Promise<void> => {
+export const assignToEvent = async (
+  req: Request<IdEventParam>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     res.status(201).json(await service.assignToEvent(req.params.id, req.params.eventId, req.body));
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 };
 
-export const removeFromEvent = async (req: Request<IdEventParam>, res: Response, next: NextFunction): Promise<void> => {
+export const removeFromEvent = async (
+  req: Request<IdEventParam>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     await service.removeFromEvent(req.params.id, req.params.eventId);
     res.status(204).send();
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 };
 
-export const getPayments = async (req: Request<IdParam>, res: Response, next: NextFunction): Promise<void> => {
+export const getPayments = async (
+  req: Request<IdParam>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     res.json(await service.getPayments(req.params.id));
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 };
 
-export const getVendorBudgetSummary = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getVendorBudgetSummary = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     res.json(await service.getVendorBudgetSummary(getWeddingOwnerId(req)));
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 };
 
-export const getVendorsBySide = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getVendorsBySide = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     res.json(await service.getVendorsBySide(getWeddingOwnerId(req)));
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 };

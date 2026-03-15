@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import { validateBody } from '../middleware/validate.middleware';
-import { createVendorSchema, updateVendorSchema, assignToEventSchema } from '../validators/vendors.validator';
+import {
+  createVendorSchema,
+  updateVendorSchema,
+  assignToEventSchema,
+} from '../validators/vendors.validator';
 import * as ctrl from '../controllers/vendors.controller';
 
 const router = Router();

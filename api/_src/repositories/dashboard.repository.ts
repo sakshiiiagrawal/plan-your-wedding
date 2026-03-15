@@ -11,10 +11,7 @@ export async function findHeroContent(ownerId: string) {
 }
 
 export async function findGuestSides(ownerId: string) {
-  const { data } = await supabase
-    .from('guests')
-    .select('id, side')
-    .eq('user_id', ownerId);
+  const { data } = await supabase.from('guests').select('id, side').eq('user_id', ownerId);
   return data ?? [];
 }
 

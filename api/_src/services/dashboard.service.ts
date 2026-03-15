@@ -11,7 +11,14 @@ export async function getCountdown(ownerId: string) {
   const weddingDateStr = content['wedding_date'] as string | null | undefined;
 
   if (!weddingDateStr) {
-    return { bride: brideName, groom: groomName, weddingDate: null, countdown: null, totalDays: null, isPast: false };
+    return {
+      bride: brideName,
+      groom: groomName,
+      weddingDate: null,
+      countdown: null,
+      totalDays: null,
+      isPast: false,
+    };
   }
 
   const weddingDate = new Date(weddingDateStr);

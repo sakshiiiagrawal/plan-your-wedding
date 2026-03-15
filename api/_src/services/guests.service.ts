@@ -47,10 +47,7 @@ export async function createGuest(
   return guest;
 }
 
-export async function bulkCreateGuests(
-  guests: Omit<GuestInsert, 'user_id'>[],
-  ownerId: string,
-) {
+export async function bulkCreateGuests(guests: Omit<GuestInsert, 'user_id'>[], ownerId: string) {
   const payloads = guests.map((g) => ({ ...g, user_id: ownerId }));
   // insertGuestsBulk expects ParsedGuest & { user_id }, but Omit<GuestInsert, 'user_id'> is compatible
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,11 +55,7 @@ export async function bulkCreateGuests(
   return { created: created.length, guests: created };
 }
 
-export async function updateGuest(
-  id: string,
-  ownerId: string,
-  payload: Partial<GuestInsert>,
-) {
+export async function updateGuest(id: string, ownerId: string, payload: Partial<GuestInsert>) {
   await getGuest(id, ownerId);
   return repo.updateGuest(id, ownerId, payload);
 }
@@ -105,10 +98,7 @@ export async function listGroups(ownerId: string) {
   return repo.findGroupsByOwner(ownerId);
 }
 
-export async function createGroup(
-  payload: Omit<GuestGroupInsert, 'user_id'>,
-  ownerId: string,
-) {
+export async function createGroup(payload: Omit<GuestGroupInsert, 'user_id'>, ownerId: string) {
   return repo.insertGroup({ ...payload, user_id: ownerId });
 }
 
@@ -141,9 +131,7 @@ export async function importGuests(buffer: Buffer, ownerId: string) {
     } as const;
   }
 
-  const created = await repo.insertGuestsBulk(
-    parsed.map((g) => ({ ...g, user_id: ownerId })),
-  );
+  const created = await repo.insertGuestsBulk(parsed.map((g) => ({ ...g, user_id: ownerId })));
 
   return {
     message: 'Guests imported successfully',

@@ -26,12 +26,29 @@ interface FormData {
 }
 
 const VENDOR_CATEGORIES = [
-  'catering', 'photography', 'videography', 'decoration', 'music',
-  'venue', 'transport', 'attire', 'jewelry', 'makeup', 'invitation',
-  'cake', 'flowers', 'accommodation', 'other',
+  'catering',
+  'photography',
+  'videography',
+  'decoration',
+  'music',
+  'venue',
+  'transport',
+  'attire',
+  'jewelry',
+  'makeup',
+  'invitation',
+  'cake',
+  'flowers',
+  'accommodation',
+  'other',
 ];
 
-export default function EditVendorModal({ vendor, onClose, onSubmit, isPending }: EditVendorModalProps) {
+export default function EditVendorModal({
+  vendor,
+  onClose,
+  onSubmit,
+  isPending,
+}: EditVendorModalProps) {
   const [formData, setFormData] = useState<FormData | null>(null);
 
   useEffect(() => {
@@ -40,7 +57,7 @@ export default function EditVendorModal({ vendor, onClose, onSubmit, isPending }
         name: vendor.description || '',
         category: vendor.category?.replace(/ /g, '_') || 'other',
         total_cost: vendor.amount || '',
-        side: vendor.is_shared ? 'mutual' : (vendor.side || 'mutual'),
+        side: vendor.is_shared ? 'mutual' : vendor.side || 'mutual',
         is_shared: vendor.is_shared || false,
       });
     }
@@ -48,7 +65,8 @@ export default function EditVendorModal({ vendor, onClose, onSubmit, isPending }
 
   if (!vendor || !formData) return null;
 
-  const set = (patch: Partial<FormData>) => setFormData((prev) => prev ? ({ ...prev, ...patch }) : null);
+  const set = (patch: Partial<FormData>) =>
+    setFormData((prev) => (prev ? { ...prev, ...patch } : null));
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -91,7 +109,9 @@ export default function EditVendorModal({ vendor, onClose, onSubmit, isPending }
               className="input"
             >
               {VENDOR_CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>
+                <option key={c} value={c}>
+                  {c.replace(/_/g, ' ')}
+                </option>
               ))}
             </select>
           </div>
@@ -121,8 +141,8 @@ export default function EditVendorModal({ vendor, onClose, onSubmit, isPending }
                       ? s === 'bride'
                         ? 'border-pink-500 bg-pink-50 text-pink-700'
                         : s === 'groom'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gold-500 bg-gold-50 text-gold-700'
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gold-500 bg-gold-50 text-gold-700'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >

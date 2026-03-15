@@ -2,7 +2,13 @@
 import { useState, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
-import { useGuests, useGuestSummary, useCreateGuest, useUpdateGuest, useDeleteGuest } from '../../hooks/useApi';
+import {
+  useGuests,
+  useGuestSummary,
+  useCreateGuest,
+  useUpdateGuest,
+  useDeleteGuest,
+} from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import {
@@ -59,9 +65,9 @@ export default function Guests() {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: guests = [], isLoading: guestsLoading } = useGuests({
-    side: sideFilter !== 'all' ? sideFilter : undefined,
-  });
+  const { data: guests = [], isLoading: guestsLoading } = useGuests(
+    sideFilter !== 'all' ? { side: sideFilter } : {},
+  );
   const { data: summary } = useGuestSummary();
   const createMutation = useCreateGuest();
   const updateMutation = useUpdateGuest();
@@ -104,7 +110,8 @@ export default function Guests() {
       setShowAddModal(false);
       resetForm();
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || 'Failed to save guest';
+      const errorMessage =
+        error?.response?.data?.message || error?.response?.data?.error || 'Failed to save guest';
       toast.error(errorMessage);
     }
   };
@@ -264,7 +271,9 @@ export default function Guests() {
           <div className="text-sm text-gray-500">Groom Side</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-green-600">{(summary as any)?.confirmed || 0}</div>
+          <div className="text-2xl font-bold text-green-600">
+            {(summary as any)?.confirmed || 0}
+          </div>
           <div className="text-sm text-gray-500">Confirmed</div>
         </div>
         <div className="card text-center">
@@ -336,8 +345,20 @@ export default function Guests() {
                     </div>
                   </td>
                   <td className="p-4">
-                    <span className={guest.side === 'bride' ? 'badge-bride' : guest.side === 'groom' ? 'badge-groom' : 'badge bg-purple-100 text-purple-700'}>
-                      {guest.side === 'bride' ? 'Bride' : guest.side === 'groom' ? 'Groom' : 'Mutual'}
+                    <span
+                      className={
+                        guest.side === 'bride'
+                          ? 'badge-bride'
+                          : guest.side === 'groom'
+                            ? 'badge-groom'
+                            : 'badge bg-purple-100 text-purple-700'
+                      }
+                    >
+                      {guest.side === 'bride'
+                        ? 'Bride'
+                        : guest.side === 'groom'
+                          ? 'Groom'
+                          : 'Mutual'}
                     </span>
                   </td>
                   <td className="p-4 text-gray-600">{guest.phone || '—'}</td>
@@ -393,7 +414,10 @@ export default function Guests() {
                 {editingGuest ? 'Edit Guest' : 'Add New Guest'}
               </h2>
               <button
-                onClick={() => { setShowAddModal(false); resetForm(); }}
+                onClick={() => {
+                  setShowAddModal(false);
+                  resetForm();
+                }}
                 className="p-2 hover:bg-gray-100 rounded-lg"
               >
                 <HiOutlineX className="w-5 h-5" />
@@ -492,7 +516,9 @@ export default function Guests() {
                   <input
                     type="text"
                     value={formData.dietary_restrictions}
-                    onChange={(e) => setFormData({ ...formData, dietary_restrictions: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, dietary_restrictions: e.target.value })
+                    }
                     className="input"
                     placeholder="e.g., No onion-garlic"
                   />
@@ -504,7 +530,9 @@ export default function Guests() {
                   <input
                     type="checkbox"
                     checked={formData.needs_accommodation}
-                    onChange={(e) => setFormData({ ...formData, needs_accommodation: e.target.checked })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, needs_accommodation: e.target.checked })
+                    }
                     className="w-4 h-4 text-maroon-800"
                   />
                   <span className="text-sm">Needs Accommodation</span>
@@ -544,7 +572,10 @@ export default function Guests() {
             <div className="flex gap-3 p-6 border-t border-gold-200">
               <button
                 type="button"
-                onClick={() => { setShowAddModal(false); resetForm(); }}
+                onClick={() => {
+                  setShowAddModal(false);
+                  resetForm();
+                }}
                 className="btn-outline flex-1"
               >
                 Cancel
@@ -557,7 +588,9 @@ export default function Guests() {
               >
                 {createMutation.isPending || updateMutation.isPending
                   ? 'Saving...'
-                  : editingGuest ? 'Update Guest' : 'Add Guest'}
+                  : editingGuest
+                    ? 'Update Guest'
+                    : 'Add Guest'}
               </button>
             </div>
           </div>
@@ -572,7 +605,9 @@ export default function Guests() {
               Are you sure you want to delete this guest? This action cannot be undone.
             </p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">Cancel</button>
+              <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">
+                Cancel
+              </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
                 disabled={deleteMutation.isPending}
@@ -592,7 +627,10 @@ export default function Guests() {
               <h2 className="text-xl font-display font-bold text-maroon-800">
                 Import Guests from Excel
               </h2>
-              <button onClick={() => setShowImportModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
                 <HiOutlineX className="w-5 h-5" />
               </button>
             </div>
@@ -601,17 +639,38 @@ export default function Guests() {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h3 className="font-semibold text-blue-900 mb-3">Import Instructions</h3>
                 <ol className="list-decimal ml-5 space-y-2 text-sm text-gray-700">
-                  <li><strong>Download the sample template</strong> - It contains example data with 3 guests to help you understand the format</li>
-                  <li><strong>Edit the Excel file:</strong> Replace the sample data with your actual guests, or add new rows below the examples</li>
-                  <li><strong>Mandatory fields:</strong> First Name* and Side* (must be either "Bride" or "Groom")</li>
-                  <li><strong>Optional fields:</strong> Last Name, Phone, Relationship, Meal Preference, Needs Accommodation, Needs Pickup</li>
-                  <li><strong>Boolean values:</strong> Use "Yes" or "No" for Needs Accommodation and Needs Pickup columns</li>
-                  <li><strong>Important:</strong> Row 1 contains the headers and will be kept automatically. All data rows below will be imported</li>
+                  <li>
+                    <strong>Download the sample template</strong> - It contains example data with 3
+                    guests to help you understand the format
+                  </li>
+                  <li>
+                    <strong>Edit the Excel file:</strong> Replace the sample data with your actual
+                    guests, or add new rows below the examples
+                  </li>
+                  <li>
+                    <strong>Mandatory fields:</strong> First Name* and Side* (must be either
+                    &quot;Bride&quot; or &quot;Groom&quot;)
+                  </li>
+                  <li>
+                    <strong>Optional fields:</strong> Last Name, Phone, Relationship, Meal
+                    Preference, Needs Accommodation, Needs Pickup
+                  </li>
+                  <li>
+                    <strong>Boolean values:</strong> Use &quot;Yes&quot; or &quot;No&quot; for Needs
+                    Accommodation and Needs Pickup columns
+                  </li>
+                  <li>
+                    <strong>Important:</strong> Row 1 contains the headers and will be kept
+                    automatically. All data rows below will be imported
+                  </li>
                 </ol>
               </div>
 
               <div className="flex justify-center py-2">
-                <button onClick={handleDownloadTemplate} className="btn-outline text-sm flex items-center gap-2">
+                <button
+                  onClick={handleDownloadTemplate}
+                  className="btn-outline text-sm flex items-center gap-2"
+                >
                   <HiOutlineDownload className="w-4 h-4" />
                   Download Sample Template
                 </button>

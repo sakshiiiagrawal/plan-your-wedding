@@ -29,7 +29,7 @@ app.use(
       return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
-  })
+  }),
 );
 
 // Logging
@@ -52,10 +52,7 @@ const PUBLIC_PATHS: string[] = [
 ];
 
 // Public path prefixes (any path starting with these is public)
-const PUBLIC_PREFIXES: string[] = [
-  '/api/v1/weddings/',
-  '/api/v1/public/',
-];
+const PUBLIC_PREFIXES: string[] = ['/api/v1/weddings/', '/api/v1/public/'];
 
 // Global auth middleware — skips public paths and public GET website-content
 app.use((req, res, next) => {

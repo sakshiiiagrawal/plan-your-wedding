@@ -30,7 +30,7 @@ const INCLUDE_SEEDS = process.env.INCLUDE_SEEDS === 'true';
 
 function getMigrationFiles() {
   return readdirSync(MIGRATIONS_DIR)
-    .filter(f => f.endsWith('.sql') && (INCLUDE_SEEDS || !f.includes('_example_')))
+    .filter((f) => f.endsWith('.sql') && (INCLUDE_SEEDS || !f.includes('_example_')))
     .sort();
 }
 
@@ -55,7 +55,7 @@ async function runWithDatabase() {
   `);
 
   const { rows } = await client.query('SELECT filename FROM schema_migrations');
-  const applied = new Set(rows.map(r => r.filename));
+  const applied = new Set(rows.map((r) => r.filename));
   const files = getMigrationFiles();
   let count = 0;
 
@@ -100,7 +100,7 @@ if (PRINT_ONLY || !DATABASE_URL) {
   }
   printOnly();
 } else {
-  runWithDatabase().catch(err => {
+  runWithDatabase().catch((err) => {
     console.error('Migration failed:', err.message);
     process.exit(1);
   });

@@ -34,7 +34,10 @@ export const createExpenseSchema = z.object({
   is_shared: z.boolean().optional(),
   share_percentage: z.number().min(0).max(100).optional().nullable(),
   paid_amount: z.number().nonnegative().optional().nullable(),
-  payment_method: z.enum(['cash', 'bank_transfer', 'upi', 'cheque', 'credit_card']).optional().nullable(),
+  payment_method: z
+    .enum(['cash', 'bank_transfer', 'upi', 'cheque', 'credit_card'])
+    .optional()
+    .nullable(),
   receipt_url: z.string().url().optional().nullable(),
   notes: z.string().optional().nullable(),
 });

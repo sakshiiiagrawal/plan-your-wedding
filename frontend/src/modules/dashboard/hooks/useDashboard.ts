@@ -5,10 +5,6 @@ export const DASHBOARD_QUERY_KEYS = {
   countdown: ['dashboard', 'countdown'] as const,
 } as const;
 
-export {
-  useDashboardStats,
-  useDashboardSummary,
-  useCountdown,
-} from '../../../hooks/useApi';
+export { useDashboardStats, useDashboardSummary, useCountdown } from '../../../hooks/useApi';
 
 export type { DashboardStats, DashboardSummary, CountdownData } from '../../../hooks/useApi';

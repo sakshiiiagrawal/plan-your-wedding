@@ -5,7 +5,7 @@ import { supabase } from '../config/database';
 export const listUsers = async (
   _req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const { data, error } = await supabase
@@ -23,7 +23,7 @@ export const listUsers = async (
 export const createUser = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const { name, email, password, role } = req.body as {
@@ -72,17 +72,14 @@ export const createUser = async (
 export const deleteUser = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const { id } = req.params;
 
     // Block deletion of last admin
     if (id === req.user?.id) {
-      const { data: admins } = await supabase
-        .from('users')
-        .select('id')
-        .eq('role', 'admin');
+      const { data: admins } = await supabase.from('users').select('id').eq('role', 'admin');
 
       if (!admins || admins.length <= 1) {
         res.status(400).json({ error: 'Cannot delete the last admin account' });

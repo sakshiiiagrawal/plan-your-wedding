@@ -1,8 +1,20 @@
 import { useState, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
-import { HiOutlineOfficeBuilding, HiOutlineHome, HiOutlinePlus, HiOutlineX, HiOutlineDownload, HiOutlineUpload } from 'react-icons/hi';
-import { useAllocationMatrix, useUnassignedGuests, useCreateAccommodation, useCreateRoom, useCreateAllocation } from '../../hooks/useApi';
+import {
+  HiOutlineOfficeBuilding,
+  HiOutlinePlus,
+  HiOutlineX,
+  HiOutlineDownload,
+  HiOutlineUpload,
+} from 'react-icons/hi';
+import {
+  useAllocationMatrix,
+  useUnassignedGuests,
+  useCreateAccommodation,
+  useCreateRoom,
+  useCreateAllocation,
+} from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 
@@ -84,20 +96,20 @@ export default function Accommodations() {
     total_rooms_booked: 0,
     total_cost: 0,
     contact_person: '',
-    contact_phone: ''
+    contact_phone: '',
   });
   const [roomFormData, setRoomFormData] = useState<RoomFormData>({
     accommodationId: null,
     room_number: '',
     room_type: '',
     capacity: 2,
-    rate_per_night: 0
+    rate_per_night: 0,
   });
   const [allocationFormData, setAllocationFormData] = useState<AllocationFormData>({
     room_id: null,
     guest_id: null,
     check_in_date: '',
-    check_out_date: ''
+    check_out_date: '',
   });
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -114,7 +126,7 @@ export default function Accommodations() {
       total_rooms_booked: 0,
       total_cost: 0,
       contact_person: '',
-      contact_phone: ''
+      contact_phone: '',
     });
   };
 
@@ -124,7 +136,7 @@ export default function Accommodations() {
       room_number: '',
       room_type: '',
       capacity: 2,
-      rate_per_night: 0
+      rate_per_night: 0,
     });
   };
 
@@ -133,7 +145,7 @@ export default function Accommodations() {
       room_id: null,
       guest_id: null,
       check_in_date: '',
-      check_out_date: ''
+      check_out_date: '',
     });
   };
 
@@ -146,7 +158,8 @@ export default function Accommodations() {
       resetHotelForm();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string; error?: string } } };
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to add hotel';
+      const errorMessage =
+        error.response?.data?.message || error.response?.data?.error || 'Failed to add hotel';
       toast.error(errorMessage);
     }
   };
@@ -161,7 +174,8 @@ export default function Accommodations() {
       resetRoomForm();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string; error?: string } } };
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to add room';
+      const errorMessage =
+        error.response?.data?.message || error.response?.data?.error || 'Failed to add room';
       toast.error(errorMessage);
     }
   };
@@ -175,7 +189,8 @@ export default function Accommodations() {
       resetAllocationForm();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string; error?: string } } };
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to assign guest';
+      const errorMessage =
+        error.response?.data?.message || error.response?.data?.error || 'Failed to assign guest';
       toast.error(errorMessage);
     }
   };
@@ -183,7 +198,7 @@ export default function Accommodations() {
   const handleDownloadTemplate = async () => {
     try {
       const response = await api.get('/accommodations/allocations/template/all-venues/download', {
-        responseType: 'blob'
+        responseType: 'blob',
       });
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -213,8 +228,8 @@ export default function Accommodations() {
     try {
       const response = await api.post('/accommodations/allocations/import/all-venues', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       setImportResults(response.data);
@@ -228,7 +243,11 @@ export default function Accommodations() {
       setShowImportModal(false);
       setShowImportResultsModal(true);
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string; errors?: ImportError[]; invalidAllocations?: ImportError[] } } };
+      const error = err as {
+        response?: {
+          data?: { error?: string; errors?: ImportError[]; invalidAllocations?: ImportError[] };
+        };
+      };
       const errorMessage = error.response?.data?.error || 'Failed to import allocations';
       const errors = error.response?.data?.errors || error.response?.data?.invalidAllocations;
 
@@ -236,7 +255,7 @@ export default function Accommodations() {
         success: false,
         error: errorMessage,
         errors: errors || [],
-        count: 0
+        count: 0,
       });
 
       setShowImportModal(false);
@@ -263,25 +282,27 @@ export default function Accommodations() {
   };
 
   const enrichedHotels = useMemo(() => {
-    return allocationMatrix.map((hotel: {
-      id: string;
-      rooms?: Array<{ capacity?: number; room_allocations?: unknown[] }>;
-      total_rooms_booked?: number;
-      [key: string]: unknown;
-    }) => {
-      const rooms = hotel.rooms || [];
-      const totalCapacity = rooms.reduce((sum, room) => sum + (room.capacity || 0), 0);
-      const guestsAllocated = rooms.reduce((sum, room) => {
-        return sum + (room.room_allocations?.length || 0);
-      }, 0);
+    return allocationMatrix.map(
+      (hotel: {
+        id: string;
+        rooms?: Array<{ capacity?: number; room_allocations?: unknown[] }>;
+        total_rooms_booked?: number;
+        [key: string]: unknown;
+      }) => {
+        const rooms = hotel.rooms || [];
+        const totalCapacity = rooms.reduce((sum, room) => sum + (room.capacity || 0), 0);
+        const guestsAllocated = rooms.reduce((sum, room) => {
+          return sum + (room.room_allocations?.length || 0);
+        }, 0);
 
-      return {
-        ...hotel,
-        totalCapacity,
-        guestsAllocated,
-        roomsBooked: hotel.total_rooms_booked || rooms.length
-      };
-    });
+        return {
+          ...hotel,
+          totalCapacity,
+          guestsAllocated,
+          roomsBooked: hotel.total_rooms_booked || rooms.length,
+        };
+      },
+    );
   }, [allocationMatrix]);
 
   if (isLoading) {
@@ -314,10 +335,7 @@ export default function Accommodations() {
                 <HiOutlineUpload className="w-4 h-4" />
                 Import
               </button>
-              <button
-                onClick={() => setShowHotelModal(true)}
-                className="btn-primary"
-              >
+              <button onClick={() => setShowHotelModal(true)} className="btn-primary">
                 Add Hotel
               </button>
             </>
@@ -333,51 +351,57 @@ export default function Accommodations() {
         <>
           {/* Hotel Cards */}
           <div className="grid md:grid-cols-3 gap-4">
-            {enrichedHotels.map((hotel: {
-              id: string;
-              name: string;
-              distance_from_venue?: string;
-              roomsBooked: number;
-              guestsAllocated: number;
-              totalCapacity: number;
-              total_cost?: number;
-            }) => (
-              <div
-                key={hotel.id}
-                onClick={() => setSelectedHotelId(hotel.id)}
-                className={`card-hover cursor-pointer ${selectedHotel?.id === hotel.id ? 'ring-2 ring-gold-500' : ''}`}
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center">
-                    <HiOutlineOfficeBuilding className="w-5 h-5 text-gold-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-maroon-800">{hotel.name}</h3>
-                    <p className="text-xs text-gray-500">{hotel.distance_from_venue || 'N/A'}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-gray-500">Rooms:</span>
-                    <span className="ml-1 font-medium">{hotel.roomsBooked}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Allocated:</span>
-                    <span className="ml-1 font-medium">{hotel.guestsAllocated}/{hotel.totalCapacity}</span>
-                  </div>
-                </div>
-
-                {hotel.total_cost && (
-                  <div className="mt-3 pt-3 border-t border-gold-100">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Cost:</span>
-                      <span className="font-medium text-maroon-800">{formatCurrency(hotel.total_cost)}</span>
+            {enrichedHotels.map(
+              (hotel: {
+                id: string;
+                name: string;
+                distance_from_venue?: string;
+                roomsBooked: number;
+                guestsAllocated: number;
+                totalCapacity: number;
+                total_cost?: number;
+              }) => (
+                <div
+                  key={hotel.id}
+                  onClick={() => setSelectedHotelId(hotel.id)}
+                  className={`card-hover cursor-pointer ${selectedHotel?.id === hotel.id ? 'ring-2 ring-gold-500' : ''}`}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center">
+                      <HiOutlineOfficeBuilding className="w-5 h-5 text-gold-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-maroon-800">{hotel.name}</h3>
+                      <p className="text-xs text-gray-500">{hotel.distance_from_venue || 'N/A'}</p>
                     </div>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-gray-500">Rooms:</span>
+                      <span className="ml-1 font-medium">{hotel.roomsBooked}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Allocated:</span>
+                      <span className="ml-1 font-medium">
+                        {hotel.guestsAllocated}/{hotel.totalCapacity}
+                      </span>
+                    </div>
+                  </div>
+
+                  {hotel.total_cost && (
+                    <div className="mt-3 pt-3 border-t border-gold-100">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Cost:</span>
+                        <span className="font-medium text-maroon-800">
+                          {formatCurrency(hotel.total_cost)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ),
+            )}
           </div>
 
           {/* Room Allocation Matrix */}
@@ -429,61 +453,80 @@ export default function Accommodations() {
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedHotel.rooms.map((room: {
-                          id: string;
-                          room_number: string;
-                          room_type?: string;
-                          capacity?: number;
-                          room_allocations?: Array<{ guests?: { first_name: string; last_name: string; side?: string } }>;
-                        }) => {
-                          const allocations = room.room_allocations || [];
-                          const guests = allocations.map(alloc => alloc.guests).filter(Boolean) as Array<{ first_name: string; last_name: string; side?: string }>;
-                          const guestSide = guests[0]?.side;
+                        {selectedHotel.rooms.map(
+                          (room: {
+                            id: string;
+                            room_number: string;
+                            room_type?: string;
+                            capacity?: number;
+                            room_allocations?: Array<{
+                              guests?: { first_name: string; last_name: string; side?: string };
+                            }>;
+                          }) => {
+                            const allocations = room.room_allocations || [];
+                            const guests = allocations
+                              .map((alloc) => alloc.guests)
+                              .filter(Boolean) as Array<{
+                              first_name: string;
+                              last_name: string;
+                              side?: string;
+                            }>;
+                            const guestSide = guests[0]?.side;
 
-                          return (
-                            <tr key={room.id} className="table-row">
-                              <td className="p-3 font-medium">{room.room_number}</td>
-                              <td className="p-3 text-gray-600">{room.room_type || 'N/A'}</td>
-                              <td className="p-3 text-gray-600">{room.capacity || 0}</td>
-                              <td className="p-3">
-                                {guests.length > 0 ? (
-                                  <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${guestSide === 'bride' ? 'bg-pink-400' : 'bg-blue-400'}`} />
-                                    <span className="text-gray-700">
-                                      {guests.map(g => `${g.first_name} ${g.last_name}`).join(', ')}
-                                    </span>
-                                    <span className="text-xs text-gray-400">({guests.length}/{room.capacity})</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-gray-400 italic">Available - Drag guest here</span>
-                                )}
-                              </td>
-                              {canEdit && (
+                            return (
+                              <tr key={room.id} className="table-row">
+                                <td className="p-3 font-medium">{room.room_number}</td>
+                                <td className="p-3 text-gray-600">{room.room_type || 'N/A'}</td>
+                                <td className="p-3 text-gray-600">{room.capacity || 0}</td>
                                 <td className="p-3">
-                                  <button
-                                    onClick={() => {
-                                      setAllocationFormData({
-                                        ...allocationFormData,
-                                        room_id: room.id
-                                      });
-                                      setShowAllocationModal(true);
-                                    }}
-                                    className="text-sm text-gold-600 hover:text-gold-700"
-                                  >
-                                    {guests.length > 0 ? 'Edit' : 'Assign'}
-                                  </button>
+                                  {guests.length > 0 ? (
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className={`w-2 h-2 rounded-full ${guestSide === 'bride' ? 'bg-pink-400' : 'bg-blue-400'}`}
+                                      />
+                                      <span className="text-gray-700">
+                                        {guests
+                                          .map((g) => `${g.first_name} ${g.last_name}`)
+                                          .join(', ')}
+                                      </span>
+                                      <span className="text-xs text-gray-400">
+                                        ({guests.length}/{room.capacity})
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400 italic">
+                                      Available - Drag guest here
+                                    </span>
+                                  )}
                                 </td>
-                              )}
-                            </tr>
-                          );
-                        })}
+                                {canEdit && (
+                                  <td className="p-3">
+                                    <button
+                                      onClick={() => {
+                                        setAllocationFormData({
+                                          ...allocationFormData,
+                                          room_id: room.id,
+                                        });
+                                        setShowAllocationModal(true);
+                                      }}
+                                      className="text-sm text-gold-600 hover:text-gold-700"
+                                    >
+                                      {guests.length > 0 ? 'Edit' : 'Assign'}
+                                    </button>
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          },
+                        )}
                       </tbody>
                     </table>
                   </div>
 
                   <div className="mt-4 p-4 bg-gold-50 rounded-lg">
                     <p className="text-sm text-gray-600">
-                      <strong>Unassigned guests needing rooms:</strong> {unassignedGuests.length} guests
+                      <strong>Unassigned guests needing rooms:</strong> {unassignedGuests.length}{' '}
+                      guests
                       {unassignedGuests.length > 0 && (
                         <button className="ml-2 text-gold-600 hover:underline">View list</button>
                       )}
@@ -548,7 +591,9 @@ export default function Accommodations() {
                   <input
                     type="text"
                     value={hotelFormData.distance_from_venue}
-                    onChange={(e) => setHotelFormData({ ...hotelFormData, distance_from_venue: e.target.value })}
+                    onChange={(e) =>
+                      setHotelFormData({ ...hotelFormData, distance_from_venue: e.target.value })
+                    }
                     className="input"
                     placeholder="e.g., 2 km"
                   />
@@ -558,7 +603,12 @@ export default function Accommodations() {
                   <input
                     type="number"
                     value={hotelFormData.total_rooms_booked}
-                    onChange={(e) => setHotelFormData({ ...hotelFormData, total_rooms_booked: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setHotelFormData({
+                        ...hotelFormData,
+                        total_rooms_booked: Number(e.target.value),
+                      })
+                    }
                     className="input"
                     placeholder="0"
                   />
@@ -570,7 +620,9 @@ export default function Accommodations() {
                 <input
                   type="number"
                   value={hotelFormData.total_cost}
-                  onChange={(e) => setHotelFormData({ ...hotelFormData, total_cost: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setHotelFormData({ ...hotelFormData, total_cost: Number(e.target.value) })
+                  }
                   className="input"
                   placeholder="0"
                 />
@@ -582,7 +634,9 @@ export default function Accommodations() {
                   <input
                     type="text"
                     value={hotelFormData.contact_person}
-                    onChange={(e) => setHotelFormData({ ...hotelFormData, contact_person: e.target.value })}
+                    onChange={(e) =>
+                      setHotelFormData({ ...hotelFormData, contact_person: e.target.value })
+                    }
                     className="input"
                     placeholder="Contact name"
                   />
@@ -592,7 +646,9 @@ export default function Accommodations() {
                   <input
                     type="tel"
                     value={hotelFormData.contact_phone}
-                    onChange={(e) => setHotelFormData({ ...hotelFormData, contact_phone: e.target.value })}
+                    onChange={(e) =>
+                      setHotelFormData({ ...hotelFormData, contact_phone: e.target.value })
+                    }
                     className="input"
                     placeholder="Phone number"
                   />
@@ -648,7 +704,9 @@ export default function Accommodations() {
                   <input
                     type="text"
                     value={roomFormData.room_number}
-                    onChange={(e) => setRoomFormData({ ...roomFormData, room_number: e.target.value })}
+                    onChange={(e) =>
+                      setRoomFormData({ ...roomFormData, room_number: e.target.value })
+                    }
                     className="input"
                     placeholder="e.g., 101"
                     required
@@ -658,7 +716,9 @@ export default function Accommodations() {
                   <label className="label">Room Type *</label>
                   <select
                     value={roomFormData.room_type}
-                    onChange={(e) => setRoomFormData({ ...roomFormData, room_type: e.target.value })}
+                    onChange={(e) =>
+                      setRoomFormData({ ...roomFormData, room_type: e.target.value })
+                    }
                     className="input"
                     required
                   >
@@ -677,7 +737,9 @@ export default function Accommodations() {
                 <input
                   type="number"
                   value={roomFormData.capacity}
-                  onChange={(e) => setRoomFormData({ ...roomFormData, capacity: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setRoomFormData({ ...roomFormData, capacity: Number(e.target.value) })
+                  }
                   className="input"
                   placeholder="2"
                   required
@@ -689,7 +751,9 @@ export default function Accommodations() {
                 <input
                   type="number"
                   value={roomFormData.rate_per_night}
-                  onChange={(e) => setRoomFormData({ ...roomFormData, rate_per_night: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setRoomFormData({ ...roomFormData, rate_per_night: Number(e.target.value) })
+                  }
                   className="input"
                   placeholder="0"
                 />
@@ -725,7 +789,9 @@ export default function Accommodations() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gold-200">
-              <h2 className="text-xl font-display font-bold text-maroon-800">Assign Guest to Room</h2>
+              <h2 className="text-xl font-display font-bold text-maroon-800">
+                Assign Guest to Room
+              </h2>
               <button
                 onClick={() => {
                   setShowAllocationModal(false);
@@ -742,16 +808,20 @@ export default function Accommodations() {
                 <label className="label">Guest *</label>
                 <select
                   value={allocationFormData.guest_id || ''}
-                  onChange={(e) => setAllocationFormData({ ...allocationFormData, guest_id: e.target.value })}
+                  onChange={(e) =>
+                    setAllocationFormData({ ...allocationFormData, guest_id: e.target.value })
+                  }
                   className="input"
                   required
                 >
                   <option value="">Select Guest</option>
-                  {unassignedGuests.map((guest: { id: string; first_name: string; last_name: string }) => (
-                    <option key={guest.id} value={guest.id}>
-                      {guest.first_name} {guest.last_name}
-                    </option>
-                  ))}
+                  {unassignedGuests.map(
+                    (guest: { id: string; first_name: string; last_name: string }) => (
+                      <option key={guest.id} value={guest.id}>
+                        {guest.first_name} {guest.last_name}
+                      </option>
+                    ),
+                  )}
                 </select>
               </div>
 
@@ -761,7 +831,12 @@ export default function Accommodations() {
                   <input
                     type="date"
                     value={allocationFormData.check_in_date}
-                    onChange={(e) => setAllocationFormData({ ...allocationFormData, check_in_date: e.target.value })}
+                    onChange={(e) =>
+                      setAllocationFormData({
+                        ...allocationFormData,
+                        check_in_date: e.target.value,
+                      })
+                    }
                     className="input"
                     required
                   />
@@ -771,7 +846,12 @@ export default function Accommodations() {
                   <input
                     type="date"
                     value={allocationFormData.check_out_date}
-                    onChange={(e) => setAllocationFormData({ ...allocationFormData, check_out_date: e.target.value })}
+                    onChange={(e) =>
+                      setAllocationFormData({
+                        ...allocationFormData,
+                        check_out_date: e.target.value,
+                      })
+                    }
                     className="input"
                     required
                   />
@@ -796,7 +876,9 @@ export default function Accommodations() {
               </button>
               <button
                 type="submit"
-                onClick={(e) => handleAllocationSubmit(e as unknown as React.FormEvent<HTMLFormElement>)}
+                onClick={(e) =>
+                  handleAllocationSubmit(e as unknown as React.FormEvent<HTMLFormElement>)
+                }
                 disabled={createAllocationMutation.isPending}
                 className="btn-primary flex-1 disabled:opacity-50"
               >
@@ -828,19 +910,25 @@ export default function Accommodations() {
                 <h3 className="font-semibold text-blue-900 mb-3">Import Instructions</h3>
                 <ol className="list-decimal ml-5 space-y-2 text-sm text-gray-700">
                   <li>
-                    <strong>Download the sample template</strong> - It contains separate sheets for each venue with example room allocations
+                    <strong>Download the sample template</strong> - It contains separate sheets for
+                    each venue with example room allocations
                   </li>
                   <li>
-                    <strong>Edit the Excel file:</strong> Go to the sheet for the venue you want to import and replace the sample data with your actual room assignments
+                    <strong>Edit the Excel file:</strong> Go to the sheet for the venue you want to
+                    import and replace the sample data with your actual room assignments
                   </li>
                   <li>
-                    <strong>Use the Guest List sheet:</strong> The last sheet contains all your guests grouped by side. Copy exact names from there into the Guest 1, Guest 2, Guest 3 columns
+                    <strong>Use the Guest List sheet:</strong> The last sheet contains all your
+                    guests grouped by side. Copy exact names from there into the Guest 1, Guest 2,
+                    Guest 3 columns
                   </li>
                   <li>
-                    <strong>Mandatory fields:</strong> Room Number*, at least one Guest (Guest 1), Check-in Date*, and Check-out Date*
+                    <strong>Mandatory fields:</strong> Room Number*, at least one Guest (Guest 1),
+                    Check-in Date*, and Check-out Date*
                   </li>
                   <li>
-                    <strong>Multiple guests per room:</strong> Assign up to 3 guests per room using the Guest 1, 2, 3 columns
+                    <strong>Multiple guests per room:</strong> Assign up to 3 guests per room using
+                    the Guest 1, 2, 3 columns
                   </li>
                 </ol>
               </div>
@@ -883,9 +971,7 @@ export default function Accommodations() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-gold-200">
-              <h2 className="text-xl font-display font-bold text-maroon-800">
-                Import Results
-              </h2>
+              <h2 className="text-xl font-display font-bold text-maroon-800">Import Results</h2>
               <button
                 onClick={() => {
                   setShowImportResultsModal(false);
@@ -900,7 +986,9 @@ export default function Accommodations() {
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
-                  <div className="text-3xl font-bold text-green-700">{importResults.count || 0}</div>
+                  <div className="text-3xl font-bold text-green-700">
+                    {importResults.count || 0}
+                  </div>
                   <div className="text-sm text-green-600 font-medium">Successful Imports</div>
                 </div>
                 <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
@@ -923,14 +1011,10 @@ export default function Accommodations() {
                         <strong>{importResults.count} room allocations</strong> processed
                       </p>
                       {importResults.created && importResults.created > 0 && (
-                        <span className="text-green-700">
-                          ({importResults.created} created)
-                        </span>
+                        <span className="text-green-700">({importResults.created} created)</span>
                       )}
                       {importResults.updated && importResults.updated > 0 && (
-                        <span className="text-blue-700">
-                          ({importResults.updated} updated)
-                        </span>
+                        <span className="text-blue-700">({importResults.updated} updated)</span>
                       )}
                     </div>
 
@@ -939,14 +1023,19 @@ export default function Accommodations() {
                         <p className="font-medium text-green-800 mb-2">Guest Allocations:</p>
                         <div className="space-y-2 max-h-60 overflow-y-auto">
                           {importResults.allocations.map((allocation, idx) => (
-                            <div key={idx} className={`bg-white border rounded p-2 text-xs ${
-                              allocation.action === 'updated'
-                                ? 'border-blue-200 bg-blue-50'
-                                : 'border-green-200'
-                            }`}>
+                            <div
+                              key={idx}
+                              className={`bg-white border rounded p-2 text-xs ${
+                                allocation.action === 'updated'
+                                  ? 'border-blue-200 bg-blue-50'
+                                  : 'border-green-200'
+                              }`}
+                            >
                               <div className="flex items-center justify-between">
                                 <div className="flex-1 flex items-center gap-2">
-                                  <span className="font-medium text-gray-800">{allocation.guest}</span>
+                                  <span className="font-medium text-gray-800">
+                                    {allocation.guest}
+                                  </span>
                                   <span className="text-gray-500">→</span>
                                   <span className="text-gray-600">Room {allocation.room}</span>
                                   {allocation.action === 'updated' && (
@@ -955,9 +1044,7 @@ export default function Accommodations() {
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-gray-500 text-right">
-                                  {allocation.venue}
-                                </div>
+                                <div className="text-gray-500 text-right">{allocation.venue}</div>
                               </div>
                             </div>
                           ))}
@@ -967,7 +1054,9 @@ export default function Accommodations() {
 
                     {importResults.roomsCreated && importResults.roomsCreated > 0 && (
                       <div className="mt-3">
-                        <p className="font-medium text-green-800">Created {importResults.roomsCreated} new rooms:</p>
+                        <p className="font-medium text-green-800">
+                          Created {importResults.roomsCreated} new rooms:
+                        </p>
                         <ul className="list-disc ml-5 mt-1">
                           {importResults.newRooms?.map((room, idx) => (
                             <li key={idx}>
@@ -981,7 +1070,8 @@ export default function Accommodations() {
                 </div>
               )}
 
-              {(importResults.errors && importResults.errors.length > 0 || importResults.success === false) && (
+              {((importResults.errors && importResults.errors.length > 0) ||
+                importResults.success === false) && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <h3 className="font-semibold text-red-900 mb-3 flex items-center gap-2">
                     <span className="text-xl">✗</span>
@@ -1020,7 +1110,8 @@ export default function Accommodations() {
                             <ul className="text-xs text-blue-700 space-y-1">
                               {err.suggestions.map((suggestion, sIdx) => (
                                 <li key={sIdx}>
-                                  • {suggestion.name} ({suggestion.similarity}, {suggestion.side} side)
+                                  • {suggestion.name} ({suggestion.similarity}, {suggestion.side}{' '}
+                                  side)
                                 </li>
                               ))}
                             </ul>
@@ -1033,25 +1124,26 @@ export default function Accommodations() {
                   {importResults.errors && importResults.errors.length > 0 && (
                     <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
                       <p className="text-sm text-yellow-800">
-                        <strong>Next Steps:</strong> Fix the errors in your Excel file and try importing again.
-                        Make sure to copy guest names exactly from the Guest List sheet.
+                        <strong>Next Steps:</strong> Fix the errors in your Excel file and try
+                        importing again. Make sure to copy guest names exactly from the Guest List
+                        sheet.
                       </p>
                     </div>
                   )}
                 </div>
               )}
 
-              {importResults.count > 0 && (!importResults.errors || importResults.errors.length === 0) && (
-                <div className="text-center p-6 bg-green-50 border-2 border-green-200 rounded-lg">
-                  <div className="text-5xl mb-3">🎉</div>
-                  <h3 className="text-xl font-bold text-green-800 mb-2">
-                    All Done!
-                  </h3>
-                  <p className="text-green-700">
-                    All room allocations were imported successfully. Your data is now available on the accommodations page.
-                  </p>
-                </div>
-              )}
+              {importResults.count > 0 &&
+                (!importResults.errors || importResults.errors.length === 0) && (
+                  <div className="text-center p-6 bg-green-50 border-2 border-green-200 rounded-lg">
+                    <div className="text-5xl mb-3">🎉</div>
+                    <h3 className="text-xl font-bold text-green-800 mb-2">All Done!</h3>
+                    <p className="text-green-700">
+                      All room allocations were imported successfully. Your data is now available on
+                      the accommodations page.
+                    </p>
+                  </div>
+                )}
             </div>
 
             <div className="flex gap-3 p-6 border-t border-gold-200">

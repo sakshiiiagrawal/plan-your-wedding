@@ -16,7 +16,11 @@ interface BudgetCategoriesTabProps {
   formatCurrency: (amount: number) => string;
 }
 
-export default function BudgetCategoriesTab({ categoryAnalysis, loading, formatCurrency }: BudgetCategoriesTabProps) {
+export default function BudgetCategoriesTab({
+  categoryAnalysis,
+  loading,
+  formatCurrency,
+}: BudgetCategoriesTabProps) {
   const categoryBarData = categoryAnalysis.map((cat) => ({
     name: cat.name,
     bride: cat.bride,
@@ -73,13 +77,27 @@ export default function BudgetCategoriesTab({ categoryAnalysis, loading, formatC
                     <td className="p-4 font-medium text-maroon-800">{cat.name}</td>
                     <td className="p-4 text-right text-pink-700">{formatCurrency(cat.bride)}</td>
                     <td className="p-4 text-right text-blue-700">{formatCurrency(cat.groom)}</td>
-                    <td className="p-4 text-right" style={{ color: '#B8962E' }}>{formatCurrency(cat.shared)}</td>
+                    <td className="p-4 text-right" style={{ color: '#B8962E' }}>
+                      {formatCurrency(cat.shared)}
+                    </td>
                     <td className="p-4 text-right font-semibold">{formatCurrency(cat.total)}</td>
                     <td className="p-4 w-40">
                       <div className="flex h-3 rounded-full overflow-hidden bg-gray-100">
-                        <div style={{ width: `${brideWidth}%` }} className="bg-pink-500" title={`Bride: ${brideWidth.toFixed(0)}%`} />
-                        <div style={{ width: `${groomWidth}%` }} className="bg-blue-500" title={`Groom: ${groomWidth.toFixed(0)}%`} />
-                        <div style={{ width: `${sharedWidth}%` }} className="bg-yellow-400" title={`Shared: ${sharedWidth.toFixed(0)}%`} />
+                        <div
+                          style={{ width: `${brideWidth}%` }}
+                          className="bg-pink-500"
+                          title={`Bride: ${brideWidth.toFixed(0)}%`}
+                        />
+                        <div
+                          style={{ width: `${groomWidth}%` }}
+                          className="bg-blue-500"
+                          title={`Groom: ${groomWidth.toFixed(0)}%`}
+                        />
+                        <div
+                          style={{ width: `${sharedWidth}%` }}
+                          className="bg-yellow-400"
+                          title={`Shared: ${sharedWidth.toFixed(0)}%`}
+                        />
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
                         {cat.count} expense{cat.count !== 1 ? 's' : ''}

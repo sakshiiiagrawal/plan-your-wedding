@@ -1,17 +1,17 @@
-import type { TableRow, TableInsert } from "../supabase.generated";
+import type { TableRow, TableInsert } from '../supabase.generated';
 
 // ---------------------------------------------------------------------------
 // Raw DB rows
 // ---------------------------------------------------------------------------
 
-export type AccommodationRow = TableRow<"accommodations">;
-export type AccommodationInsert = TableInsert<"accommodations">;
+export type AccommodationRow = TableRow<'accommodations'>;
+export type AccommodationInsert = TableInsert<'accommodations'>;
 
-export type RoomRow = TableRow<"rooms">;
-export type RoomInsert = TableInsert<"rooms">;
+export type RoomRow = TableRow<'rooms'>;
+export type RoomInsert = TableInsert<'rooms'>;
 
-export type RoomAllocationRow = TableRow<"room_allocations">;
-export type RoomAllocationInsert = TableInsert<"room_allocations">;
+export type RoomAllocationRow = TableRow<'room_allocations'>;
+export type RoomAllocationInsert = TableInsert<'room_allocations'>;
 
 // ---------------------------------------------------------------------------
 // Derived / joined types

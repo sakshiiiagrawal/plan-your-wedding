@@ -79,7 +79,11 @@ export function findSimilarGuests(
   return guestsList
     .map((guest) => {
       const fullName = `${guest.first_name} ${guest.last_name ?? ''}`.trim().toLowerCase();
-      return { guest, fullName: `${guest.first_name} ${guest.last_name ?? ''}`.trim(), similarity: similarityRatio(searchLower, fullName) };
+      return {
+        guest,
+        fullName: `${guest.first_name} ${guest.last_name ?? ''}`.trim(),
+        similarity: similarityRatio(searchLower, fullName),
+      };
     })
     .filter((m) => m.similarity >= threshold)
     .sort((a, b) => b.similarity - a.similarity)
@@ -91,17 +95,33 @@ export function findSimilarGuests(
 // ---------------------------------------------------------------------------
 
 const ALLOCATION_HEADERS = [
-  'Room Number*', 'Guest 1', 'Guest 2', 'Guest 3', 'Check-in Date*', 'Check-out Date*',
+  'Room Number*',
+  'Guest 1',
+  'Guest 2',
+  'Guest 3',
+  'Check-in Date*',
+  'Check-out Date*',
 ];
 const ALLOCATION_SAMPLE = [
   ['101', 'John Doe', 'Jane Doe', '', '2024-12-15', '2024-12-17'],
   ['102', 'Raj Kumar', '', '', '2024-12-15', '2024-12-18'],
-  ['103', 'Priya Sharma', 'Amit Sharma', 'Ravi Sharma', '2024-12-14', '2024-12-19'],
+  ['103', 'Khushi Sharma', 'Amit Sharma', 'Ravi Sharma', '2024-12-14', '2024-12-19'],
 ];
 const ALLOCATION_COL_WIDTHS = [
-  { wch: 18 }, { wch: 25 }, { wch: 25 }, { wch: 25 }, { wch: 18 }, { wch: 18 },
+  { wch: 18 },
+  { wch: 25 },
+  { wch: 25 },
+  { wch: 25 },
+  { wch: 18 },
+  { wch: 18 },
 ];
-const GUEST_LIST_HEADERS = ['Full Name (Copy This)', 'First Name', 'Last Name', 'Side', 'Needs Accommodation'];
+const GUEST_LIST_HEADERS = [
+  'Full Name (Copy This)',
+  'First Name',
+  'Last Name',
+  'Side',
+  'Needs Accommodation',
+];
 const GUEST_LIST_COL_WIDTHS = [{ wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 20 }];
 
 function buildGuestListData(guests: GuestForTemplate[]): string[][] {
@@ -113,7 +133,13 @@ function buildGuestListData(guests: GuestForTemplate[]): string[][] {
     rows.push(["=== BRIDE'S SIDE ===", '', '', '', '']);
     brideGuests.forEach((g) => {
       const full = `${g.first_name}${g.last_name ? ' ' + g.last_name : ''}`;
-      rows.push([full, g.first_name, g.last_name ?? '', 'Bride', g.needs_accommodation ? 'Yes' : 'No']);
+      rows.push([
+        full,
+        g.first_name,
+        g.last_name ?? '',
+        'Bride',
+        g.needs_accommodation ? 'Yes' : 'No',
+      ]);
     });
     rows.push(['', '', '', '', '']);
   }
@@ -122,7 +148,13 @@ function buildGuestListData(guests: GuestForTemplate[]): string[][] {
     rows.push(["=== GROOM'S SIDE ===", '', '', '', '']);
     groomGuests.forEach((g) => {
       const full = `${g.first_name}${g.last_name ? ' ' + g.last_name : ''}`;
-      rows.push([full, g.first_name, g.last_name ?? '', 'Groom', g.needs_accommodation ? 'Yes' : 'No']);
+      rows.push([
+        full,
+        g.first_name,
+        g.last_name ?? '',
+        'Groom',
+        g.needs_accommodation ? 'Yes' : 'No',
+      ]);
     });
   }
 
@@ -194,10 +226,7 @@ function splitName(fullName: string): { first_name: string; last_name: string } 
   return { first_name: parts[0] ?? '', last_name: parts.slice(1).join(' ') };
 }
 
-export function parseRoomAllocationExcel(
-  buffer: Buffer,
-  hotelName: string,
-): ParsedAllocation[] {
+export function parseRoomAllocationExcel(buffer: Buffer, hotelName: string): ParsedAllocation[] {
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) return [];
@@ -206,17 +235,36 @@ export function parseRoomAllocationExcel(
   const data: Record<string, any>[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]!);
 
   const filtered = data.filter((row) => {
-    const room = getString(row['Room Number*'] ?? row['Room Number'] ?? row['room_number*'] ?? row['room_number']);
+    const room = getString(
+      row['Room Number*'] ?? row['Room Number'] ?? row['room_number*'] ?? row['room_number'],
+    );
     const g1 = getString(row['Guest 1'] ?? row['guest_1']);
-    const ci = getString(row['Check-in Date*'] ?? row['Check-in Date'] ?? row['check_in_date*'] ?? row['check_in_date']);
+    const ci = getString(
+      row['Check-in Date*'] ??
+        row['Check-in Date'] ??
+        row['check_in_date*'] ??
+        row['check_in_date'],
+    );
     return room !== '' || g1 !== '' || ci !== '';
   });
 
   const allocations: ParsedAllocation[] = [];
   filtered.forEach((row) => {
-    const roomNumber = getString(row['Room Number*'] ?? row['Room Number'] ?? row['room_number*'] ?? row['room_number']);
-    const checkInDate = getString(row['Check-in Date*'] ?? row['Check-in Date'] ?? row['check_in_date*'] ?? row['check_in_date']);
-    const checkOutDate = getString(row['Check-out Date*'] ?? row['Check-out Date'] ?? row['check_out_date*'] ?? row['check_out_date']);
+    const roomNumber = getString(
+      row['Room Number*'] ?? row['Room Number'] ?? row['room_number*'] ?? row['room_number'],
+    );
+    const checkInDate = getString(
+      row['Check-in Date*'] ??
+        row['Check-in Date'] ??
+        row['check_in_date*'] ??
+        row['check_in_date'],
+    );
+    const checkOutDate = getString(
+      row['Check-out Date*'] ??
+        row['Check-out Date'] ??
+        row['check_out_date*'] ??
+        row['check_out_date'],
+    );
 
     const guestNames = [
       getString(row['Guest 1'] ?? row['guest_1']),
@@ -226,7 +274,15 @@ export function parseRoomAllocationExcel(
 
     guestNames.forEach((guestFullName) => {
       const { first_name, last_name } = splitName(guestFullName);
-      allocations.push({ hotel_name: hotelName, room_number: roomNumber, guest_first_name: first_name, guest_last_name: last_name, guest_full_name: guestFullName, check_in_date: checkInDate, check_out_date: checkOutDate });
+      allocations.push({
+        hotel_name: hotelName,
+        room_number: roomNumber,
+        guest_first_name: first_name,
+        guest_last_name: last_name,
+        guest_full_name: guestFullName,
+        check_in_date: checkInDate,
+        check_out_date: checkOutDate,
+      });
     });
   });
 
@@ -241,28 +297,53 @@ export function parseMultiVenueAllocationExcel(
   const allAllocations: ParsedMultiVenueAllocation[] = [];
 
   workbook.SheetNames.forEach((sheetName) => {
-    if (sheetName.toLowerCase().includes('guest list') || sheetName.toLowerCase().includes('guest_list')) return;
+    if (
+      sheetName.toLowerCase().includes('guest list') ||
+      sheetName.toLowerCase().includes('guest_list')
+    )
+      return;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: Record<string, any>[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]!);
 
     const filtered = data.filter((row) => {
-      const room = getString(row['Room Number*'] ?? row['Room Number'] ?? row['room_number*'] ?? row['room_number']);
+      const room = getString(
+        row['Room Number*'] ?? row['Room Number'] ?? row['room_number*'] ?? row['room_number'],
+      );
       const g1 = getString(row['Guest 1'] ?? row['guest_1']);
-      const ci = getString(row['Check-in Date*'] ?? row['Check-in Date'] ?? row['check_in_date*'] ?? row['check_in_date']);
+      const ci = getString(
+        row['Check-in Date*'] ??
+          row['Check-in Date'] ??
+          row['check_in_date*'] ??
+          row['check_in_date'],
+      );
       return room !== '' || g1 !== '' || ci !== '';
     });
 
     let hotelName = sheetName.replace(/^\d+\.\s*/, '');
     const matchedVenue = Object.values(venuesMap).find(
-      (v) => hotelName.toLowerCase().includes(v.name.toLowerCase()) || v.name.toLowerCase().includes(hotelName.toLowerCase()),
+      (v) =>
+        hotelName.toLowerCase().includes(v.name.toLowerCase()) ||
+        v.name.toLowerCase().includes(hotelName.toLowerCase()),
     );
     if (matchedVenue) hotelName = matchedVenue.name;
 
     filtered.forEach((row) => {
-      const roomNumber = getString(row['Room Number*'] ?? row['Room Number'] ?? row['room_number*'] ?? row['room_number']);
-      const checkInDate = getString(row['Check-in Date*'] ?? row['Check-in Date'] ?? row['check_in_date*'] ?? row['check_in_date']);
-      const checkOutDate = getString(row['Check-out Date*'] ?? row['Check-out Date'] ?? row['check_out_date*'] ?? row['check_out_date']);
+      const roomNumber = getString(
+        row['Room Number*'] ?? row['Room Number'] ?? row['room_number*'] ?? row['room_number'],
+      );
+      const checkInDate = getString(
+        row['Check-in Date*'] ??
+          row['Check-in Date'] ??
+          row['check_in_date*'] ??
+          row['check_in_date'],
+      );
+      const checkOutDate = getString(
+        row['Check-out Date*'] ??
+          row['Check-out Date'] ??
+          row['check_out_date*'] ??
+          row['check_out_date'],
+      );
 
       const guestNames = [
         getString(row['Guest 1'] ?? row['guest_1']),
@@ -272,7 +353,16 @@ export function parseMultiVenueAllocationExcel(
 
       guestNames.forEach((guestFullName) => {
         const { first_name, last_name } = splitName(guestFullName);
-        allAllocations.push({ hotel_name: hotelName, sheet_name: sheetName, room_number: roomNumber, guest_first_name: first_name, guest_last_name: last_name, guest_full_name: guestFullName, check_in_date: checkInDate, check_out_date: checkOutDate });
+        allAllocations.push({
+          hotel_name: hotelName,
+          sheet_name: sheetName,
+          room_number: roomNumber,
+          guest_first_name: first_name,
+          guest_last_name: last_name,
+          guest_full_name: guestFullName,
+          check_in_date: checkInDate,
+          check_out_date: checkOutDate,
+        });
       });
     });
   });
@@ -290,9 +380,12 @@ export function validateRoomAllocation(allocation: ParsedAllocation): Allocation
   const errors: string[] = [];
 
   if (!allocation.room_number.trim()) errors.push('Room Number* is REQUIRED and cannot be empty');
-  if (!allocation.guest_first_name.trim()) errors.push('At least one guest is REQUIRED for room allocation');
-  if (!allocation.check_in_date.trim()) errors.push('Check-in Date* is REQUIRED and cannot be empty');
-  if (!allocation.check_out_date.trim()) errors.push('Check-out Date* is REQUIRED and cannot be empty');
+  if (!allocation.guest_first_name.trim())
+    errors.push('At least one guest is REQUIRED for room allocation');
+  if (!allocation.check_in_date.trim())
+    errors.push('Check-in Date* is REQUIRED and cannot be empty');
+  if (!allocation.check_out_date.trim())
+    errors.push('Check-out Date* is REQUIRED and cannot be empty');
 
   if (allocation.check_in_date.trim() && !DATE_RE.test(allocation.check_in_date.trim())) {
     errors.push('Check-in Date* must be in YYYY-MM-DD format (e.g., 2024-12-15)');

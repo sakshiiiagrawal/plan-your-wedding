@@ -15,7 +15,9 @@ const ROOT = join(__dirname, '..');
 function checkNodeVersion() {
   const major = parseInt(process.version.slice(1).split('.')[0], 10);
   if (major < 20) {
-    console.error(`Node.js 20+ required (found ${process.version}). Install from https://nodejs.org`);
+    console.error(
+      `Node.js 20+ required (found ${process.version}). Install from https://nodejs.org`,
+    );
     process.exit(1);
   }
 }
@@ -35,17 +37,17 @@ function installDeps() {
 }
 
 const rl = createInterface({ input: process.stdin, output: process.stdout });
-const ask = q => new Promise(resolve => rl.question(q, resolve));
+const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
 
 async function configureEnv() {
   console.log('\n--- Supabase Configuration ---');
   console.log('Find these in your Supabase project: Settings > API\n');
 
   const supabaseUrl = (await ask('SUPABASE_URL (e.g. https://xxxx.supabase.co): ')).trim();
-  const serviceKey  = (await ask('SUPABASE_SERVICE_KEY (service_role key): ')).trim();
-  const anonKey     = (await ask('SUPABASE_ANON_KEY (anon/public key): ')).trim();
+  const serviceKey = (await ask('SUPABASE_SERVICE_KEY (service_role key): ')).trim();
+  const anonKey = (await ask('SUPABASE_ANON_KEY (anon/public key): ')).trim();
 
-  const jwtInput  = (await ask('JWT_SECRET (press Enter to auto-generate): ')).trim();
+  const jwtInput = (await ask('JWT_SECRET (press Enter to auto-generate): ')).trim();
   const jwtSecret = jwtInput || randomBytes(48).toString('base64');
   if (!jwtInput) console.log('  → Auto-generated JWT_SECRET');
 
@@ -74,11 +76,12 @@ async function configureEnv() {
   console.log('✓ Created api/.env');
 
   // Write frontend/.env
-  const frontendEnv = [
-    `VITE_API_URL=http://localhost:3001`,
-    `VITE_SUPABASE_URL=${supabaseUrl}`,
-    `VITE_SUPABASE_ANON_KEY=${anonKey}`,
-  ].join('\n') + '\n';
+  const frontendEnv =
+    [
+      `VITE_API_URL=http://localhost:3001`,
+      `VITE_SUPABASE_URL=${supabaseUrl}`,
+      `VITE_SUPABASE_ANON_KEY=${anonKey}`,
+    ].join('\n') + '\n';
 
   writeFileSync(join(ROOT, 'frontend', '.env'), frontendEnv);
   console.log('✓ Created frontend/.env');
@@ -91,11 +94,13 @@ async function main() {
 
   checkNodeVersion();
 
-  const apiEnvExists      = existsSync(join(ROOT, 'api', '.env'));
+  const apiEnvExists = existsSync(join(ROOT, 'api', '.env'));
   const frontendEnvExists = existsSync(join(ROOT, 'frontend', '.env'));
 
   if (apiEnvExists && frontendEnvExists) {
-    const ans = (await ask('\napi/.env and frontend/.env already exist. Reconfigure? [y/N]: ')).trim();
+    const ans = (
+      await ask('\napi/.env and frontend/.env already exist. Reconfigure? [y/N]: ')
+    ).trim();
     if (ans.toLowerCase() === 'y') {
       await configureEnv();
     } else {
@@ -118,7 +123,7 @@ async function main() {
   console.log('  3. Open http://localhost:5173/onboard to create your admin account\n');
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error(err.message);
   rl.close();
   process.exit(1);

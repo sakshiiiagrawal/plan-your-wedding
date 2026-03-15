@@ -116,9 +116,7 @@ function getUserFriendlyMessage(err: SupabaseError): string | null {
   if (code === '23502' || message.includes('null value in column')) {
     const columnMatch = message.match(/column "([^"]+)"/);
     const column = columnMatch?.[1] ?? 'field';
-    const friendlyName = column
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, (char) => char.toUpperCase());
+    const friendlyName = column.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
     return `${friendlyName} is required. Please provide a value.`;
   }
 
@@ -171,7 +169,7 @@ export default function errorMiddleware(
   res: Response,
   // next must be present for Express to recognise this as a 4-argument error handler
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _next: NextFunction
+  _next: NextFunction,
 ): void {
   console.error('=== Error Details ===');
   if (err instanceof Error) {
@@ -230,14 +228,15 @@ export default function errorMiddleware(
 
   // Default 500
   const status =
-    typeof err === 'object' && err !== null && 'status' in err && typeof (err as Record<string, unknown>).status === 'number'
+    typeof err === 'object' &&
+    err !== null &&
+    'status' in err &&
+    typeof (err as Record<string, unknown>).status === 'number'
       ? (err as { status: number }).status
       : 500;
 
   const message =
-    err instanceof Error
-      ? err.message
-      : 'An unexpected error occurred. Please try again later.';
+    err instanceof Error ? err.message : 'An unexpected error occurred. Please try again later.';
 
   res.status(status).json({
     error: message,

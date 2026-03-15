@@ -55,9 +55,7 @@ export async function findAllByOwner(
   }
 
   if (filters.search) {
-    query = query.or(
-      `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%`,
-    );
+    query = query.or(`first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%`);
   }
 
   const { data, error } = await query.order('first_name', { ascending: true });
@@ -76,10 +74,7 @@ export async function findSummaryByOwner(ownerId: string) {
   return { guests: guests ?? [], rsvps: rsvps ?? [] };
 }
 
-export async function findByIdAndOwner(
-  id: string,
-  ownerId: string,
-): Promise<GuestDetail | null> {
+export async function findByIdAndOwner(id: string, ownerId: string): Promise<GuestDetail | null> {
   const { data, error } = await supabase
     .from('guests')
     .select(
@@ -133,19 +128,13 @@ export async function deleteGuest(id: string, ownerId: string): Promise<void> {
 // RSVP
 // ---------------------------------------------------------------------------
 
-export async function insertRsvpEntries(
-  entries: GuestEventRsvpInsert[],
-): Promise<void> {
+export async function insertRsvpEntries(entries: GuestEventRsvpInsert[]): Promise<void> {
   const { error } = await supabase.from('guest_event_rsvp').insert(entries);
   if (error) throw error;
 }
 
 export async function upsertRsvp(payload: GuestEventRsvpInsert) {
-  const { data, error } = await supabase
-    .from('guest_event_rsvp')
-    .upsert(payload)
-    .select()
-    .single();
+  const { data, error } = await supabase.from('guest_event_rsvp').upsert(payload).select().single();
 
   if (error) throw error;
   return data;
@@ -167,11 +156,7 @@ export async function findGroupsByOwner(ownerId: string): Promise<GuestGroupWith
 }
 
 export async function insertGroup(payload: GuestGroupInsert): Promise<GuestGroupRow> {
-  const { data, error } = await supabase
-    .from('guest_groups')
-    .insert([payload])
-    .select()
-    .single();
+  const { data, error } = await supabase.from('guest_groups').insert([payload]).select().single();
 
   if (error) throw error;
   return data as GuestGroupRow;

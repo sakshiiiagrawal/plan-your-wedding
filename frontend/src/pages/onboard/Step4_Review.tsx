@@ -41,7 +41,10 @@ export default function Step4_Review({ data, onSubmit, onBack, loading }: Step4P
             <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Wedding Date</p>
             <p className="text-gray-700">
               {new Date(weddingDate).toLocaleDateString('en-IN', {
-                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
               })}
             </p>
           </div>
@@ -62,7 +65,12 @@ export default function Step4_Review({ data, onSubmit, onBack, loading }: Step4P
       </div>
 
       <div className="flex gap-3">
-        <button type="button" onClick={onBack} disabled={loading} className="btn-secondary flex-1 py-3">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={loading}
+          className="btn-secondary flex-1 py-3"
+        >
           Back
         </button>
         <button

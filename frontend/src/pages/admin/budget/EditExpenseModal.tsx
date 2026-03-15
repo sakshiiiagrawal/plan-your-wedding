@@ -45,7 +45,14 @@ interface FormData {
   paid_amount: number | string;
 }
 
-export default function EditExpenseModal({ expense, onClose, onSubmit, isPending, vendors, canEdit }: EditExpenseModalProps) {
+export default function EditExpenseModal({
+  expense,
+  onClose,
+  onSubmit,
+  isPending,
+  vendors,
+  canEdit,
+}: EditExpenseModalProps) {
   const [formData, setFormData] = useState<FormData | null>(null);
   const [showCustomCategoryModal, setShowCustomCategoryModal] = useState(false);
   const [customCategoryParentId, setCustomCategoryParentId] = useState<string | null>(null);
@@ -56,7 +63,7 @@ export default function EditExpenseModal({ expense, onClose, onSubmit, isPending
         description: expense.description || '',
         amount: expense.amount || '',
         category_id: expense.category_id || null,
-        expense_date: expense.expense_date || new Date().toISOString().split('T')[0],
+        expense_date: (expense.expense_date || new Date().toISOString().split('T')[0]) ?? '',
         paid_by: expense.paid_by || '',
         side: expense.side || 'bride',
         is_shared: expense.is_shared || false,
@@ -72,7 +79,8 @@ export default function EditExpenseModal({ expense, onClose, onSubmit, isPending
 
   if (!expense || !formData) return null;
 
-  const set = (patch: Partial<FormData>) => setFormData((prev) => prev ? ({ ...prev, ...patch }) : null);
+  const set = (patch: Partial<FormData>) =>
+    setFormData((prev) => (prev ? { ...prev, ...patch } : null));
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -143,7 +151,11 @@ export default function EditExpenseModal({ expense, onClose, onSubmit, isPending
                   />
                   {formData.amount && formData.paid_amount && (
                     <p className="text-sm text-gray-500 mt-1">
-                      Remaining: ₹{(parseFloat(String(formData.amount)) - parseFloat(String(formData.paid_amount) || '0')).toLocaleString('en-IN')}
+                      Remaining: ₹
+                      {(
+                        parseFloat(String(formData.amount)) -
+                        parseFloat(String(formData.paid_amount) || '0')
+                      ).toLocaleString('en-IN')}
                     </p>
                   )}
                 </div>
@@ -151,7 +163,7 @@ export default function EditExpenseModal({ expense, onClose, onSubmit, isPending
             </div>
 
             <CategorySelector
-              value={formData.category_id}
+              value={formData.category_id ?? ''}
               onChange={(categoryId: string | null) => set({ category_id: categoryId })}
               allowCustom={canEdit}
               onAddCustom={(parentId: string | null) => {
@@ -269,7 +281,9 @@ export default function EditExpenseModal({ expense, onClose, onSubmit, isPending
                 >
                   <option value="">None</option>
                   {vendors.map((v) => (
-                    <option key={v.id} value={v.id}>{v.name}</option>
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
                   ))}
                 </select>
               </div>

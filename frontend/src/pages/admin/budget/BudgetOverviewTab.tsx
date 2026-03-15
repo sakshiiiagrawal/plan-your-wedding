@@ -1,5 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+} from 'recharts';
 
 const COLORS = ['#8B0000', '#D4AF37', '#228B22', '#1A237E', '#E91E63', '#FF6F00', '#607D8B'];
 
@@ -8,12 +19,16 @@ interface BudgetOverviewTabProps {
   formatCurrency: (amount: number) => string;
 }
 
-export default function BudgetOverviewTab({ budgetOverview, formatCurrency }: BudgetOverviewTabProps) {
-  const categoryData = budgetOverview?.map(cat => ({
-    name: cat.name,
-    allocated: parseFloat(cat.allocated_amount || 0),
-    spent: parseFloat(cat.spent || 0),
-  })) || [];
+export default function BudgetOverviewTab({
+  budgetOverview,
+  formatCurrency,
+}: BudgetOverviewTabProps) {
+  const categoryData =
+    budgetOverview?.map((cat) => ({
+      name: cat.name,
+      allocated: parseFloat(cat.allocated_amount || 0),
+      spent: parseFloat(cat.spent || 0),
+    })) || [];
 
   const pieData = categoryData.map((cat, i) => ({
     name: cat.name,
@@ -36,7 +51,7 @@ export default function BudgetOverviewTab({ budgetOverview, formatCurrency }: Bu
               label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
             >
               {pieData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
+                <Cell key={`cell-${index}`} fill={entry.color ?? ''} />
               ))}
             </Pie>
             <Tooltip formatter={(value: any) => formatCurrency(value)} />

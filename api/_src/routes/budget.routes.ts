@@ -23,7 +23,11 @@ router.put('/total', validateBody(updateTotalBudgetSchema), ctrl.updateTotalBudg
 router.get('/categories/tree', ctrl.getCategoryTree);
 router.get('/categories', ctrl.getCategories);
 router.post('/categories', validateBody(createCategorySchema), ctrl.createCategory);
-router.post('/categories/custom', validateBody(createCustomCategorySchema), ctrl.createCustomCategory);
+router.post(
+  '/categories/custom',
+  validateBody(createCustomCategorySchema),
+  ctrl.createCustomCategory,
+);
 router.put('/categories/:id', validateBody(updateCategorySchema), ctrl.updateCategory);
 
 // Expenses — specific paths before /:id

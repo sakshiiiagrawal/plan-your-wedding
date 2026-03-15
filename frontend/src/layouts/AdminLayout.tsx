@@ -32,14 +32,28 @@ export default function AdminLayout() {
     { path: `/${slug}/admin/events`, label: 'Events', icon: HiOutlineCalendar },
     { path: `/${slug}/admin/guests`, label: 'Guests', icon: HiOutlineUserGroup },
     { path: `/${slug}/admin/venues`, label: 'Venues', icon: HiOutlineLocationMarker },
-    { path: `/${slug}/admin/accommodations`, label: 'Accommodations', icon: HiOutlineOfficeBuilding },
+    {
+      path: `/${slug}/admin/accommodations`,
+      label: 'Accommodations',
+      icon: HiOutlineOfficeBuilding,
+    },
     { path: `/${slug}/admin/vendors`, label: 'Vendors', icon: HiOutlineBriefcase },
-    { path: `/${slug}/admin/budget`, label: 'Budget', icon: HiOutlineCurrencyRupee, requiresFinanceAccess: true },
+    {
+      path: `/${slug}/admin/budget`,
+      label: 'Budget',
+      icon: HiOutlineCurrencyRupee,
+      requiresFinanceAccess: true,
+    },
     { path: `/${slug}/admin/tasks`, label: 'Tasks', icon: HiOutlineClipboardList },
-    { path: `/${slug}/admin/team`, label: 'Team Access', icon: HiOutlineLockClosed, adminOnly: true },
+    {
+      path: `/${slug}/admin/team`,
+      label: 'Team Access',
+      icon: HiOutlineLockClosed,
+      adminOnly: true,
+    },
   ];
 
-  const navItems = allNavItems.filter(item => {
+  const navItems = allNavItems.filter((item) => {
     if (item.requiresFinanceAccess && !canViewFinance) return false;
     if (item.adminOnly && !isAdmin) return false;
     return true;
@@ -86,7 +100,9 @@ export default function AdminLayout() {
                 <span className="text-white font-script text-xl">{initials}</span>
               </div>
               <div>
-                <h1 className="font-display font-bold text-maroon-800">{brideName} & {groomName}</h1>
+                <h1 className="font-display font-bold text-maroon-800">
+                  {brideName} & {groomName}
+                </h1>
                 <p className="text-xs text-gray-500">Wedding Planner</p>
               </div>
             </NavLink>
@@ -97,7 +113,7 @@ export default function AdminLayout() {
               <NavLink
                 key={item.path}
                 to={item.path}
-                end={item.end}
+                end={!!item.end}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
                     isActive
@@ -121,7 +137,9 @@ export default function AdminLayout() {
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">{user?.name || 'Admin'}</p>
+                <p className="text-sm font-medium text-gray-800 truncate">
+                  {user?.name || 'Admin'}
+                </p>
                 <p className="text-xs text-gray-500 truncate">{user?.email}</p>
               </div>
             </div>

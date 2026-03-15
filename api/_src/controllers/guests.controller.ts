@@ -11,7 +11,8 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     const { side, needs_accommodation, search } = req.query;
     const guests = await guestsService.listGuests(ownerId, {
       side: typeof side === 'string' ? side : undefined,
-      needs_accommodation: typeof needs_accommodation === 'string' ? needs_accommodation : undefined,
+      needs_accommodation:
+        typeof needs_accommodation === 'string' ? needs_accommodation : undefined,
       search: typeof search === 'string' ? search : undefined,
     });
     res.json(guests);
@@ -33,11 +34,7 @@ export const getSummary = async (
   }
 };
 
-export const getGroups = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> => {
+export const getGroups = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const ownerId = getWeddingOwnerId(req);
     res.json(await guestsService.listGroups(ownerId));

@@ -8,7 +8,11 @@ export default function PublicLayout() {
   const groomName = heroContent?.groom_name || 'Groom';
   const coupleNames = `${brideName} & ${groomName}`;
   const weddingDate = heroContent?.wedding_date
-    ? new Date(heroContent.wedding_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    ? new Date(heroContent.wedding_date).toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
     : '';
 
   return (
@@ -21,13 +25,22 @@ export default function PublicLayout() {
             </NavLink>
 
             <div className="hidden md:flex items-center gap-8">
-              <a href="#our-story" className="text-sm text-gray-700 hover:text-maroon-800 transition-colors">
+              <a
+                href="#our-story"
+                className="text-sm text-gray-700 hover:text-maroon-800 transition-colors"
+              >
                 Our Story
               </a>
-              <a href="#events" className="text-sm text-gray-700 hover:text-maroon-800 transition-colors">
+              <a
+                href="#events"
+                className="text-sm text-gray-700 hover:text-maroon-800 transition-colors"
+              >
                 Events
               </a>
-              <a href="#gallery" className="text-sm text-gray-700 hover:text-maroon-800 transition-colors">
+              <a
+                href="#gallery"
+                className="text-sm text-gray-700 hover:text-maroon-800 transition-colors"
+              >
                 Gallery
               </a>
               <a href="#rsvp" className="btn-primary">
@@ -35,10 +48,7 @@ export default function PublicLayout() {
               </a>
             </div>
 
-            <NavLink
-              to={`/${slug}/admin`}
-              className="text-sm text-gold-600 hover:text-gold-700"
-            >
+            <NavLink to={`/${slug}/admin`} className="text-sm text-gold-600 hover:text-gold-700">
               Admin
             </NavLink>
           </div>
@@ -54,12 +64,14 @@ export default function PublicLayout() {
           <h3 className="font-script text-4xl mb-4">{coupleNames}</h3>
           {weddingDate && <p className="text-gold-300 mb-6">{weddingDate}</p>}
           <div className="flex justify-center gap-6 text-sm text-cream/70">
-            <a href="#" className="hover:text-gold-300 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-gold-300 transition-colors">Contact</a>
+            <a href="#" className="hover:text-gold-300 transition-colors">
+              Privacy
+            </a>
+            <a href="#" className="hover:text-gold-300 transition-colors">
+              Contact
+            </a>
           </div>
-          <p className="mt-8 text-sm text-cream/50">
-            Made with love for our special day
-          </p>
+          <p className="mt-8 text-sm text-cream/50">Made with love for our special day</p>
         </div>
       </footer>
     </div>

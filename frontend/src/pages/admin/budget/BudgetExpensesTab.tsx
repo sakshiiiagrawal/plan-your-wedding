@@ -9,7 +9,13 @@ interface BudgetExpensesTabProps {
   onEdit: (row: any) => void;
 }
 
-export default function BudgetExpensesTab({ allExpenses, loading, formatCurrency, canEdit, onEdit }: BudgetExpensesTabProps) {
+export default function BudgetExpensesTab({
+  allExpenses,
+  loading,
+  formatCurrency,
+  canEdit,
+  onEdit,
+}: BudgetExpensesTabProps) {
   if (loading) {
     return <div className="card p-8 text-center text-gray-500">Loading expenses...</div>;
   }
@@ -39,11 +45,15 @@ export default function BudgetExpensesTab({ allExpenses, loading, formatCurrency
               <td className="p-4 font-medium">{row.description}</td>
               <td className="p-4 text-gray-600 capitalize">{row.category}</td>
               <td className="p-4">
-                <span className={`badge text-xs ${row.type === 'vendor' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
+                <span
+                  className={`badge text-xs ${row.type === 'vendor' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}
+                >
                   {row.type === 'vendor' ? 'Vendor' : 'Expense'}
                 </span>
               </td>
-              <td className="p-4 text-right font-medium text-maroon-800">{formatCurrency(row.amount)}</td>
+              <td className="p-4 text-right font-medium text-maroon-800">
+                {formatCurrency(row.amount)}
+              </td>
               <td className="p-4 text-gray-600">
                 {row.date ? new Date(row.date).toLocaleDateString('en-IN') : '—'}
               </td>
@@ -75,7 +85,9 @@ export default function BudgetExpensesTab({ allExpenses, loading, formatCurrency
         </tbody>
         <tfoot className="bg-gray-100 font-bold">
           <tr>
-            <td colSpan={3} className="p-4">Total</td>
+            <td colSpan={3} className="p-4">
+              Total
+            </td>
             <td className="p-4 text-right text-maroon-800">
               {formatCurrency(allExpenses.reduce((s, r) => s + r.amount, 0))}
             </td>

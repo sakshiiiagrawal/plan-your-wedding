@@ -1,11 +1,11 @@
-import type { TableRow, TableInsert } from "../supabase.generated";
+import type { TableRow, TableInsert } from '../supabase.generated';
 
 // ---------------------------------------------------------------------------
 // Raw DB rows
 // ---------------------------------------------------------------------------
 
-export type WebsiteContentRow = TableRow<"website_content">;
-export type WebsiteContentInsert = TableInsert<"website_content">;
+export type WebsiteContentRow = TableRow<'website_content'>;
+export type WebsiteContentInsert = TableInsert<'website_content'>;
 
 // ---------------------------------------------------------------------------
 // Typed content shapes

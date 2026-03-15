@@ -24,8 +24,9 @@ export default function Login() {
       await login(email, password);
       toast.success('Welcome to Wedding Planner!');
       navigate(`/${slug}/admin`);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Invalid credentials');
+    } catch (error) {
+      const err = error as { response?: { data?: { error?: string } } };
+      toast.error(err?.response?.data?.error || 'Invalid credentials');
     } finally {
       setLoading(false);
     }
@@ -35,7 +36,9 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-maroon-800 via-maroon-700 to-gold-600 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="font-script text-5xl text-cream mb-2">{brideName} & {groomName}</h1>
+          <h1 className="font-script text-5xl text-cream mb-2">
+            {brideName} & {groomName}
+          </h1>
           <p className="text-gold-300">Wedding Planner Admin</p>
         </div>
 
@@ -80,7 +83,9 @@ export default function Login() {
         </div>
 
         <p className="mt-6 text-center text-cream/70 text-sm">
-          <a href={`/${slug}`} className="hover:text-gold-300">← Back to Wedding Website</a>
+          <a href={`/${slug}`} className="hover:text-gold-300">
+            ← Back to Wedding Website
+          </a>
         </p>
       </div>
     </div>

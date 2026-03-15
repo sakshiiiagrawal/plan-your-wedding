@@ -7,7 +7,7 @@ import type { AuthenticatedUser } from '../types/express';
 export const verifyToken = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -22,7 +22,11 @@ export const verifyToken = async (
   }
 
   try {
-    const decoded = jwt.verify(token, env.JWT_SECRET) as { id: string; email: string; role: string };
+    const decoded = jwt.verify(token, env.JWT_SECRET) as {
+      id: string;
+      email: string;
+      role: string;
+    };
 
     const { data: user, error } = await supabase
       .from('users')
@@ -49,11 +53,7 @@ export const verifyToken = async (
   }
 };
 
-export const requireAdmin = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
+export const requireAdmin = (req: Request, res: Response, next: NextFunction): void => {
   if (req.user?.role !== 'admin') {
     res.status(403).json({ error: 'Admin access required' });
     return;

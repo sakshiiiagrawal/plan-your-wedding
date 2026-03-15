@@ -1,5 +1,12 @@
 import { supabase } from '../config/database';
-import type { AccommodationInsert, AccommodationRow, RoomInsert, RoomRow, RoomAllocationInsert, RoomAllocationRow } from '@wedding-planner/shared';
+import type {
+  AccommodationInsert,
+  AccommodationRow,
+  RoomInsert,
+  RoomRow,
+  RoomAllocationInsert,
+  RoomAllocationRow,
+} from '@wedding-planner/shared';
 
 // ---------------------------------------------------------------------------
 // Accommodations
@@ -81,7 +88,11 @@ export async function updateAccommodation(
 }
 
 export async function deleteAccommodation(id: string, ownerId: string): Promise<void> {
-  const { error } = await supabase.from('accommodations').delete().eq('id', id).eq('user_id', ownerId);
+  const { error } = await supabase
+    .from('accommodations')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', ownerId);
   if (error) throw error;
 }
 
@@ -152,14 +163,16 @@ export async function findExistingAllocationsForRoom(roomId: string) {
 }
 
 export async function insertAllocation(payload: RoomAllocationInsert): Promise<RoomAllocationRow> {
-  const { data, error } = await supabase.from('room_allocations').insert([payload]).select().single();
+  const { data, error } = await supabase
+    .from('room_allocations')
+    .insert([payload])
+    .select()
+    .single();
   if (error) throw error;
   return data as RoomAllocationRow;
 }
 
-export async function insertAllocationsBulk(
-  payloads: RoomAllocationInsert[],
-) {
+export async function insertAllocationsBulk(payloads: RoomAllocationInsert[]) {
   const { data, error } = await supabase
     .from('room_allocations')
     .insert(payloads)
@@ -218,7 +231,12 @@ export async function findGuestsByOwner(ownerId: string) {
     .select('id, first_name, last_name, side')
     .eq('user_id', ownerId);
   if (error) throw error;
-  return (data ?? []) as { id: string; first_name: string; last_name: string | null; side: string }[];
+  return (data ?? []) as {
+    id: string;
+    first_name: string;
+    last_name: string | null;
+    side: string;
+  }[];
 }
 
 export async function findGuestsForTemplate(ownerId: string) {
@@ -229,7 +247,12 @@ export async function findGuestsForTemplate(ownerId: string) {
     .order('side', { ascending: true })
     .order('first_name', { ascending: true });
   if (error) throw error;
-  return (data ?? []) as { first_name: string; last_name: string | null; side: string; needs_accommodation: boolean }[];
+  return (data ?? []) as {
+    first_name: string;
+    last_name: string | null;
+    side: string;
+    needs_accommodation: boolean;
+  }[];
 }
 
 export async function findGuestByName(

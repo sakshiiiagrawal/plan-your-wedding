@@ -56,11 +56,7 @@ export async function updateEvent(
 }
 
 export async function deleteEvent(id: string, ownerId: string): Promise<void> {
-  const { error } = await supabase
-    .from('events')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', ownerId);
+  const { error } = await supabase.from('events').delete().eq('id', id).eq('user_id', ownerId);
 
   if (error) throw error;
 }

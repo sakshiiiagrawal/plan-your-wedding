@@ -42,12 +42,14 @@ api/_src/
 **Step-by-step:**
 
 1. **Add shared types** in `shared/src/domain/<domain>.types.ts`:
+
    ```typescript
    import type { Database } from '../supabase.generated';
    export type MyEntityRow = Database['public']['Tables']['my_entity']['Row'];
    ```
 
 2. **Add Zod validators** in `api/_src/validators/<domain>.validator.ts`:
+
    ```typescript
    import { z } from 'zod';
    export const createMyEntitySchema = z.object({ name: z.string().min(1) });
@@ -55,20 +57,19 @@ api/_src/
    ```
 
 3. **Write repository functions** (Supabase queries only):
+
    ```typescript
    import { supabase } from '../config/database';
 
    export async function findAllByUser(userId: string) {
-     const { data, error } = await supabase
-       .from('my_entities')
-       .select('*')
-       .eq('user_id', userId);
+     const { data, error } = await supabase.from('my_entities').select('*').eq('user_id', userId);
      if (error) throw error;
      return data;
    }
    ```
 
 4. **Write service functions** (business logic, calls repository):
+
    ```typescript
    import * as repo from '../repositories/my-entity.repository';
 
@@ -78,6 +79,7 @@ api/_src/
    ```
 
 5. **Write controller** (HTTP layer):
+
    ```typescript
    import type { Request, Response, NextFunction } from 'express';
    import * as service from '../services/my-entity.service';
@@ -86,7 +88,9 @@ api/_src/
      try {
        const data = await service.listMyEntities(req.user!.id);
        res.json(data);
-     } catch (err) { next(err); }
+     } catch (err) {
+       next(err);
+     }
    };
    ```
 
@@ -104,6 +108,7 @@ Each module lives in `frontend/src/modules/<domain>/`:
 ```
 
 Use typed query key factories:
+
 ```typescript
 export const GUEST_QUERY_KEYS = {
   all: ['guests'] as const,
@@ -124,7 +129,7 @@ export const GUEST_QUERY_KEYS = {
 - **Enums**: use `as const` arrays, not TypeScript `enum` keyword
   ```typescript
   export const STATUSES = ['active', 'inactive'] as const;
-  export type Status = typeof STATUSES[number];
+  export type Status = (typeof STATUSES)[number];
   ```
 - **Error handling**: throw `HttpError` subclasses in services; controllers catch and call `next(err)`
 - **Env access**: always import from `api/_src/config/env.ts`, never use `process.env` directly

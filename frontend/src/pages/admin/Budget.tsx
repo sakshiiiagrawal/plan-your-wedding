@@ -30,14 +30,18 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  { id: 'overview',    label: 'Overview' },
-  { id: 'expenses',   label: 'Expenses' },
-  { id: 'sidewise',   label: 'Side-wise' },
+  { id: 'overview', label: 'Overview' },
+  { id: 'expenses', label: 'Expenses' },
+  { id: 'sidewise', label: 'Side-wise' },
   { id: 'categories', label: 'Categories' },
 ];
 
 const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(amount);
 
 type ExpenseTableRow = ExpenseRow & {
   category: string;
@@ -74,27 +78,33 @@ export default function Budget() {
   const updateVendorMutation = useUpdateVendor();
 
   const vendorCostTotal = useMemo(
-    () => (vendorBudgetData as Array<{ totalCost?: number }>).reduce((sum, v) => sum + (v.totalCost || 0), 0),
+    () =>
+      (vendorBudgetData as Array<{ totalCost?: number }>).reduce(
+        (sum, v) => sum + (v.totalCost || 0),
+        0,
+      ),
     [vendorBudgetData],
   );
 
   const allExpenses = useMemo((): AllExpenseRow[] => {
-    const expenseRows: ExpenseTableRow[] = ((expenses || []) as Array<{
-      id: string;
-      description: string;
-      amount: string | number;
-      budget_categories?: { name: string };
-      expense_date: string;
-      paid_by: string | null;
-      side: string | null;
-      is_shared: boolean;
-      share_percentage: number | null;
-      category_id: string | null;
-      payment_method: string | null;
-      vendor_id: string | null;
-      event_id: string | null;
-      paid_amount: number | null;
-    }>).map(e => ({
+    const expenseRows: ExpenseTableRow[] = (
+      (expenses || []) as Array<{
+        id: string;
+        description: string;
+        amount: string | number;
+        budget_categories?: { name: string };
+        expense_date: string;
+        paid_by: string | null;
+        side: string | null;
+        is_shared: boolean;
+        share_percentage: number | null;
+        category_id: string | null;
+        payment_method: string | null;
+        vendor_id: string | null;
+        event_id: string | null;
+        paid_amount: number | null;
+      }>
+    ).map((e) => ({
       id: e.id,
       type: 'expense' as const,
       description: e.description,
@@ -113,14 +123,16 @@ export default function Budget() {
       paid_amount: e.paid_amount,
     }));
 
-    const vendorRows: VendorTableRow[] = ((vendorBudgetData || []) as Array<{
-      id: string;
-      name: string;
-      category?: string;
-      totalCost?: number;
-      side?: string | null;
-      is_shared?: boolean;
-    }>).map(v => ({
+    const vendorRows: VendorTableRow[] = (
+      (vendorBudgetData || []) as Array<{
+        id: string;
+        name: string;
+        category?: string;
+        totalCost?: number;
+        side?: string | null;
+        is_shared?: boolean;
+      }>
+    ).map((v) => ({
       id: `vendor-${v.id}`,
       vendorId: v.id,
       type: 'vendor' as const,
@@ -138,17 +150,29 @@ export default function Budget() {
   }, [expenses, vendorBudgetData]);
 
   const categoryAnalysis = useMemo(() => {
-    const analysis: Record<string, { name: string; total: number; bride: number; groom: number; shared: number; count: number }> = {};
-    ((expenses || []) as Array<{
-      category_id?: string;
-      budget_categories?: { name: string };
-      amount?: string | number;
-      is_shared?: boolean;
-      side?: string;
-    }>).forEach(e => {
+    const analysis: Record<
+      string,
+      { name: string; total: number; bride: number; groom: number; shared: number; count: number }
+    > = {};
+    (
+      (expenses || []) as Array<{
+        category_id?: string;
+        budget_categories?: { name: string };
+        amount?: string | number;
+        is_shared?: boolean;
+        side?: string;
+      }>
+    ).forEach((e) => {
       const key = e.category_id || 'uncategorized';
       if (!analysis[key]) {
-        analysis[key] = { name: e.budget_categories?.name || 'Uncategorized', total: 0, bride: 0, groom: 0, shared: 0, count: 0 };
+        analysis[key] = {
+          name: e.budget_categories?.name || 'Uncategorized',
+          total: 0,
+          bride: 0,
+          groom: 0,
+          shared: 0,
+          count: 0,
+        };
       }
       const amount = parseFloat(String(e.amount || 0));
       analysis[key].total += amount;
@@ -161,14 +185,27 @@ export default function Budget() {
   }, [expenses]);
 
   const sideWiseExpenses = useMemo(() => {
-    const all = (expenses || []) as Array<{ is_shared?: boolean; side?: string; amount?: string | number }>;
-    const bride = all.filter(e => !e.is_shared && e.side === 'bride');
-    const groom = all.filter(e => !e.is_shared && e.side === 'groom');
-    const shared = all.filter(e => e.is_shared);
+    const all = (expenses || []) as Array<{
+      is_shared?: boolean;
+      side?: string;
+      amount?: string | number;
+    }>;
+    const bride = all.filter((e) => !e.is_shared && e.side === 'bride');
+    const groom = all.filter((e) => !e.is_shared && e.side === 'groom');
+    const shared = all.filter((e) => e.is_shared);
     return {
-      bride: { items: bride, total: bride.reduce((s, e) => s + parseFloat(String(e.amount || 0)), 0) },
-      groom: { items: groom, total: groom.reduce((s, e) => s + parseFloat(String(e.amount || 0)), 0) },
-      shared: { items: shared, total: shared.reduce((s, e) => s + parseFloat(String(e.amount || 0)), 0) },
+      bride: {
+        items: bride,
+        total: bride.reduce((s, e) => s + parseFloat(String(e.amount || 0)), 0),
+      },
+      groom: {
+        items: groom,
+        total: groom.reduce((s, e) => s + parseFloat(String(e.amount || 0)), 0),
+      },
+      shared: {
+        items: shared,
+        total: shared.reduce((s, e) => s + parseFloat(String(e.amount || 0)), 0),
+      },
     };
   }, [expenses]);
 
@@ -179,7 +216,8 @@ export default function Budget() {
       setEditingVendor(null);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string; error?: string } } };
-      const msg = error.response?.data?.message || error.response?.data?.error || 'Failed to update vendor';
+      const msg =
+        error.response?.data?.message || error.response?.data?.error || 'Failed to update vendor';
       toast.error(msg);
     }
   };
@@ -191,7 +229,8 @@ export default function Budget() {
       setEditingExpense(null);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string; error?: string } } };
-      const msg = error.response?.data?.message || error.response?.data?.error || 'Failed to update expense';
+      const msg =
+        error.response?.data?.message || error.response?.data?.error || 'Failed to update expense';
       toast.error(msg);
     }
   };
@@ -204,7 +243,8 @@ export default function Budget() {
       setActiveTab('expenses');
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string; error?: string } } };
-      const msg = error.response?.data?.message || error.response?.data?.error || 'Failed to add expense';
+      const msg =
+        error.response?.data?.message || error.response?.data?.error || 'Failed to add expense';
       toast.error(msg);
     }
   };
@@ -228,7 +268,10 @@ export default function Budget() {
       <div className="flex items-center justify-between">
         <h1 className="page-title">Budget & Finance</h1>
         {canEdit && (
-          <button onClick={() => setShowExpenseModal(true)} className="btn-primary flex items-center gap-2">
+          <button
+            onClick={() => setShowExpenseModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
             <HiOutlinePlus className="w-4 h-4" />
             Add Expense
           </button>
@@ -248,7 +291,7 @@ export default function Budget() {
           <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
             <div
               className="bg-green-600 h-2 rounded-full"
-              style={{ width: `${Math.min(100, Math.round(spent / (total || 1) * 100))}%` }}
+              style={{ width: `${Math.min(100, Math.round((spent / (total || 1)) * 100))}%` }}
             />
           </div>
         </div>
@@ -268,11 +311,15 @@ export default function Budget() {
         <div className="grid md:grid-cols-2 gap-4">
           <div className="p-4 bg-pink-50 rounded-lg">
             <div className="text-sm text-pink-600 mb-1">Bride Side</div>
-            <div className="text-xl font-bold text-pink-700">{formatCurrency(sideSummary.bride.total)}</div>
+            <div className="text-xl font-bold text-pink-700">
+              {formatCurrency(sideSummary.bride.total)}
+            </div>
           </div>
           <div className="p-4 bg-blue-50 rounded-lg">
             <div className="text-sm text-blue-600 mb-1">Groom Side</div>
-            <div className="text-xl font-bold text-blue-700">{formatCurrency(sideSummary.groom.total)}</div>
+            <div className="text-xl font-bold text-blue-700">
+              {formatCurrency(sideSummary.groom.total)}
+            </div>
           </div>
         </div>
       </div>
@@ -304,7 +351,11 @@ export default function Budget() {
           loading={loadingExpenses || loadingVendorBudget}
           formatCurrency={formatCurrency}
           canEdit={canEdit}
-          onEdit={(row: AllExpenseRow) => row.type === 'vendor' ? setEditingVendor(row as VendorTableRow) : setEditingExpense(row as ExpenseRow)}
+          onEdit={(row: AllExpenseRow) =>
+            row.type === 'vendor'
+              ? setEditingVendor(row as VendorTableRow)
+              : setEditingExpense(row as ExpenseRow)
+          }
         />
       )}
       {activeTab === 'sidewise' && (

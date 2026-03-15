@@ -4,11 +4,6 @@ export const USER_QUERY_KEYS = {
   setupStatus: ['setup-status'] as const,
 } as const;
 
-export {
-  useUsers,
-  useCreateUser,
-  useDeleteUser,
-  useSetupStatus,
-} from '../../../hooks/useApi';
+export { useUsers, useCreateUser, useDeleteUser, useSetupStatus } from '../../../hooks/useApi';
 
 export type { TeamMember } from '../../../hooks/useApi';

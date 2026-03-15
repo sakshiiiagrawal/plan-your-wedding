@@ -1,8 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { HiOutlinePhone, HiOutlineMail, HiOutlineStar, HiOutlinePlus, HiOutlineX, HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
-import { useVendors, useVendorCategories, useCreateVendor, useUpdateVendor, useDeleteVendor } from '../../hooks/useApi';
+import {
+  HiOutlinePhone,
+  HiOutlineMail,
+  HiOutlineStar,
+  HiOutlineX,
+  HiOutlinePencil,
+  HiOutlineTrash,
+} from 'react-icons/hi';
+import {
+  useVendors,
+  useVendorCategories,
+  useCreateVendor,
+  useUpdateVendor,
+  useDeleteVendor,
+} from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
 interface VendorFormData {
@@ -88,7 +101,8 @@ export default function Vendors() {
       setShowAddModal(false);
       resetForm();
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || 'Failed to save vendor';
+      const errorMessage =
+        error?.response?.data?.message || error?.response?.data?.error || 'Failed to save vendor';
       toast.error(errorMessage);
     }
   };
@@ -105,7 +119,9 @@ export default function Vendors() {
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
-      style: 'currency', currency: 'INR', maximumFractionDigits: 0,
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 
@@ -137,7 +153,11 @@ export default function Vendors() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="page-title">Vendors</h1>
-        {canEdit && <button onClick={() => setShowAddModal(true)} className="btn-primary">Add Vendor</button>}
+        {canEdit && (
+          <button onClick={() => setShowAddModal(true)} className="btn-primary">
+            Add Vendor
+          </button>
+        )}
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -168,7 +188,10 @@ export default function Vendors() {
                   <div>
                     <h3 className="font-semibold text-maroon-800">{vendor.name}</h3>
                     <p className="text-sm text-gold-600">
-                      {vendor.category?.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                      {vendor.category
+                        ?.split('_')
+                        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+                        .join(' ')}
                     </p>
                   </div>
                   {vendor.rating && (
@@ -208,11 +231,15 @@ export default function Vendors() {
                     </div>
                     <div className="flex justify-between text-sm mb-2">
                       <span className="text-gray-500">Paid:</span>
-                      <span className="font-medium text-green-600">{formatCurrency(paymentInfo.paid)}</span>
+                      <span className="font-medium text-green-600">
+                        {formatCurrency(paymentInfo.paid)}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Due:</span>
-                      <span className="font-medium text-red-600">{formatCurrency(paymentInfo.due)}</span>
+                      <span className="font-medium text-red-600">
+                        {formatCurrency(paymentInfo.due)}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -220,7 +247,10 @@ export default function Vendors() {
                 {events.length > 0 && (
                   <div className="mt-4 flex flex-wrap gap-2">
                     {events.map((event, idx) => (
-                      <span key={idx} className="text-xs bg-gold-100 text-gold-700 px-2 py-1 rounded">
+                      <span
+                        key={idx}
+                        className="text-xs bg-gold-100 text-gold-700 px-2 py-1 rounded"
+                      >
                         {event}
                       </span>
                     ))}
@@ -273,7 +303,10 @@ export default function Vendors() {
                 {editingVendor ? 'Edit Vendor' : 'Add New Vendor'}
               </h2>
               <button
-                onClick={() => { setShowAddModal(false); resetForm(); }}
+                onClick={() => {
+                  setShowAddModal(false);
+                  resetForm();
+                }}
                 className="p-2 hover:bg-gray-100 rounded-lg"
               >
                 <HiOutlineX className="w-5 h-5" />
@@ -303,7 +336,9 @@ export default function Vendors() {
                     required
                   >
                     {(categoryList as any[] | undefined)?.map((cat) => (
-                      <option key={cat.value} value={cat.value}>{cat.label}</option>
+                      <option key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -420,7 +455,9 @@ export default function Vendors() {
                   <input
                     type="checkbox"
                     checked={formData.contract_signed}
-                    onChange={(e) => setFormData({ ...formData, contract_signed: e.target.checked })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, contract_signed: e.target.checked })
+                    }
                     className="w-4 h-4 text-maroon-800"
                   />
                   <span className="text-sm">Contract Signed</span>
@@ -431,7 +468,10 @@ export default function Vendors() {
             <div className="flex gap-3 p-6 border-t border-gold-200">
               <button
                 type="button"
-                onClick={() => { setShowAddModal(false); resetForm(); }}
+                onClick={() => {
+                  setShowAddModal(false);
+                  resetForm();
+                }}
                 className="btn-outline flex-1"
               >
                 Cancel
@@ -444,7 +484,9 @@ export default function Vendors() {
               >
                 {createMutation.isPending || updateMutation.isPending
                   ? 'Saving...'
-                  : editingVendor ? 'Update Vendor' : 'Add Vendor'}
+                  : editingVendor
+                    ? 'Update Vendor'
+                    : 'Add Vendor'}
               </button>
             </div>
           </div>
@@ -459,7 +501,9 @@ export default function Vendors() {
               Are you sure you want to delete this vendor? This action cannot be undone.
             </p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">Cancel</button>
+              <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">
+                Cancel
+              </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
                 disabled={deleteMutation.isPending}

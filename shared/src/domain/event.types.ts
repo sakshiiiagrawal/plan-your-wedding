@@ -1,12 +1,12 @@
-import type { TableRow, TableInsert } from "../supabase.generated";
-import type { VenueRow } from "./venue.types";
+import type { TableRow, TableInsert } from '../supabase.generated';
+import type { VenueRow } from './venue.types';
 
 // ---------------------------------------------------------------------------
 // Raw DB rows
 // ---------------------------------------------------------------------------
 
-export type EventRow = TableRow<"events">;
-export type EventInsert = TableInsert<"events">;
+export type EventRow = TableRow<'events'>;
+export type EventInsert = TableInsert<'events'>;
 
 // ---------------------------------------------------------------------------
 // Derived / joined types

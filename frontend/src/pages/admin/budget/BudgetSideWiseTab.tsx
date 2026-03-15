@@ -12,7 +12,16 @@ interface SideCardProps {
   formatCurrency: (amount: number) => string;
 }
 
-function SideCard({ label, color, icon: Icon, iconBg, iconColor, count, total, formatCurrency }: SideCardProps) {
+function SideCard({
+  label,
+  color,
+  icon: Icon,
+  iconBg,
+  iconColor,
+  count,
+  total,
+  formatCurrency,
+}: SideCardProps) {
   return (
     <div className={`card border-l-4 ${color}`}>
       <div className="flex items-center gap-3 mb-3">
@@ -20,11 +29,19 @@ function SideCard({ label, color, icon: Icon, iconBg, iconColor, count, total, f
           <Icon className={`w-5 h-5 ${iconColor}`} />
         </div>
         <div>
-          <div className={`font-semibold ${color.replace('border-', 'text-').replace('-500', '-700')}`}>{label}</div>
-          <div className="text-sm text-gray-500">{count} expense{count !== 1 ? 's' : ''}</div>
+          <div
+            className={`font-semibold ${color.replace('border-', 'text-').replace('-500', '-700')}`}
+          >
+            {label}
+          </div>
+          <div className="text-sm text-gray-500">
+            {count} expense{count !== 1 ? 's' : ''}
+          </div>
         </div>
       </div>
-      <div className={`text-2xl font-bold ${color.replace('border-', 'text-').replace('-500', '-700')}`}>
+      <div
+        className={`text-2xl font-bold ${color.replace('border-', 'text-').replace('-500', '-700')}`}
+      >
         {formatCurrency(total)}
       </div>
     </div>
@@ -44,12 +61,25 @@ interface ExpenseListProps {
   isShared: boolean;
 }
 
-function ExpenseList({ items, emptyText, headerBg, headerBorder, headerColor, amountColor, totalBg, totalColor, formatCurrency, isShared }: ExpenseListProps) {
+function ExpenseList({
+  items,
+  emptyText,
+  headerBg,
+  headerBorder,
+  headerColor,
+  amountColor,
+  totalBg,
+  totalColor,
+  formatCurrency,
+  isShared,
+}: ExpenseListProps) {
   return (
     <div className="card overflow-hidden p-0">
       <div className={`p-4 ${headerBg} border-b ${headerBorder}`}>
         <h3 className={`font-semibold ${headerColor}`}>
-          {isShared ? 'Shared Expenses' : `${headerColor.includes('pink') ? 'Bride' : 'Groom'} Side Expenses`}
+          {isShared
+            ? 'Shared Expenses'
+            : `${headerColor.includes('pink') ? 'Bride' : 'Groom'} Side Expenses`}
         </h3>
       </div>
       {items.length > 0 ? (
@@ -58,7 +88,9 @@ function ExpenseList({ items, emptyText, headerBg, headerBorder, headerColor, am
             <div key={e.id} className="p-3 flex justify-between items-start">
               <div>
                 <div className="font-medium text-sm text-gray-800">{e.description}</div>
-                <div className="text-xs text-gray-500 capitalize">{e.budget_categories?.name || 'N/A'}</div>
+                <div className="text-xs text-gray-500 capitalize">
+                  {e.budget_categories?.name || 'N/A'}
+                </div>
                 {isShared ? (
                   <div className="text-xs text-gray-400">
                     Split: {e.share_percentage || 50}% / {100 - (e.share_percentage || 50)}%
@@ -76,7 +108,11 @@ function ExpenseList({ items, emptyText, headerBg, headerBorder, headerColor, am
           ))}
           <div className={`p-3 ${totalBg} flex justify-between font-bold ${totalColor}`}>
             <span>Total</span>
-            <span>{formatCurrency(items.reduce((s: number, e: any) => s + parseFloat(e.amount || 0), 0))}</span>
+            <span>
+              {formatCurrency(
+                items.reduce((s: number, e: any) => s + parseFloat(e.amount || 0), 0),
+              )}
+            </span>
           </div>
         </div>
       ) : (
@@ -97,7 +133,10 @@ interface BudgetSideWiseTabProps {
   formatCurrency: (amount: number) => string;
 }
 
-export default function BudgetSideWiseTab({ sideWiseExpenses, formatCurrency }: BudgetSideWiseTabProps) {
+export default function BudgetSideWiseTab({
+  sideWiseExpenses,
+  formatCurrency,
+}: BudgetSideWiseTabProps) {
   return (
     <div className="space-y-6">
       <div className="grid md:grid-cols-3 gap-4">

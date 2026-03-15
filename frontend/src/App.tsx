@@ -42,60 +42,162 @@ function App() {
             <Route path="/onboard" element={<Onboard />} />
 
             {/* Slug-scoped public wedding website */}
-            <Route path="/:slug" element={<SlugGuard><PublicLayout /></SlugGuard>}>
+            <Route
+              path="/:slug"
+              element={
+                <SlugGuard>
+                  <PublicLayout />
+                </SlugGuard>
+              }
+            >
               <Route index element={<Home />} />
             </Route>
 
             {/* Slug-scoped admin login */}
-            <Route path="/:slug/login" element={<SlugGuard><Login /></SlugGuard>} />
+            <Route
+              path="/:slug/login"
+              element={
+                <SlugGuard>
+                  <Login />
+                </SlugGuard>
+              }
+            />
 
             {/* Slug-scoped admin dashboard */}
-            <Route path="/:slug/admin" element={<SlugGuard><AdminLayout /></SlugGuard>}>
-              <Route index element={
-                <Suspense fallback={<div className="flex items-center justify-center py-12 text-gray-500">Loading...</div>}>
-                  <Dashboard />
-                </Suspense>
-              } />
-              <Route path="events" element={
-                <Suspense fallback={<div className="flex items-center justify-center py-12 text-gray-500">Loading...</div>}>
-                  <Events />
-                </Suspense>
-              } />
-              <Route path="guests" element={
-                <Suspense fallback={<div className="flex items-center justify-center py-12 text-gray-500">Loading...</div>}>
-                  <Guests />
-                </Suspense>
-              } />
-              <Route path="venues" element={
-                <Suspense fallback={<div className="flex items-center justify-center py-12 text-gray-500">Loading...</div>}>
-                  <Venues />
-                </Suspense>
-              } />
-              <Route path="accommodations" element={
-                <Suspense fallback={<div className="flex items-center justify-center py-12 text-gray-500">Loading...</div>}>
-                  <Accommodations />
-                </Suspense>
-              } />
-              <Route path="vendors" element={
-                <Suspense fallback={<div className="flex items-center justify-center py-12 text-gray-500">Loading...</div>}>
-                  <Vendors />
-                </Suspense>
-              } />
-              <Route path="budget" element={
-                <Suspense fallback={<div className="flex items-center justify-center py-12 text-gray-500">Loading...</div>}>
-                  <Budget />
-                </Suspense>
-              } />
-              <Route path="tasks" element={
-                <Suspense fallback={<div className="flex items-center justify-center py-12 text-gray-500">Loading...</div>}>
-                  <Tasks />
-                </Suspense>
-              } />
-              <Route path="team" element={
-                <Suspense fallback={<div className="flex items-center justify-center py-12 text-gray-500">Loading...</div>}>
-                  <Team />
-                </Suspense>
-              } />
+            <Route
+              path="/:slug/admin"
+              element={
+                <SlugGuard>
+                  <AdminLayout />
+                </SlugGuard>
+              }
+            >
+              <Route
+                index
+                element={
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center py-12 text-gray-500">
+                        Loading...
+                      </div>
+                    }
+                  >
+                    <Dashboard />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="events"
+                element={
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center py-12 text-gray-500">
+                        Loading...
+                      </div>
+                    }
+                  >
+                    <Events />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="guests"
+                element={
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center py-12 text-gray-500">
+                        Loading...
+                      </div>
+                    }
+                  >
+                    <Guests />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="venues"
+                element={
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center py-12 text-gray-500">
+                        Loading...
+                      </div>
+                    }
+                  >
+                    <Venues />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="accommodations"
+                element={
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center py-12 text-gray-500">
+                        Loading...
+                      </div>
+                    }
+                  >
+                    <Accommodations />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="vendors"
+                element={
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center py-12 text-gray-500">
+                        Loading...
+                      </div>
+                    }
+                  >
+                    <Vendors />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="budget"
+                element={
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center py-12 text-gray-500">
+                        Loading...
+                      </div>
+                    }
+                  >
+                    <Budget />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="tasks"
+                element={
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center py-12 text-gray-500">
+                        Loading...
+                      </div>
+                    }
+                  >
+                    <Tasks />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="team"
+                element={
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center py-12 text-gray-500">
+                        Loading...
+                      </div>
+                    }
+                  >
+                    <Team />
+                  </Suspense>
+                }
+              />
             </Route>
 
             {/* Catch all */}

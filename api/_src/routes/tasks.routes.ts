@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import { validateBody } from '../middleware/validate.middleware';
-import { createTaskSchema, updateTaskSchema, updateStatusSchema } from '../validators/tasks.validator';
+import {
+  createTaskSchema,
+  updateTaskSchema,
+  updateStatusSchema,
+} from '../validators/tasks.validator';
 import * as ctrl from '../controllers/tasks.controller';
 
 const router = Router();

@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { HiOutlineLocationMarker, HiOutlinePhone, HiOutlineUsers, HiOutlineCurrencyRupee, HiOutlineX } from 'react-icons/hi';
+import {
+  HiOutlineLocationMarker,
+  HiOutlinePhone,
+  HiOutlineUsers,
+  HiOutlineCurrencyRupee,
+  HiOutlineX,
+} from 'react-icons/hi';
 import { useVenues, useCreateVenue, useUpdateVenue, useDeleteVenue } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 
@@ -78,7 +84,8 @@ export default function Venues() {
       setShowVenueModal(false);
       resetForm();
     } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || err?.response?.data?.error || 'Failed to save venue';
+      const errorMessage =
+        err?.response?.data?.message || err?.response?.data?.error || 'Failed to save venue';
       toast.error(errorMessage);
     }
   };
@@ -95,7 +102,9 @@ export default function Venues() {
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
-      style: 'currency', currency: 'INR', maximumFractionDigits: 0,
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 
@@ -129,7 +138,9 @@ export default function Venues() {
       <div className="flex items-center justify-between">
         <h1 className="page-title">Venues</h1>
         {canEdit && (
-          <button onClick={() => setShowVenueModal(true)} className="btn-primary">Add Venue</button>
+          <button onClick={() => setShowVenueModal(true)} className="btn-primary">
+            Add Venue
+          </button>
         )}
       </div>
 
@@ -144,10 +155,13 @@ export default function Venues() {
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-lg font-display font-bold text-maroon-800">{venue.name}</h3>
-                  <p className="text-sm text-gray-500 capitalize">{(venue as any).venue_type?.replace('_', ' ')}</p>
+                  <p className="text-sm text-gray-500 capitalize">
+                    {(venue as any).venue_type?.replace('_', ' ')}
+                  </p>
                 </div>
                 <span className={getStatusBadge((venue as any).payment_status)}>
-                  {(venue as any).payment_status?.charAt(0).toUpperCase() + (venue as any).payment_status?.slice(1)}
+                  {(venue as any).payment_status?.charAt(0).toUpperCase() +
+                    (venue as any).payment_status?.slice(1)}
                 </span>
               </div>
 
@@ -188,7 +202,9 @@ export default function Venues() {
                   <p className="text-xs text-gray-500 mb-2">Events:</p>
                   <div className="flex flex-wrap gap-2">
                     {(venue as any).events.map((event: any) => (
-                      <span key={event.id} className="badge bg-gold-100 text-gold-700">{event.name}</span>
+                      <span key={event.id} className="badge bg-gold-100 text-gold-700">
+                        {event.name}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -196,7 +212,12 @@ export default function Venues() {
 
               {canEdit && (
                 <div className="flex gap-2 mt-4">
-                  <button onClick={() => handleEdit(venue)} className="btn-outline flex-1 text-sm py-2">Edit</button>
+                  <button
+                    onClick={() => handleEdit(venue)}
+                    className="btn-outline flex-1 text-sm py-2"
+                  >
+                    Edit
+                  </button>
                   <button
                     onClick={() => setDeleteConfirm(venue.id)}
                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 text-sm"
@@ -217,7 +238,13 @@ export default function Venues() {
               <h2 className="text-xl font-display font-bold text-maroon-800">
                 {editingVenue ? 'Edit Venue' : 'Add New Venue'}
               </h2>
-              <button onClick={() => { setShowVenueModal(false); resetForm(); }} className="p-2 hover:bg-gray-100 rounded-lg">
+              <button
+                onClick={() => {
+                  setShowVenueModal(false);
+                  resetForm();
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
                 <HiOutlineX className="w-5 h-5" />
               </button>
             </div>
@@ -349,7 +376,14 @@ export default function Venues() {
             </form>
 
             <div className="flex gap-3 p-6 border-t border-gold-200">
-              <button type="button" onClick={() => { setShowVenueModal(false); resetForm(); }} className="btn-outline flex-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowVenueModal(false);
+                  resetForm();
+                }}
+                className="btn-outline flex-1"
+              >
                 Cancel
               </button>
               <button
@@ -360,7 +394,9 @@ export default function Venues() {
               >
                 {createMutation.isPending || updateMutation.isPending
                   ? 'Saving...'
-                  : editingVenue ? 'Update Venue' : 'Add Venue'}
+                  : editingVenue
+                    ? 'Update Venue'
+                    : 'Add Venue'}
               </button>
             </div>
           </div>
@@ -371,9 +407,13 @@ export default function Venues() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md">
             <h3 className="text-lg font-bold text-maroon-800 mb-2">Confirm Deletion</h3>
-            <p className="text-gray-600 mb-6">Are you sure you want to delete this venue? This action cannot be undone.</p>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this venue? This action cannot be undone.
+            </p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">Cancel</button>
+              <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">
+                Cancel
+              </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
                 disabled={deleteMutation.isPending}

@@ -24,7 +24,7 @@ function PasswordStrength({ password }: PasswordStrengthProps) {
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className={`h-1 flex-1 rounded-full transition-colors ${i < score ? colors[score - 1] ?? 'bg-gray-200' : 'bg-gray-200'}`}
+            className={`h-1 flex-1 rounded-full transition-colors ${i < score ? (colors[score - 1] ?? 'bg-gray-200') : 'bg-gray-200'}`}
           />
         ))}
       </div>
@@ -51,7 +51,12 @@ interface Step3Props {
 }
 
 export default function Step3_AdminAccount({ data, onNext, onBack }: Step3Props) {
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<Step3Data>({
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<Step3Data>({
     defaultValues: data,
   });
   const [showPass, setShowPass] = useState(false);
@@ -74,7 +79,7 @@ export default function Step3_AdminAccount({ data, onNext, onBack }: Step3Props)
           <input
             {...register('name', { required: 'Name is required' })}
             className="input"
-            placeholder="e.g. Priya Sharma"
+            placeholder="e.g. Khushi Sharma"
           />
           {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
         </div>
@@ -107,14 +112,16 @@ export default function Step3_AdminAccount({ data, onNext, onBack }: Step3Props)
             />
             <button
               type="button"
-              onClick={() => setShowPass(s => !s)}
+              onClick={() => setShowPass((s) => !s)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
             >
               {showPass ? 'Hide' : 'Show'}
             </button>
           </div>
           <PasswordStrength password={password} />
-          {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
+          {errors.password && (
+            <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>
+          )}
         </div>
 
         <div>
@@ -128,7 +135,9 @@ export default function Step3_AdminAccount({ data, onNext, onBack }: Step3Props)
             className="input"
             placeholder="••••••••"
           />
-          {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>}
+          {errors.confirmPassword && (
+            <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>
+          )}
         </div>
 
         <div className="flex gap-3 pt-2">

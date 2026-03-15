@@ -49,7 +49,7 @@ function AddMemberModal({ onClose }: AddMemberModalProps) {
             <input
               className="input"
               value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               placeholder="Full name"
               required
             />
@@ -61,7 +61,7 @@ function AddMemberModal({ onClose }: AddMemberModalProps) {
               type="email"
               className="input"
               value={form.email}
-              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
               placeholder="their@email.com"
               required
             />
@@ -72,7 +72,7 @@ function AddMemberModal({ onClose }: AddMemberModalProps) {
             <select
               className="input"
               value={form.role}
-              onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
             >
               <option value="family">Family (view all, read-only)</option>
               <option value="friends">Friends (view all except finance, read-only)</option>
@@ -86,14 +86,14 @@ function AddMemberModal({ onClose }: AddMemberModalProps) {
                 type={showPassword ? 'text' : 'password'}
                 className="input pr-12"
                 value={form.password}
-                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                 placeholder="Min. 8 characters"
                 minLength={8}
                 required
               />
               <button
                 type="button"
-                onClick={() => setShowPassword(s => !s)}
+                onClick={() => setShowPassword((s) => !s)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
               >
                 {showPassword ? 'Hide' : 'Show'}
@@ -103,8 +103,14 @@ function AddMemberModal({ onClose }: AddMemberModalProps) {
           </div>
 
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1 py-2.5">Cancel</button>
-            <button type="submit" disabled={createUser.isPending} className="btn-primary flex-1 py-2.5 disabled:opacity-50">
+            <button type="button" onClick={onClose} className="btn-secondary flex-1 py-2.5">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={createUser.isPending}
+              className="btn-primary flex-1 py-2.5 disabled:opacity-50"
+            >
               {createUser.isPending ? 'Creating...' : 'Create Account'}
             </button>
           </div>
@@ -137,7 +143,7 @@ export default function Team() {
     }
   };
 
-  const teamMembers = users.filter(u => u.id !== user?.id);
+  const teamMembers = users.filter((u) => u.id !== user?.id);
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
@@ -156,7 +162,9 @@ export default function Team() {
               <p className="text-sm text-gray-500">{user?.email}</p>
             </div>
             {user?.role && (
-              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${ROLE_COLORS[user.role] ?? ''}`}>
+              <span
+                className={`text-xs font-medium px-2.5 py-1 rounded-full ${ROLE_COLORS[user.role] ?? ''}`}
+              >
                 {user.role}
               </span>
             )}
@@ -169,7 +177,10 @@ export default function Team() {
           <h2 className="font-display font-semibold text-gray-700">
             Team Members {!isLoading && `(${teamMembers.length})`}
           </h2>
-          <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 py-2 px-4 text-sm">
+          <button
+            onClick={() => setShowModal(true)}
+            className="btn-primary flex items-center gap-2 py-2 px-4 text-sm"
+          >
             <HiOutlineUserAdd className="w-4 h-4" />
             Add Member
           </button>
@@ -182,33 +193,49 @@ export default function Team() {
             <div className="p-8 text-center text-gray-400">
               <p className="text-4xl mb-3">👥</p>
               <p className="font-medium">No team members yet.</p>
-              <p className="text-sm mt-1">Add family or friends so they can view the wedding planner.</p>
+              <p className="text-sm mt-1">
+                Add family or friends so they can view the wedding planner.
+              </p>
             </div>
           ) : (
             <table className="w-full">
               <thead className="bg-cream border-b border-gold-100">
                 <tr>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Email</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
-                  <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Added</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">
+                    Email
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                    Added
+                  </th>
                   <th className="py-3 px-4" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {teamMembers.map(member => (
+                {teamMembers.map((member) => (
                   <tr key={member.id} className="hover:bg-gray-50">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 bg-gold-100 rounded-full flex items-center justify-center shrink-0">
-                          <span className="text-maroon-800 text-sm font-medium">{member.name.charAt(0)}</span>
+                          <span className="text-maroon-800 text-sm font-medium">
+                            {member.name.charAt(0)}
+                          </span>
                         </div>
                         <span className="font-medium text-gray-800 text-sm">{member.name}</span>
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-500 hidden sm:table-cell">{member.email}</td>
+                    <td className="py-3 px-4 text-sm text-gray-500 hidden sm:table-cell">
+                      {member.email}
+                    </td>
                     <td className="py-3 px-4">
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${ROLE_COLORS[member.role] ?? ''}`}>
+                      <span
+                        className={`text-xs font-medium px-2.5 py-1 rounded-full ${ROLE_COLORS[member.role] ?? ''}`}
+                      >
                         {member.role}
                       </span>
                     </td>

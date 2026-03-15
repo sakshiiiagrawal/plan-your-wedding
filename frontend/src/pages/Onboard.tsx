@@ -36,7 +36,8 @@ export default function Onboard() {
     confirmPassword: '',
   });
 
-  const mergeData = (updates: Partial<FormData>) => setFormData(prev => ({ ...prev, ...updates }));
+  const mergeData = (updates: Partial<FormData>) =>
+    setFormData((prev) => ({ ...prev, ...updates }));
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -47,12 +48,13 @@ export default function Onboard() {
         password: formData.password,
         brideName: formData.brideName,
         groomName: formData.groomName,
-        weddingDate: formData.weddingDate || undefined,
+        ...(formData.weddingDate ? { weddingDate: formData.weddingDate } : {}),
         slug: formData.slug,
       });
       setSuccessSlug(slug);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Setup failed. Please try again.');
+    } catch (error) {
+      const err = error as { response?: { data?: { error?: string } } };
+      toast.error(err?.response?.data?.error || 'Setup failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -77,8 +79,8 @@ export default function Onboard() {
                     i + 1 < step
                       ? 'w-6 bg-maroon-800'
                       : i + 1 === step
-                      ? 'w-8 bg-gold-500'
-                      : 'w-2 bg-gray-200'
+                        ? 'w-8 bg-gold-500'
+                        : 'w-2 bg-gray-200'
                   }`}
                 />
               ))}
@@ -98,15 +100,31 @@ export default function Onboard() {
             ) : step === 2 ? (
               <Step2_WeddingDetails
                 key="step2"
-                data={{ brideName: formData.brideName, groomName: formData.groomName, weddingDate: formData.weddingDate, slug: formData.slug }}
-                onNext={(v) => { mergeData(v); setStep(3); }}
+                data={{
+                  brideName: formData.brideName,
+                  groomName: formData.groomName,
+                  weddingDate: formData.weddingDate,
+                  slug: formData.slug,
+                }}
+                onNext={(v) => {
+                  mergeData(v);
+                  setStep(3);
+                }}
                 onBack={() => setStep(1)}
               />
             ) : step === 3 ? (
               <Step3_AdminAccount
                 key="step3"
-                data={{ name: formData.name, email: formData.email, password: formData.password, confirmPassword: formData.confirmPassword }}
-                onNext={(v) => { mergeData(v); setStep(4); }}
+                data={{
+                  name: formData.name,
+                  email: formData.email,
+                  password: formData.password,
+                  confirmPassword: formData.confirmPassword,
+                }}
+                onNext={(v) => {
+                  mergeData(v);
+                  setStep(4);
+                }}
                 onBack={() => setStep(2)}
               />
             ) : (

@@ -14,7 +14,12 @@ interface Countdown {
 
 export default function Home() {
   const { slug } = useParams<{ slug: string }>();
-  const [countdown, setCountdown] = useState<Countdown>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [countdown, setCountdown] = useState<Countdown>({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
 
   const { data: heroContent } = useHeroContent(slug);
   const { data: events = [] } = usePublicEvents(slug);
@@ -56,12 +61,16 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <p className="text-gold-300 text-lg mb-4">We're getting married!</p>
+            <p className="text-gold-300 text-lg mb-4">We&apos;re getting married!</p>
             <h1 className="font-script text-6xl md:text-8xl text-cream mb-4">
               {brideName} & {groomName}
             </h1>
             <p className="text-gold-300 text-xl mb-12">
-              {weddingDate?.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) ?? ''}
+              {weddingDate?.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+              }) ?? ''}
             </p>
 
             <div className="flex justify-center gap-4 md:gap-8 mb-12">
@@ -110,9 +119,9 @@ export default function Home() {
             <div className="w-24 h-1 bg-gold-500 mx-auto mb-8" />
 
             <p className="text-gray-600 text-lg leading-relaxed mb-8">
-              Every love story is beautiful, but ours is our favorite. From strangers to friends
-              to soulmates, our journey has been nothing short of magical. We can't wait to
-              begin the next chapter of our lives together, surrounded by the people we love most.
+              Every love story is beautiful, but ours is our favorite. From strangers to friends to
+              soulmates, our journey has been nothing short of magical. We can&apos;t wait to begin
+              the next chapter of our lives together, surrounded by the people we love most.
             </p>
 
             <div className="grid md:grid-cols-2 gap-8 mt-12">
@@ -215,8 +224,8 @@ export default function Home() {
               <div>
                 <label className="label">Side</label>
                 <select className="input">
-                  <option value="bride">Bride's Side</option>
-                  <option value="groom">Groom's Side</option>
+                  <option value="bride">Bride&apos;s Side</option>
+                  <option value="groom">Groom&apos;s Side</option>
                 </select>
               </div>
               <div>
@@ -249,7 +258,11 @@ export default function Home() {
 
             <div className="mb-6">
               <label className="label">Message (Optional)</label>
-              <textarea className="input" rows={3} placeholder="Any special message or requirements..." />
+              <textarea
+                className="input"
+                rows={3}
+                placeholder="Any special message or requirements..."
+              />
             </div>
 
             <button type="submit" className="btn-primary w-full py-4 text-lg">
@@ -259,7 +272,7 @@ export default function Home() {
         </div>
       </section>
 
-      <Gallery slug={slug} />
+      <Gallery slug={slug ?? null} />
     </div>
   );
 }

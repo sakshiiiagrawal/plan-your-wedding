@@ -1,9 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useTasks, useTaskStats, useCreateTask, useUpdateTask, useUpdateTaskStatus, useDeleteTask } from '../../hooks/useApi';
+import {
+  useTasks,
+  useTaskStats,
+  useCreateTask,
+  useUpdateTask,
+  useUpdateTaskStatus,
+  useDeleteTask,
+} from '../../hooks/useApi';
 import toast from 'react-hot-toast';
-import { HiOutlinePlus, HiOutlineCheck, HiOutlineClock, HiOutlineExclamation, HiOutlineX, HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
+import {
+  HiOutlinePlus,
+  HiOutlineCheck,
+  HiOutlineX,
+  HiOutlinePencil,
+  HiOutlineTrash,
+} from 'react-icons/hi';
 
 interface TaskFormData {
   title: string;
@@ -35,8 +48,8 @@ export default function Tasks() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const { data: tasks = [], isLoading: tasksLoading } = useTasks({
-    status: statusFilter !== 'all' ? statusFilter : undefined,
-    priority: priorityFilter !== 'all' ? priorityFilter : undefined,
+    ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+    ...(priorityFilter !== 'all' ? { priority: priorityFilter } : {}),
   });
   const { data: stats } = useTaskStats();
   const createMutation = useCreateTask();
@@ -76,7 +89,8 @@ export default function Tasks() {
       setShowAddModal(false);
       resetForm();
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || 'Failed to save task';
+      const errorMessage =
+        error?.response?.data?.message || error?.response?.data?.error || 'Failed to save task';
       toast.error(errorMessage);
     }
   };
@@ -111,12 +125,6 @@ export default function Tasks() {
     return colors[priority] ?? 'bg-gray-500';
   };
 
-  const getStatusIcon = (status: string) => {
-    if (status === 'completed') return <HiOutlineCheck className="w-5 h-5 text-green-500" />;
-    if (status === 'in_progress') return <HiOutlineClock className="w-5 h-5 text-yellow-500" />;
-    return <HiOutlineExclamation className="w-5 h-5 text-gray-400" />;
-  };
-
   if (tasksLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -130,7 +138,10 @@ export default function Tasks() {
       <div className="flex items-center justify-between">
         <h1 className="page-title">Tasks & Checklist</h1>
         {canEdit && (
-          <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
             <HiOutlinePlus className="w-4 h-4" />
             Add Task
           </button>
@@ -162,13 +173,21 @@ export default function Tasks() {
 
       <div className="card">
         <div className="flex flex-wrap gap-4">
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input w-40">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="input w-40"
+          >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
             <option value="in_progress">In Progress</option>
             <option value="completed">Completed</option>
           </select>
-          <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} className="input w-40">
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            className="input w-40"
+          >
             <option value="all">All Priority</option>
             <option value="urgent">Urgent</option>
             <option value="high">High</option>
@@ -199,35 +218,59 @@ export default function Tasks() {
             <div className={`w-2 h-8 rounded-full ${getPriorityColor(task.priority)}`} />
 
             <div className="flex-1">
-              <div className={`font-medium ${task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-800'}`}>
+              <div
+                className={`font-medium ${task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-800'}`}
+              >
                 {task.title}
               </div>
               <div className="flex flex-wrap gap-3 mt-1 text-sm text-gray-500">
                 {task.due_date && (
-                  <span>Due: {new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  <span>
+                    Due:{' '}
+                    {new Date(task.due_date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </span>
                 )}
                 {task.assigned_to && <span>Assigned: {task.assigned_to}</span>}
-                {(task as any).events?.name && <span className="text-gold-600">{(task as any).events.name}</span>}
+                {(task as any).events?.name && (
+                  <span className="text-gold-600">{(task as any).events.name}</span>
+                )}
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className={`badge ${
-                task.priority === 'urgent' ? 'bg-red-100 text-red-700' :
-                task.priority === 'high' ? 'bg-orange-100 text-orange-700' :
-                task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                'bg-green-100 text-green-700'
-              }`}>
+              <span
+                className={`badge ${
+                  task.priority === 'urgent'
+                    ? 'bg-red-100 text-red-700'
+                    : task.priority === 'high'
+                      ? 'bg-orange-100 text-orange-700'
+                      : task.priority === 'medium'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-green-100 text-green-700'
+                }`}
+              >
                 {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
               </span>
             </div>
 
             {canEdit && (
               <div className="flex items-center gap-2">
-                <button onClick={() => handleEdit(task)} className="p-2 hover:bg-gold-50 rounded-lg text-gold-600" title="Edit task">
+                <button
+                  onClick={() => handleEdit(task)}
+                  className="p-2 hover:bg-gold-50 rounded-lg text-gold-600"
+                  title="Edit task"
+                >
                   <HiOutlinePencil className="w-4 h-4" />
                 </button>
-                <button onClick={() => setDeleteConfirm(task.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-600" title="Delete task">
+                <button
+                  onClick={() => setDeleteConfirm(task.id)}
+                  className="p-2 hover:bg-red-50 rounded-lg text-red-600"
+                  title="Delete task"
+                >
                   <HiOutlineTrash className="w-4 h-4" />
                 </button>
               </div>
@@ -246,7 +289,13 @@ export default function Tasks() {
               <h2 className="text-xl font-display font-bold text-maroon-800">
                 {editingTask ? 'Edit Task' : 'Add New Task'}
               </h2>
-              <button onClick={() => { setShowAddModal(false); resetForm(); }} className="p-2 hover:bg-gray-100 rounded-lg">
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  resetForm();
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
                 <HiOutlineX className="w-5 h-5" />
               </button>
             </div>
@@ -327,7 +376,14 @@ export default function Tasks() {
             </form>
 
             <div className="flex gap-3 p-6 border-t border-gold-200">
-              <button type="button" onClick={() => { setShowAddModal(false); resetForm(); }} className="btn-outline flex-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddModal(false);
+                  resetForm();
+                }}
+                className="btn-outline flex-1"
+              >
                 Cancel
               </button>
               <button
@@ -338,7 +394,9 @@ export default function Tasks() {
               >
                 {createMutation.isPending || updateMutation.isPending
                   ? 'Saving...'
-                  : editingTask ? 'Update Task' : 'Create Task'}
+                  : editingTask
+                    ? 'Update Task'
+                    : 'Create Task'}
               </button>
             </div>
           </div>
@@ -349,9 +407,13 @@ export default function Tasks() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md">
             <h3 className="text-lg font-bold text-maroon-800 mb-2">Confirm Deletion</h3>
-            <p className="text-gray-600 mb-6">Are you sure you want to delete this task? This action cannot be undone.</p>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this task? This action cannot be undone.
+            </p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">Cancel</button>
+              <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">
+                Cancel
+              </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
                 disabled={deleteMutation.isPending}

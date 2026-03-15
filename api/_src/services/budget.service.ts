@@ -15,8 +15,12 @@ export async function getBudgetSummary(ownerId: string) {
   ]);
 
   const totalSpent = expenses.reduce((s, e) => s + toFloat(e.amount), 0);
-  const brideSpent = expenses.filter((e) => e.side === 'bride').reduce((s, e) => s + toFloat(e.amount), 0);
-  const groomSpent = expenses.filter((e) => e.side === 'groom').reduce((s, e) => s + toFloat(e.amount), 0);
+  const brideSpent = expenses
+    .filter((e) => e.side === 'bride')
+    .reduce((s, e) => s + toFloat(e.amount), 0);
+  const groomSpent = expenses
+    .filter((e) => e.side === 'groom')
+    .reduce((s, e) => s + toFloat(e.amount), 0);
 
   return {
     totalBudget: toFloat(budget?.total_budget),
@@ -31,7 +35,11 @@ export async function getBudgetSummary(ownerId: string) {
 
 export async function updateTotalBudget(
   ownerId: string,
-  payload: { total_budget?: number; bride_side_contribution?: number; groom_side_contribution?: number },
+  payload: {
+    total_budget?: number;
+    bride_side_contribution?: number;
+    groom_side_contribution?: number;
+  },
 ) {
   return repo.upsertSummary(ownerId, payload);
 }
@@ -55,9 +63,10 @@ export async function getBudgetOverview(ownerId: string) {
     ...cat,
     spent: spending[cat.id] ?? 0,
     remaining: toFloat(cat.allocated_amount) - (spending[cat.id] ?? 0),
-    percentage: toFloat(cat.allocated_amount) > 0
-      ? Math.round(((spending[cat.id] ?? 0) / toFloat(cat.allocated_amount)) * 100)
-      : 0,
+    percentage:
+      toFloat(cat.allocated_amount) > 0
+        ? Math.round(((spending[cat.id] ?? 0) / toFloat(cat.allocated_amount)) * 100)
+        : 0,
   }));
 }
 
@@ -71,9 +80,18 @@ export async function getBySide(ownerId: string) {
   const groomExpenses = expenses.filter((e) => e.side === 'groom');
   const sharedExpenses = expenses.filter((e) => e.is_shared);
   return {
-    bride: { expenses: brideExpenses, total: brideExpenses.reduce((s, e) => s + toFloat(e.amount), 0) },
-    groom: { expenses: groomExpenses, total: groomExpenses.reduce((s, e) => s + toFloat(e.amount), 0) },
-    shared: { expenses: sharedExpenses, total: sharedExpenses.reduce((s, e) => s + toFloat(e.amount), 0) },
+    bride: {
+      expenses: brideExpenses,
+      total: brideExpenses.reduce((s, e) => s + toFloat(e.amount), 0),
+    },
+    groom: {
+      expenses: groomExpenses,
+      total: groomExpenses.reduce((s, e) => s + toFloat(e.amount), 0),
+    },
+    shared: {
+      expenses: sharedExpenses,
+      total: sharedExpenses.reduce((s, e) => s + toFloat(e.amount), 0),
+    },
   };
 }
 
@@ -110,8 +128,10 @@ export async function getSideSummary(ownerId: string) {
     else summary.shared.vendorCosts += cost;
   });
 
-  summary.bride.total = summary.bride.expenses + summary.bride.vendorCosts + summary.bride.sharedExpenses;
-  summary.groom.total = summary.groom.expenses + summary.groom.vendorCosts + summary.groom.sharedExpenses;
+  summary.bride.total =
+    summary.bride.expenses + summary.bride.vendorCosts + summary.bride.sharedExpenses;
+  summary.groom.total =
+    summary.groom.expenses + summary.groom.vendorCosts + summary.groom.sharedExpenses;
   summary.shared.total = summary.shared.expenses + summary.shared.vendorCosts;
 
   return summary;
@@ -125,11 +145,18 @@ export async function listCategories(ownerId: string) {
   return repo.findCategoriesByOwner(ownerId);
 }
 
-export async function createCategory(payload: Omit<BudgetCategoryInsert, 'user_id'>, ownerId: string) {
+export async function createCategory(
+  payload: Omit<BudgetCategoryInsert, 'user_id'>,
+  ownerId: string,
+) {
   return repo.insertCategory({ ...payload, user_id: ownerId });
 }
 
-export async function updateCategory(id: string, ownerId: string, payload: Partial<BudgetCategoryInsert>) {
+export async function updateCategory(
+  id: string,
+  ownerId: string,
+  payload: Partial<BudgetCategoryInsert>,
+) {
   return repo.updateCategory(id, ownerId, payload);
 }
 
@@ -180,20 +207,23 @@ export async function getCategoryTree(ownerId: string) {
       ...child,
       spent: spending[child.id] ?? 0,
       remaining: toFloat(child.allocated_amount) - (spending[child.id] ?? 0),
-      percentage: toFloat(child.allocated_amount) > 0
-        ? Math.round(((spending[child.id] ?? 0) / toFloat(child.allocated_amount)) * 100)
-        : 0,
+      percentage:
+        toFloat(child.allocated_amount) > 0
+          ? Math.round(((spending[child.id] ?? 0) / toFloat(child.allocated_amount)) * 100)
+          : 0,
     }));
 
-    const parentSpent = (spending[parent.id] ?? 0) + childrenWithSpent.reduce((s, c) => s + c.spent, 0);
+    const parentSpent =
+      (spending[parent.id] ?? 0) + childrenWithSpent.reduce((s, c) => s + c.spent, 0);
 
     return {
       ...parent,
       spent: parentSpent,
       remaining: toFloat(parent.allocated_amount) - parentSpent,
-      percentage: toFloat(parent.allocated_amount) > 0
-        ? Math.round((parentSpent / toFloat(parent.allocated_amount)) * 100)
-        : 0,
+      percentage:
+        toFloat(parent.allocated_amount) > 0
+          ? Math.round((parentSpent / toFloat(parent.allocated_amount)) * 100)
+          : 0,
       children: childrenWithSpent.length > 0 ? childrenWithSpent : undefined,
     };
   });

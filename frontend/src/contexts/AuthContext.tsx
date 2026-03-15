@@ -71,10 +71,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const login = async (email: string, password: string): Promise<{ user: AuthUser; slug: string | null }> => {
+  const login = async (
+    email: string,
+    password: string,
+  ): Promise<{ user: AuthUser; slug: string | null }> => {
     const response = await api.post<{ token: string; user: AuthUser; slug: string | null }>(
       '/auth/login',
-      { email, password }
+      { email, password },
     );
     const { token, user: loggedInUser, slug: returnedSlug } = response.data;
     localStorage.setItem('token', token);
@@ -90,7 +93,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const register = async (data: RegisterData): Promise<{ user: AuthUser; slug: string | null }> => {
     const response = await api.post<{ token: string; user: AuthUser; slug: string | null }>(
       '/auth/register',
-      data
+      data,
     );
     const { token, user: registeredUser, slug: returnedSlug } = response.data;
     localStorage.setItem('token', token);

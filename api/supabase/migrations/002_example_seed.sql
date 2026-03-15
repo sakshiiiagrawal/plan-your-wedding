@@ -226,7 +226,7 @@ INSERT INTO website_content (section_name, content, display_order) VALUES
 (
   'hero',
   '{
-    "bride_name": "Priya",
+    "bride_name": "Khushi",
     "groom_name": "Arjun",
     "tagline": "We''re getting married!",
     "wedding_date": "February 14, 2027",
@@ -252,7 +252,7 @@ INSERT INTO website_content (section_name, content, display_order) VALUES
   'couple',
   '{
     "bride": {
-      "name": "Priya Sharma",
+      "name": "Khushi Sharma",
       "parents": "Daughter of Mr. & Mrs. Sharma",
       "bio": "A creative soul with a warm heart...",
       "image": "/images/couple/bride.jpg"

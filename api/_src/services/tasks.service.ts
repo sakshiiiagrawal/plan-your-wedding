@@ -62,7 +62,10 @@ export async function getTaskStats(ownerId: string) {
     in_progress: tasks.filter((t) => t.status === 'in_progress').length,
     completed: tasks.filter((t) => t.status === 'completed').length,
     overdue: tasks.filter(
-      (t) => t.due_date !== null && t.due_date < today && (t.status === 'pending' || t.status === 'in_progress'),
+      (t) =>
+        t.due_date !== null &&
+        t.due_date < today &&
+        (t.status === 'pending' || t.status === 'in_progress'),
     ).length,
   };
 }

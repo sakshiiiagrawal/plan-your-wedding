@@ -10,7 +10,7 @@ interface SlugCheck {
 function useSlugAvailability(slug: string) {
   return useQuery<SlugCheck>({
     queryKey: ['wedding-slug', slug],
-    queryFn: () => api.get(`/weddings/${slug}`).then(r => r.data),
+    queryFn: () => api.get(`/weddings/${slug}`).then((r) => r.data),
     enabled: !!slug && slug.length >= 3 && /^[a-z0-9-]+$/.test(slug),
     staleTime: 0,
   });
@@ -30,7 +30,12 @@ interface Step2Props {
 }
 
 export default function Step2_WeddingDetails({ data, onNext, onBack }: Step2Props) {
-  const { register, handleSubmit, control, formState: { errors } } = useForm<Step2Data>({
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+  } = useForm<Step2Data>({
     defaultValues: data,
   });
 
@@ -58,32 +63,34 @@ export default function Step2_WeddingDetails({ data, onNext, onBack }: Step2Prop
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div>
-          <label className="label">Bride's Name *</label>
+          <label className="label">Bride&apos;s Name *</label>
           <input
             {...register('brideName', { required: "Bride's name is required" })}
             className="input"
-            placeholder="e.g. Priya Sharma"
+            placeholder="e.g. Khushi Sharma"
           />
-          {errors.brideName && <p className="text-red-500 text-xs mt-1">{errors.brideName.message}</p>}
+          {errors.brideName && (
+            <p className="text-red-500 text-xs mt-1">{errors.brideName.message}</p>
+          )}
         </div>
 
         <div>
-          <label className="label">Groom's Name *</label>
+          <label className="label">Groom&apos;s Name *</label>
           <input
             {...register('groomName', { required: "Groom's name is required" })}
             className="input"
-            placeholder="e.g. Rahul Verma"
+            placeholder="e.g. Arjun Verma"
           />
-          {errors.groomName && <p className="text-red-500 text-xs mt-1">{errors.groomName.message}</p>}
+          {errors.groomName && (
+            <p className="text-red-500 text-xs mt-1">{errors.groomName.message}</p>
+          )}
         </div>
 
         <div>
-          <label className="label">Wedding Date <span className="text-gray-400 font-normal">(optional)</span></label>
-          <input
-            type="date"
-            {...register('weddingDate')}
-            className="input"
-          />
+          <label className="label">
+            Wedding Date <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input type="date" {...register('weddingDate')} className="input" />
         </div>
 
         <div>
@@ -99,7 +106,7 @@ export default function Step2_WeddingDetails({ data, onNext, onBack }: Step2Prop
               },
             })}
             className="input"
-            placeholder="e.g. priya-and-rahul"
+            placeholder="e.g. khushi-and-arjun"
           />
           {slugValue && (
             <p className="text-xs text-gray-400 mt-1">
@@ -107,15 +114,15 @@ export default function Step2_WeddingDetails({ data, onNext, onBack }: Step2Prop
             </p>
           )}
           {errors.slug && <p className="text-red-500 text-xs mt-1">{errors.slug.message}</p>}
-          {slugValid && !errors.slug && (
-            slugChecking ? (
+          {slugValid &&
+            !errors.slug &&
+            (slugChecking ? (
               <p className="text-gray-400 text-xs mt-1">Checking availability...</p>
             ) : slugAvailable ? (
               <p className="text-green-600 text-xs mt-1">Available!</p>
             ) : slugTaken ? (
               <p className="text-red-500 text-xs mt-1">That URL is already taken. Try another.</p>
-            ) : null
-          )}
+            ) : null)}
         </div>
 
         <div className="flex gap-3 pt-2">
