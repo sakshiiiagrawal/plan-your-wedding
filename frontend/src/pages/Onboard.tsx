@@ -69,7 +69,7 @@ export default function Onboard() {
           <p className="font-script text-3xl text-cream">Wedding Planner Setup</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+        <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-8">
           {!successSlug && (
             <div className="flex justify-center gap-2 mb-8">
               {Array.from({ length: STEPS }, (_, i) => (

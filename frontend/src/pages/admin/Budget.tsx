@@ -108,7 +108,7 @@ export default function Budget() {
       id: e.id,
       type: 'expense' as const,
       description: e.description,
-      category: e.budget_categories?.name || 'N/A',
+      category: e.budget_categories?.name || 'Uncategorized',
       amount: parseFloat(String(e.amount || 0)),
       date: e.expense_date,
       paid_by: e.paid_by,
@@ -265,12 +265,12 @@ export default function Budget() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="page-title">Budget & Finance</h1>
         {canEdit && (
           <button
             onClick={() => setShowExpenseModal(true)}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary flex items-center gap-2 self-start sm:self-auto"
           >
             <HiOutlinePlus className="w-4 h-4" />
             Add Expense

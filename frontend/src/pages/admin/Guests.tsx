@@ -11,6 +11,7 @@ import {
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import Portal from '../../components/Portal';
 import {
   HiOutlineSearch,
   HiOutlinePlus,
@@ -327,9 +328,9 @@ export default function Guests() {
               <tr>
                 <th className="text-left p-4">Name</th>
                 <th className="text-left p-4">Side</th>
-                <th className="text-left p-4">Phone</th>
+                <th className="text-left p-4 hidden sm:table-cell">Phone</th>
                 <th className="text-left p-4">Diet</th>
-                <th className="text-left p-4">Accommodation</th>
+                <th className="text-left p-4 hidden md:table-cell">Accommodation</th>
                 {canEdit && <th className="text-left p-4">Actions</th>}
               </tr>
             </thead>
@@ -361,11 +362,11 @@ export default function Guests() {
                           : 'Mutual'}
                     </span>
                   </td>
-                  <td className="p-4 text-gray-600">{guest.phone || '—'}</td>
+                  <td className="p-4 text-gray-600 hidden sm:table-cell">{guest.phone || '—'}</td>
                   <td className="p-4 text-gray-600 capitalize">
                     {guest.meal_preference?.replace('_', ' ') || '—'}
                   </td>
-                  <td className="p-4">
+                  <td className="p-4 hidden md:table-cell">
                     {guest.needs_accommodation ? (
                       <span className="badge-info">Needed</span>
                     ) : (
@@ -407,296 +408,304 @@ export default function Guests() {
       </div>
 
       {canEdit && showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gold-200">
-              <h2 className="text-xl font-display font-bold text-maroon-800">
-                {editingGuest ? 'Edit Guest' : 'Add New Guest'}
-              </h2>
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  resetForm();
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <HiOutlineX className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">First Name *</label>
-                  <input
-                    type="text"
-                    value={formData.first_name}
-                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    className="input"
-                    placeholder="First name"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="label">Last Name</label>
-                  <input
-                    type="text"
-                    value={formData.last_name}
-                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    className="input"
-                    placeholder="Last name"
-                  />
-                </div>
+        <Portal>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-gold-200">
+                <h2 className="text-xl font-display font-bold text-maroon-800">
+                  {editingGuest ? 'Edit Guest' : 'Add New Guest'}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowAddModal(false);
+                    resetForm();
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <HiOutlineX className="w-5 h-5" />
+                </button>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Phone</label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="input"
-                    placeholder="Phone number"
-                  />
+              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">First Name *</label>
+                    <input
+                      type="text"
+                      value={formData.first_name}
+                      onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                      className="input"
+                      placeholder="First name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Last Name</label>
+                    <input
+                      type="text"
+                      value={formData.last_name}
+                      onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                      className="input"
+                      placeholder="Last name"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="label">Email</label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="input"
-                    placeholder="Email address"
-                  />
-                </div>
-              </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Side *</label>
-                  <select
-                    value={formData.side}
-                    onChange={(e) => setFormData({ ...formData, side: e.target.value })}
-                    className="input"
-                    required
-                  >
-                    <option value="bride">Bride Side</option>
-                    <option value="groom">Groom Side</option>
-                  </select>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Phone</label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="input"
+                      placeholder="Phone number"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Email</label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="input"
+                      placeholder="Email address"
+                    />
+                  </div>
                 </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Side *</label>
+                    <select
+                      value={formData.side}
+                      onChange={(e) => setFormData({ ...formData, side: e.target.value })}
+                      className="input"
+                      required
+                    >
+                      <option value="bride">Bride Side</option>
+                      <option value="groom">Groom Side</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Relationship</label>
+                    <input
+                      type="text"
+                      value={formData.relationship}
+                      onChange={(e) => setFormData({ ...formData, relationship: e.target.value })}
+                      className="input"
+                      placeholder="e.g., Uncle, Cousin"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Meal Preference</label>
+                    <select
+                      value={formData.meal_preference}
+                      onChange={(e) =>
+                        setFormData({ ...formData, meal_preference: e.target.value })
+                      }
+                      className="input"
+                    >
+                      <option value="vegetarian">Vegetarian</option>
+                      <option value="jain">Jain</option>
+                      <option value="vegan">Vegan</option>
+                      <option value="non_vegetarian">Non-Vegetarian</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Dietary Restrictions</label>
+                    <input
+                      type="text"
+                      value={formData.dietary_restrictions}
+                      onChange={(e) =>
+                        setFormData({ ...formData, dietary_restrictions: e.target.value })
+                      }
+                      className="input"
+                      placeholder="e.g., No onion-garlic"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.needs_accommodation}
+                      onChange={(e) =>
+                        setFormData({ ...formData, needs_accommodation: e.target.checked })
+                      }
+                      className="w-4 h-4 text-maroon-800"
+                    />
+                    <span className="text-sm">Needs Accommodation</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.needs_pickup}
+                      onChange={(e) => setFormData({ ...formData, needs_pickup: e.target.checked })}
+                      className="w-4 h-4 text-maroon-800"
+                    />
+                    <span className="text-sm">Needs Pickup</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_vip}
+                      onChange={(e) => setFormData({ ...formData, is_vip: e.target.checked })}
+                      className="w-4 h-4 text-maroon-800"
+                    />
+                    <span className="text-sm">VIP Guest</span>
+                  </label>
+                </div>
+
                 <div>
-                  <label className="label">Relationship</label>
-                  <input
-                    type="text"
-                    value={formData.relationship}
-                    onChange={(e) => setFormData({ ...formData, relationship: e.target.value })}
+                  <label className="label">Notes</label>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     className="input"
-                    placeholder="e.g., Uncle, Cousin"
+                    rows={3}
+                    placeholder="Any special notes..."
                   />
                 </div>
-              </div>
+              </form>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Meal Preference</label>
-                  <select
-                    value={formData.meal_preference}
-                    onChange={(e) => setFormData({ ...formData, meal_preference: e.target.value })}
-                    className="input"
-                  >
-                    <option value="vegetarian">Vegetarian</option>
-                    <option value="jain">Jain</option>
-                    <option value="vegan">Vegan</option>
-                    <option value="non_vegetarian">Non-Vegetarian</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Dietary Restrictions</label>
-                  <input
-                    type="text"
-                    value={formData.dietary_restrictions}
-                    onChange={(e) =>
-                      setFormData({ ...formData, dietary_restrictions: e.target.value })
-                    }
-                    className="input"
-                    placeholder="e.g., No onion-garlic"
-                  />
-                </div>
+              <div className="flex gap-3 p-6 border-t border-gold-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false);
+                    resetForm();
+                  }}
+                  className="btn-outline flex-1"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  onClick={handleSubmit}
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="btn-primary flex-1 disabled:opacity-50"
+                >
+                  {createMutation.isPending || updateMutation.isPending
+                    ? 'Saving...'
+                    : editingGuest
+                      ? 'Update Guest'
+                      : 'Add Guest'}
+                </button>
               </div>
-
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.needs_accommodation}
-                    onChange={(e) =>
-                      setFormData({ ...formData, needs_accommodation: e.target.checked })
-                    }
-                    className="w-4 h-4 text-maroon-800"
-                  />
-                  <span className="text-sm">Needs Accommodation</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.needs_pickup}
-                    onChange={(e) => setFormData({ ...formData, needs_pickup: e.target.checked })}
-                    className="w-4 h-4 text-maroon-800"
-                  />
-                  <span className="text-sm">Needs Pickup</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_vip}
-                    onChange={(e) => setFormData({ ...formData, is_vip: e.target.checked })}
-                    className="w-4 h-4 text-maroon-800"
-                  />
-                  <span className="text-sm">VIP Guest</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="label">Notes</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="input"
-                  rows={3}
-                  placeholder="Any special notes..."
-                />
-              </div>
-            </form>
-
-            <div className="flex gap-3 p-6 border-t border-gold-200">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAddModal(false);
-                  resetForm();
-                }}
-                className="btn-outline flex-1"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                onClick={handleSubmit}
-                disabled={createMutation.isPending || updateMutation.isPending}
-                className="btn-primary flex-1 disabled:opacity-50"
-              >
-                {createMutation.isPending || updateMutation.isPending
-                  ? 'Saving...'
-                  : editingGuest
-                    ? 'Update Guest'
-                    : 'Add Guest'}
-              </button>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md">
-            <h3 className="text-lg font-bold text-maroon-800 mb-2">Confirm Deletion</h3>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete this guest? This action cannot be undone.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDelete(deleteConfirm)}
-                disabled={deleteMutation.isPending}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 disabled:opacity-50"
-              >
-                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-              </button>
+        <Portal>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-6 max-w-md">
+              <h3 className="text-lg font-bold text-maroon-800 mb-2">Confirm Deletion</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete this guest? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(deleteConfirm)}
+                  disabled={deleteMutation.isPending}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 disabled:opacity-50"
+                >
+                  {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {canEdit && showImportModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl">
-            <div className="flex items-center justify-between p-6 border-b border-gold-200">
-              <h2 className="text-xl font-display font-bold text-maroon-800">
-                Import Guests from Excel
-              </h2>
-              <button
-                onClick={() => setShowImportModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <HiOutlineX className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="font-semibold text-blue-900 mb-3">Import Instructions</h3>
-                <ol className="list-decimal ml-5 space-y-2 text-sm text-gray-700">
-                  <li>
-                    <strong>Download the sample template</strong> - It contains example data with 3
-                    guests to help you understand the format
-                  </li>
-                  <li>
-                    <strong>Edit the Excel file:</strong> Replace the sample data with your actual
-                    guests, or add new rows below the examples
-                  </li>
-                  <li>
-                    <strong>Mandatory fields:</strong> First Name* and Side* (must be either
-                    &quot;Bride&quot; or &quot;Groom&quot;)
-                  </li>
-                  <li>
-                    <strong>Optional fields:</strong> Last Name, Phone, Relationship, Meal
-                    Preference, Needs Accommodation, Needs Pickup
-                  </li>
-                  <li>
-                    <strong>Boolean values:</strong> Use &quot;Yes&quot; or &quot;No&quot; for Needs
-                    Accommodation and Needs Pickup columns
-                  </li>
-                  <li>
-                    <strong>Important:</strong> Row 1 contains the headers and will be kept
-                    automatically. All data rows below will be imported
-                  </li>
-                </ol>
-              </div>
-
-              <div className="flex justify-center py-2">
+        <Portal>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-2xl">
+              <div className="flex items-center justify-between p-6 border-b border-gold-200">
+                <h2 className="text-xl font-display font-bold text-maroon-800">
+                  Import Guests from Excel
+                </h2>
                 <button
-                  onClick={handleDownloadTemplate}
-                  className="btn-outline text-sm flex items-center gap-2"
+                  onClick={() => setShowImportModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
                 >
-                  <HiOutlineDownload className="w-4 h-4" />
-                  Download Sample Template
+                  <HiOutlineX className="w-5 h-5" />
                 </button>
               </div>
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleImport}
-                className="hidden"
-              />
+              <div className="p-6 space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-blue-900 mb-3">Import Instructions</h3>
+                  <ol className="list-decimal ml-5 space-y-2 text-sm text-gray-700">
+                    <li>
+                      <strong>Download the sample template</strong> - It contains example data with
+                      3 guests to help you understand the format
+                    </li>
+                    <li>
+                      <strong>Edit the Excel file:</strong> Replace the sample data with your actual
+                      guests, or add new rows below the examples
+                    </li>
+                    <li>
+                      <strong>Mandatory fields:</strong> First Name* and Side* (must be either
+                      &quot;Bride&quot; or &quot;Groom&quot;)
+                    </li>
+                    <li>
+                      <strong>Optional fields:</strong> Last Name, Phone, Relationship, Meal
+                      Preference, Needs Accommodation, Needs Pickup
+                    </li>
+                    <li>
+                      <strong>Boolean values:</strong> Use &quot;Yes&quot; or &quot;No&quot; for
+                      Needs Accommodation and Needs Pickup columns
+                    </li>
+                    <li>
+                      <strong>Important:</strong> Row 1 contains the headers and will be kept
+                      automatically. All data rows below will be imported
+                    </li>
+                  </ol>
+                </div>
 
-              <div className="pt-2">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isImporting}
-                  className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <HiOutlineUpload className="w-5 h-5" />
-                  {isImporting ? 'Importing...' : 'Import Data from Excel'}
-                </button>
+                <div className="flex justify-center py-2">
+                  <button
+                    onClick={handleDownloadTemplate}
+                    className="btn-outline text-sm flex items-center gap-2"
+                  >
+                    <HiOutlineDownload className="w-4 h-4" />
+                    Download Sample Template
+                  </button>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleImport}
+                  className="hidden"
+                />
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isImporting}
+                    className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <HiOutlineUpload className="w-5 h-5" />
+                    {isImporting ? 'Importing...' : 'Import Data from Excel'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
     </div>
   );

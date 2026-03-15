@@ -89,7 +89,7 @@ function ExpenseList({
               <div>
                 <div className="font-medium text-sm text-gray-800">{e.description}</div>
                 <div className="text-xs text-gray-500 capitalize">
-                  {e.budget_categories?.name || 'N/A'}
+                  {e.budget_categories?.name || 'Uncategorized'}
                 </div>
                 {isShared ? (
                   <div className="text-xs text-gray-400">

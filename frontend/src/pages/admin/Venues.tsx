@@ -10,6 +10,7 @@ import {
 } from 'react-icons/hi';
 import { useVenues, useCreateVenue, useUpdateVenue, useDeleteVenue } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
+import Portal from '../../components/Portal';
 
 interface VenueFormData {
   name: string;
@@ -135,10 +136,13 @@ export default function Venues() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="page-title">Venues</h1>
         {canEdit && (
-          <button onClick={() => setShowVenueModal(true)} className="btn-primary">
+          <button
+            onClick={() => setShowVenueModal(true)}
+            className="btn-primary self-start sm:self-auto"
+          >
             Add Venue
           </button>
         )}
@@ -232,198 +236,202 @@ export default function Venues() {
       )}
 
       {canEdit && showVenueModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gold-200">
-              <h2 className="text-xl font-display font-bold text-maroon-800">
-                {editingVenue ? 'Edit Venue' : 'Add New Venue'}
-              </h2>
-              <button
-                onClick={() => {
-                  setShowVenueModal(false);
-                  resetForm();
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <HiOutlineX className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="label">Venue Name *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="input"
-                  placeholder="Venue name"
-                  required
-                />
+        <Portal>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-gold-200">
+                <h2 className="text-xl font-display font-bold text-maroon-800">
+                  {editingVenue ? 'Edit Venue' : 'Add New Venue'}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowVenueModal(false);
+                    resetForm();
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <HiOutlineX className="w-5 h-5" />
+                </button>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
+              <form onSubmit={handleSubmit} className="p-6 space-y-4">
                 <div>
-                  <label className="label">Type *</label>
-                  <select
-                    value={formData.venue_type}
-                    onChange={(e) => setFormData({ ...formData, venue_type: e.target.value })}
-                    className="input"
-                    required
-                  >
-                    <option value="wedding_hall">Wedding Hall</option>
-                    <option value="banquet">Banquet</option>
-                    <option value="outdoor">Outdoor</option>
-                    <option value="resort">Resort</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Payment Status *</label>
-                  <select
-                    value={formData.payment_status}
-                    onChange={(e) => setFormData({ ...formData, payment_status: e.target.value })}
-                    className="input"
-                    required
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="partial">Partial</option>
-                    <option value="paid">Paid</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Address *</label>
-                  <textarea
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="input"
-                    rows={2}
-                    placeholder="Full address"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="label">City *</label>
+                  <label className="label">Venue Name *</label>
                   <input
                     type="text"
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="input"
-                    placeholder="City name"
+                    placeholder="Venue name"
                     required
                   />
                 </div>
-              </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Type *</label>
+                    <select
+                      value={formData.venue_type}
+                      onChange={(e) => setFormData({ ...formData, venue_type: e.target.value })}
+                      className="input"
+                      required
+                    >
+                      <option value="wedding_hall">Wedding Hall</option>
+                      <option value="banquet">Banquet</option>
+                      <option value="outdoor">Outdoor</option>
+                      <option value="resort">Resort</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Payment Status *</label>
+                    <select
+                      value={formData.payment_status}
+                      onChange={(e) => setFormData({ ...formData, payment_status: e.target.value })}
+                      className="input"
+                      required
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="partial">Partial</option>
+                      <option value="paid">Paid</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Address *</label>
+                    <textarea
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      className="input"
+                      rows={2}
+                      placeholder="Full address"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="label">City *</label>
+                    <input
+                      type="text"
+                      value={formData.city}
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      className="input"
+                      placeholder="City name"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Capacity</label>
+                    <input
+                      type="number"
+                      value={formData.capacity}
+                      onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
+                      className="input"
+                      placeholder="Number of guests"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Total Cost</label>
+                    <input
+                      type="number"
+                      value={formData.total_cost}
+                      onChange={(e) => setFormData({ ...formData, total_cost: e.target.value })}
+                      className="input"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Contact Person</label>
+                    <input
+                      type="text"
+                      value={formData.contact_person}
+                      onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                      className="input"
+                      placeholder="Contact name"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Contact Phone</label>
+                    <input
+                      type="tel"
+                      value={formData.contact_phone}
+                      onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                      className="input"
+                      placeholder="Phone number"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="label">Capacity</label>
+                  <label className="label">Google Maps Link</label>
                   <input
-                    type="number"
-                    value={formData.capacity}
-                    onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
+                    type="url"
+                    value={formData.google_maps_link}
+                    onChange={(e) => setFormData({ ...formData, google_maps_link: e.target.value })}
                     className="input"
-                    placeholder="Number of guests"
+                    placeholder="https://maps.google.com/..."
                   />
                 </div>
-                <div>
-                  <label className="label">Total Cost</label>
-                  <input
-                    type="number"
-                    value={formData.total_cost}
-                    onChange={(e) => setFormData({ ...formData, total_cost: e.target.value })}
-                    className="input"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
+              </form>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Contact Person</label>
-                  <input
-                    type="text"
-                    value={formData.contact_person}
-                    onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
-                    className="input"
-                    placeholder="Contact name"
-                  />
-                </div>
-                <div>
-                  <label className="label">Contact Phone</label>
-                  <input
-                    type="tel"
-                    value={formData.contact_phone}
-                    onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                    className="input"
-                    placeholder="Phone number"
-                  />
-                </div>
+              <div className="flex gap-3 p-6 border-t border-gold-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowVenueModal(false);
+                    resetForm();
+                  }}
+                  className="btn-outline flex-1"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  onClick={handleSubmit}
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="btn-primary flex-1 disabled:opacity-50"
+                >
+                  {createMutation.isPending || updateMutation.isPending
+                    ? 'Saving...'
+                    : editingVenue
+                      ? 'Update Venue'
+                      : 'Add Venue'}
+                </button>
               </div>
-
-              <div>
-                <label className="label">Google Maps Link</label>
-                <input
-                  type="url"
-                  value={formData.google_maps_link}
-                  onChange={(e) => setFormData({ ...formData, google_maps_link: e.target.value })}
-                  className="input"
-                  placeholder="https://maps.google.com/..."
-                />
-              </div>
-            </form>
-
-            <div className="flex gap-3 p-6 border-t border-gold-200">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowVenueModal(false);
-                  resetForm();
-                }}
-                className="btn-outline flex-1"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                onClick={handleSubmit}
-                disabled={createMutation.isPending || updateMutation.isPending}
-                className="btn-primary flex-1 disabled:opacity-50"
-              >
-                {createMutation.isPending || updateMutation.isPending
-                  ? 'Saving...'
-                  : editingVenue
-                    ? 'Update Venue'
-                    : 'Add Venue'}
-              </button>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md">
-            <h3 className="text-lg font-bold text-maroon-800 mb-2">Confirm Deletion</h3>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete this venue? This action cannot be undone.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDelete(deleteConfirm)}
-                disabled={deleteMutation.isPending}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 disabled:opacity-50"
-              >
-                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-              </button>
+        <Portal>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-6 max-w-md">
+              <h3 className="text-lg font-bold text-maroon-800 mb-2">Confirm Deletion</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete this venue? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(deleteConfirm)}
+                  disabled={deleteMutation.isPending}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 disabled:opacity-50"
+                >
+                  {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
     </div>
   );

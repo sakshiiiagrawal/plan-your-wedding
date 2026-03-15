@@ -5,6 +5,7 @@ import { useUsers, useCreateUser, useDeleteUser } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import { HiOutlineTrash, HiOutlineUserAdd, HiOutlineX } from 'react-icons/hi';
 import { Navigate, useParams } from 'react-router-dom';
+import Portal from '../../components/Portal';
 import type { TeamMember } from '../../hooks/useApi';
 
 const ROLE_COLORS: Record<string, string> = {
@@ -34,89 +35,91 @@ function AddMemberModal({ onClose }: AddMemberModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="font-display font-bold text-maroon-800 text-lg">Add Team Member</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <HiOutlineX className="w-5 h-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="label">Name *</label>
-            <input
-              className="input"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="Full name"
-              required
-            />
+    <Portal>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-display font-bold text-maroon-800 text-lg">Add Team Member</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <HiOutlineX className="w-5 h-5" />
+            </button>
           </div>
 
-          <div>
-            <label className="label">Email *</label>
-            <input
-              type="email"
-              className="input"
-              value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              placeholder="their@email.com"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="label">Role *</label>
-            <select
-              className="input"
-              value={form.role}
-              onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-            >
-              <option value="family">Family (view all, read-only)</option>
-              <option value="friends">Friends (view all except finance, read-only)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="label">Temporary Password *</label>
-            <div className="relative">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="label">Name *</label>
               <input
-                type={showPassword ? 'text' : 'password'}
-                className="input pr-12"
-                value={form.password}
-                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                placeholder="Min. 8 characters"
-                minLength={8}
+                className="input"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Full name"
                 required
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword((s) => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
+            </div>
+
+            <div>
+              <label className="label">Email *</label>
+              <input
+                type="email"
+                className="input"
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="their@email.com"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="label">Role *</label>
+              <select
+                className="input"
+                value={form.role}
+                onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
               >
-                {showPassword ? 'Hide' : 'Show'}
+                <option value="family">Family (view all, read-only)</option>
+                <option value="friends">Friends (view all except finance, read-only)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="label">Temporary Password *</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="input pr-12"
+                  value={form.password}
+                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                  placeholder="Min. 8 characters"
+                  minLength={8}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Share this password with them directly.</p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={onClose} className="btn-secondary flex-1 py-2.5">
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={createUser.isPending}
+                className="btn-primary flex-1 py-2.5 disabled:opacity-50"
+              >
+                {createUser.isPending ? 'Creating...' : 'Create Account'}
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-1">Share this password with them directly.</p>
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1 py-2.5">
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={createUser.isPending}
-              className="btn-primary flex-1 py-2.5 disabled:opacity-50"
-            >
-              {createUser.isPending ? 'Creating...' : 'Create Account'}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
-    </div>
+    </Portal>
   );
 }
 
@@ -173,7 +176,7 @@ export default function Team() {
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h2 className="font-display font-semibold text-gray-700">
             Team Members {!isLoading && `(${teamMembers.length})`}
           </h2>

@@ -159,7 +159,7 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
         <header className="bg-white border-b border-gold-200 px-4 py-3 lg:px-6 flex items-center gap-4">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -173,7 +173,7 @@ export default function AdminLayout() {
           <div className="flex items-center gap-4">
             <NavLink
               to={`/${slug}`}
-              className="text-sm text-gold-600 hover:text-gold-700 font-medium"
+              className="hidden sm:block text-sm text-gold-600 hover:text-gold-700 font-medium"
             >
               View Wedding Website →
             </NavLink>

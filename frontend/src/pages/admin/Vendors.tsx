@@ -17,6 +17,7 @@ import {
   useDeleteVendor,
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
+import Portal from '../../components/Portal';
 
 interface VendorFormData {
   name: string;
@@ -34,7 +35,7 @@ interface VendorFormData {
 
 const DEFAULT_FORM: VendorFormData = {
   name: '',
-  category: 'venue_decorator',
+  category: 'decorator',
   contact_person: '',
   phone: '',
   email: '',
@@ -74,7 +75,7 @@ export default function Vendors() {
     setEditingVendor(vendor);
     setFormData({
       name: vendor.name || '',
-      category: vendor.category || 'venue_decorator',
+      category: vendor.category || 'decorator',
       contact_person: vendor.contact_person || '',
       phone: vendor.phone || '',
       email: vendor.email || '',
@@ -151,10 +152,13 @@ export default function Vendors() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="page-title">Vendors</h1>
         {canEdit && (
-          <button onClick={() => setShowAddModal(true)} className="btn-primary">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="btn-primary self-start sm:self-auto"
+          >
             Add Vendor
           </button>
         )}
@@ -287,233 +291,232 @@ export default function Vendors() {
       ) : (
         <div className="card text-center py-12">
           <p className="text-gray-500">No vendors found.</p>
-          {canEdit && (
-            <button onClick={() => setShowAddModal(true)} className="btn-primary mt-4">
-              Add Your First Vendor
-            </button>
-          )}
         </div>
       )}
 
       {canEdit && showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gold-200">
-              <h2 className="text-xl font-display font-bold text-maroon-800">
-                {editingVendor ? 'Edit Vendor' : 'Add New Vendor'}
-              </h2>
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  resetForm();
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <HiOutlineX className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="label">Vendor Name *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="input"
-                  placeholder="Vendor name"
-                  required
-                />
+        <Portal>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-gold-200">
+                <h2 className="text-xl font-display font-bold text-maroon-800">
+                  {editingVendor ? 'Edit Vendor' : 'Add New Vendor'}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowAddModal(false);
+                    resetForm();
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <HiOutlineX className="w-5 h-5" />
+                </button>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
+              <form onSubmit={handleSubmit} className="p-6 space-y-4">
                 <div>
-                  <label className="label">Category *</label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="input"
-                    required
-                  >
-                    {(categoryList as any[] | undefined)?.map((cat) => (
-                      <option key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Contact Person</label>
+                  <label className="label">Vendor Name *</label>
                   <input
                     type="text"
-                    value={formData.contact_person}
-                    onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="input"
-                    placeholder="Contact name"
+                    placeholder="Vendor name"
+                    required
                   />
                 </div>
-              </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Category *</label>
+                    <select
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="input"
+                      required
+                    >
+                      {(categoryList as any[] | undefined)?.map((cat) => (
+                        <option key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Contact Person</label>
+                    <input
+                      type="text"
+                      value={formData.contact_person}
+                      onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                      className="input"
+                      placeholder="Contact name"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Phone</label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="input"
+                      placeholder="Phone number"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Email</label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="input"
+                      placeholder="Email address"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="label">Phone</label>
+                  <label className="label">Total Cost</label>
                   <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    type="number"
+                    value={formData.total_cost}
+                    onChange={(e) => setFormData({ ...formData, total_cost: e.target.value })}
                     className="input"
-                    placeholder="Phone number"
+                    placeholder="0"
                   />
                 </div>
+
                 <div>
-                  <label className="label">Email</label>
+                  <label className="label">Responsible Side</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, side: 'bride', is_shared: false })}
+                      className={`flex-1 py-2 rounded-lg border-2 transition-colors ${
+                        formData.side === 'bride' && !formData.is_shared
+                          ? 'border-pink-500 bg-pink-50 text-pink-700'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      Bride Side
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, side: 'groom', is_shared: false })}
+                      className={`flex-1 py-2 rounded-lg border-2 transition-colors ${
+                        formData.side === 'groom' && !formData.is_shared
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      Groom Side
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, side: 'mutual', is_shared: true })}
+                      className={`flex-1 py-2 rounded-lg border-2 transition-colors ${
+                        formData.side === 'mutual' || formData.is_shared
+                          ? 'border-gold-500 bg-gold-50 text-gold-700'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      Shared/Mutual
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="label">Rating (1-5)</label>
                   <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    type="number"
+                    min="1"
+                    max="5"
+                    step="0.1"
+                    value={formData.rating}
+                    onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
                     className="input"
-                    placeholder="Email address"
+                    placeholder="4.5"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="label">Total Cost</label>
-                <input
-                  type="number"
-                  value={formData.total_cost}
-                  onChange={(e) => setFormData({ ...formData, total_cost: e.target.value })}
-                  className="input"
-                  placeholder="0"
-                />
-              </div>
-
-              <div>
-                <label className="label">Responsible Side</label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, side: 'bride', is_shared: false })}
-                    className={`flex-1 py-2 rounded-lg border-2 transition-colors ${
-                      formData.side === 'bride' && !formData.is_shared
-                        ? 'border-pink-500 bg-pink-50 text-pink-700'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    Bride Side
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, side: 'groom', is_shared: false })}
-                    className={`flex-1 py-2 rounded-lg border-2 transition-colors ${
-                      formData.side === 'groom' && !formData.is_shared
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    Groom Side
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, side: 'mutual', is_shared: true })}
-                    className={`flex-1 py-2 rounded-lg border-2 transition-colors ${
-                      formData.side === 'mutual' || formData.is_shared
-                        ? 'border-gold-500 bg-gold-50 text-gold-700'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    Shared/Mutual
-                  </button>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_confirmed}
+                      onChange={(e) => setFormData({ ...formData, is_confirmed: e.target.checked })}
+                      className="w-4 h-4 text-maroon-800"
+                    />
+                    <span className="text-sm">Confirmed</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.contract_signed}
+                      onChange={(e) =>
+                        setFormData({ ...formData, contract_signed: e.target.checked })
+                      }
+                      className="w-4 h-4 text-maroon-800"
+                    />
+                    <span className="text-sm">Contract Signed</span>
+                  </label>
                 </div>
-              </div>
+              </form>
 
-              <div>
-                <label className="label">Rating (1-5)</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="5"
-                  step="0.1"
-                  value={formData.rating}
-                  onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
-                  className="input"
-                  placeholder="4.5"
-                />
+              <div className="flex gap-3 p-6 border-t border-gold-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false);
+                    resetForm();
+                  }}
+                  className="btn-outline flex-1"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  onClick={handleSubmit}
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="btn-primary flex-1 disabled:opacity-50"
+                >
+                  {createMutation.isPending || updateMutation.isPending
+                    ? 'Saving...'
+                    : editingVendor
+                      ? 'Update Vendor'
+                      : 'Add Vendor'}
+                </button>
               </div>
-
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_confirmed}
-                    onChange={(e) => setFormData({ ...formData, is_confirmed: e.target.checked })}
-                    className="w-4 h-4 text-maroon-800"
-                  />
-                  <span className="text-sm">Confirmed</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.contract_signed}
-                    onChange={(e) =>
-                      setFormData({ ...formData, contract_signed: e.target.checked })
-                    }
-                    className="w-4 h-4 text-maroon-800"
-                  />
-                  <span className="text-sm">Contract Signed</span>
-                </label>
-              </div>
-            </form>
-
-            <div className="flex gap-3 p-6 border-t border-gold-200">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAddModal(false);
-                  resetForm();
-                }}
-                className="btn-outline flex-1"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                onClick={handleSubmit}
-                disabled={createMutation.isPending || updateMutation.isPending}
-                className="btn-primary flex-1 disabled:opacity-50"
-              >
-                {createMutation.isPending || updateMutation.isPending
-                  ? 'Saving...'
-                  : editingVendor
-                    ? 'Update Vendor'
-                    : 'Add Vendor'}
-              </button>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
 
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md">
-            <h3 className="text-lg font-bold text-maroon-800 mb-2">Confirm Deletion</h3>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete this vendor? This action cannot be undone.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDelete(deleteConfirm)}
-                disabled={deleteMutation.isPending}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 disabled:opacity-50"
-              >
-                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-              </button>
+        <Portal>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-6 max-w-md">
+              <h3 className="text-lg font-bold text-maroon-800 mb-2">Confirm Deletion</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete this vendor? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(deleteConfirm)}
+                  disabled={deleteMutation.isPending}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 disabled:opacity-50"
+                >
+                  {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
     </div>
   );

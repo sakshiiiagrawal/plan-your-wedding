@@ -62,7 +62,7 @@ export default function Home() {
             transition={{ duration: 0.8 }}
           >
             <p className="text-gold-300 text-lg mb-4">We&apos;re getting married!</p>
-            <h1 className="font-script text-6xl md:text-8xl text-cream mb-4">
+            <h1 className="font-script text-6xl sm:text-7xl md:text-8xl text-cream mb-4">
               {brideName} & {groomName}
             </h1>
             <p className="text-gold-300 text-xl mb-12">
@@ -115,7 +115,9 @@ export default function Home() {
             viewport={{ once: true }}
             className="text-center"
           >
-            <h2 className="font-script text-5xl text-maroon-800 mb-4">Our Love Story</h2>
+            <h2 className="font-script text-4xl sm:text-5xl text-maroon-800 mb-4">
+              Our Love Story
+            </h2>
             <div className="w-24 h-1 bg-gold-500 mx-auto mb-8" />
 
             <p className="text-gray-600 text-lg leading-relaxed mb-8">
@@ -148,7 +150,9 @@ export default function Home() {
       <section id="events" className="py-20 bg-cream">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="font-script text-5xl text-maroon-800 mb-4">Wedding Events</h2>
+            <h2 className="font-script text-4xl sm:text-5xl text-maroon-800 mb-4">
+              Wedding Events
+            </h2>
             <div className="w-24 h-1 bg-gold-500 mx-auto" />
           </div>
 
@@ -199,7 +203,7 @@ export default function Home() {
       <section id="rsvp" className="py-20 bg-maroon-800">
         <div className="max-w-2xl mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="font-script text-5xl text-cream mb-4">RSVP</h2>
+            <h2 className="font-script text-4xl sm:text-5xl text-cream mb-4">RSVP</h2>
             <p className="text-gold-300">We would be honored by your presence</p>
           </div>
 

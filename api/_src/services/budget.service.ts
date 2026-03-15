@@ -1,3 +1,4 @@
+import { BUDGET_CATEGORIES } from '@wedding-planner/shared';
 import type { BudgetCategoryInsert, ExpenseInsert } from '@wedding-planner/shared';
 import * as repo from '../repositories/budget.repository';
 import type { ExpenseFilters } from '../repositories/budget.repository';
@@ -186,7 +187,22 @@ export async function createCustomCategory(
   });
 }
 
+async function ensureDefaultCategories(ownerId: string): Promise<void> {
+  const existing = await repo.findCategoriesByOwner(ownerId);
+  if (existing.length > 0) return;
+
+  const defaults = BUDGET_CATEGORIES.map((name, i) => ({
+    name,
+    user_id: ownerId,
+    display_order: i + 1,
+    allocated_amount: 0,
+  }));
+  await Promise.all(defaults.map((cat) => repo.insertCategory(cat)));
+}
+
 export async function getCategoryTree(ownerId: string) {
+  await ensureDefaultCategories(ownerId);
+
   const [allCategories, expenses] = await Promise.all([
     repo.findCategoriesByOwner(ownerId),
     repo.findExpensesForCategoryGrouping(ownerId),

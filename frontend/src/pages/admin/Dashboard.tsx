@@ -118,7 +118,7 @@ export default function Dashboard() {
               : 'Wedding Date'}
           </p>
 
-          <div className="flex justify-center gap-4 md:gap-8">
+          <div className="flex justify-center gap-2 sm:gap-4 md:gap-8">
             {[
               { value: countdown.days, label: 'Days' },
               { value: countdown.hours, label: 'Hours' },
@@ -127,9 +127,9 @@ export default function Dashboard() {
             ].map((item) => (
               <div
                 key={item.label}
-                className="bg-white/10 backdrop-blur rounded-xl p-4 min-w-[80px]"
+                className="bg-white/10 backdrop-blur rounded-xl p-2 sm:p-4 min-w-[68px] sm:min-w-[80px]"
               >
-                <div className="text-3xl md:text-4xl font-bold">{item.value}</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-bold">{item.value}</div>
                 <div className="text-sm text-gold-300">{item.label}</div>
               </div>
             ))}
@@ -269,7 +269,7 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={budgetData} layout="vertical">
                 <XAxis type="number" tickFormatter={(v: number) => `₹${v / 100000}L`} />
-                <YAxis type="category" dataKey="name" width={80} />
+                <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v: any) => formatCurrency(v)} />
                 <Bar dataKey="allocated" fill="#D4AF37" name="Allocated" />
                 <Bar dataKey="spent" fill="#8B0000" name="Spent" />
@@ -291,10 +291,10 @@ export default function Dashboard() {
             return (
               <div
                 key={event.id || index}
-                className="flex items-center gap-4 p-4 rounded-lg hover:bg-gold-50 transition-colors"
+                className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-lg hover:bg-gold-50 transition-colors"
               >
                 <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold"
+                  className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shrink-0"
                   style={{ backgroundColor: eventColor }}
                 >
                   {index + 1}
@@ -310,7 +310,7 @@ export default function Dashboard() {
                     {event.start_time && ` • ${event.start_time.slice(0, 5)}`}
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="self-start sm:self-center sm:text-right">
                   <span className="badge bg-gold-100 text-gold-700">
                     {(event as any).theme || 'Theme'}
                   </span>

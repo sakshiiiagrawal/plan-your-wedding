@@ -5,7 +5,7 @@
   "main": "../server.ts",
   "scripts": {
     "start": "NODE_PATH=./node_modules tsx ../server.ts",
-    "dev": "NODE_PATH=./node_modules nodemon --exec tsx ../server.ts",
+    "dev": "NODE_PATH=./node_modules nodemon",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

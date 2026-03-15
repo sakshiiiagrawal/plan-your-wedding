@@ -1,0 +1,5 @@
+{
+  "watch": [".", "../shared/src"],
+  "ext": "ts,js,json",
+  "exec": "NODE_PATH=./node_modules tsx ../server.ts"
+}

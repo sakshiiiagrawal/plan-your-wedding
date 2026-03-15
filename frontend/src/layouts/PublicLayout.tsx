@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { Outlet, NavLink, useParams } from 'react-router-dom';
+import { HiOutlineMenu, HiOutlineX } from 'react-icons/hi';
 import { useHeroContent } from '../hooks/useApi';
 
 export default function PublicLayout() {
   const { slug } = useParams<{ slug: string }>();
   const { data: heroContent } = useHeroContent(slug);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const brideName = heroContent?.bride_name || 'Bride';
   const groomName = heroContent?.groom_name || 'Groom';
   const coupleNames = `${brideName} & ${groomName}`;
@@ -48,11 +51,68 @@ export default function PublicLayout() {
               </a>
             </div>
 
-            <NavLink to={`/${slug}/admin`} className="text-sm text-gold-600 hover:text-gold-700">
+            <NavLink
+              to={`/${slug}/admin`}
+              className="hidden md:block text-sm text-gold-600 hover:text-gold-700"
+            >
               Admin
             </NavLink>
+
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 hover:bg-gold-50 rounded-lg"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? (
+                <HiOutlineX className="w-6 h-6 text-maroon-800" />
+              ) : (
+                <HiOutlineMenu className="w-6 h-6 text-maroon-800" />
+              )}
+            </button>
           </div>
         </div>
+
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-gold-200 bg-white/95 backdrop-blur-sm">
+            <div className="max-w-7xl mx-auto px-4 py-2">
+              <a
+                href="#our-story"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-3 text-gray-700 hover:text-maroon-800 hover:bg-gold-50 rounded-lg transition-colors"
+              >
+                Our Story
+              </a>
+              <a
+                href="#events"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-3 text-gray-700 hover:text-maroon-800 hover:bg-gold-50 rounded-lg transition-colors"
+              >
+                Events
+              </a>
+              <a
+                href="#gallery"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-3 text-gray-700 hover:text-maroon-800 hover:bg-gold-50 rounded-lg transition-colors"
+              >
+                Gallery
+              </a>
+              <a
+                href="#rsvp"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-3 text-maroon-800 font-semibold hover:bg-gold-50 rounded-lg transition-colors"
+              >
+                RSVP
+              </a>
+              <NavLink
+                to={`/${slug}/admin`}
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-3 text-gold-600 hover:text-gold-700 hover:bg-gold-50 rounded-lg transition-colors"
+              >
+                Admin
+              </NavLink>
+            </div>
+          </div>
+        )}
       </nav>
 
       <main>
