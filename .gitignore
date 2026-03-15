@@ -17,3 +17,6 @@ npm-debug.log*
 .idea
 .vscode
 *.sw?
+
+# Claude Code local settings (contain user-specific tool permissions)
+**/.claude/settings.local.json

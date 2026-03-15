@@ -1,5 +1,9 @@
 # Wedding Planner
 
+[![CI](https://github.com/your-org/wedding-planner/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/wedding-planner/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node ≥20](https://img.shields.io/badge/Node-%E2%89%A520-brightgreen)](https://nodejs.org)
+
 An open-source, multi-tenant wedding planning SaaS built with React, Express, and Supabase. Each wedding gets its own slug-scoped admin dashboard and public website.
 
 ## Features
@@ -12,6 +16,32 @@ An open-source, multi-tenant wedding planning SaaS built with React, Express, an
 - **Room allocation** — hotel rooms, guest assignments, Excel import/export
 - **Guest management** — RSVP tracking, meal preferences, group assignments, Excel import
 
+## Quick Start
+
+### Option A: Supabase cloud (requires a free [Supabase](https://supabase.com) account)
+
+```bash
+git clone https://github.com/your-org/wedding-planner.git
+cd wedding-planner
+npm run setup          # interactive: installs deps + creates .env files
+npm run db:migrate     # apply schema to your Supabase project
+npm run dev            # API on :3001, frontend on :5173
+```
+
+Open `http://localhost:5173/onboard` to create your admin account.
+
+> **Windows?** Use `npm run setup:win` instead of `npm run setup`.
+
+### Option B: Docker (fully self-contained, no accounts needed)
+
+```bash
+git clone https://github.com/your-org/wedding-planner.git
+cd wedding-planner
+docker compose up      # postgres + postgrest + API + frontend start automatically
+```
+
+Open `http://localhost:5173/onboard` to create your admin account.
+
 ## Stack
 
 | Layer | Technology |
@@ -20,7 +50,7 @@ An open-source, multi-tenant wedding planning SaaS built with React, Express, an
 | Backend | Node.js, Express 5, TypeScript, `tsx` runtime |
 | Database | Supabase (PostgreSQL) |
 | Auth | JWT + bcrypt |
-| Deployment | Vercel (frontend + serverless API) |
+| Deployment | Vercel (frontend + serverless API) or Docker (self-hosted) |
 
 ## Architecture
 
@@ -28,8 +58,11 @@ An open-source, multi-tenant wedding planning SaaS built with React, Express, an
 wedding-planner/
 ├── api/                    # Express backend (Vercel serverless)
 │   └── _src/
-│       ├── modules/        # Feature modules (auth, guests, budget, …)
+│       ├── controllers/    # HTTP handlers
+│       ├── services/       # Business logic (no req/res)
+│       ├── repositories/   # Supabase data access
 │       ├── middleware/     # Auth, error handling, Zod validation
+│       ├── routes/         # Express routers
 │       ├── shared/         # Error classes, utilities
 │       └── config/         # Zod-validated env, Supabase client
 ├── frontend/               # React + Vite
@@ -47,77 +80,31 @@ wedding-planner/
 
 Backend follows **Controller → Service → Repository** layering. Shared types are consumed via TypeScript path aliases (`@wedding-planner/shared`) — no npm workspaces or publishing.
 
-## Quick Start
+## Database Migrations
 
-### Prerequisites
-
-- Node.js 20+
-- A [Supabase](https://supabase.com) project
-- (Optional) Vercel account for deployment
-
-### 1. Clone and install
+See [`api/supabase/migrations/README.md`](api/supabase/migrations/README.md) for details.
 
 ```bash
-git clone https://github.com/your-org/wedding-planner.git
-cd wedding-planner
-npm install          # root (ESLint, Prettier, Husky)
-cd api && npm install
-cd ../frontend && npm install
+npm run db:migrate          # apply unapplied migrations (requires DATABASE_URL)
+npm run db:migrate:print    # print SQL to paste into Supabase SQL Editor
 ```
-
-### 2. Configure environment
-
-Copy `.env.example` to `.env` in the project root and fill in your values:
-
-```bash
-cp .env.example .env
-```
-
-Required variables:
-
-```
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_KEY=your-service-role-key
-JWT_SECRET=at-least-32-characters-long
-```
-
-### 3. Set up the database
-
-Run the SQL migrations in your Supabase project (SQL editor). See `scripts/setup.sh` for the full schema.
-
-### 4. Run locally
-
-```bash
-# Terminal 1 — API
-npm run dev:api
-
-# Terminal 2 — Frontend
-npm run dev:frontend
-```
-
-Open `http://localhost:5173`. The onboarding wizard at `/onboard` creates your first admin account.
-
-### 5. Generate TypeScript types from Supabase (optional)
-
-```bash
-bash scripts/generate-db-types.sh
-```
-
-This runs `supabase gen types typescript` and writes to `shared/src/supabase.generated.ts`.
 
 ## Development
 
 ```bash
-npm run typecheck     # Type-check all three packages (shared, api, frontend)
+npm run typecheck     # type-check all three packages (shared, api, frontend)
 npm run lint          # ESLint across the repo
 npm run format        # Prettier format
+npm run format:check  # check formatting without writing
 ```
 
 ## Environment Variables
 
-See `.env.example` for the full list with documentation. All backend variables are validated with Zod on startup — the server exits immediately if any required variable is missing or invalid.
+Run `npm run setup` for guided setup. For manual configuration, copy `.env.example` to `api/.env`. All backend variables are validated with Zod on startup — the server exits immediately if any required variable is missing.
 
-## Deployment (Vercel)
+## Deployment
+
+### Vercel
 
 The project is configured for Vercel out of the box:
 
@@ -127,9 +114,21 @@ The project is configured for Vercel out of the box:
 
 Set all env vars in your Vercel project settings.
 
+### Self-hosted Docker
+
+```bash
+docker compose up -d
+```
+
+The Postgres container auto-applies migrations from `api/supabase/migrations/` on first start.
+
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on adding modules, TypeScript conventions, and the commit format.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on adding features, TypeScript conventions, migrations, and the commit format.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for how to report vulnerabilities.
 
 ## License
 

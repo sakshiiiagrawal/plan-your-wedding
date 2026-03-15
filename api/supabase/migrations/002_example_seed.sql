@@ -1,5 +1,5 @@
--- Seed Data for Sakshi & Ayush Wedding Planner
--- Run this after the initial schema
+-- OPTIONAL: Example seed data for development/demo purposes.
+-- This file is skipped by `npm run db:migrate` unless INCLUDE_SEEDS=true.
 
 -- =====================================================
 -- BUDGET SUMMARY
@@ -37,7 +37,7 @@ INSERT INTO events (name, event_type, description, event_date, start_time, end_t
   'Mehendi',
   'mehendi',
   'Traditional Mehendi ceremony with music, dance and celebrations. Beautiful henna designs for the bride and all female guests.',
-  '2026-11-24',
+  '2027-02-12',
   '18:00',
   '23:00',
   'Green/Yellow Traditional Attire',
@@ -49,7 +49,7 @@ INSERT INTO events (name, event_type, description, event_date, start_time, end_t
   'Haldi Carnival',
   'haldi',
   'Colorful Haldi ceremony for both bride and groom. A fun-filled carnival theme with turmeric rituals and water splash.',
-  '2026-11-25',
+  '2027-02-13',
   '09:00',
   '13:00',
   'Yellow Attire',
@@ -61,7 +61,7 @@ INSERT INTO events (name, event_type, description, event_date, start_time, end_t
   'Engagement & Sangeet',
   'sangeet',
   'Ring ceremony followed by an evening of dance performances, music and celebration. Both families showcase their talents.',
-  '2026-11-25',
+  '2027-02-13',
   '18:00',
   '00:00',
   'Indo-Western/Cocktail Attire',
@@ -72,11 +72,11 @@ INSERT INTO events (name, event_type, description, event_date, start_time, end_t
 (
   'Wedding Ceremony',
   'wedding',
-  'The main wedding ceremony with traditional Baniya-Brahmin rituals. Includes Baraat, Jaimala, Pheras, and Vidaai.',
-  '2026-11-26',
+  'The main wedding ceremony with traditional Hindu rituals. Includes Baraat, Jaimala, Pheras, and Vidaai.',
+  '2027-02-14',
   '07:00',
   '16:00',
-  'Traditional - Red/Maroon Lehenga for bride, Sherwani for groom',
+  'Traditional - Red/Maroon for bride, Sherwani for groom',
   'Royal Indian Wedding',
   '{"primary": "#8B0000", "secondary": "#D4AF37", "accent": "#FFFFFF"}',
   4
@@ -182,40 +182,40 @@ FROM events WHERE event_type = 'wedding';
 -- =====================================================
 
 INSERT INTO tasks (title, category, priority, status, due_date, assigned_to, assigned_side) VALUES
-('Finalize wedding venue booking', 'venue', 'urgent', 'completed', '2026-06-01', 'Papa', 'bride'),
-('Book photographer and videographer', 'vendor', 'high', 'completed', '2026-07-01', 'Ayush', 'groom'),
-('Finalize caterer and menu', 'vendor', 'high', 'in_progress', '2026-08-01', 'Mummy', 'bride'),
-('Order wedding invitations', 'invitation', 'high', 'pending', '2026-09-01', 'Sakshi', 'bride'),
-('Book mehendi artist', 'vendor', 'medium', 'pending', '2026-09-15', 'Sakshi', 'bride'),
-('Book makeup artist for all events', 'vendor', 'high', 'pending', '2026-09-15', 'Sakshi', 'bride'),
-('Arrange hotel rooms for guests', 'accommodation', 'high', 'pending', '2026-10-01', 'Papa', 'groom'),
-('Finalize decorator for all events', 'vendor', 'high', 'pending', '2026-10-01', 'Mummy', 'bride'),
-('Book DJ for sangeet', 'vendor', 'medium', 'pending', '2026-10-15', 'Ayush', 'groom'),
-('Arrange transportation for baraat', 'transportation', 'medium', 'pending', '2026-10-15', 'Chacha', 'groom'),
-('Buy wedding lehenga', 'shopping', 'urgent', 'pending', '2026-08-01', 'Sakshi', 'bride'),
-('Buy groom sherwani', 'shopping', 'high', 'pending', '2026-09-01', 'Ayush', 'groom'),
-('Finalize pandit ji for wedding', 'ritual', 'high', 'pending', '2026-10-01', 'Papa', 'groom'),
-('Prepare guest list', 'guest', 'urgent', 'in_progress', '2026-07-01', 'Both families', 'mutual'),
-('Send save-the-dates', 'invitation', 'high', 'pending', '2026-08-01', 'Sakshi', 'bride'),
-('Book florist', 'vendor', 'medium', 'pending', '2026-10-01', 'Mummy', 'bride'),
-('Arrange sangeet choreographer', 'vendor', 'medium', 'pending', '2026-09-01', 'Sakshi', 'bride'),
-('Buy pooja items for wedding', 'ritual', 'high', 'pending', '2026-11-15', 'Mummy', 'bride'),
-('Confirm all vendor payments', 'finance', 'high', 'pending', '2026-11-20', 'Papa', 'bride'),
-('Final guest count confirmation', 'guest', 'urgent', 'pending', '2026-11-15', 'Both families', 'mutual');
+('Finalize wedding venue booking', 'venue', 'urgent', 'completed', '2026-09-01', 'Bride''s Father', 'bride'),
+('Book photographer and videographer', 'vendor', 'high', 'completed', '2026-10-01', 'Groom', 'groom'),
+('Finalize caterer and menu', 'vendor', 'high', 'in_progress', '2026-11-01', 'Bride''s Mother', 'bride'),
+('Order wedding invitations', 'invitation', 'high', 'pending', '2026-12-01', 'Bride', 'bride'),
+('Book mehendi artist', 'vendor', 'medium', 'pending', '2026-12-15', 'Bride', 'bride'),
+('Book makeup artist for all events', 'vendor', 'high', 'pending', '2026-12-15', 'Bride', 'bride'),
+('Arrange hotel rooms for guests', 'accommodation', 'high', 'pending', '2027-01-01', 'Groom''s Father', 'groom'),
+('Finalize decorator for all events', 'vendor', 'high', 'pending', '2027-01-01', 'Bride''s Mother', 'bride'),
+('Book DJ for sangeet', 'vendor', 'medium', 'pending', '2027-01-15', 'Groom', 'groom'),
+('Arrange transportation for baraat', 'transportation', 'medium', 'pending', '2027-01-15', 'Groom''s Uncle', 'groom'),
+('Buy wedding lehenga', 'shopping', 'urgent', 'pending', '2026-11-01', 'Bride', 'bride'),
+('Buy groom sherwani', 'shopping', 'high', 'pending', '2026-12-01', 'Groom', 'groom'),
+('Finalize pandit ji for wedding', 'ritual', 'high', 'pending', '2027-01-01', 'Groom''s Father', 'groom'),
+('Prepare guest list', 'guest', 'urgent', 'in_progress', '2026-10-01', 'Both families', 'mutual'),
+('Send save-the-dates', 'invitation', 'high', 'pending', '2026-11-01', 'Bride', 'bride'),
+('Book florist', 'vendor', 'medium', 'pending', '2027-01-01', 'Bride''s Mother', 'bride'),
+('Arrange sangeet choreographer', 'vendor', 'medium', 'pending', '2026-12-01', 'Bride', 'bride'),
+('Buy pooja items for wedding', 'ritual', 'high', 'pending', '2027-02-05', 'Bride''s Mother', 'bride'),
+('Confirm all vendor payments', 'finance', 'high', 'pending', '2027-02-10', 'Bride''s Father', 'bride'),
+('Final guest count confirmation', 'guest', 'urgent', 'pending', '2027-02-05', 'Both families', 'mutual');
 
 -- =====================================================
 -- SAMPLE GUEST GROUPS
 -- =====================================================
 
 INSERT INTO guest_groups (name, side, description) VALUES
-('Agrawal Family - Immediate', 'bride', 'Sakshi''s immediate family'),
-('Agrawal Family - Extended', 'bride', 'Sakshi''s extended family members'),
-('Dangwal Family - Immediate', 'groom', 'Ayush''s immediate family'),
-('Dangwal Family - Extended', 'groom', 'Ayush''s extended family members'),
-('Bride''s Friends', 'bride', 'Sakshi''s close friends'),
-('Groom''s Friends', 'groom', 'Ayush''s close friends'),
-('Office Colleagues - Bride', 'bride', 'Sakshi''s work colleagues'),
-('Office Colleagues - Groom', 'groom', 'Ayush''s work colleagues'),
+('Bride''s Family - Immediate', 'bride', 'Bride''s immediate family'),
+('Bride''s Family - Extended', 'bride', 'Bride''s extended family members'),
+('Groom''s Family - Immediate', 'groom', 'Groom''s immediate family'),
+('Groom''s Family - Extended', 'groom', 'Groom''s extended family members'),
+('Bride''s Friends', 'bride', 'Bride''s close friends'),
+('Groom''s Friends', 'groom', 'Groom''s close friends'),
+('Office Colleagues - Bride', 'bride', 'Bride''s work colleagues'),
+('Office Colleagues - Groom', 'groom', 'Groom''s work colleagues'),
 ('Mutual Friends', 'mutual', 'Common friends of both');
 
 -- =====================================================
@@ -226,10 +226,10 @@ INSERT INTO website_content (section_name, content, display_order) VALUES
 (
   'hero',
   '{
-    "bride_name": "Sakshi",
-    "groom_name": "Ayush",
+    "bride_name": "Priya",
+    "groom_name": "Arjun",
     "tagline": "We''re getting married!",
-    "wedding_date": "November 26, 2026",
+    "wedding_date": "February 14, 2027",
     "background_image": "/images/couple/hero-bg.jpg"
   }',
   1
@@ -242,7 +242,7 @@ INSERT INTO website_content (section_name, content, display_order) VALUES
       {"year": "2020", "title": "First Meeting", "description": "We first met through mutual friends..."},
       {"year": "2021", "title": "Started Dating", "description": "After months of friendship, we realized..."},
       {"year": "2024", "title": "The Proposal", "description": "On a beautiful evening..."},
-      {"year": "2026", "title": "The Wedding", "description": "And now we begin our forever together..."}
+      {"year": "2027", "title": "The Wedding", "description": "And now we begin our forever together..."}
     ],
     "quote": "Every love story is beautiful, but ours is our favorite."
   }',
@@ -252,18 +252,16 @@ INSERT INTO website_content (section_name, content, display_order) VALUES
   'couple',
   '{
     "bride": {
-      "name": "Sakshi Agrawal",
-      "family": "Baniya",
-      "parents": "Daughter of Mr. & Mrs. Agrawal",
+      "name": "Priya Sharma",
+      "parents": "Daughter of Mr. & Mrs. Sharma",
       "bio": "A creative soul with a warm heart...",
-      "image": "/images/couple/sakshi.jpg"
+      "image": "/images/couple/bride.jpg"
     },
     "groom": {
-      "name": "Ayush Dangwal",
-      "family": "Brahmin",
-      "parents": "Son of Mr. & Mrs. Dangwal",
+      "name": "Arjun Verma",
+      "parents": "Son of Mr. & Mrs. Verma",
       "bio": "An ambitious dreamer with a kind spirit...",
-      "image": "/images/couple/ayush.jpg"
+      "image": "/images/couple/groom.jpg"
     }
   }',
   3

@@ -14,26 +14,29 @@ wedding-planner/
 ├── api/             # Express backend (Vercel serverless)
 │   └── _src/
 │       ├── config/        # env.ts (Zod-validated), database.ts
-│       ├── modules/       # Feature modules (auth, users, guests, …)
+│       ├── controllers/   # HTTP handlers (one file per domain)
+│       ├── services/      # Business logic (no req/res)
+│       ├── repositories/  # Supabase data access
+│       ├── routes/        # Express routers + index.ts that mounts all routes
 │       ├── middleware/     # auth, error, validate
 │       └── shared/errors/ # AppError + HttpError subclasses
 └── frontend/        # React 19 + Vite + TypeScript
     └── src/
-        ├── modules/  # Feature modules (guests, budget, …)
+        ├── modules/  # Feature-scoped hooks and components
         ├── api/      # axios instance, queryClient
         └── routes/   # Typed route constants
 ```
 
-## Adding a Backend Module
+## Adding a Backend Feature
 
-Each module lives in `api/_src/modules/<domain>/` and follows the Controller → Service → Repository pattern:
+Features follow the **Controller → Service → Repository** pattern. Add files in the relevant layer:
 
 ```
-<domain>/
-├── <domain>.validator.ts   # Zod schemas for request validation
-├── <domain>.service.ts     # Business logic (no req/res)
-├── <domain>.controller.ts  # HTTP handlers (calls service)
-└── <domain>.routes.ts      # Express router
+api/_src/
+├── controllers/<domain>.controller.ts   # HTTP handlers (calls service)
+├── services/<domain>.service.ts         # Business logic (no req/res)
+├── repositories/<domain>.repository.ts  # Supabase queries
+└── validators/<domain>.validator.ts     # Zod schemas
 ```
 
 **Step-by-step:**
@@ -44,19 +47,18 @@ Each module lives in `api/_src/modules/<domain>/` and follows the Controller →
    export type MyEntityRow = Database['public']['Tables']['my_entity']['Row'];
    ```
 
-2. **Add Zod validators** in `<domain>.validator.ts`:
+2. **Add Zod validators** in `api/_src/validators/<domain>.validator.ts`:
    ```typescript
    import { z } from 'zod';
    export const createMyEntitySchema = z.object({ name: z.string().min(1) });
    export type CreateMyEntityInput = z.infer<typeof createMyEntitySchema>;
    ```
 
-3. **Write service functions** (pure, no Express types):
+3. **Write repository functions** (Supabase queries only):
    ```typescript
-   import { supabase } from '../../config/database';
-   import { getWeddingOwnerId } from '../../shared/utils/auth.utils';
+   import { supabase } from '../config/database';
 
-   export async function listMyEntities(userId: string) {
+   export async function findAllByUser(userId: string) {
      const { data, error } = await supabase
        .from('my_entities')
        .select('*')
@@ -66,22 +68,29 @@ Each module lives in `api/_src/modules/<domain>/` and follows the Controller →
    }
    ```
 
-4. **Write controller** (HTTP layer):
+4. **Write service functions** (business logic, calls repository):
+   ```typescript
+   import * as repo from '../repositories/my-entity.repository';
+
+   export async function listMyEntities(userId: string) {
+     return repo.findAllByUser(userId);
+   }
+   ```
+
+5. **Write controller** (HTTP layer):
    ```typescript
    import type { Request, Response, NextFunction } from 'express';
-   import { getWeddingOwnerId } from '../../shared/utils/auth.utils';
-   import * as service from './my-entity.service';
+   import * as service from '../services/my-entity.service';
 
    export const list = async (req: Request, res: Response, next: NextFunction) => {
      try {
-       const ownerId = getWeddingOwnerId(req);
-       const data = await service.listMyEntities(ownerId);
+       const data = await service.listMyEntities(req.user!.id);
        res.json(data);
      } catch (err) { next(err); }
    };
    ```
 
-5. **Mount the router** in `api/_src/routes/index.ts`.
+6. **Mount the router** in `api/_src/routes/index.ts`.
 
 ## Adding a Frontend Module
 
@@ -101,6 +110,13 @@ export const GUEST_QUERY_KEYS = {
   list: (filters: GuestFilters) => ['guests', 'list', filters] as const,
 };
 ```
+
+## Adding a Database Migration
+
+1. Create `api/supabase/migrations/NNN_description.sql` where `NNN` is the next sequential number.
+2. Use `CREATE TABLE IF NOT EXISTS` and `ADD COLUMN IF NOT EXISTS` for idempotency.
+3. Never modify existing migration files — add a new one instead.
+4. Run `npm run db:migrate` to apply locally (requires `DATABASE_URL` in `api/.env`).
 
 ## TypeScript Conventions
 
@@ -128,7 +144,8 @@ chore(deps): upgrade @supabase/supabase-js to 2.x
 
 - [ ] `npm run typecheck` passes with zero errors
 - [ ] `npm run lint` passes with zero warnings
-- [ ] `npm run build` (frontend) produces clean output
+- [ ] `npm run format:check` passes
 - [ ] No hardcoded personal names, URLs, or credentials
-- [ ] New backend modules follow the Controller → Service pattern
+- [ ] New backend features follow the Controller → Service → Repository pattern
 - [ ] New frontend modules have typed query key factories
+- [ ] New migrations are idempotent (`IF NOT EXISTS`)

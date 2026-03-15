@@ -1,127 +1,127 @@
--- Comprehensive Seed Data for Wedding Planner
--- This script adds all mock data that was previously hard-coded in the frontend
--- Run this after 001_initial_schema.sql and 002_seed_data.sql
+-- OPTIONAL: Comprehensive example seed data for development/demo purposes.
+-- This file is skipped by `npm run db:migrate` unless INCLUDE_SEEDS=true.
+-- Run after 001_initial_schema.sql and 002_example_seed.sql.
 
 -- =====================================================
--- VENUES (4 venues from frontend mock data)
+-- VENUES
 -- =====================================================
 
 INSERT INTO venues (name, venue_type, address, city, capacity, total_cost, payment_status, contact_person, contact_phone) VALUES
-('Hotel Malsi Mist', 'lawn', 'Near Regal Manor, Mussoorie Rd, Malsi, Dehradun', 'Dehradun', 150, 741000, 'partial', 'Mr. Manager', '9286248001'),
-('Regal Manor by Grand Dream', 'lawn_and_hall', '189, Diversion Road, Malsi, Mussoorie, Dehradun', 'Dehradun', 250, 1200000, 'partial', 'Mr. Ashish Tyagi', '8941893111');
+('Grand Lotus Hotel', 'lawn', '45 Lake View Road, City Center', 'Jaipur', 150, 741000, 'partial', 'Mr. Event Manager', '9000001001'),
+('Royal Heritage Banquet', 'lawn_and_hall', '12 Palace Road, Heritage District', 'Jaipur', 250, 1200000, 'partial', 'Ms. Banquet Manager', '9000001002');
 
 -- Link venues to events
-UPDATE events SET venue_id = (SELECT id FROM venues WHERE name = 'Hotel Malsi Mist') WHERE event_type = 'mehendi';
-UPDATE events SET venue_id = (SELECT id FROM venues WHERE name = 'Hotel Malsi Mist') WHERE event_type = 'haldi';
-UPDATE events SET venue_id = (SELECT id FROM venues WHERE name = 'Hotel Malsi Mist') WHERE event_type = 'sangeet';
-UPDATE events SET venue_id = (SELECT id FROM venues WHERE name = 'Regal Manor by Grand Dream') WHERE event_type = 'wedding';
+UPDATE events SET venue_id = (SELECT id FROM venues WHERE name = 'Grand Lotus Hotel') WHERE event_type = 'mehendi';
+UPDATE events SET venue_id = (SELECT id FROM venues WHERE name = 'Grand Lotus Hotel') WHERE event_type = 'haldi';
+UPDATE events SET venue_id = (SELECT id FROM venues WHERE name = 'Grand Lotus Hotel') WHERE event_type = 'sangeet';
+UPDATE events SET venue_id = (SELECT id FROM venues WHERE name = 'Royal Heritage Banquet') WHERE event_type = 'wedding';
 
 -- =====================================================
--- VENDORS (6 vendors from frontend mock data)
+-- VENDORS
 -- =====================================================
 
 INSERT INTO vendors (name, category, contact_person, phone, is_confirmed) VALUES
-('Makeup by Alisha Anand', 'makeup_artist', 'Alisha Anand', '9773773620', true),
-('Dummy- Capture Dreams Photography', 'photographer', 'Vikram Singh', '9876543212', true),
-('Dummy- Ritu Mehendi Art', 'mehendi_artist', 'Ritu Verma', '9876543213', true);
+('Glamour Studio', 'makeup_artist', 'Ms. Prerna', '9000002001', true),
+('Dreamcatcher Photography', 'photographer', 'Mr. Vikram', '9000002002', true),
+('Henna Arts Studio', 'mehendi_artist', 'Ms. Rita', '9000002003', true);
 
 -- =====================================================
 -- VENDOR EVENT ASSIGNMENTS
 -- =====================================================
 
--- Capture Dreams Photography - All events
+-- Dreamcatcher Photography - All events
 INSERT INTO vendor_event_assignments (vendor_id, event_id, service_description)
 SELECT v.id, e.id, 'Photography and video coverage'
 FROM vendors v, events e
-WHERE v.name = 'Dummy- Capture Dreams Photography';
+WHERE v.name = 'Dreamcatcher Photography';
 
--- Ritu Mehendi Art - Mehendi only
+-- Henna Arts Studio - Mehendi only
 INSERT INTO vendor_event_assignments (vendor_id, event_id, service_description)
 SELECT v.id, e.id, 'Bridal and guest mehendi'
 FROM vendors v, events e
-WHERE v.name = 'Dummy- Ritu Mehendi Art' AND e.event_type = 'mehendi';
+WHERE v.name = 'Henna Arts Studio' AND e.event_type = 'mehendi';
 
 -- Glamour Studio - All events
 INSERT INTO vendor_event_assignments (vendor_id, event_id, service_description)
 SELECT v.id, e.id, 'Makeup for bride: Haldi, Sangeet and Wedding'
 FROM vendors v, events e
-WHERE v.name = 'Makeup by Alisha Anand';
+WHERE v.name = 'Glamour Studio';
 
 -- =====================================================
--- ACCOMMODATIONS (2 hotels from frontend mock data)
+-- ACCOMMODATIONS
 -- =====================================================
 
 INSERT INTO accommodations (name, accommodation_type, distance_from_venue, total_rooms_booked, total_cost, check_in_time, check_out_time) VALUES
-('Hotel Malsi Mist', 'hotel', '0.5 km (Main Venue)', 24, 741000, '14:00', '11:00'),
-('Hotel White Rock', 'hotel', '0.7 km', 28, 120000, '14:00', '11:00');
+('Grand Lotus Hotel', 'hotel', '0.5 km (Main Venue)', 24, 741000, '14:00', '11:00'),
+('Blue Horizon Hotel', 'hotel', '0.7 km', 28, 120000, '14:00', '11:00');
 
 -- =====================================================
--- ROOMS (sample rooms from frontend mock data)
+-- ROOMS
 -- =====================================================
 
--- Hotel Malsi Mist rooms
+-- Grand Lotus Hotel rooms
 INSERT INTO rooms (accommodation_id, room_number, room_type, capacity) VALUES
-((SELECT id FROM accommodations WHERE name = 'Hotel Malsi Mist'), '201', 'double', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel Malsi Mist'), '202', 'double', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel Malsi Mist'), '203', 'family', 4),
-((SELECT id FROM accommodations WHERE name = 'Hotel Malsi Mist'), '204', 'suite', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel Malsi Mist'), '205', 'double', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel Malsi Mist'), '206', 'double', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel Malsi Mist'), '207', 'double', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel Malsi Mist'), '208', 'double', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel Malsi Mist'), '301', 'double', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel Malsi Mist'), '302', 'double', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel Malsi Mist'), '303', 'family', 4),
-((SELECT id FROM accommodations WHERE name = 'Hotel Malsi Mist'), '304', 'suite', 2);
+((SELECT id FROM accommodations WHERE name = 'Grand Lotus Hotel'), '201', 'double', 2),
+((SELECT id FROM accommodations WHERE name = 'Grand Lotus Hotel'), '202', 'double', 2),
+((SELECT id FROM accommodations WHERE name = 'Grand Lotus Hotel'), '203', 'family', 4),
+((SELECT id FROM accommodations WHERE name = 'Grand Lotus Hotel'), '204', 'suite', 2),
+((SELECT id FROM accommodations WHERE name = 'Grand Lotus Hotel'), '205', 'double', 2),
+((SELECT id FROM accommodations WHERE name = 'Grand Lotus Hotel'), '206', 'double', 2),
+((SELECT id FROM accommodations WHERE name = 'Grand Lotus Hotel'), '207', 'double', 2),
+((SELECT id FROM accommodations WHERE name = 'Grand Lotus Hotel'), '208', 'double', 2),
+((SELECT id FROM accommodations WHERE name = 'Grand Lotus Hotel'), '301', 'double', 2),
+((SELECT id FROM accommodations WHERE name = 'Grand Lotus Hotel'), '302', 'double', 2),
+((SELECT id FROM accommodations WHERE name = 'Grand Lotus Hotel'), '303', 'family', 4),
+((SELECT id FROM accommodations WHERE name = 'Grand Lotus Hotel'), '304', 'suite', 2);
 
--- Hotel White Rock rooms
+-- Blue Horizon Hotel rooms
 INSERT INTO rooms (accommodation_id, room_number, room_type, capacity) VALUES
-((SELECT id FROM accommodations WHERE name = 'Hotel White Rock'), '101', 'double', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel White Rock'), '102', 'double', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel White Rock'), '103', 'family', 4),
-((SELECT id FROM accommodations WHERE name = 'Hotel White Rock'), '104', 'double', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel White Rock'), '105', 'double', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel White Rock'), '106', 'double', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel White Rock'), '201', 'double', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel White Rock'), '202', 'double', 2),
-((SELECT id FROM accommodations WHERE name = 'Hotel White Rock'), '203', 'family', 4),
-((SELECT id FROM accommodations WHERE name = 'Hotel White Rock'), '204', 'suite', 2);
+((SELECT id FROM accommodations WHERE name = 'Blue Horizon Hotel'), '101', 'double', 2),
+((SELECT id FROM accommodations WHERE name = 'Blue Horizon Hotel'), '102', 'double', 2),
+((SELECT id FROM accommodations WHERE name = 'Blue Horizon Hotel'), '103', 'family', 4),
+((SELECT id FROM accommodations WHERE name = 'Blue Horizon Hotel'), '104', 'double', 2),
+((SELECT id FROM accommodations WHERE name = 'Blue Horizon Hotel'), '105', 'double', 2),
+((SELECT id FROM accommodations WHERE name = 'Blue Horizon Hotel'), '106', 'double', 2),
+((SELECT id FROM accommodations WHERE name = 'Blue Horizon Hotel'), '201', 'double', 2),
+((SELECT id FROM accommodations WHERE name = 'Blue Horizon Hotel'), '202', 'double', 2),
+((SELECT id FROM accommodations WHERE name = 'Blue Horizon Hotel'), '203', 'family', 4),
+((SELECT id FROM accommodations WHERE name = 'Blue Horizon Hotel'), '204', 'suite', 2);
 
 -- =====================================================
--- GUESTS (Total: 245 - 120 bride side, 125 groom side)
+-- GUESTS
 -- =====================================================
 
--- Named guests from frontend mock data (8 guests)
+-- Named guests (family members - sample data)
 INSERT INTO guests (first_name, last_name, side, phone, meal_preference, needs_accommodation, relationship, group_id)
 VALUES
-('Arun Kumar', 'Agrawal', 'bride', '9335862560', 'vegetarian', true, 'Father', (SELECT id FROM guest_groups WHERE name = 'Agrawal Family - Immediate')),
-('Durga', 'Agrawal', 'bride', '9450029319', 'vegetarian', true, 'Mother', (SELECT id FROM guest_groups WHERE name = 'Agrawal Family - Immediate')),
-('Nidhi', 'Dangwal', 'groom', '9458345349', 'vegetarian', true, 'Mother', (SELECT id FROM guest_groups WHERE name = 'Dangwal Family - Immediate'));
+('Ramesh', 'Sharma', 'bride', '9000003001', 'vegetarian', true, 'Father', (SELECT id FROM guest_groups WHERE name = 'Bride''s Family - Immediate')),
+('Sunita', 'Sharma', 'bride', '9000003002', 'vegetarian', true, 'Mother', (SELECT id FROM guest_groups WHERE name = 'Bride''s Family - Immediate')),
+('Meena', 'Verma', 'groom', '9000003003', 'vegetarian', true, 'Mother', (SELECT id FROM guest_groups WHERE name = 'Groom''s Family - Immediate'));
 
 -- Extended Family - Bride Side (50 guests)
 INSERT INTO guests (first_name, last_name, side, phone, meal_preference, needs_accommodation, relationship, group_id)
 SELECT
   'Guest_B_' || generate_series,
-  'Agrawal',
+  'Sharma',
   'bride'::guest_side,
   '98765' || LPAD(generate_series::text, 5, '0'),
   CASE WHEN generate_series % 5 = 0 THEN 'jain'::meal_preference WHEN generate_series % 10 = 0 THEN 'vegan'::meal_preference ELSE 'vegetarian'::meal_preference END,
   generate_series % 3 = 0,
   'Extended Family',
-  (SELECT id FROM guest_groups WHERE name = 'Agrawal Family - Extended')
+  (SELECT id FROM guest_groups WHERE name = 'Bride''s Family - Extended')
 FROM generate_series(1, 50);
 
 -- Extended Family - Groom Side (50 guests)
 INSERT INTO guests (first_name, last_name, side, phone, meal_preference, needs_accommodation, relationship, group_id)
 SELECT
   'Guest_G_' || generate_series,
-  'Family',
+  'Verma',
   'groom'::guest_side,
   '98766' || LPAD(generate_series::text, 5, '0'),
   CASE WHEN generate_series % 8 = 0 THEN 'non_vegetarian'::meal_preference WHEN generate_series % 12 = 0 THEN 'vegan'::meal_preference ELSE 'vegetarian'::meal_preference END,
   generate_series % 4 = 0,
   'Extended Family',
-  (SELECT id FROM guest_groups WHERE name = 'Dangwal Family - Extended')
+  (SELECT id FROM guest_groups WHERE name = 'Groom''s Family - Extended')
 FROM generate_series(1, 50);
 
 -- Friends - Bride Side (25 guests)
@@ -190,62 +190,57 @@ SELECT
 FROM generate_series(1, 15);
 
 -- =====================================================
--- GUEST RSVP STATUS (180 confirmed, 55 pending, 10 declined)
+-- GUEST RSVP STATUS
 -- =====================================================
 
--- Create RSVP records for all guests for all events
 INSERT INTO guest_event_rsvp (guest_id, event_id, rsvp_status)
 SELECT g.id, e.id,
   CASE
-    -- First 180 guests confirmed (approximate ratio)
     WHEN ROW_NUMBER() OVER (ORDER BY g.created_at) <= 180 THEN 'confirmed'
-    -- Next 55 guests pending
     WHEN ROW_NUMBER() OVER (ORDER BY g.created_at) <= 235 THEN 'pending'
-    -- Remaining 10 guests declined
     ELSE 'declined'
   END::rsvp_status
 FROM guests g
 CROSS JOIN events e;
 
 -- =====================================================
--- ROOM ALLOCATIONS (from frontend mock data)
+-- ROOM ALLOCATIONS
 -- =====================================================
 
--- Arun & Durga Agrawal in Room 201
+-- Bride's parents in Room 201
 INSERT INTO room_allocations (room_id, guest_id, check_in_date, check_out_date, is_primary_guest)
 SELECT
-  (SELECT r.id FROM rooms r JOIN accommodations a ON r.accommodation_id = a.id WHERE a.name = 'Hotel Malsi Mist' AND r.room_number = '201'),
+  (SELECT r.id FROM rooms r JOIN accommodations a ON r.accommodation_id = a.id WHERE a.name = 'Grand Lotus Hotel' AND r.room_number = '201'),
   g.id,
-  '2026-11-24',
-  '2026-11-27',
-  g.first_name = 'Arun'
-FROM guests g WHERE g.first_name IN ('Arun', 'Durga') AND g.last_name = 'Agrawal';
+  '2027-02-12',
+  '2027-02-15',
+  g.first_name = 'Ramesh'
+FROM guests g WHERE g.first_name IN ('Ramesh', 'Sunita') AND g.last_name = 'Sharma';
 
--- Nidhi Dangwal in Room 202
+-- Groom's mother in Room 202
 INSERT INTO room_allocations (room_id, guest_id, check_in_date, check_out_date, is_primary_guest)
 SELECT
-  (SELECT r.id FROM rooms r JOIN accommodations a ON r.accommodation_id = a.id WHERE a.name = 'Hotel Malsi Mist' AND r.room_number = '202'),
+  (SELECT r.id FROM rooms r JOIN accommodations a ON r.accommodation_id = a.id WHERE a.name = 'Grand Lotus Hotel' AND r.room_number = '202'),
   g.id,
-  '2026-11-24',
-  '2026-11-27',
+  '2027-02-12',
+  '2027-02-15',
   true
-FROM guests g WHERE g.first_name = 'Nidhi' AND g.last_name = 'Dangwal';
+FROM guests g WHERE g.first_name = 'Meena' AND g.last_name = 'Verma';
 
 -- =====================================================
--- EXPENSES (from frontend mock data)
+-- EXPENSES
 -- =====================================================
 
 INSERT INTO expenses (description, amount, expense_date, paid_by, side, category_id) VALUES
-('Photographer advance', 175000, '2026-03-01', 'Papa', 'bride', (SELECT id FROM budget_categories WHERE name = 'Photography & Videography')),
-('Decorator booking', 200000, '2026-02-28', 'Chacha', 'groom', (SELECT id FROM budget_categories WHERE name = 'Decoration'));
+('Photographer advance', 175000, '2026-10-01', 'Bride''s Father', 'bride', (SELECT id FROM budget_categories WHERE name = 'Photography & Videography')),
+('Decorator booking', 200000, '2026-09-28', 'Groom''s Uncle', 'groom', (SELECT id FROM budget_categories WHERE name = 'Decoration'));
 
 -- =====================================================
--- PAYMENTS (Pending payments from frontend mock data)
+-- PAYMENTS
 -- =====================================================
 
--- Completed payments for vendors
 INSERT INTO payments (vendor_id, amount, payment_date, payment_method, status, paid_by) VALUES
-((SELECT id FROM vendors WHERE name = 'Makeup by Alisha Anand'), 48000, '2026-03-10', 'upi', 'paid', 'Ayush');
+((SELECT id FROM vendors WHERE name = 'Glamour Studio'), 48000, '2026-10-10', 'upi', 'paid', 'Groom');
 
 -- =====================================================
 -- UPDATE ESTIMATED GUESTS FOR EVENTS
@@ -257,20 +252,10 @@ UPDATE events SET estimated_guests = 150 WHERE event_type = 'sangeet';
 UPDATE events SET estimated_guests = 250 WHERE event_type = 'wedding';
 
 -- =====================================================
--- VERIFY COUNTS
+-- ADDITIONAL GUESTS TO ROUND OUT COUNTS
 -- =====================================================
 
--- You can run these queries to verify the data:
--- SELECT side, COUNT(*) FROM guests GROUP BY side;
--- Expected: bride=120, groom=125, mutual=15 (total ~260, but we have 245 target)
-
--- Let's adjust to exactly match: we need 120 bride, 125 groom
--- Current counts after inserts:
--- Bride: 8 (named) + 10 (immediate) + 50 (extended) + 25 (friends) + 15 (colleagues) = 108
--- Groom: 8 (named) + 12 (immediate) + 50 (extended) + 25 (friends) + 20 (colleagues) = 115
--- Mutual: 15
-
--- Additional bride guests to reach 120 (need 12 more)
+-- Additional bride guests
 INSERT INTO guests (first_name, last_name, side, phone, meal_preference, needs_accommodation, relationship, group_id)
 SELECT
   'BrideExtra_' || generate_series,
@@ -283,7 +268,7 @@ SELECT
   (SELECT id FROM guest_groups WHERE name = 'Bride''s Friends')
 FROM generate_series(1, 12);
 
--- Additional groom guests to reach 125 (need 10 more)
+-- Additional groom guests
 INSERT INTO guests (first_name, last_name, side, phone, meal_preference, needs_accommodation, relationship, group_id)
 SELECT
   'GroomExtra_' || generate_series,

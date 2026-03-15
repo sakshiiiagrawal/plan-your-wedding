@@ -1,4 +1,4 @@
--- Sakshi & Ayush Wedding Planner Database Schema
+-- Wedding Planner — Database Schema
 -- Run this SQL in your Supabase SQL Editor
 
 -- =====================================================

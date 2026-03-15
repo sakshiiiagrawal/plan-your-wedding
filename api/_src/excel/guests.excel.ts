@@ -17,9 +17,9 @@ export function generateGuestTemplate(): Buffer {
   ];
 
   const sampleData = [
-    ['John', 'Doe', '+91 9876543210', 'Bride', 'Uncle', 'Vegetarian', 'Yes', 'No'],
-    ['Jane', 'Smith', '+91 9876543211', 'Groom', 'Aunt', 'Non Vegetarian', 'No', 'Yes'],
-    ['Raj', 'Kumar', '+91 9876543212', 'Bride', 'Friend', 'Jain', 'Yes', 'Yes'],
+    ['John', 'Doe', '+91 9000000001', 'Bride', 'Uncle', 'Vegetarian', 'Yes', 'No'],
+    ['Jane', 'Smith', '+91 9000000002', 'Groom', 'Aunt', 'Non Vegetarian', 'No', 'Yes'],
+    ['Raj', 'Kumar', '+91 9000000003', 'Bride', 'Friend', 'Jain', 'Yes', 'Yes'],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);

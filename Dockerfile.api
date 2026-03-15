@@ -1,0 +1,22 @@
+# syntax=docker/dockerfile:1
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install shared deps
+COPY shared/package*.json ./shared/
+RUN cd shared && npm ci
+
+# Install API deps
+COPY api/package*.json ./api/
+RUN cd api && npm ci
+
+# Copy source
+COPY shared/ ./shared/
+COPY api/ ./api/
+COPY server.ts ./
+
+EXPOSE 3001
+
+# Mirrors the local dev start command
+CMD ["sh", "-c", "cd api && NODE_PATH=./node_modules node_modules/.bin/tsx ../server.ts"]

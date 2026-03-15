@@ -19,6 +19,9 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Install root deps
+        run: npm install
+
       - name: Install shared deps
         run: cd shared && npm install
 
@@ -49,11 +52,32 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Install root deps
+        run: npm install
+
       - name: Install frontend deps
         run: cd frontend && npm install
 
-      - name: Lint frontend
-        run: cd frontend && npm run lint
+      - name: Lint
+        run: npm run lint
+
+  format:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install root deps
+        run: npm install
+
+      - name: Check formatting
+        run: npm run format:check
 
   build:
     name: Build Frontend
@@ -67,11 +91,14 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Install shared deps
+        run: cd shared && npm install
+
       - name: Install frontend deps
         run: cd frontend && npm install
 
       - name: Build
         run: cd frontend && npm run build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder' }}

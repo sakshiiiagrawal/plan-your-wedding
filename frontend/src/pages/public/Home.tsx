@@ -118,19 +118,17 @@ export default function Home() {
             <div className="grid md:grid-cols-2 gap-8 mt-12">
               <div className="text-center">
                 <div className="w-48 h-48 mx-auto bg-pink-100 rounded-full flex items-center justify-center mb-4">
-                  <span className="font-script text-6xl text-pink-400">S</span>
+                  <span className="font-script text-6xl text-pink-400">{brideName[0]}</span>
                 </div>
-                <h3 className="font-display text-2xl text-maroon-800 mb-2">Sakshi Agrawal</h3>
+                <h3 className="font-display text-2xl text-maroon-800 mb-2">{brideName}</h3>
                 <p className="text-gray-500">The Bride</p>
-                <p className="text-sm text-gray-400 mt-1">Daughter of Mr. & Mrs. Agrawal</p>
               </div>
               <div className="text-center">
                 <div className="w-48 h-48 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                  <span className="font-script text-6xl text-blue-400">A</span>
+                  <span className="font-script text-6xl text-blue-400">{groomName[0]}</span>
                 </div>
-                <h3 className="font-display text-2xl text-maroon-800 mb-2">Ayush Dangwal</h3>
+                <h3 className="font-display text-2xl text-maroon-800 mb-2">{groomName}</h3>
                 <p className="text-gray-500">The Groom</p>
-                <p className="text-sm text-gray-400 mt-1">Son of Mr. & Mrs. Dangwal</p>
               </div>
             </div>
           </motion.div>
