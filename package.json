@@ -3,6 +3,15 @@
   "private": true,
   "version": "1.0.0",
   "description": "Open-source wedding planning SaaS — multi-tenant, React + Express + Supabase",
+  "author": "Sakshi Agrawal",
+  "homepage": "https://github.com/sakshiiiagrawal/plan-your-wedding#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sakshiiiagrawal/plan-your-wedding.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sakshiiiagrawal/plan-your-wedding/issues"
+  },
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.1",
     "dotenv": "^16.0.0",

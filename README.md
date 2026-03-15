@@ -1,6 +1,6 @@
-# Wedding Planner
+# Plan your wedding
 
-[![CI](https://github.com/your-org/wedding-planner/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/wedding-planner/actions/workflows/ci.yml)
+[![CI](https://github.com/sakshiiiagrawal/plan-your-wedding/actions/workflows/ci.yml/badge.svg)](https://github.com/sakshiiiagrawal/plan-your-wedding/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node ≥20](https://img.shields.io/badge/Node-%E2%89%A520-brightgreen)](https://nodejs.org)
 
@@ -21,8 +21,8 @@ An open-source, multi-tenant wedding planning SaaS built with React, Express, an
 ### Option A: Supabase cloud (requires a free [Supabase](https://supabase.com) account)
 
 ```bash
-git clone https://github.com/your-org/wedding-planner.git
-cd wedding-planner
+git clone https://github.com/sakshiiiagrawal/plan-your-wedding.git
+cd plan-your-wedding
 npm run setup          # interactive: installs deps + creates .env files
 npm run db:migrate     # apply schema to your Supabase project
 npm run dev            # API on :3001, frontend on :5173
@@ -35,8 +35,8 @@ Open `http://localhost:5173/onboard` to create your admin account.
 ### Option B: Docker (fully self-contained, no accounts needed)
 
 ```bash
-git clone https://github.com/your-org/wedding-planner.git
-cd wedding-planner
+git clone https://github.com/sakshiiiagrawal/plan-your-wedding.git
+cd plan-your-wedding
 docker compose up      # postgres + postgrest + API + frontend start automatically
 ```
 
@@ -46,7 +46,7 @@ Open `http://localhost:5173/onboard` to create your admin account.
 
 | Layer      | Technology                                                 |
 | ---------- | ---------------------------------------------------------- |
-| Frontend   | React 18, TypeScript, Vite, Tailwind CSS, React Query      |
+| Frontend   | React 19, TypeScript, Vite, Tailwind CSS, React Query      |
 | Backend    | Node.js, Express 5, TypeScript, `tsx` runtime              |
 | Database   | Supabase (PostgreSQL)                                      |
 | Auth       | JWT + bcrypt                                               |
