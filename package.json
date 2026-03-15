@@ -5,6 +5,7 @@
   "description": "Open-source wedding planning SaaS — multi-tenant, React + Express + Supabase",
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.1",
+    "dotenv": "^16.0.0",
     "pg": "^8.13.0"
   },
   "scripts": {
