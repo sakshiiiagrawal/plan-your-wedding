@@ -40,21 +40,30 @@ export default function BudgetOverviewTab({
     <div className="grid lg:grid-cols-2 gap-6">
       <div className="card">
         <h3 className="section-title mb-4">Spending by Category</h3>
-        <ResponsiveContainer width="100%" height={250}>
+        <ResponsiveContainer width="100%" height={300}>
           <PieChart>
             <Pie
               data={pieData}
               cx="50%"
-              cy="50%"
-              outerRadius={80}
+              cy="45%"
+              outerRadius={90}
               dataKey="value"
-              label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
+              label={({ percent }: any) => `${(percent * 100).toFixed(0)}%`}
+              labelLine={false}
             >
               {pieData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color ?? ''} />
               ))}
             </Pie>
             <Tooltip formatter={(value: any) => formatCurrency(value)} />
+            <Legend
+              layout="horizontal"
+              verticalAlign="bottom"
+              align="center"
+              iconType="circle"
+              iconSize={10}
+              formatter={(value) => <span style={{ fontSize: 12 }}>{value}</span>}
+            />
           </PieChart>
         </ResponsiveContainer>
       </div>
