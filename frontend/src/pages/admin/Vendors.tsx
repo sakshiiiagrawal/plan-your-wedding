@@ -4,7 +4,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   HiOutlinePhone,
   HiOutlineMail,
-  HiOutlineStar,
   HiOutlineX,
   HiOutlinePencil,
   HiOutlineTrash,
@@ -28,9 +27,6 @@ interface VendorFormData {
   total_cost: string;
   side: string;
   is_shared: boolean;
-  is_confirmed: boolean;
-  contract_signed: boolean;
-  rating: string;
 }
 
 const DEFAULT_FORM: VendorFormData = {
@@ -42,9 +38,6 @@ const DEFAULT_FORM: VendorFormData = {
   total_cost: '',
   side: 'mutual',
   is_shared: true,
-  is_confirmed: false,
-  contract_signed: false,
-  rating: '',
 };
 
 export default function Vendors() {
@@ -82,9 +75,6 @@ export default function Vendors() {
       total_cost: vendor.total_cost || '',
       side: vendor.side || 'mutual',
       is_shared: vendor.is_shared !== undefined ? vendor.is_shared : true,
-      is_confirmed: vendor.is_confirmed || false,
-      contract_signed: vendor.contract_signed || false,
-      rating: vendor.rating || '',
     });
     setShowAddModal(true);
   };
@@ -198,12 +188,6 @@ export default function Vendors() {
                         .join(' ')}
                     </p>
                   </div>
-                  {vendor.rating && (
-                    <div className="flex items-center gap-1 text-sm">
-                      <HiOutlineStar className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                      <span className="font-medium">{vendor.rating}</span>
-                    </div>
-                  )}
                 </div>
 
                 <div className="space-y-2 text-sm">
@@ -261,10 +245,7 @@ export default function Vendors() {
                   </div>
                 )}
 
-                <div className="mt-4 pt-4 border-t border-gold-100 flex justify-between items-center">
-                  <span className={vendor.is_confirmed ? 'badge-success' : 'badge-warning'}>
-                    {vendor.is_confirmed ? 'Confirmed' : 'Pending'}
-                  </span>
+                <div className="mt-4 pt-4 border-t border-gold-100 flex justify-end items-center">
                   {canEdit && (
                     <div className="flex gap-2">
                       <button
@@ -427,42 +408,6 @@ export default function Vendors() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="label">Rating (1-5)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="5"
-                    step="0.1"
-                    value={formData.rating}
-                    onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
-                    className="input"
-                    placeholder="4.5"
-                  />
-                </div>
-
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.is_confirmed}
-                      onChange={(e) => setFormData({ ...formData, is_confirmed: e.target.checked })}
-                      className="w-4 h-4 text-maroon-800"
-                    />
-                    <span className="text-sm">Confirmed</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.contract_signed}
-                      onChange={(e) =>
-                        setFormData({ ...formData, contract_signed: e.target.checked })
-                      }
-                      className="w-4 h-4 text-maroon-800"
-                    />
-                    <span className="text-sm">Contract Signed</span>
-                  </label>
-                </div>
               </form>
 
               <div className="flex gap-3 p-6 border-t border-gold-200">
