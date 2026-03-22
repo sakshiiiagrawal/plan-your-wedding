@@ -1,5 +1,5 @@
 import { NotFoundError } from '../shared/errors/HttpError';
-import { VENDOR_CATEGORIES } from '@wedding-planner/shared';
+import { VENDOR_CATEGORIES } from '../constants/enums';
 import type { VendorInsert } from '@wedding-planner/shared';
 import * as repo from '../repositories/vendors.repository';
 

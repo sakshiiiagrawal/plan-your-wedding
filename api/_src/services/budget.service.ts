@@ -1,4 +1,4 @@
-import { BUDGET_CATEGORIES } from '@wedding-planner/shared';
+import { BUDGET_CATEGORIES } from '../constants/enums';
 import type { BudgetCategoryInsert, ExpenseInsert } from '@wedding-planner/shared';
 import * as repo from '../repositories/budget.repository';
 import type { ExpenseFilters } from '../repositories/budget.repository';

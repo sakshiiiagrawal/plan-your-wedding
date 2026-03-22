@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { VENDOR_CATEGORIES } from '@wedding-planner/shared';
+import { VENDOR_CATEGORIES } from '../constants/enums';
 
 export const createVendorSchema = z.object({
   name: z.string().min(1),
