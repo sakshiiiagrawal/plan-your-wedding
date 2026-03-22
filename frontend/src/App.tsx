@@ -25,7 +25,7 @@ const Guests = lazy(() => import('./pages/admin/Guests'));
 const Venues = lazy(() => import('./pages/admin/Venues'));
 const Accommodations = lazy(() => import('./pages/admin/Accommodations'));
 const Vendors = lazy(() => import('./pages/admin/Vendors'));
-const Budget = lazy(() => import('./pages/admin/Budget'));
+const Expense = lazy(() => import('./pages/admin/Expense'));
 const Tasks = lazy(() => import('./pages/admin/Tasks'));
 const Team = lazy(() => import('./pages/admin/Team'));
 
@@ -157,7 +157,7 @@ function App() {
                 }
               />
               <Route
-                path="budget"
+                path="expense"
                 element={
                   <Suspense
                     fallback={
@@ -166,7 +166,7 @@ function App() {
                       </div>
                     }
                   >
-                    <Budget />
+                    <Expense />
                   </Suspense>
                 }
               />

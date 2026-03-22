@@ -3,25 +3,25 @@ import { Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { HiOutlinePlus, HiOutlineCurrencyRupee } from 'react-icons/hi';
 import {
-  useBudgetSummary,
-  useBudgetOverview,
+  useExpenseSummary,
+  useExpenseOverview,
   useExpenses,
   useCreateExpense,
   useUpdateExpense,
-  useVendorBudgetSummary,
+  useVendorExpenseSummary,
   useSideSummary,
   useVendors,
   useUpdateVendor,
 } from '../../hooks/useApi';
-import BudgetOverviewTab from './budget/BudgetOverviewTab';
-import BudgetExpensesTab from './budget/BudgetExpensesTab';
-import BudgetSideWiseTab from './budget/BudgetSideWiseTab';
-import BudgetCategoriesTab from './budget/BudgetCategoriesTab';
-import AddExpenseModal from './budget/AddExpenseModal';
-import EditExpenseModal from './budget/EditExpenseModal';
-import EditVendorModal from './budget/EditVendorModal';
-import type { ExpenseRow } from './budget/EditExpenseModal';
-import type { VendorRow } from './budget/EditVendorModal';
+import ExpenseOverviewTab from './expense/ExpenseOverviewTab';
+import ExpenseExpensesTab from './expense/ExpenseExpensesTab';
+import ExpenseSideWiseTab from './expense/ExpenseSideWiseTab';
+import ExpenseCategoriesTab from './expense/ExpenseCategoriesTab';
+import AddExpenseModal from './expense/AddExpenseModal';
+import EditExpenseModal from './expense/EditExpenseModal';
+import EditVendorModal from './expense/EditVendorModal';
+import type { ExpenseRow } from './expense/EditExpenseModal';
+import type { VendorRow } from './expense/EditVendorModal';
 import toast from 'react-hot-toast';
 
 interface Tab {
@@ -59,7 +59,7 @@ type VendorTableRow = VendorRow & {
 
 type AllExpenseRow = ExpenseTableRow | VendorTableRow;
 
-export default function Budget() {
+export default function Expense() {
   const { slug } = useParams<{ slug: string }>();
   const { canEdit, canViewFinance } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
@@ -67,10 +67,10 @@ export default function Budget() {
   const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null);
   const [editingVendor, setEditingVendor] = useState<VendorRow | null>(null);
 
-  const { data: budgetSummary, isLoading: loadingSummary } = useBudgetSummary();
-  const { data: budgetOverview, isLoading: loadingOverview } = useBudgetOverview();
+  const { data: expenseSummary, isLoading: loadingSummary } = useExpenseSummary();
+  const { data: expenseOverview, isLoading: loadingOverview } = useExpenseOverview();
   const { data: expenses, isLoading: loadingExpenses } = useExpenses();
-  const { data: vendorBudgetData = [], isLoading: loadingVendorBudget } = useVendorBudgetSummary();
+  const { data: vendorExpenseData = [], isLoading: loadingVendorExpense } = useVendorExpenseSummary();
   const { data: sideSummary = { bride: { total: 0 }, groom: { total: 0 } } } = useSideSummary();
   const { data: vendors = [] } = useVendors();
   const createExpenseMutation = useCreateExpense();
@@ -79,11 +79,11 @@ export default function Budget() {
 
   const vendorCostTotal = useMemo(
     () =>
-      (vendorBudgetData as Array<{ totalCost?: number }>).reduce(
+      (vendorExpenseData as Array<{ totalCost?: number }>).reduce(
         (sum, v) => sum + (v.totalCost || 0),
         0,
       ),
-    [vendorBudgetData],
+    [vendorExpenseData],
   );
 
   const allExpenses = useMemo((): AllExpenseRow[] => {
@@ -92,7 +92,7 @@ export default function Budget() {
         id: string;
         description: string;
         amount: string | number;
-        budget_categories?: { name: string };
+        expense_categories?: { name: string };
         expense_date: string;
         paid_by: string | null;
         side: string | null;
@@ -108,7 +108,7 @@ export default function Budget() {
       id: e.id,
       type: 'expense' as const,
       description: e.description,
-      category: e.budget_categories?.name || 'Uncategorized',
+      category: e.expense_categories?.name || 'Uncategorized',
       amount: parseFloat(String(e.amount || 0)),
       date: e.expense_date,
       paid_by: e.paid_by,
@@ -124,7 +124,7 @@ export default function Budget() {
     }));
 
     const vendorRows: VendorTableRow[] = (
-      (vendorBudgetData || []) as Array<{
+      (vendorExpenseData || []) as Array<{
         id: string;
         name: string;
         category?: string;
@@ -147,7 +147,7 @@ export default function Budget() {
     }));
 
     return [...expenseRows, ...vendorRows];
-  }, [expenses, vendorBudgetData]);
+  }, [expenses, vendorExpenseData]);
 
   const categoryAnalysis = useMemo(() => {
     const analysis: Record<
@@ -157,7 +157,7 @@ export default function Budget() {
     (
       (expenses || []) as Array<{
         category_id?: string;
-        budget_categories?: { name: string };
+        expense_categories?: { name: string };
         amount?: string | number;
         is_shared?: boolean;
         side?: string;
@@ -166,7 +166,7 @@ export default function Budget() {
       const key = e.category_id || 'uncategorized';
       if (!analysis[key]) {
         analysis[key] = {
-          name: e.budget_categories?.name || 'Uncategorized',
+          name: e.expense_categories?.name || 'Uncategorized',
           total: 0,
           bride: 0,
           groom: 0,
@@ -254,19 +254,19 @@ export default function Budget() {
   if (loadingSummary || loadingOverview) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-gray-500">Loading budget data...</div>
+        <div className="text-gray-500">Loading expense data...</div>
       </div>
     );
   }
 
-  const total = budgetSummary?.totalBudget || 0;
-  const spent = budgetSummary?.totalSpent || 0;
+  const total = expenseSummary?.totalExpense || 0;
+  const spent = expenseSummary?.totalSpent || 0;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h1 className="page-title">Budget & Finance</h1>
+        <h1 className="page-title">Expense & Finance</h1>
         {canEdit && (
           <button
             onClick={() => setShowExpenseModal(true)}
@@ -283,7 +283,7 @@ export default function Budget() {
         <div className="card text-center">
           <HiOutlineCurrencyRupee className="w-8 h-8 text-gold-500 mx-auto mb-2" />
           <div className="text-2xl font-bold text-maroon-800">{formatCurrency(total)}</div>
-          <div className="text-sm text-gray-500">Total Budget</div>
+          <div className="text-sm text-gray-500">Total Expense</div>
         </div>
         <div className="card text-center">
           <div className="text-2xl font-bold text-green-600">{formatCurrency(spent)}</div>
@@ -343,12 +343,12 @@ export default function Budget() {
 
       {/* Tab Content */}
       {activeTab === 'overview' && (
-        <BudgetOverviewTab budgetOverview={budgetOverview} formatCurrency={formatCurrency} />
+        <ExpenseOverviewTab expenseOverview={expenseOverview} formatCurrency={formatCurrency} />
       )}
       {activeTab === 'expenses' && (
-        <BudgetExpensesTab
+        <ExpenseExpensesTab
           allExpenses={allExpenses}
-          loading={loadingExpenses || loadingVendorBudget}
+          loading={loadingExpenses || loadingVendorExpense}
           formatCurrency={formatCurrency}
           canEdit={canEdit}
           onEdit={(row: AllExpenseRow) =>
@@ -359,10 +359,10 @@ export default function Budget() {
         />
       )}
       {activeTab === 'sidewise' && (
-        <BudgetSideWiseTab sideWiseExpenses={sideWiseExpenses} formatCurrency={formatCurrency} />
+        <ExpenseSideWiseTab sideWiseExpenses={sideWiseExpenses} formatCurrency={formatCurrency} />
       )}
       {activeTab === 'categories' && (
-        <BudgetCategoriesTab
+        <ExpenseCategoriesTab
           categoryAnalysis={categoryAnalysis}
           loading={loadingExpenses}
           formatCurrency={formatCurrency}

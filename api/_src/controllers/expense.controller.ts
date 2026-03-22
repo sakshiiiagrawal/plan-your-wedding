@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { getWeddingOwnerId } from '../shared/utils/auth.utils';
-import * as service from '../services/budget.service';
+import * as service from '../services/expense.service';
 
 type IdParam = { id: string };
 const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
@@ -15,7 +15,7 @@ export const getSummary = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.json(await service.getBudgetSummary(getWeddingOwnerId(req)));
+    res.json(await service.getExpenseSummary(getWeddingOwnerId(req)));
   } catch (e) {
     next(e);
   }
@@ -27,7 +27,7 @@ export const getOverview = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.json(await service.getBudgetOverview(getWeddingOwnerId(req)));
+    res.json(await service.getExpenseOverview(getWeddingOwnerId(req)));
   } catch (e) {
     next(e);
   }
@@ -53,13 +53,13 @@ export const getSideSummary = async (
   }
 };
 
-export const updateTotalBudget = async (
+export const updateTotalExpense = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.json(await service.updateTotalBudget(getWeddingOwnerId(req), req.body));
+    res.json(await service.updateTotalExpense(getWeddingOwnerId(req), req.body));
   } catch (e) {
     next(e);
   }
@@ -243,18 +243,18 @@ export const getExpensesByCategoryTree = async (
 };
 
 // ---------------------------------------------------------------------------
-// Vendor budget (served under /budget/vendors/*)
+// Vendor expense (served under /expense/vendors/*)
 // ---------------------------------------------------------------------------
 
-export const getVendorBudgetSummary = async (
+export const getVendorExpenseSummary = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
   try {
-    // Delegates to vendors service via budget — re-imported to keep routing clean
-    const { getVendorBudgetSummary } = await import('../services/vendors.service');
-    res.json(await getVendorBudgetSummary(getWeddingOwnerId(req)));
+    // Delegates to vendors service via expense — re-imported to keep routing clean
+    const { getVendorExpenseSummary } = await import('../services/vendors.service');
+    res.json(await getVendorExpenseSummary(getWeddingOwnerId(req)));
   } catch (e) {
     next(e);
   }

@@ -41,15 +41,15 @@ export async function getCountdown(ownerId: string) {
 }
 
 export async function getStats(ownerId: string) {
-  const [guests, rsvps, tasks, budget, expenses] = await Promise.all([
+  const [guests, rsvps, tasks, expense, expenses] = await Promise.all([
     repo.findGuestSides(ownerId),
     repo.findRsvpStatuses(),
     repo.findTaskStatuses(ownerId),
-    repo.findBudgetSummary(ownerId),
+    repo.findExpenseSummary(ownerId),
     repo.findExpenseAmounts(ownerId),
   ]);
 
-  const totalBudget = parseFloat(String(budget?.total_budget ?? 0));
+  const totalExpense = parseFloat(String(expense?.total_expense ?? 0));
   const totalSpent = expenses.reduce((s, e) => s + parseFloat(String(e.amount)), 0);
 
   return {
@@ -66,7 +66,7 @@ export async function getStats(ownerId: string) {
       pending: tasks.filter((t) => t.status === 'pending').length,
       completed: tasks.filter((t) => t.status === 'completed').length,
     },
-    budget: { total: totalBudget, spent: totalSpent, remaining: totalBudget - totalSpent },
+    expense: { total: totalExpense, spent: totalSpent, remaining: totalExpense - totalSpent },
   };
 }
 

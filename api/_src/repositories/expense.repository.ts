@@ -1,64 +1,64 @@
 import { supabase } from '../config/database';
 import type {
-  BudgetCategoryInsert,
-  BudgetCategoryRow,
+  ExpenseCategoryInsert,
+  ExpenseCategoryRow,
   ExpenseInsert,
   ExpenseRow,
-  BudgetSummaryInsert,
-  BudgetSummaryRow,
+  ExpenseSummaryInsert,
+  ExpenseSummaryRow,
 } from '@wedding-planner/shared';
 
 // ---------------------------------------------------------------------------
-// Budget summary
+// Expense summary
 // ---------------------------------------------------------------------------
 
-export async function findSummaryByOwner(ownerId: string): Promise<BudgetSummaryRow | null> {
+export async function findSummaryByOwner(ownerId: string): Promise<ExpenseSummaryRow | null> {
   const { data } = await supabase
-    .from('budget_summary')
+    .from('expense_summary')
     .select('*')
     .eq('user_id', ownerId)
     .single();
-  return data as BudgetSummaryRow | null;
+  return data as ExpenseSummaryRow | null;
 }
 
 export async function upsertSummary(
   ownerId: string,
-  payload: Omit<BudgetSummaryInsert, 'user_id'>,
-): Promise<BudgetSummaryRow> {
+  payload: Omit<ExpenseSummaryInsert, 'user_id'>,
+): Promise<ExpenseSummaryRow> {
   const { data, error } = await supabase
-    .from('budget_summary')
+    .from('expense_summary')
     .upsert({ ...payload, user_id: ownerId }, { onConflict: 'user_id' })
     .select()
     .single();
   if (error) throw error;
-  return data as BudgetSummaryRow;
+  return data as ExpenseSummaryRow;
 }
 
 // ---------------------------------------------------------------------------
-// Budget categories
+// Expense categories
 // ---------------------------------------------------------------------------
 
-export async function findCategoriesByOwner(ownerId: string): Promise<BudgetCategoryRow[]> {
+export async function findCategoriesByOwner(ownerId: string): Promise<ExpenseCategoryRow[]> {
   const { data, error } = await supabase
-    .from('budget_categories')
+    .from('expense_categories')
     .select('*')
     .eq('user_id', ownerId)
     .order('display_order', { ascending: true });
   if (error) throw error;
-  return (data ?? []) as BudgetCategoryRow[];
+  return (data ?? []) as ExpenseCategoryRow[];
 }
 
 export async function findCategoryByIdAndOwner(
   id: string,
   ownerId: string,
-): Promise<BudgetCategoryRow | null> {
+): Promise<ExpenseCategoryRow | null> {
   const { data } = await supabase
-    .from('budget_categories')
+    .from('expense_categories')
     .select('id')
     .eq('id', id)
     .eq('user_id', ownerId)
     .single();
-  return data as BudgetCategoryRow | null;
+  return data as ExpenseCategoryRow | null;
 }
 
 export async function findMaxDisplayOrder(
@@ -66,7 +66,7 @@ export async function findMaxDisplayOrder(
   parentCategoryId: string | null,
 ): Promise<number> {
   const query = supabase
-    .from('budget_categories')
+    .from('expense_categories')
     .select('display_order')
     .eq('user_id', ownerId)
     .order('display_order', { ascending: false })
@@ -79,30 +79,30 @@ export async function findMaxDisplayOrder(
   return (data?.[0]?.display_order ?? 0) + 1;
 }
 
-export async function insertCategory(payload: BudgetCategoryInsert): Promise<BudgetCategoryRow> {
+export async function insertCategory(payload: ExpenseCategoryInsert): Promise<ExpenseCategoryRow> {
   const { data, error } = await supabase
-    .from('budget_categories')
+    .from('expense_categories')
     .insert([payload])
     .select()
     .single();
   if (error) throw error;
-  return data as BudgetCategoryRow;
+  return data as ExpenseCategoryRow;
 }
 
 export async function updateCategory(
   id: string,
   ownerId: string,
-  payload: Partial<BudgetCategoryInsert>,
-): Promise<BudgetCategoryRow> {
+  payload: Partial<ExpenseCategoryInsert>,
+): Promise<ExpenseCategoryRow> {
   const { data, error } = await supabase
-    .from('budget_categories')
+    .from('expense_categories')
     .update(payload)
     .eq('id', id)
     .eq('user_id', ownerId)
     .select()
     .single();
   if (error) throw error;
-  return data as BudgetCategoryRow;
+  return data as ExpenseCategoryRow;
 }
 
 // ---------------------------------------------------------------------------
@@ -119,7 +119,7 @@ export interface ExpenseFilters {
 export async function findExpensesByOwner(ownerId: string, filters: ExpenseFilters) {
   let query = supabase
     .from('expenses')
-    .select('*, budget_categories(name), vendors(name), events(name)')
+    .select('*, expense_categories(name), vendors(name), events(name)')
     .eq('user_id', ownerId);
 
   if (filters.category_id) query = query.eq('category_id', filters.category_id);
@@ -135,7 +135,7 @@ export async function findExpensesByOwner(ownerId: string, filters: ExpenseFilte
 export async function findExpenseByIdAndOwner(id: string, ownerId: string) {
   const { data, error } = await supabase
     .from('expenses')
-    .select('*, budget_categories(*), vendors(*), events(*)')
+    .select('*, expense_categories(*), vendors(*), events(*)')
     .eq('id', id)
     .eq('user_id', ownerId)
     .single();
@@ -155,7 +155,7 @@ export async function findExpensesAmountByOwner(ownerId: string) {
 export async function findExpensesBySideDetail(ownerId: string) {
   const { data, error } = await supabase
     .from('expenses')
-    .select('*, budget_categories(name)')
+    .select('*, expense_categories(name)')
     .eq('user_id', ownerId)
     .order('expense_date', { ascending: false });
   if (error) throw error;
@@ -174,7 +174,7 @@ export async function findExpensesForSideSummary(ownerId: string) {
 export async function findExpensesForCategoryGrouping(ownerId: string) {
   const { data, error } = await supabase
     .from('expenses')
-    .select('category_id, amount, budget_categories(name)')
+    .select('category_id, amount, expense_categories(name)')
     .eq('user_id', ownerId);
   if (error) throw error;
   return data ?? [];
@@ -192,7 +192,7 @@ export async function findExpensesForVendorGrouping(ownerId: string) {
 export async function findExpensesWithCategoryTree(ownerId: string) {
   const { data, error } = await supabase
     .from('expenses')
-    .select('*, budget_categories(id, name, parent_category_id)')
+    .select('*, expense_categories(id, name, parent_category_id)')
     .eq('user_id', ownerId)
     .order('expense_date', { ascending: false });
   if (error) throw error;
@@ -227,7 +227,7 @@ export async function deleteExpense(id: string, ownerId: string): Promise<void> 
 }
 
 // ---------------------------------------------------------------------------
-// Vendor budget helpers (re-used from vendors table)
+// Vendor expense helpers (re-used from vendors table)
 // ---------------------------------------------------------------------------
 
 export async function findVendorCostsForSideSummary(ownerId: string) {

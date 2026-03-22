@@ -10,17 +10,17 @@ interface CategoryAnalysisItem {
   count: number;
 }
 
-interface BudgetCategoriesTabProps {
+interface ExpenseCategoriesTabProps {
   categoryAnalysis: CategoryAnalysisItem[];
   loading: boolean;
   formatCurrency: (amount: number) => string;
 }
 
-export default function BudgetCategoriesTab({
+export default function ExpenseCategoriesTab({
   categoryAnalysis,
   loading,
   formatCurrency,
-}: BudgetCategoriesTabProps) {
+}: ExpenseCategoriesTabProps) {
   const categoryBarData = categoryAnalysis.map((cat) => ({
     name: cat.name,
     bride: cat.bride,

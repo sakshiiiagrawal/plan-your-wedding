@@ -260,13 +260,13 @@ CREATE TABLE vendor_event_assignments (
 );
 
 -- =====================================================
--- FINANCE & BUDGET
+-- FINANCE & EXPENSE
 -- =====================================================
 
-CREATE TABLE budget_categories (
+CREATE TABLE expense_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
-  parent_category_id UUID REFERENCES budget_categories(id),
+  parent_category_id UUID REFERENCES expense_categories(id),
   allocated_amount DECIMAL(12, 2) DEFAULT 0,
   description TEXT,
   display_order INTEGER DEFAULT 0,
@@ -275,7 +275,7 @@ CREATE TABLE budget_categories (
 
 CREATE TABLE expenses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  category_id UUID REFERENCES budget_categories(id),
+  category_id UUID REFERENCES expense_categories(id),
   vendor_id UUID REFERENCES vendors(id),
   event_id UUID REFERENCES events(id),
   description VARCHAR(500) NOT NULL,
@@ -309,10 +309,10 @@ CREATE TABLE payments (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Overall budget tracking
-CREATE TABLE budget_summary (
+-- Overall expense tracking
+CREATE TABLE expense_summary (
   id UUID PRIMARY KEY DEFAULT '00000000-0000-0000-0000-000000000001',
-  total_budget DECIMAL(14, 2) NOT NULL DEFAULT 0,
+  total_expense DECIMAL(14, 2) NOT NULL DEFAULT 0,
   bride_side_contribution DECIMAL(14, 2) DEFAULT 0,
   groom_side_contribution DECIMAL(14, 2) DEFAULT 0,
   currency VARCHAR(10) DEFAULT 'INR',
@@ -454,5 +454,5 @@ CREATE TRIGGER update_vendors_updated_at BEFORE UPDATE ON vendors FOR EACH ROW E
 CREATE TRIGGER update_expenses_updated_at BEFORE UPDATE ON expenses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_guest_rsvp_updated_at BEFORE UPDATE ON guest_event_rsvp FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_budget_summary_updated_at BEFORE UPDATE ON budget_summary FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_expense_summary_updated_at BEFORE UPDATE ON expense_summary FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_website_content_updated_at BEFORE UPDATE ON website_content FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

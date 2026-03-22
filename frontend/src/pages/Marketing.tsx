@@ -11,7 +11,7 @@ export default function Marketing() {
           Your beautiful wedding website, all in one place.
         </p>
         <p className="text-cream/70 mb-10 text-base">
-          Create your personalized wedding website, manage guests, track your budget, coordinate
+          Create your personalized wedding website, manage guests, track your expense, coordinate
           vendors, and more.
         </p>
         <button onClick={() => navigate('/onboard')} className="btn-primary px-10 py-4 text-lg">

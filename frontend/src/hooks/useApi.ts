@@ -134,7 +134,7 @@ export interface DashboardStats {
   guests: { total: number; bride: number; groom: number };
   rsvp: { confirmed: number; pending: number };
   tasks: { pending: number; completed: number };
-  budget: { total: number; spent: number };
+  expense: { total: number; spent: number };
 }
 
 export const useDashboardStats = () =>
@@ -537,72 +537,72 @@ export const useDeleteVendor = () => {
 };
 
 // =====================================================
-// BUDGET HOOKS
+// EXPENSE HOOKS
 // =====================================================
 
-export interface BudgetSummary {
-  totalBudget: number;
+export interface ExpenseSummary {
+  totalExpense: number;
   totalSpent: number;
 }
 
-export const useBudgetSummary = () =>
-  useQuery<BudgetSummary>({
-    queryKey: ['budget', 'summary'],
-    queryFn: () => api.get('/budget').then((res) => res.data),
+export const useExpenseSummary = () =>
+  useQuery<ExpenseSummary>({
+    queryKey: ['expense', 'summary'],
+    queryFn: () => api.get('/expense').then((res) => res.data),
   });
 
-export const useBudgetOverview = () =>
+export const useExpenseOverview = () =>
   useQuery<any[]>({
-    queryKey: ['budget', 'overview'],
-    queryFn: () => api.get('/budget/overview').then((res) => res.data),
+    queryKey: ['expense', 'overview'],
+    queryFn: () => api.get('/expense/overview').then((res) => res.data),
   });
 
-export const useBudgetByCategory = () =>
+export const useExpenseByCategory = () =>
   useQuery<any>({
-    queryKey: ['budget', 'by-category'],
-    queryFn: () => api.get('/budget/expenses/by-category').then((res) => res.data),
+    queryKey: ['expense', 'by-category'],
+    queryFn: () => api.get('/expense/expenses/by-category').then((res) => res.data),
   });
 
-export const useBudgetBySide = () =>
+export const useExpenseBySide = () =>
   useQuery<any>({
-    queryKey: ['budget', 'by-side'],
-    queryFn: () => api.get('/budget/by-side').then((res) => res.data),
+    queryKey: ['expense', 'by-side'],
+    queryFn: () => api.get('/expense/by-side').then((res) => res.data),
   });
 
-export const useBudgetCategories = () =>
+export const useExpenseCategories = () =>
   useQuery<any[]>({
-    queryKey: ['budget', 'categories'],
-    queryFn: () => api.get('/budget/categories').then((res) => res.data),
+    queryKey: ['expense', 'categories'],
+    queryFn: () => api.get('/expense/categories').then((res) => res.data),
   });
 
 export const useCategoryTree = () =>
   useQuery<any[]>({
-    queryKey: ['budget', 'categories', 'tree'],
-    queryFn: () => api.get('/budget/categories/tree').then((res) => res.data),
+    queryKey: ['expense', 'categories', 'tree'],
+    queryFn: () => api.get('/expense/categories/tree').then((res) => res.data),
   });
 
 export const useExpensesByCategoryTree = () =>
   useQuery<any>({
-    queryKey: ['budget', 'expenses', 'by-category-tree'],
-    queryFn: () => api.get('/budget/expenses/by-category-tree').then((res) => res.data),
+    queryKey: ['expense', 'expenses', 'by-category-tree'],
+    queryFn: () => api.get('/expense/expenses/by-category-tree').then((res) => res.data),
   });
 
 export const useExpenses = (filters: Record<string, string> = {}) =>
   useQuery<any[]>({
-    queryKey: ['budget', 'expenses', filters],
-    queryFn: () => api.get('/budget/expenses', { params: filters }).then((res) => res.data),
+    queryKey: ['expense', 'expenses', filters],
+    queryFn: () => api.get('/expense/expenses', { params: filters }).then((res) => res.data),
   });
 
-export const useVendorBudgetSummary = () =>
+export const useVendorExpenseSummary = () =>
   useQuery<any[]>({
-    queryKey: ['budget', 'vendors', 'summary'],
-    queryFn: () => api.get('/budget/vendors/summary').then((res) => res.data),
+    queryKey: ['expense', 'vendors', 'summary'],
+    queryFn: () => api.get('/expense/vendors/summary').then((res) => res.data),
   });
 
 export const useVendorsBySide = () =>
   useQuery<any>({
-    queryKey: ['budget', 'vendors', 'by-side'],
-    queryFn: () => api.get('/budget/vendors/by-side').then((res) => res.data),
+    queryKey: ['expense', 'vendors', 'by-side'],
+    queryFn: () => api.get('/expense/vendors/by-side').then((res) => res.data),
   });
 
 export interface SideSummary {
@@ -612,17 +612,17 @@ export interface SideSummary {
 
 export const useSideSummary = () =>
   useQuery<SideSummary>({
-    queryKey: ['budget', 'side-summary'],
-    queryFn: () => api.get('/budget/side-summary').then((res) => res.data),
+    queryKey: ['expense', 'side-summary'],
+    queryFn: () => api.get('/expense/side-summary').then((res) => res.data),
   });
 
 export const useCreateExpense = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (expenseData: any) =>
-      api.post('/budget/expenses', expenseData).then((res) => res.data),
+      api.post('/expense/expenses', expenseData).then((res) => res.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['budget'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
     },
   });
 };
@@ -631,9 +631,9 @@ export const useUpdateExpense = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Record<string, any>) =>
-      api.put(`/budget/expenses/${id}`, data).then((res) => res.data),
+      api.put(`/expense/expenses/${id}`, data).then((res) => res.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['budget'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
     },
   });
 };
@@ -641,9 +641,9 @@ export const useUpdateExpense = () => {
 export const useDeleteExpense = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.delete(`/budget/expenses/${id}`),
+    mutationFn: (id: string) => api.delete(`/expense/expenses/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['budget'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
     },
   });
 };
@@ -652,9 +652,9 @@ export const useCreateCustomCategory = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (categoryData: any) =>
-      api.post('/budget/categories/custom', categoryData).then((res) => res.data),
+      api.post('/expense/categories/custom', categoryData).then((res) => res.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['budget', 'categories'] });
+      queryClient.invalidateQueries({ queryKey: ['expense', 'categories'] });
     },
   });
 };

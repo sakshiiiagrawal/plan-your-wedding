@@ -89,7 +89,7 @@ function ExpenseList({
               <div>
                 <div className="font-medium text-sm text-gray-800">{e.description}</div>
                 <div className="text-xs text-gray-500 capitalize">
-                  {e.budget_categories?.name || 'Uncategorized'}
+                  {e.expense_categories?.name || 'Uncategorized'}
                 </div>
                 {isShared ? (
                   <div className="text-xs text-gray-400">
@@ -128,15 +128,15 @@ interface SideWiseExpenses {
   shared: { items: any[]; total: number };
 }
 
-interface BudgetSideWiseTabProps {
+interface ExpenseSideWiseTabProps {
   sideWiseExpenses: SideWiseExpenses;
   formatCurrency: (amount: number) => string;
 }
 
-export default function BudgetSideWiseTab({
+export default function ExpenseSideWiseTab({
   sideWiseExpenses,
   formatCurrency,
-}: BudgetSideWiseTabProps) {
+}: ExpenseSideWiseTabProps) {
   return (
     <div className="space-y-6">
       <div className="grid md:grid-cols-3 gap-4">

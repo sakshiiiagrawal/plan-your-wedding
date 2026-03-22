@@ -2,17 +2,17 @@
 -- This file is skipped by `npm run db:migrate` unless INCLUDE_SEEDS=true.
 
 -- =====================================================
--- BUDGET SUMMARY
+-- EXPENSE SUMMARY
 -- =====================================================
 
-INSERT INTO budget_summary (id, total_budget, bride_side_contribution, groom_side_contribution, currency)
+INSERT INTO expense_summary (id, total_expense, bride_side_contribution, groom_side_contribution, currency)
 VALUES ('00000000-0000-0000-0000-000000000001', 3000000, 1500000, 1500000, 'INR');
 
 -- =====================================================
--- BUDGET CATEGORIES
+-- EXPENSE CATEGORIES
 -- =====================================================
 
-INSERT INTO budget_categories (name, allocated_amount, display_order) VALUES
+INSERT INTO expense_categories (name, allocated_amount, display_order) VALUES
 ('Venue', 1000000, 1),
 ('Catering', 1500000, 2),
 ('Decoration', 500000, 3),

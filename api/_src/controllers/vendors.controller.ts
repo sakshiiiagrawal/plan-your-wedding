@@ -104,13 +104,13 @@ export const getPayments = async (
   }
 };
 
-export const getVendorBudgetSummary = async (
+export const getVendorExpenseSummary = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.json(await service.getVendorBudgetSummary(getWeddingOwnerId(req)));
+    res.json(await service.getVendorExpenseSummary(getWeddingOwnerId(req)));
   } catch (e) {
     next(e);
   }

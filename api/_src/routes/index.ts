@@ -7,7 +7,7 @@ import venuesRoutes from './venues.routes';
 import guestsRoutes from './guests.routes';
 import accommodationsRoutes from './accommodations.routes';
 import vendorsRoutes from './vendors.routes';
-import budgetRoutes from './budget.routes';
+import expenseRoutes from './expense.routes';
 import tasksRoutes from './tasks.routes';
 import dashboardRoutes from './dashboard.routes';
 import websiteContentRoutes from './website-content.routes';
@@ -36,7 +36,7 @@ router.use('/guests', guestsRoutes);
 router.use('/venues', venuesRoutes);
 router.use('/accommodations', accommodationsRoutes);
 router.use('/vendors', vendorsRoutes);
-router.use('/budget', budgetRoutes);
+router.use('/expense', expenseRoutes);
 router.use('/tasks', tasksRoutes);
 router.use('/website-content', websiteContentRoutes);
 

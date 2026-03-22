@@ -764,7 +764,7 @@ export interface Database {
         ];
       };
 
-      budget_categories: {
+      expense_categories: {
         Row: {
           id: string;
           name: string;
@@ -797,14 +797,14 @@ export interface Database {
         };
         Relationships: [
           {
-            foreignKeyName: 'budget_categories_parent_category_id_fkey';
+            foreignKeyName: 'expense_categories_parent_category_id_fkey';
             columns: ['parent_category_id'];
             isOneToOne: false;
-            referencedRelation: 'budget_categories';
+            referencedRelation: 'expense_categories';
             referencedColumns: ['id'];
           },
           {
-            foreignKeyName: 'budget_categories_user_id_fkey';
+            foreignKeyName: 'expense_categories_user_id_fkey';
             columns: ['user_id'];
             isOneToOne: false;
             referencedRelation: 'users';
@@ -873,7 +873,7 @@ export interface Database {
             foreignKeyName: 'expenses_category_id_fkey';
             columns: ['category_id'];
             isOneToOne: false;
-            referencedRelation: 'budget_categories';
+            referencedRelation: 'expense_categories';
             referencedColumns: ['id'];
           },
           {
@@ -984,10 +984,10 @@ export interface Database {
         ];
       };
 
-      budget_summary: {
+      expense_summary: {
         Row: {
           id: string;
-          total_budget: number;
+          total_expense: number;
           bride_side_contribution: number;
           groom_side_contribution: number;
           currency: string;
@@ -998,7 +998,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          total_budget?: number;
+          total_expense?: number;
           bride_side_contribution?: number;
           groom_side_contribution?: number;
           currency?: string;
@@ -1009,7 +1009,7 @@ export interface Database {
         };
         Update: {
           id?: string;
-          total_budget?: number;
+          total_expense?: number;
           bride_side_contribution?: number;
           groom_side_contribution?: number;
           currency?: string;
@@ -1020,7 +1020,7 @@ export interface Database {
         };
         Relationships: [
           {
-            foreignKeyName: 'budget_summary_user_id_fkey';
+            foreignKeyName: 'expense_summary_user_id_fkey';
             columns: ['user_id'];
             isOneToOne: true;
             referencedRelation: 'users';

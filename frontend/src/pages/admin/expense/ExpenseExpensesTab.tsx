@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { HiOutlinePencil } from 'react-icons/hi';
 
-interface BudgetExpensesTabProps {
+interface ExpenseExpensesTabProps {
   allExpenses: any[];
   loading: boolean;
   formatCurrency: (amount: number) => string;
@@ -9,13 +9,13 @@ interface BudgetExpensesTabProps {
   onEdit: (row: any) => void;
 }
 
-export default function BudgetExpensesTab({
+export default function ExpenseExpensesTab({
   allExpenses,
   loading,
   formatCurrency,
   canEdit,
   onEdit,
-}: BudgetExpensesTabProps) {
+}: ExpenseExpensesTabProps) {
   if (loading) {
     return <div className="card p-8 text-center text-gray-500">Loading expenses...</div>;
   }

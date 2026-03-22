@@ -1,14 +1,14 @@
 import { Router } from 'express';
 import { validateBody } from '../middleware/validate.middleware';
 import {
-  updateTotalBudgetSchema,
+  updateTotalExpenseSchema,
   createCategorySchema,
   updateCategorySchema,
   createCustomCategorySchema,
   createExpenseSchema,
   updateExpenseSchema,
-} from '../validators/budget.validator';
-import * as ctrl from '../controllers/budget.controller';
+} from '../validators/expense.validator';
+import * as ctrl from '../controllers/expense.controller';
 
 const router = Router();
 
@@ -17,7 +17,7 @@ router.get('/', ctrl.getSummary);
 router.get('/overview', ctrl.getOverview);
 router.get('/by-side', ctrl.getBySide);
 router.get('/side-summary', ctrl.getSideSummary);
-router.put('/total', validateBody(updateTotalBudgetSchema), ctrl.updateTotalBudget);
+router.put('/total', validateBody(updateTotalExpenseSchema), ctrl.updateTotalExpense);
 
 // Categories — specific paths before /:id
 router.get('/categories/tree', ctrl.getCategoryTree);
@@ -40,8 +40,8 @@ router.post('/expenses', validateBody(createExpenseSchema), ctrl.createExpense);
 router.put('/expenses/:id', validateBody(updateExpenseSchema), ctrl.updateExpense);
 router.delete('/expenses/:id', ctrl.deleteExpense);
 
-// Vendor budget tracking
-router.get('/vendors/summary', ctrl.getVendorBudgetSummary);
+// Vendor expense tracking
+router.get('/vendors/summary', ctrl.getVendorExpenseSummary);
 router.get('/vendors/by-side', ctrl.getVendorsBySide);
 
 export default router;

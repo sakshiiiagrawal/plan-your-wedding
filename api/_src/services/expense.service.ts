@@ -1,7 +1,7 @@
-import { BUDGET_CATEGORIES } from '../constants/enums';
-import type { BudgetCategoryInsert, ExpenseInsert } from '@wedding-planner/shared';
-import * as repo from '../repositories/budget.repository';
-import type { ExpenseFilters } from '../repositories/budget.repository';
+import { EXPENSE_CATEGORIES } from '../constants/enums';
+import type { ExpenseCategoryInsert, ExpenseInsert } from '@wedding-planner/shared';
+import * as repo from '../repositories/expense.repository';
+import type { ExpenseFilters } from '../repositories/expense.repository';
 
 const toFloat = (v: unknown) => parseFloat(String(v ?? 0));
 
@@ -9,8 +9,8 @@ const toFloat = (v: unknown) => parseFloat(String(v ?? 0));
 // Summary
 // ---------------------------------------------------------------------------
 
-export async function getBudgetSummary(ownerId: string) {
-  const [budget, expenses] = await Promise.all([
+export async function getExpenseSummary(ownerId: string) {
+  const [expense, expenses] = await Promise.all([
     repo.findSummaryByOwner(ownerId),
     repo.findExpensesAmountByOwner(ownerId),
   ]);
@@ -24,20 +24,20 @@ export async function getBudgetSummary(ownerId: string) {
     .reduce((s, e) => s + toFloat(e.amount), 0);
 
   return {
-    totalBudget: toFloat(budget?.total_budget),
-    brideContribution: toFloat(budget?.bride_side_contribution),
-    groomContribution: toFloat(budget?.groom_side_contribution),
+    totalExpense: toFloat(expense?.total_expense),
+    brideContribution: toFloat(expense?.bride_side_contribution),
+    groomContribution: toFloat(expense?.groom_side_contribution),
     totalSpent,
     brideSpent,
     groomSpent,
-    remaining: toFloat(budget?.total_budget) - totalSpent,
+    remaining: toFloat(expense?.total_expense) - totalSpent,
   };
 }
 
-export async function updateTotalBudget(
+export async function updateTotalExpense(
   ownerId: string,
   payload: {
-    total_budget?: number;
+    total_expense?: number;
     bride_side_contribution?: number;
     groom_side_contribution?: number;
   },
@@ -49,7 +49,7 @@ export async function updateTotalBudget(
 // Overview
 // ---------------------------------------------------------------------------
 
-export async function getBudgetOverview(ownerId: string) {
+export async function getExpenseOverview(ownerId: string) {
   const [categories, expenses] = await Promise.all([
     repo.findCategoriesByOwner(ownerId),
     repo.findExpensesForCategoryGrouping(ownerId),
@@ -147,7 +147,7 @@ export async function listCategories(ownerId: string) {
 }
 
 export async function createCategory(
-  payload: Omit<BudgetCategoryInsert, 'user_id'>,
+  payload: Omit<ExpenseCategoryInsert, 'user_id'>,
   ownerId: string,
 ) {
   return repo.insertCategory({ ...payload, user_id: ownerId });
@@ -156,7 +156,7 @@ export async function createCategory(
 export async function updateCategory(
   id: string,
   ownerId: string,
-  payload: Partial<BudgetCategoryInsert>,
+  payload: Partial<ExpenseCategoryInsert>,
 ) {
   return repo.updateCategory(id, ownerId, payload);
 }
@@ -191,7 +191,7 @@ async function ensureDefaultCategories(ownerId: string): Promise<void> {
   const existing = await repo.findCategoriesByOwner(ownerId);
   if (existing.length > 0) return;
 
-  const defaults = BUDGET_CATEGORIES.map((name, i) => ({
+  const defaults = EXPENSE_CATEGORIES.map((name, i) => ({
     name,
     user_id: ownerId,
     display_order: i + 1,
@@ -279,7 +279,7 @@ export async function getExpensesByCategory(ownerId: string) {
   const grouped: Record<string, number> = {};
   data.forEach((e) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const name = (e.budget_categories as any)?.name ?? 'Uncategorized';
+    const name = (e.expense_categories as any)?.name ?? 'Uncategorized';
     grouped[name] = (grouped[name] ?? 0) + toFloat(e.amount);
   });
   return Object.entries(grouped).map(([name, total]) => ({ name, total }));

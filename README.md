@@ -9,10 +9,10 @@ An open-source, multi-tenant wedding planning SaaS built with React, Express, an
 ## Features
 
 - **Multi-tenant** — one deployment serves unlimited weddings, each isolated by slug
-- **Admin dashboard** — manage guests, events, venues, accommodations, vendors, tasks, and budget
+- **Admin dashboard** — manage guests, events, venues, accommodations, vendors, tasks, and expense
 - **Role-based access** — `admin` (full), `family` (view + finance), `friends` (view only, no finance)
 - **Public wedding website** — hero section, countdown timer, event schedule, gallery
-- **Budget tracking** — expense categories, side-wise splits (bride/groom/shared), vendor cost tracking
+- **Expense tracking** — expense categories, side-wise splits (bride/groom/shared), vendor cost tracking
 - **Room allocation** — hotel rooms, guest assignments, Excel import/export
 - **Guest management** — RSVP tracking, meal preferences, group assignments, Excel import
 

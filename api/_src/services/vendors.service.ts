@@ -58,13 +58,13 @@ export async function getPayments(vendorId: string) {
   return repo.findPaymentsByVendor(vendorId);
 }
 
-export async function getVendorBudgetSummary(ownerId: string) {
-  const vendors = await repo.findVendorBudgetSummary(ownerId);
+export async function getVendorExpenseSummary(ownerId: string) {
+  const vendors = await repo.findVendorExpenseSummary(ownerId);
   return vendors.map((v) => ({ ...v, totalCost: parseFloat(String(v.total_cost ?? 0)) }));
 }
 
 export async function getVendorsBySide(ownerId: string) {
-  const vendors = await repo.findVendorBudgetSummary(ownerId);
+  const vendors = await repo.findVendorExpenseSummary(ownerId);
   const result = {
     bride: { vendors: [] as typeof vendors, totalCost: 0 },
     groom: { vendors: [] as typeof vendors, totalCost: 0 },

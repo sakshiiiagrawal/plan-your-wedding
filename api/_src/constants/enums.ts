@@ -18,7 +18,7 @@ export const VENDOR_CATEGORIES = [
   'other',
 ] as const;
 
-export const BUDGET_CATEGORIES = [
+export const EXPENSE_CATEGORIES = [
   'Venue',
   'Catering',
   'Photography & Videography',

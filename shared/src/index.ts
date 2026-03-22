@@ -46,16 +46,16 @@ export type { EventRow, EventInsert, EventWithVenue } from './domain/event.types
 export type { VendorRow, VendorInsert } from './domain/vendor.types';
 
 export type {
-  BudgetCategoryRow,
-  BudgetCategoryInsert,
+  ExpenseCategoryRow,
+  ExpenseCategoryInsert,
   ExpenseRow,
   ExpenseInsert,
   PaymentRow,
   PaymentInsert,
-  BudgetSummaryRow,
-  BudgetSummaryInsert,
+  ExpenseSummaryRow,
+  ExpenseSummaryInsert,
   ExpenseWithDetails,
-} from './domain/budget.types';
+} from './domain/expense.types';
 
 export type {
   AccommodationRow,
@@ -88,8 +88,8 @@ export {
 } from './enums/guest.enums';
 export type { GuestSide, RsvpStatus, MealPreference, AgeGroup, Gender } from './enums/guest.enums';
 
-export { PAYMENT_STATUSES, PAYMENT_METHODS, BUDGET_CATEGORIES } from './enums/budget.enums';
-export type { PaymentStatus, PaymentMethod, BudgetCategoryName } from './enums/budget.enums';
+export { PAYMENT_STATUSES, PAYMENT_METHODS, EXPENSE_CATEGORIES } from './enums/expense.enums';
+export type { PaymentStatus, PaymentMethod, ExpenseCategoryName } from './enums/expense.enums';
 
 export { VENDOR_CATEGORIES } from './enums/vendor.enums';
 export type { VendorCategory } from './enums/vendor.enums';

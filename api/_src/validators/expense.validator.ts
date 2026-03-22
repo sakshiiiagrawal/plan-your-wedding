@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-export const updateTotalBudgetSchema = z.object({
-  total_budget: z.coerce.number().nonnegative().optional(),
+export const updateTotalExpenseSchema = z.object({
+  total_expense: z.coerce.number().nonnegative().optional(),
   bride_side_contribution: z.coerce.number().nonnegative().optional(),
   groom_side_contribution: z.coerce.number().nonnegative().optional(),
 });

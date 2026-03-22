@@ -25,9 +25,9 @@ export async function findTaskStatuses(ownerId: string) {
   return data ?? [];
 }
 
-export async function findBudgetSummary(ownerId: string) {
+export async function findExpenseSummary(ownerId: string) {
   const { data } = await supabase
-    .from('budget_summary')
+    .from('expense_summary')
     .select('*')
     .eq('user_id', ownerId)
     .single();

@@ -1,4 +1,4 @@
-// Budget-domain enum constants and their derived union types.
+// Expense-domain enum constants and their derived union types.
 
 export const PAYMENT_STATUSES = ['pending', 'partial', 'paid', 'overdue', 'cancelled'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
@@ -7,10 +7,10 @@ export const PAYMENT_METHODS = ['cash', 'bank_transfer', 'upi', 'cheque', 'credi
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 /**
- * Well-known top-level budget category names.
+ * Well-known top-level expense category names.
  * These mirror common default categories seeded at setup time.
  */
-export const BUDGET_CATEGORIES = [
+export const EXPENSE_CATEGORIES = [
   'Venue',
   'Catering',
   'Photography & Videography',
@@ -24,4 +24,4 @@ export const BUDGET_CATEGORIES = [
   'Mehendi & Rituals',
   'Miscellaneous',
 ] as const;
-export type BudgetCategoryName = (typeof BUDGET_CATEGORIES)[number];
+export type ExpenseCategoryName = (typeof EXPENSE_CATEGORIES)[number];

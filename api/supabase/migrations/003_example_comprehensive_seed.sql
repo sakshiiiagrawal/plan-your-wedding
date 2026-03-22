@@ -232,8 +232,8 @@ FROM guests g WHERE g.first_name = 'Meena' AND g.last_name = 'Verma';
 -- =====================================================
 
 INSERT INTO expenses (description, amount, expense_date, paid_by, side, category_id) VALUES
-('Photographer advance', 175000, '2026-10-01', 'Bride''s Father', 'bride', (SELECT id FROM budget_categories WHERE name = 'Photography & Videography')),
-('Decorator booking', 200000, '2026-09-28', 'Groom''s Uncle', 'groom', (SELECT id FROM budget_categories WHERE name = 'Decoration'));
+('Photographer advance', 175000, '2026-10-01', 'Bride''s Father', 'bride', (SELECT id FROM expense_categories WHERE name = 'Photography & Videography')),
+('Decorator booking', 200000, '2026-09-28', 'Groom''s Uncle', 'groom', (SELECT id FROM expense_categories WHERE name = 'Decoration'));
 
 -- =====================================================
 -- PAYMENTS

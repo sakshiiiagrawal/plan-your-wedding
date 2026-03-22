@@ -39,8 +39,8 @@ export default function AdminLayout() {
     },
     { path: `/${slug}/admin/vendors`, label: 'Vendors', icon: HiOutlineBriefcase },
     {
-      path: `/${slug}/admin/budget`,
-      label: 'Budget',
+      path: `/${slug}/admin/expense`,
+      label: 'Expense',
       icon: HiOutlineCurrencyRupee,
       requiresFinanceAccess: true,
     },

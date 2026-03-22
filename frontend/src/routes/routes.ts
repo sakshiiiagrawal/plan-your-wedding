@@ -11,7 +11,7 @@ export const ROUTES = {
     venues: (slug: string) => `/${slug}/admin/venues`,
     accommodations: (slug: string) => `/${slug}/admin/accommodations`,
     vendors: (slug: string) => `/${slug}/admin/vendors`,
-    budget: (slug: string) => `/${slug}/admin/budget`,
+    expense: (slug: string) => `/${slug}/admin/expense`,
     tasks: (slug: string) => `/${slug}/admin/tasks`,
     team: (slug: string) => `/${slug}/admin/team`,
   },

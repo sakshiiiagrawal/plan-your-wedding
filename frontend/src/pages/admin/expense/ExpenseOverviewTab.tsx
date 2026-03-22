@@ -14,17 +14,17 @@ import {
 
 const COLORS = ['#8B0000', '#D4AF37', '#228B22', '#1A237E', '#E91E63', '#FF6F00', '#607D8B'];
 
-interface BudgetOverviewTabProps {
-  budgetOverview: any[] | undefined;
+interface ExpenseOverviewTabProps {
+  expenseOverview: any[] | undefined;
   formatCurrency: (amount: number) => string;
 }
 
-export default function BudgetOverviewTab({
-  budgetOverview,
+export default function ExpenseOverviewTab({
+  expenseOverview,
   formatCurrency,
-}: BudgetOverviewTabProps) {
+}: ExpenseOverviewTabProps) {
   const categoryData =
-    budgetOverview?.map((cat) => ({
+    expenseOverview?.map((cat) => ({
       name: cat.name,
       allocated: parseFloat(cat.allocated_amount || 0),
       spent: parseFloat(cat.spent || 0),

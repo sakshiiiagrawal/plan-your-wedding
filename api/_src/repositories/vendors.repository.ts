@@ -93,7 +93,7 @@ export async function findPaymentsByVendor(vendorId: string) {
   return data ?? [];
 }
 
-export async function findVendorBudgetSummary(ownerId: string) {
+export async function findVendorExpenseSummary(ownerId: string) {
   const { data, error } = await supabase
     .from('vendors')
     .select('id, name, category, total_cost, side, is_shared, is_confirmed')

@@ -7,7 +7,7 @@ import {
   useDashboardSummary,
   useCountdown,
   useHeroContent,
-  useBudgetOverview,
+  useExpenseOverview,
 } from '../../hooks/useApi';
 import {
   HiOutlineUserGroup,
@@ -48,7 +48,7 @@ export default function Dashboard() {
   const { data: summary, isLoading: summaryLoading } = useDashboardSummary();
   const { data: countdownData } = useCountdown();
   const { data: heroContent } = useHeroContent(slug);
-  const { data: budgetOverview } = useBudgetOverview();
+  const { data: expenseOverview } = useExpenseOverview();
 
   const brideName = heroContent?.bride_name || 'Bride';
   const groomName = heroContent?.groom_name || 'Groom';
@@ -90,7 +90,7 @@ export default function Dashboard() {
       ]
     : [];
 
-  const budgetData = budgetOverview || [];
+  const expenseData = expenseOverview || [];
   const events = summary?.events || [];
 
   if (statsLoading || summaryLoading) {
@@ -152,10 +152,10 @@ export default function Dashboard() {
         {canViewFinance && (
           <div className="stat-card">
             <HiOutlineCurrencyRupee className="w-8 h-8 text-gold-500 mb-2" />
-            <div className="stat-value">{formatCurrency(stats?.budget?.spent || 0)}</div>
+            <div className="stat-value">{formatCurrency(stats?.expense?.spent || 0)}</div>
             <div className="stat-label">Spent</div>
             <div className="text-xs text-gray-400 mt-1">
-              of {formatCurrency(stats?.budget?.total || 0)}
+              of {formatCurrency(stats?.expense?.total || 0)}
             </div>
           </div>
         )}
@@ -196,7 +196,7 @@ export default function Dashboard() {
           },
           {
             label: 'Add Expense',
-            path: `/${slug}/admin/budget`,
+            path: `/${slug}/admin/expense`,
             icon: HiOutlineCurrencyRupee,
             requiresEdit: true,
             requiresFinance: true,
@@ -265,9 +265,9 @@ export default function Dashboard() {
 
         {canViewFinance && (
           <div className="card">
-            <h3 className="section-title mb-4">Budget Overview</h3>
+            <h3 className="section-title mb-4">Expense Overview</h3>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={budgetData} layout="vertical">
+              <BarChart data={expenseData} layout="vertical">
                 <XAxis type="number" tickFormatter={(v: number) => `₹${v / 100000}L`} />
                 <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v: any) => formatCurrency(v)} />
