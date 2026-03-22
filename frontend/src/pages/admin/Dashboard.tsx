@@ -83,12 +83,18 @@ export default function Dashboard() {
     }).format(amount);
   };
 
-  const rsvpData = stats
+  const rsvpRaw = stats
     ? [
         { name: 'Confirmed', value: stats.rsvp?.confirmed || 0, color: '#22c55e' },
         { name: 'Pending', value: stats.rsvp?.pending || 0, color: '#eab308' },
       ]
     : [];
+
+  const hasRsvpData = rsvpRaw.some((d) => d.value > 0);
+
+  const rsvpChartData = hasRsvpData
+    ? rsvpRaw
+    : [{ name: 'Empty', value: 1, color: '#e5e7eb' }];
 
   const expenseData = expenseOverview || [];
   const events = summary?.events || [];
@@ -236,15 +242,15 @@ export default function Dashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={rsvpData}
+                    data={rsvpChartData}
                     cx="50%"
                     cy="50%"
                     innerRadius={40}
                     outerRadius={60}
-                    paddingAngle={5}
+                    paddingAngle={hasRsvpData ? 5 : 0}
                     dataKey="value"
                   >
-                    {rsvpData.map((entry, index) => (
+                    {rsvpChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -252,7 +258,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
             <div className="space-y-3">
-              {rsvpData.map((item) => (
+              {rsvpRaw.map((item) => (
                 <div key={item.name} className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                   <span className="text-sm text-gray-600">{item.name}</span>

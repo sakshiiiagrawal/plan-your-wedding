@@ -43,7 +43,7 @@ export async function getCountdown(ownerId: string) {
 export async function getStats(ownerId: string) {
   const [guests, rsvps, tasks, expense, expenses] = await Promise.all([
     repo.findGuestSides(ownerId),
-    repo.findRsvpStatuses(),
+    repo.findRsvpStatuses(ownerId),
     repo.findTaskStatuses(ownerId),
     repo.findExpenseSummary(ownerId),
     repo.findExpenseAmounts(ownerId),
