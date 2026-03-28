@@ -104,6 +104,33 @@ export const getPayments = async (
   }
 };
 
+export const addPayment = async (
+  req: Request<IdParam>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res
+      .status(201)
+      .json(await service.addPayment(req.params.id, getWeddingOwnerId(req), req.body));
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const deletePayment = async (
+  req: Request<{ id: string; paymentId: string }>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    await service.deletePayment(req.params.paymentId);
+    res.status(204).send();
+  } catch (e) {
+    next(e);
+  }
+};
+
 export const getVendorExpenseSummary = async (
   req: Request,
   res: Response,

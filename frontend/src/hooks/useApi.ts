@@ -221,6 +221,19 @@ export const useCreateGuest = () => {
     mutationFn: (guestData: any) => api.post('/guests', guestData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+    },
+  });
+};
+
+export const useBulkCreateGuests = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (guests: any[]) =>
+      api.post('/guests/bulk', { guests }).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
     },
   });
 };
@@ -232,6 +245,7 @@ export const useUpdateGuest = () => {
       api.put(`/guests/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
     },
   });
 };
@@ -242,6 +256,18 @@ export const useDeleteGuest = () => {
     mutationFn: (id: string) => api.delete(`/guests/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+    },
+  });
+};
+
+export const useBulkDeleteGuests = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => api.delete('/guests/bulk', { data: { ids } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
     },
   });
 };
@@ -359,53 +385,49 @@ export const useDeleteVenue = () => {
 };
 
 // =====================================================
-// ACCOMMODATIONS HOOKS
+// ACCOMMODATIONS HOOKS (backed by /venues/* endpoints)
 // =====================================================
 
 export const useAccommodations = () =>
   useQuery<any[]>({
     queryKey: ['accommodations'],
-    queryFn: () => api.get('/accommodations').then((res) => res.data),
+    queryFn: () => api.get('/venues').then((res) => res.data),
   });
 
 export const useAccommodation = (id?: string | null) =>
   useQuery<any>({
     queryKey: ['accommodations', id],
-    queryFn: () => api.get(`/accommodations/${id}`).then((res) => res.data),
+    queryFn: () => api.get(`/venues/${id}`).then((res) => res.data),
     enabled: !!id,
   });
 
-export const useAccommodationRooms = (accommodationId?: string | null) =>
+export const useAccommodationRooms = (venueId?: string | null) =>
   useQuery<any[]>({
-    queryKey: ['accommodations', accommodationId, 'rooms'],
-    queryFn: () => api.get(`/accommodations/${accommodationId}/rooms`).then((res) => res.data),
-    enabled: !!accommodationId,
-  });
-
-export const useRoomAllocations = () =>
-  useQuery<any[]>({
-    queryKey: ['accommodations', 'allocations'],
-    queryFn: () => api.get('/accommodations/allocations').then((res) => res.data),
+    queryKey: ['accommodations', venueId, 'rooms'],
+    queryFn: () => api.get(`/venues/${venueId}/rooms`).then((res) => res.data),
+    enabled: !!venueId,
   });
 
 export const useAllocationMatrix = () =>
   useQuery<any>({
     queryKey: ['accommodations', 'allocation-matrix'],
-    queryFn: () => api.get('/accommodations/allocations/matrix').then((res) => res.data),
+    queryFn: () => api.get('/venues/allocations/matrix').then((res) => res.data),
   });
 
 export const useUnassignedGuests = () =>
   useQuery<any[]>({
     queryKey: ['accommodations', 'unassigned-guests'],
-    queryFn: () => api.get('/accommodations/allocations/unassigned').then((res) => res.data),
+    queryFn: () => api.get('/venues/allocations/unassigned').then((res) => res.data),
   });
 
 export const useCreateAccommodation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => api.post('/accommodations', data).then((res) => res.data),
+    mutationFn: (data: any) =>
+      api.post('/venues', { ...data, has_accommodation: true }).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
     },
   });
 };
@@ -414,9 +436,10 @@ export const useUpdateAccommodation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Record<string, any>) =>
-      api.put(`/accommodations/${id}`, data).then((res) => res.data),
+      api.put(`/venues/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
     },
   });
 };
@@ -424,9 +447,10 @@ export const useUpdateAccommodation = () => {
 export const useDeleteAccommodation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.delete(`/accommodations/${id}`),
+    mutationFn: (id: string) => api.delete(`/venues/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
     },
   });
 };
@@ -435,7 +459,18 @@ export const useCreateRoom = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ accommodationId, ...data }: { accommodationId: string } & Record<string, any>) =>
-      api.post(`/accommodations/${accommodationId}/rooms`, data).then((res) => res.data),
+      api.post(`/venues/${accommodationId}/rooms`, data).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+    },
+  });
+};
+
+export const useUpdateRoom = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string } & Record<string, any>) =>
+      api.put(`/venues/rooms/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
     },
@@ -446,7 +481,7 @@ export const useCreateAllocation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (allocationData: any) =>
-      api.post('/accommodations/allocations', allocationData).then((res) => res.data),
+      api.post('/venues/allocations', allocationData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
     },
@@ -457,7 +492,7 @@ export const useUpdateAllocation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Record<string, any>) =>
-      api.put(`/accommodations/allocations/${id}`, data).then((res) => res.data),
+      api.put(`/venues/allocations/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
     },
@@ -467,9 +502,68 @@ export const useUpdateAllocation = () => {
 export const useDeleteAllocation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.delete(`/accommodations/allocations/${id}`),
+    mutationFn: (id: string) => api.delete(`/venues/allocations/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+    },
+  });
+};
+
+// =====================================================
+// VENUE PAYMENTS HOOKS
+// =====================================================
+
+export const useVenuePayments = (venueId?: string | null) =>
+  useQuery<any[]>({
+    queryKey: ['venues', venueId, 'payments'],
+    queryFn: () => api.get(`/venues/${venueId}/payments`).then((res) => res.data),
+    enabled: !!venueId,
+  });
+
+export const useAddVenuePayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ venueId, ...data }: { venueId: string } & Record<string, any>) =>
+      api.post(`/venues/${venueId}/payments`, data).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+    },
+  });
+};
+
+export const useDeleteVenuePayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ venueId, paymentId }: { venueId: string; paymentId: string }) =>
+      api.delete(`/venues/${venueId}/payments/${paymentId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+    },
+  });
+};
+
+// =====================================================
+// VENDOR PAYMENT MUTATIONS (add/delete)
+// =====================================================
+
+export const useAddVendorPayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ vendorId, ...data }: { vendorId: string } & Record<string, any>) =>
+      api.post(`/vendors/${vendorId}/payments`, data).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+    },
+  });
+};
+
+export const useDeleteVendorPayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ vendorId, paymentId }: { vendorId: string; paymentId: string }) =>
+      api.delete(`/vendors/${vendorId}/payments/${paymentId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
     },
   });
 };

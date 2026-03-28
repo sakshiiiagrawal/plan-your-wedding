@@ -65,6 +65,10 @@ export async function deleteGuest(id: string, ownerId: string) {
   return repo.deleteGuest(id, ownerId);
 }
 
+export async function deleteGuestsBulk(ids: string[], ownerId: string) {
+  return repo.deleteGuestsBulk(ids, ownerId);
+}
+
 export async function updateRsvp(
   guestId: string,
   eventId: string,

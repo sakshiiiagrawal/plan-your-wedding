@@ -118,6 +118,20 @@ export const remove = async (
   }
 };
 
+export const bulkRemove = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const ownerId = getWeddingOwnerId(req);
+    await guestsService.deleteGuestsBulk(req.body.ids, ownerId);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateRsvp = async (
   req: Request<IdEventParam>,
   res: Response,

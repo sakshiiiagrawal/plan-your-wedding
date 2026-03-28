@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -7,13 +8,22 @@ import {
   HiOutlineX,
   HiOutlineDownload,
   HiOutlineUpload,
+  HiOutlineSearch,
+  HiOutlineUserGroup,
+  HiOutlineUser,
+  HiOutlinePencil,
 } from 'react-icons/hi';
 import {
   useAllocationMatrix,
   useUnassignedGuests,
   useCreateAccommodation,
+  useUpdateAccommodation,
   useCreateRoom,
+  useUpdateRoom,
   useCreateAllocation,
+  useUpdateAllocation,
+  useDeleteAllocation,
+  useUpdateGuest,
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -56,11 +66,11 @@ interface ImportResults {
 interface HotelFormData {
   name: string;
   address: string;
-  distance_from_venue: string;
-  total_rooms_booked: number;
   total_cost: number;
   contact_person: string;
   contact_phone: string;
+  default_check_in_date: string;
+  default_check_out_date: string;
 }
 
 interface RoomFormData {
@@ -73,13 +83,34 @@ interface RoomFormData {
 
 interface AllocationFormData {
   room_id: string | null;
-  guest_id: string | null;
+  guest_ids: string[];
   check_in_date: string;
   check_out_date: string;
 }
 
+interface GuestOption {
+  id: string;
+  first_name: string;
+  last_name: string | null;
+  needs_accommodation: boolean;
+  side?: string | undefined;
+}
+
+interface EditAllocationState {
+  id: string;
+  currentGuests: GuestOption[];
+}
+
+function fuzzyMatch(query: string, text: string): boolean {
+  if (!query.trim()) return true;
+  const q = query.toLowerCase();
+  const t = text.toLowerCase();
+  return q.split(/\s+/).filter(Boolean).every((word) => t.includes(word));
+}
+
 export default function Accommodations() {
   const { canEdit } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: allocationMatrix = [], isLoading, error } = useAllocationMatrix();
   const { data: unassignedGuests = [] } = useUnassignedGuests();
@@ -93,11 +124,11 @@ export default function Accommodations() {
   const [hotelFormData, setHotelFormData] = useState<HotelFormData>({
     name: '',
     address: '',
-    distance_from_venue: '',
-    total_rooms_booked: 0,
     total_cost: 0,
     contact_person: '',
     contact_phone: '',
+    default_check_in_date: '',
+    default_check_out_date: '',
   });
   const [roomFormData, setRoomFormData] = useState<RoomFormData>({
     accommodationId: null,
@@ -108,7 +139,7 @@ export default function Accommodations() {
   });
   const [allocationFormData, setAllocationFormData] = useState<AllocationFormData>({
     room_id: null,
-    guest_id: null,
+    guest_ids: [],
     check_in_date: '',
     check_out_date: '',
   });
@@ -116,18 +147,32 @@ export default function Accommodations() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const createHotelMutation = useCreateAccommodation();
+  const updateHotelMutation = useUpdateAccommodation();
   const createRoomMutation = useCreateRoom();
+  const updateRoomMutation = useUpdateRoom();
   const createAllocationMutation = useCreateAllocation();
+  const updateAllocationMutation = useUpdateAllocation();
+  const deleteAllocationMutation = useDeleteAllocation();
+  const updateGuestMutation = useUpdateGuest();
+
+  const [guestSearchQuery, setGuestSearchQuery] = useState('');
+  const [editAllocation, setEditAllocation] = useState<EditAllocationState | null>(null);
+  const [roomCapacity, setRoomCapacity] = useState<number>(0);
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  const [editRoomValues, setEditRoomValues] = useState<{ room_number: string; capacity: number }>({ room_number: '', capacity: 0 });
+  const [editingHotelDates, setEditingHotelDates] = useState(false);
+  const [editHotelDateValues, setEditHotelDateValues] = useState<{ default_check_in_date: string; default_check_out_date: string }>({ default_check_in_date: '', default_check_out_date: '' });
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const resetHotelForm = () => {
     setHotelFormData({
       name: '',
       address: '',
-      distance_from_venue: '',
-      total_rooms_booked: 0,
       total_cost: 0,
       contact_person: '',
       contact_phone: '',
+      default_check_in_date: '',
+      default_check_out_date: '',
     });
   };
 
@@ -144,10 +189,13 @@ export default function Accommodations() {
   const resetAllocationForm = () => {
     setAllocationFormData({
       room_id: null,
-      guest_id: null,
+      guest_ids: [],
       check_in_date: '',
       check_out_date: '',
     });
+    setGuestSearchQuery('');
+    setEditAllocation(null);
+    setRoomCapacity(0);
   };
 
   const handleHotelSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -184,21 +232,49 @@ export default function Accommodations() {
   const handleAllocationSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      await createAllocationMutation.mutateAsync(allocationFormData);
-      toast.success('Guest assigned successfully!');
+      // Flag any newly-selected guests who didn't have needs_accommodation set
+      const allModalGuests = editAllocation
+        ? [...editAllocation.currentGuests, ...(unassignedGuests as GuestOption[])]
+        : (unassignedGuests as GuestOption[]);
+      const guestsToFlag = allModalGuests.filter(
+        (g) => allocationFormData.guest_ids.includes(g.id) && !g.needs_accommodation,
+      );
+      await Promise.all(
+        guestsToFlag.map((g) => updateGuestMutation.mutateAsync({ id: g.id, needs_accommodation: true })),
+      );
+
+      if (editAllocation) {
+        if (allocationFormData.guest_ids.length === 0) {
+          // All guests removed — delete the allocation
+          await deleteAllocationMutation.mutateAsync(editAllocation.id);
+          toast.success('Room unassigned successfully');
+        } else {
+          await updateAllocationMutation.mutateAsync({
+            id: editAllocation.id,
+            guest_ids: allocationFormData.guest_ids,
+            check_in_date: allocationFormData.check_in_date,
+            check_out_date: allocationFormData.check_out_date,
+          });
+          toast.success('Room assignment updated!');
+        }
+      } else {
+        await createAllocationMutation.mutateAsync(allocationFormData);
+        toast.success('Guest assigned successfully!');
+      }
+
       setShowAllocationModal(false);
       resetAllocationForm();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string; error?: string } } };
       const errorMessage =
-        error.response?.data?.message || error.response?.data?.error || 'Failed to assign guest';
+        error.response?.data?.message || error.response?.data?.error || 'Failed to save assignment';
       toast.error(errorMessage);
     }
   };
 
   const handleDownloadTemplate = async () => {
     try {
-      const response = await api.get('/accommodations/allocations/template/all-venues/download', {
+      const response = await api.get('/venues/allocations/template/all-venues/download', {
         responseType: 'blob',
       });
 
@@ -227,7 +303,7 @@ export default function Accommodations() {
     formData.append('file', file);
 
     try {
-      const response = await api.post('/accommodations/allocations/import/all-venues', formData, {
+      const response = await api.post('/venues/allocations/import/all-venues', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -235,8 +311,8 @@ export default function Accommodations() {
 
       setImportResults(response.data);
 
-      queryClient.invalidateQueries({ queryKey: ['accommodations', 'allocation-matrix'] });
-      queryClient.invalidateQueries({ queryKey: ['accommodations', 'unassigned-guests'] });
+      queryClient.invalidateQueries({ queryKey: ['venues', 'allocation-matrix'] });
+      queryClient.invalidateQueries({ queryKey: ['venues', 'unassigned-guests'] });
 
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -293,7 +369,8 @@ export default function Accommodations() {
         const rooms = hotel.rooms || [];
         const totalCapacity = rooms.reduce((sum, room) => sum + (room.capacity || 0), 0);
         const guestsAllocated = rooms.reduce((sum, room) => {
-          return sum + (room.room_allocations?.length || 0);
+          const allocs = (room.room_allocations || []) as Array<{ guest_ids?: string[] }>;
+          return sum + allocs.reduce((s, a) => s + (a.guest_ids?.length || 0), 0);
         }, 0);
 
         return {
@@ -356,11 +433,13 @@ export default function Accommodations() {
               (hotel: {
                 id: string;
                 name: string;
-                distance_from_venue?: string;
+                city?: string;
                 roomsBooked: number;
                 guestsAllocated: number;
                 totalCapacity: number;
                 total_cost?: number;
+                default_check_in_date?: string | null;
+                default_check_out_date?: string | null;
               }) => (
                 <div
                   key={hotel.id}
@@ -373,7 +452,7 @@ export default function Accommodations() {
                     </div>
                     <div>
                       <h3 className="font-semibold text-maroon-800">{hotel.name}</h3>
-                      <p className="text-xs text-gray-500">{hotel.distance_from_venue || 'N/A'}</p>
+                      <p className="text-xs text-gray-500">{hotel.city || ''}</p>
                     </div>
                   </div>
 
@@ -406,10 +485,99 @@ export default function Accommodations() {
           </div>
 
           {/* Room Allocation Matrix */}
-          {selectedHotel && (
+          {selectedHotel && (() => {
+            const hotel = selectedHotel as typeof selectedHotel & {
+              default_check_in_date?: string | null;
+              default_check_out_date?: string | null;
+            };
+
+            const handleHotelDateSave = async () => {
+              try {
+                await updateHotelMutation.mutateAsync({
+                  id: hotel.id,
+                  default_check_in_date: editHotelDateValues.default_check_in_date || null,
+                  default_check_out_date: editHotelDateValues.default_check_out_date || null,
+                });
+                setEditingHotelDates(false);
+                toast.success('Default dates updated');
+              } catch {
+                toast.error('Failed to update default dates');
+              }
+            };
+
+            return (
             <div className="card">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                <h3 className="section-title mb-0">{selectedHotel.name} - Room Allocation</h3>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+                <div>
+                  <h3 className="section-title mb-1">{hotel.name} - Room Allocation</h3>
+                  {/* Default dates row */}
+                  {editingHotelDates ? (
+                    <div className="flex flex-wrap items-center gap-3 mt-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Check-in:</span>
+                        <input
+                          type="date"
+                          value={editHotelDateValues.default_check_in_date}
+                          onChange={(e) => setEditHotelDateValues({ ...editHotelDateValues, default_check_in_date: e.target.value })}
+                          className="input py-0.5 px-2 text-xs"
+                          autoFocus
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Check-out:</span>
+                        <input
+                          type="date"
+                          value={editHotelDateValues.default_check_out_date}
+                          onChange={(e) => setEditHotelDateValues({ ...editHotelDateValues, default_check_out_date: e.target.value })}
+                          className="input py-0.5 px-2 text-xs"
+                        />
+                      </div>
+                      <button
+                        onClick={handleHotelDateSave}
+                        disabled={updateHotelMutation.isPending}
+                        className="text-xs text-green-600 hover:text-green-700 font-medium disabled:opacity-50"
+                      >
+                        {updateHotelMutation.isPending ? 'Saving…' : 'Save'}
+                      </button>
+                      <button
+                        onClick={() => setEditingHotelDates(false)}
+                        className="text-xs text-gray-500 hover:text-gray-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-4 mt-1 group/dates">
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <span>Default check-in:</span>
+                        <span className="font-medium text-gray-700">
+                          {hotel.default_check_in_date ?? <span className="italic text-gray-400">not set</span>}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <span>Check-out:</span>
+                        <span className="font-medium text-gray-700">
+                          {hotel.default_check_out_date ?? <span className="italic text-gray-400">not set</span>}
+                        </span>
+                      </div>
+                      {canEdit && (
+                        <button
+                          onClick={() => {
+                            setEditHotelDateValues({
+                              default_check_in_date: hotel.default_check_in_date ?? '',
+                              default_check_out_date: hotel.default_check_out_date ?? '',
+                            });
+                            setEditingHotelDates(true);
+                          }}
+                          className="opacity-0 group-hover/dates:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
+                          title="Edit default dates"
+                        >
+                          <HiOutlinePencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex flex-wrap items-center gap-3 text-sm">
                     <div className="flex items-center gap-2">
@@ -461,59 +629,176 @@ export default function Accommodations() {
                             room_type?: string;
                             capacity?: number;
                             room_allocations?: Array<{
-                              guests?: { first_name: string; last_name: string; side?: string };
+                              id: string;
+                              guest_ids?: string[];
+                              check_in_date?: string;
+                              check_out_date?: string;
+                              guests?: Array<{ id: string; first_name: string; last_name: string; side?: string; needs_accommodation?: boolean }>;
                             }>;
                           }) => {
                             const allocations = room.room_allocations || [];
-                            const guests = allocations
-                              .map((alloc) => alloc.guests)
-                              .filter(Boolean) as Array<{
+                            // Use first allocation (one per room per stay period)
+                            const existingAlloc = allocations[0] ?? null;
+                            const guests = allocations.flatMap((alloc) => alloc.guests || []) as Array<{
+                              id: string;
                               first_name: string;
-                              last_name: string;
+                              last_name: string | null;
                               side?: string;
+                              needs_accommodation?: boolean;
                             }>;
                             const guestSide = guests[0]?.side;
 
+                            const isEditingRoom = editingRoomId === room.id;
+
+                            const handleRoomEditSave = async () => {
+                              try {
+                                await updateRoomMutation.mutateAsync({
+                                  id: room.id,
+                                  room_number: editRoomValues.room_number,
+                                  capacity: editRoomValues.capacity,
+                                });
+                                setEditingRoomId(null);
+                                toast.success('Room updated');
+                              } catch (err: unknown) {
+                                const e = err as { response?: { data?: { message?: string; error?: string } } };
+                                toast.error(e.response?.data?.message || e.response?.data?.error || 'Failed to update room');
+                              }
+                            };
+
+                            const startEditing = () => {
+                              setEditingRoomId(room.id);
+                              setEditRoomValues({ room_number: room.room_number, capacity: room.capacity ?? 0 });
+                            };
+
                             return (
-                              <tr key={room.id} className="table-row">
-                                <td className="p-3 font-medium">{room.room_number}</td>
+                              <tr key={room.id} className="table-row group">
+                                {/* Room number cell with hover pencil */}
+                                <td className="p-3 font-medium">
+                                  {isEditingRoom ? (
+                                    <input
+                                      className="input py-1 px-2 text-sm w-24"
+                                      value={editRoomValues.room_number}
+                                      onChange={(e) => setEditRoomValues({ ...editRoomValues, room_number: e.target.value })}
+                                      onKeyDown={(e) => { if (e.key === 'Enter') handleRoomEditSave(); if (e.key === 'Escape') setEditingRoomId(null); }}
+                                      autoFocus
+                                    />
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5">
+                                      {room.room_number}
+                                      {canEdit && (
+                                        <button
+                                          onClick={startEditing}
+                                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-opacity"
+                                          title="Edit room number"
+                                        >
+                                          <HiOutlinePencil className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                    </span>
+                                  )}
+                                </td>
                                 <td className="p-3 text-gray-600">{room.room_type || 'N/A'}</td>
-                                <td className="p-3 text-gray-600">{room.capacity || 0}</td>
+                                {/* Capacity cell with hover pencil */}
+                                <td className="p-3 text-gray-600">
+                                  {isEditingRoom ? (
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      className="input py-1 px-2 text-sm w-20"
+                                      value={editRoomValues.capacity}
+                                      onChange={(e) => setEditRoomValues({ ...editRoomValues, capacity: Number(e.target.value) })}
+                                      onKeyDown={(e) => { if (e.key === 'Enter') handleRoomEditSave(); if (e.key === 'Escape') setEditingRoomId(null); }}
+                                    />
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5">
+                                      {room.capacity || 0}
+                                      {canEdit && (
+                                        <button
+                                          onClick={startEditing}
+                                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-opacity"
+                                          title="Edit capacity"
+                                        >
+                                          <HiOutlinePencil className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                    </span>
+                                  )}
+                                </td>
                                 <td className="p-3">
                                   {guests.length > 0 ? (
-                                    <div className="flex items-center gap-2">
-                                      <div
-                                        className={`w-2 h-2 rounded-full ${guestSide === 'bride' ? 'bg-pink-400' : 'bg-blue-400'}`}
-                                      />
-                                      <span className="text-gray-700">
-                                        {guests
-                                          .map((g) => `${g.first_name} ${g.last_name}`)
-                                          .join(', ')}
-                                      </span>
-                                      <span className="text-xs text-gray-400">
-                                        ({guests.length}/{room.capacity})
-                                      </span>
+                                    <div className="flex items-start gap-2">
+                                      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${guestSide === 'bride' ? 'bg-pink-400' : 'bg-blue-400'}`} />
+                                      <div className="flex flex-col gap-0.5">
+                                        {guests.map((g) => (
+                                          <span key={g.id} className="text-gray-700 text-sm">
+                                            {[g.first_name, g.last_name].filter(Boolean).join(' ')}
+                                          </span>
+                                        ))}
+                                        <span className="text-xs text-gray-400">
+                                          {guests.length}/{room.capacity} guests
+                                        </span>
+                                      </div>
                                     </div>
                                   ) : (
-                                    <span className="text-gray-400 italic">
-                                      Available - Drag guest here
-                                    </span>
+                                    <span className="text-gray-400 italic">Available</span>
                                   )}
                                 </td>
                                 {canEdit && (
                                   <td className="p-3">
-                                    <button
-                                      onClick={() => {
-                                        setAllocationFormData({
-                                          ...allocationFormData,
-                                          room_id: room.id,
-                                        });
-                                        setShowAllocationModal(true);
-                                      }}
-                                      className="text-sm text-gold-600 hover:text-gold-700"
-                                    >
-                                      {guests.length > 0 ? 'Edit' : 'Assign'}
-                                    </button>
+                                    {isEditingRoom ? (
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          onClick={handleRoomEditSave}
+                                          disabled={updateRoomMutation.isPending}
+                                          className="text-sm text-green-600 hover:text-green-700 font-medium disabled:opacity-50"
+                                        >
+                                          {updateRoomMutation.isPending ? 'Saving…' : 'Save'}
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingRoomId(null)}
+                                          className="text-sm text-gray-500 hover:text-gray-700"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        onClick={() => {
+                                          setRoomCapacity(room.capacity ?? 0);
+                                          if (existingAlloc) {
+                                            setEditAllocation({
+                                              id: existingAlloc.id,
+                                              currentGuests: guests.map((g) => ({
+                                                id: g.id,
+                                                first_name: g.first_name,
+                                                last_name: g.last_name,
+                                                needs_accommodation: g.needs_accommodation ?? true,
+                                                side: g.side,
+                                              })),
+                                            });
+                                            setAllocationFormData({
+                                              room_id: room.id,
+                                              guest_ids: existingAlloc.guest_ids ?? [],
+                                              check_in_date: existingAlloc.check_in_date ?? '',
+                                              check_out_date: existingAlloc.check_out_date ?? '',
+                                            });
+                                          } else {
+                                            setEditAllocation(null);
+                                            setAllocationFormData({
+                                              room_id: room.id,
+                                              guest_ids: [],
+                                              check_in_date: hotel.default_check_in_date ?? '',
+                                              check_out_date: hotel.default_check_out_date ?? '',
+                                            });
+                                          }
+                                          setGuestSearchQuery('');
+                                          setShowAllocationModal(true);
+                                        }}
+                                        className="text-sm text-gold-600 hover:text-gold-700"
+                                      >
+                                        {guests.length > 0 ? 'Edit' : 'Assign'}
+                                      </button>
+                                    )}
                                   </td>
                                 )}
                               </tr>
@@ -540,7 +825,8 @@ export default function Accommodations() {
                 </div>
               )}
             </div>
-          )}
+            );
+          })()}
         </>
       )}
 
@@ -589,36 +875,6 @@ export default function Accommodations() {
                   />
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="label">Distance from Venue</label>
-                    <input
-                      type="text"
-                      value={hotelFormData.distance_from_venue}
-                      onChange={(e) =>
-                        setHotelFormData({ ...hotelFormData, distance_from_venue: e.target.value })
-                      }
-                      className="input"
-                      placeholder="e.g., 2 km"
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Rooms Booked</label>
-                    <input
-                      type="number"
-                      value={hotelFormData.total_rooms_booked}
-                      onChange={(e) =>
-                        setHotelFormData({
-                          ...hotelFormData,
-                          total_rooms_booked: Number(e.target.value),
-                        })
-                      }
-                      className="input"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
                 <div>
                   <label className="label">Total Cost</label>
                   <input
@@ -658,6 +914,34 @@ export default function Accommodations() {
                     />
                   </div>
                 </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Default Check-in Date</label>
+                    <input
+                      type="date"
+                      value={hotelFormData.default_check_in_date}
+                      onChange={(e) =>
+                        setHotelFormData({ ...hotelFormData, default_check_in_date: e.target.value })
+                      }
+                      className="input"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Default Check-out Date</label>
+                    <input
+                      type="date"
+                      value={hotelFormData.default_check_out_date}
+                      onChange={(e) =>
+                        setHotelFormData({ ...hotelFormData, default_check_out_date: e.target.value })
+                      }
+                      className="input"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 -mt-2">
+                  These dates will be pre-filled when assigning guests to rooms in this hotel.
+                </p>
               </form>
 
               <div className="flex gap-3 p-6 border-t border-gold-200">
@@ -796,111 +1080,354 @@ export default function Accommodations() {
       )}
 
       {/* Assign Guest to Room Modal */}
-      {canEdit && showAllocationModal && (
-        <Portal>
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b border-gold-200">
-                <h2 className="text-xl font-display font-bold text-maroon-800">
-                  Assign Guest to Room
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowAllocationModal(false);
-                    resetAllocationForm();
-                  }}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <HiOutlineX className="w-5 h-5" />
-                </button>
-              </div>
+      {canEdit && showAllocationModal && (() => {
+        // In edit mode, merge currently-assigned guests back in (they're excluded from unassignedGuests)
+        const unassigned = unassignedGuests as GuestOption[];
+        const currentGuestIds = new Set(editAllocation?.currentGuests.map((g) => g.id) ?? []);
+        const allGuests: GuestOption[] = [
+          ...(editAllocation?.currentGuests ?? []),
+          ...unassigned.filter((g) => !currentGuestIds.has(g.id)),
+        ];
 
-              <form onSubmit={handleAllocationSubmit} className="p-6 space-y-4">
-                <div>
-                  <label className="label">Guest *</label>
-                  <select
-                    value={allocationFormData.guest_id || ''}
-                    onChange={(e) =>
-                      setAllocationFormData({ ...allocationFormData, guest_id: e.target.value })
-                    }
-                    className="input"
-                    required
-                  >
-                    <option value="">Select Guest</option>
-                    {unassignedGuests.map(
-                      (guest: { id: string; first_name: string; last_name: string }) => (
-                        <option key={guest.id} value={guest.id}>
-                          {guest.first_name} {guest.last_name}
-                        </option>
-                      ),
+        const needsAccomm = allGuests.filter((g) => g.needs_accommodation);
+        const otherGuests = allGuests.filter((g) => !g.needs_accommodation);
+
+        const filteredNeedsAccomm = needsAccomm.filter((g) =>
+          fuzzyMatch(guestSearchQuery, `${g.first_name} ${g.last_name ?? ''}`),
+        );
+        const filteredOther = otherGuests.filter((g) =>
+          fuzzyMatch(guestSearchQuery, `${g.first_name} ${g.last_name ?? ''}`),
+        );
+
+        const selectedGuests = allGuests.filter((g) =>
+          allocationFormData.guest_ids.includes(g.id),
+        );
+        const isEditing = !!editAllocation;
+
+        const selectedCount = allocationFormData.guest_ids.length;
+        const atCapacity = roomCapacity > 0 && selectedCount >= roomCapacity;
+
+        const toggleGuest = (guestId: string) => {
+          const isSelected = allocationFormData.guest_ids.includes(guestId);
+          if (!isSelected && atCapacity) return; // block adding beyond capacity
+          setAllocationFormData({
+            ...allocationFormData,
+            guest_ids: isSelected
+              ? allocationFormData.guest_ids.filter((id) => id !== guestId)
+              : [...allocationFormData.guest_ids, guestId],
+          });
+          // Clear search so user can find next guest
+          if (!isSelected) {
+            setGuestSearchQuery('');
+            setTimeout(() => searchInputRef.current?.focus(), 0);
+          }
+        };
+
+        return (
+          <Portal>
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl w-full max-w-2xl flex flex-col max-h-[92vh]">
+                {/* Header */}
+                <div className="flex items-center justify-between p-6 border-b border-gold-200 flex-shrink-0">
+                  <div>
+                    <h2 className="text-xl font-display font-bold text-maroon-800">
+                      {isEditing ? 'Edit Room Assignment' : 'Assign Guests to Room'}
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      {isEditing
+                        ? 'Update guests or dates — uncheck guests to remove them'
+                        : 'Select guests to assign, then set their stay dates'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {roomCapacity > 0 && (
+                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
+                        atCapacity
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-green-100 text-green-700'
+                      }`}>
+                        <span>{selectedCount} / {roomCapacity}</span>
+                        <span className="text-xs opacity-75">capacity</span>
+                      </div>
                     )}
-                  </select>
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="label">Check-in Date *</label>
-                    <input
-                      type="date"
-                      value={allocationFormData.check_in_date}
-                      onChange={(e) =>
-                        setAllocationFormData({
-                          ...allocationFormData,
-                          check_in_date: e.target.value,
-                        })
-                      }
-                      className="input"
-                      required
-                    />
                   </div>
-                  <div>
-                    <label className="label">Check-out Date *</label>
-                    <input
-                      type="date"
-                      value={allocationFormData.check_out_date}
-                      onChange={(e) =>
-                        setAllocationFormData({
-                          ...allocationFormData,
-                          check_out_date: e.target.value,
-                        })
-                      }
-                      className="input"
-                      required
-                    />
+                  <button
+                    onClick={() => {
+                      setShowAllocationModal(false);
+                      resetAllocationForm();
+                    }}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    <HiOutlineX className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleAllocationSubmit} className="flex flex-col flex-1 min-h-0">
+                  <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                    {/* Guest selector */}
+                    <div>
+                      <label className="label mb-2">Guests *</label>
+
+                      {allGuests.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center min-h-[140px] border border-gold-200 rounded-xl bg-gold-50 p-6 text-center gap-3">
+                          <HiOutlineUserGroup className="w-8 h-8 text-gold-400" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">No guests added yet</p>
+                            <p className="text-xs text-gray-500 mt-1">Add guests before assigning them to a room</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Selected chips */}
+                          {selectedGuests.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-3">
+                              {selectedGuests.map((g) => (
+                                <span
+                                  key={g.id}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-maroon-100 text-maroon-800 rounded-full text-sm font-medium"
+                                >
+                                  <HiOutlineUser className="w-3.5 h-3.5" />
+                                  {[g.first_name, g.last_name].filter(Boolean).join(' ')}
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleGuest(g.id)}
+                                    className="ml-0.5 hover:text-maroon-600"
+                                  >
+                                    <HiOutlineX className="w-3.5 h-3.5" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Search bar */}
+                          <div className="relative mb-3">
+                            <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                              ref={searchInputRef}
+                              type="text"
+                              placeholder="Search guests by name…"
+                              value={guestSearchQuery}
+                              onChange={(e) => setGuestSearchQuery(e.target.value)}
+                              className="input pl-9"
+                              autoFocus
+                            />
+                            {guestSearchQuery && (
+                              <button
+                                type="button"
+                                onClick={() => setGuestSearchQuery('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              >
+                                <HiOutlineX className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Capacity warning */}
+                          {atCapacity && (
+                            <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                              <span className="font-medium">Room is full</span>
+                              <span className="text-red-500">— uncheck a guest to swap them out</span>
+                            </div>
+                          )}
+
+                          {/* Guest list */}
+                          <div className="border border-gold-200 rounded-xl overflow-hidden divide-y divide-gold-100">
+                              {/* Needs accommodation section */}
+                              {filteredNeedsAccomm.length > 0 && (
+                                <>
+                                  <div className="px-4 py-2 bg-green-50 flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                                    <span className="text-xs font-semibold text-green-700 uppercase tracking-wide">
+                                      Needs accommodation ({filteredNeedsAccomm.length})
+                                    </span>
+                                  </div>
+                                  {filteredNeedsAccomm.map((guest) => {
+                                    const isSelected = allocationFormData.guest_ids.includes(guest.id);
+                                    const isDisabled = !isSelected && atCapacity;
+                                    return (
+                                      <label
+                                        key={guest.id}
+                                        className={`flex items-center gap-3 px-4 py-3 transition-colors ${
+                                          isDisabled
+                                            ? 'opacity-40 cursor-not-allowed'
+                                            : isSelected
+                                            ? 'bg-maroon-50 cursor-pointer'
+                                            : 'hover:bg-gray-50 cursor-pointer'
+                                        }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isSelected}
+                                          onChange={() => toggleGuest(guest.id)}
+                                          disabled={isDisabled}
+                                          className="w-4 h-4 accent-maroon-700 rounded"
+                                        />
+                                        <HiOutlineUser className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                        <span className="text-sm text-gray-800 flex-1">
+                                          {[guest.first_name, guest.last_name].filter(Boolean).join(' ')}
+                                        </span>
+                                        {isSelected && (
+                                          <span className="text-xs text-maroon-600 font-medium">Selected</span>
+                                        )}
+                                      </label>
+                                    );
+                                  })}
+                                </>
+                              )}
+
+                              {/* Other guests section */}
+                              {filteredOther.length > 0 && (
+                                <>
+                                  <div className="px-4 py-2 bg-amber-50 flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
+                                    <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
+                                      Other guests — not flagged for accommodation ({filteredOther.length})
+                                    </span>
+                                  </div>
+                                  <div className="px-4 py-2 bg-amber-50/60 border-b border-gold-100">
+                                    <p className="text-xs text-amber-700">
+                                      Selecting any of these guests will automatically mark them as needing accommodation.
+                                    </p>
+                                  </div>
+                                  {filteredOther.map((guest) => {
+                                    const isSelected = allocationFormData.guest_ids.includes(guest.id);
+                                    const isDisabled = !isSelected && atCapacity;
+                                    return (
+                                      <label
+                                        key={guest.id}
+                                        className={`flex items-center gap-3 px-4 py-3 transition-colors ${
+                                          isDisabled
+                                            ? 'opacity-40 cursor-not-allowed'
+                                            : isSelected
+                                            ? 'bg-maroon-50 cursor-pointer'
+                                            : 'hover:bg-gray-50 cursor-pointer'
+                                        }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isSelected}
+                                          onChange={() => toggleGuest(guest.id)}
+                                          disabled={isDisabled}
+                                          className="w-4 h-4 accent-maroon-700 rounded"
+                                        />
+                                        <HiOutlineUser className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                        <span className="text-sm text-gray-800 flex-1">
+                                          {[guest.first_name, guest.last_name].filter(Boolean).join(' ')}
+                                        </span>
+                                        {isSelected && (
+                                          <span className="text-xs text-maroon-600 font-medium">Selected</span>
+                                        )}
+                                      </label>
+                                    );
+                                  })}
+                                </>
+                              )}
+
+                              {filteredNeedsAccomm.length === 0 && filteredOther.length === 0 && (
+                                <div className="px-4 py-6 text-center text-sm text-gray-500">
+                                  No guests match "{guestSearchQuery}"
+                                </div>
+                              )}
+                            </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Dates */}
+                    {allGuests.length > 0 && (
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="label">Check-in Date *</label>
+                          <input
+                            type="date"
+                            value={allocationFormData.check_in_date}
+                            onChange={(e) =>
+                              setAllocationFormData({
+                                ...allocationFormData,
+                                check_in_date: e.target.value,
+                              })
+                            }
+                            className="input"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="label">Check-out Date *</label>
+                          <input
+                            type="date"
+                            value={allocationFormData.check_out_date}
+                            onChange={(e) =>
+                              setAllocationFormData({
+                                ...allocationFormData,
+                                check_out_date: e.target.value,
+                              })
+                            }
+                            className="input"
+                            required
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
 
-                <div className="p-3 bg-gold-50 rounded-lg text-sm text-gray-600">
-                  {unassignedGuests.length} unassigned guests needing accommodation
-                </div>
-              </form>
-
-              <div className="flex gap-3 p-6 border-t border-gold-200">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAllocationModal(false);
-                    resetAllocationForm();
-                  }}
-                  className="btn-outline flex-1"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  onClick={(e) =>
-                    handleAllocationSubmit(e as unknown as React.FormEvent<HTMLFormElement>)
-                  }
-                  disabled={createAllocationMutation.isPending}
-                  className="btn-primary flex-1 disabled:opacity-50"
-                >
-                  {createAllocationMutation.isPending ? 'Assigning...' : 'Assign Guest'}
-                </button>
+                  {/* Footer */}
+                  <div className="flex gap-3 p-6 border-t border-gold-200 flex-shrink-0">
+                    {allGuests.length === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAllocationModal(false);
+                          resetAllocationForm();
+                          navigate('../guests');
+                        }}
+                        className="btn-primary flex-1"
+                      >
+                        Add Guests
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAllocationModal(false);
+                            resetAllocationForm();
+                          }}
+                          className="btn-outline flex-1"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={
+                            createAllocationMutation.isPending ||
+                            updateAllocationMutation.isPending ||
+                            deleteAllocationMutation.isPending ||
+                            (!isEditing && allocationFormData.guest_ids.length === 0)
+                          }
+                          className={`btn-primary flex-1 disabled:opacity-50 ${
+                            isEditing && allocationFormData.guest_ids.length === 0
+                              ? 'bg-red-600 hover:bg-red-700'
+                              : ''
+                          }`}
+                        >
+                          {(createAllocationMutation.isPending || updateAllocationMutation.isPending || deleteAllocationMutation.isPending)
+                            ? 'Saving…'
+                            : isEditing
+                            ? allocationFormData.guest_ids.length === 0
+                              ? 'Remove All & Unassign Room'
+                              : `Save Changes`
+                            : `Assign ${allocationFormData.guest_ids.length > 0 ? allocationFormData.guest_ids.length : ''} Guest${allocationFormData.guest_ids.length !== 1 ? 's' : ''}`}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </form>
               </div>
             </div>
-          </div>
-        </Portal>
-      )}
+          </Portal>
+        );
+      })()}
 
       {/* Import Modal */}
       {canEdit && showImportModal && (

@@ -58,6 +58,25 @@ export async function getPayments(vendorId: string) {
   return repo.findPaymentsByVendor(vendorId);
 }
 
+export async function addPayment(
+  vendorId: string,
+  ownerId: string,
+  payload: {
+    amount: number;
+    payment_date: string;
+    payment_method: string;
+    side?: string | null;
+    transaction_reference?: string | null;
+    notes?: string | null;
+  },
+) {
+  return repo.insertVendorPayment({ ...payload, vendor_id: vendorId, user_id: ownerId });
+}
+
+export async function deletePayment(paymentId: string) {
+  return repo.deletePayment(paymentId);
+}
+
 export async function getVendorExpenseSummary(ownerId: string) {
   const vendors = await repo.findVendorExpenseSummary(ownerId);
   return vendors.map((v) => ({ ...v, totalCost: parseFloat(String(v.total_cost ?? 0)) }));

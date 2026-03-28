@@ -5,9 +5,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   useGuests,
   useGuestSummary,
-  useCreateGuest,
+  useBulkCreateGuests,
   useUpdateGuest,
-  useDeleteGuest,
+  useBulkDeleteGuests,
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -20,6 +20,7 @@ import {
   HiOutlinePencil,
   HiOutlineTrash,
   HiOutlineX,
+  HiOutlineSave,
 } from 'react-icons/hi';
 
 interface GuestFormData {
@@ -35,6 +36,10 @@ interface GuestFormData {
   needs_pickup: boolean;
   is_vip: boolean;
   notes: string;
+}
+
+interface PendingRow extends GuestFormData {
+  _key: string;
 }
 
 const DEFAULT_FORM: GuestFormData = {
@@ -58,21 +63,24 @@ export default function Guests() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sideFilter, setSideFilter] = useState('all');
   const [rsvpFilter, setRsvpFilter] = useState('all');
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState<GuestFormData>(DEFAULT_FORM);
   const [editingGuest, setEditingGuest] = useState<any>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [pendingRows, setPendingRows] = useState<PendingRow[]>([]);
+  const [isSavingAll, setIsSavingAll] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: guests = [], isLoading: guestsLoading } = useGuests(
     sideFilter !== 'all' ? { side: sideFilter } : {},
   );
   const { data: summary } = useGuestSummary();
-  const createMutation = useCreateGuest();
+  const bulkCreateMutation = useBulkCreateGuests();
   const updateMutation = useUpdateGuest();
-  const deleteMutation = useDeleteGuest();
+  const bulkDeleteMutation = useBulkDeleteGuests();
 
   const resetForm = () => {
     setFormData(DEFAULT_FORM);
@@ -95,20 +103,15 @@ export default function Guests() {
       is_vip: guest.is_vip || false,
       notes: guest.notes || '',
     });
-    setShowAddModal(true);
+    setShowEditModal(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (editingGuest) {
-        await updateMutation.mutateAsync({ id: editingGuest.id, ...formData });
-        toast.success('Guest updated successfully!');
-      } else {
-        await createMutation.mutateAsync(formData);
-        toast.success('Guest added successfully!');
-      }
-      setShowAddModal(false);
+      await updateMutation.mutateAsync({ id: editingGuest.id, ...formData });
+      toast.success('Guest updated successfully!');
+      setShowEditModal(false);
       resetForm();
     } catch (error: any) {
       const errorMessage =
@@ -117,13 +120,76 @@ export default function Guests() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const markForDelete = (id: string) => {
+    setPendingDeletes((prev) => new Set(prev).add(id));
+  };
+
+  const unmarkForDelete = (id: string) => {
+    setPendingDeletes((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
+
+  const commitDeletes = async () => {
+    if (pendingDeletes.size === 0) return;
+    setIsDeletingAll(true);
     try {
-      await deleteMutation.mutateAsync(id);
-      toast.success('Guest deleted successfully!');
-      setDeleteConfirm(null);
-    } catch {
-      toast.error('Failed to delete guest');
+      await bulkDeleteMutation.mutateAsync([...pendingDeletes]);
+      toast.success(
+        `${pendingDeletes.size} guest${pendingDeletes.size > 1 ? 's' : ''} deleted successfully!`,
+      );
+      setPendingDeletes(new Set());
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.message || error?.response?.data?.error || 'Failed to delete guests';
+      toast.error(errorMessage);
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
+  const addPendingRow = (template?: GuestFormData) => {
+    const newRow: PendingRow = {
+      ...(template || DEFAULT_FORM),
+      _key: crypto.randomUUID(),
+    };
+    setPendingRows((prev) => [...prev, newRow]);
+  };
+
+  const removePendingRow = (key: string) => {
+    setPendingRows((prev) => prev.filter((r) => r._key !== key));
+  };
+
+  const updatePendingRow = (key: string, updates: Partial<GuestFormData>) => {
+    setPendingRows((prev) => prev.map((r) => (r._key === key ? { ...r, ...updates } : r)));
+  };
+
+  const duplicateLastRow = () => {
+    const last = pendingRows[pendingRows.length - 1];
+    if (last) addPendingRow(last);
+  };
+
+  const saveAllPending = async () => {
+    if (pendingRows.some((r) => !r.first_name.trim())) {
+      toast.error('First name is required for all guests');
+      return;
+    }
+    setIsSavingAll(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      await bulkCreateMutation.mutateAsync(pendingRows.map(({ _key, ...data }) => data));
+      toast.success(
+        `${pendingRows.length} guest${pendingRows.length > 1 ? 's' : ''} added successfully!`,
+      );
+      setPendingRows([]);
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.message || error?.response?.data?.error || 'Failed to save guests';
+      toast.error(errorMessage);
+    } finally {
+      setIsSavingAll(false);
     }
   };
 
@@ -247,7 +313,7 @@ export default function Guests() {
                 Import
               </button>
               <button
-                onClick={() => setShowAddModal(true)}
+                onClick={() => addPendingRow()}
                 className="btn-primary flex items-center gap-2"
               >
                 <HiOutlinePlus className="w-4 h-4" />
@@ -335,70 +401,231 @@ export default function Guests() {
               </tr>
             </thead>
             <tbody>
-              {filteredGuests.map((guest: any) => (
-                <tr key={guest.id} className="table-row">
-                  <td className="p-4">
-                    <div>
-                      <div className="font-medium text-gray-800">
-                        {guest.first_name} {guest.last_name}
+              {filteredGuests.map((guest: any) => {
+                const isMarkedForDelete = pendingDeletes.has(guest.id);
+                return (
+                  <tr
+                    key={guest.id}
+                    className={`table-row${isMarkedForDelete ? ' opacity-40 line-through bg-red-50' : ''}`}
+                  >
+                    <td className="p-4">
+                      <div>
+                        <div className="font-medium text-gray-800">
+                          {guest.first_name} {guest.last_name}
+                        </div>
+                        <div className="text-sm text-gray-500">{guest.relationship}</div>
                       </div>
-                      <div className="text-sm text-gray-500">{guest.relationship}</div>
+                    </td>
+                    <td className="p-4">
+                      <span
+                        className={
+                          guest.side === 'bride'
+                            ? 'badge-bride'
+                            : guest.side === 'groom'
+                              ? 'badge-groom'
+                              : 'badge bg-purple-100 text-purple-700'
+                        }
+                      >
+                        {guest.side === 'bride'
+                          ? 'Bride'
+                          : guest.side === 'groom'
+                            ? 'Groom'
+                            : 'Mutual'}
+                      </span>
+                    </td>
+                    <td className="p-4 text-gray-600 hidden sm:table-cell">{guest.phone || '—'}</td>
+                    <td className="p-4 text-gray-600 capitalize">
+                      {guest.meal_preference?.replace('_', ' ') || '—'}
+                    </td>
+                    <td className="p-4 hidden md:table-cell">
+                      {guest.needs_accommodation ? (
+                        <span className="badge-info">Needed</span>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                    {canEdit && (
+                      <td className="p-4">
+                        <div className="flex gap-2">
+                          {!isMarkedForDelete ? (
+                            <>
+                              <button
+                                onClick={() => handleEdit(guest)}
+                                className="p-2 hover:bg-gold-50 rounded-lg text-gold-600"
+                                title="Edit guest"
+                              >
+                                <HiOutlinePencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => markForDelete(guest.id)}
+                                className="p-2 hover:bg-red-50 rounded-lg text-red-600"
+                                title="Mark for deletion"
+                              >
+                                <HiOutlineTrash className="w-4 h-4" />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => unmarkForDelete(guest.id)}
+                              className="p-2 hover:bg-gray-100 rounded-lg text-gray-500"
+                              title="Undo deletion"
+                            >
+                              <HiOutlineX className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+
+              {filteredGuests.length === 0 && pendingRows.length === 0 && (
+                <tr>
+                  <td colSpan={canEdit ? 6 : 5} className="p-8 text-center text-gray-500">
+                    No guests found
+                  </td>
+                </tr>
+              )}
+
+              {pendingRows.map((row) => (
+                <tr key={row._key} className="bg-amber-50/40 border-b border-gold-100">
+                  <td className="p-2">
+                    <div className="flex gap-1">
+                      <input
+                        type="text"
+                        value={row.first_name}
+                        onChange={(e) =>
+                          updatePendingRow(row._key, { first_name: e.target.value })
+                        }
+                        className="input text-sm py-1.5 min-w-0 w-28"
+                        placeholder="First name *"
+                      />
+                      <input
+                        type="text"
+                        value={row.last_name}
+                        onChange={(e) => updatePendingRow(row._key, { last_name: e.target.value })}
+                        className="input text-sm py-1.5 min-w-0 w-28"
+                        placeholder="Last name"
+                      />
                     </div>
                   </td>
-                  <td className="p-4">
-                    <span
-                      className={
-                        guest.side === 'bride'
-                          ? 'badge-bride'
-                          : guest.side === 'groom'
-                            ? 'badge-groom'
-                            : 'badge bg-purple-100 text-purple-700'
-                      }
+                  <td className="p-2">
+                    <select
+                      value={row.side}
+                      onChange={(e) => updatePendingRow(row._key, { side: e.target.value })}
+                      className="input text-sm py-1.5"
                     >
-                      {guest.side === 'bride'
-                        ? 'Bride'
-                        : guest.side === 'groom'
-                          ? 'Groom'
-                          : 'Mutual'}
-                    </span>
+                      <option value="bride">Bride</option>
+                      <option value="groom">Groom</option>
+                    </select>
                   </td>
-                  <td className="p-4 text-gray-600 hidden sm:table-cell">{guest.phone || '—'}</td>
-                  <td className="p-4 text-gray-600 capitalize">
-                    {guest.meal_preference?.replace('_', ' ') || '—'}
+                  <td className="p-2 hidden sm:table-cell">
+                    <input
+                      type="tel"
+                      value={row.phone}
+                      onChange={(e) => updatePendingRow(row._key, { phone: e.target.value })}
+                      className="input text-sm py-1.5 w-36"
+                      placeholder="Phone"
+                    />
                   </td>
-                  <td className="p-4 hidden md:table-cell">
-                    {guest.needs_accommodation ? (
-                      <span className="badge-info">Needed</span>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
+                  <td className="p-2">
+                    <select
+                      value={row.meal_preference}
+                      onChange={(e) =>
+                        updatePendingRow(row._key, { meal_preference: e.target.value })
+                      }
+                      className="input text-sm py-1.5"
+                    >
+                      <option value="vegetarian">Veg</option>
+                      <option value="jain">Jain</option>
+                      <option value="vegan">Vegan</option>
+                      <option value="non_vegetarian">Non-Veg</option>
+                    </select>
+                  </td>
+                  <td className="p-2 hidden md:table-cell text-center">
+                    <input
+                      type="checkbox"
+                      checked={row.needs_accommodation}
+                      onChange={(e) =>
+                        updatePendingRow(row._key, { needs_accommodation: e.target.checked })
+                      }
+                      className="w-4 h-4 text-maroon-800 cursor-pointer"
+                    />
                   </td>
                   {canEdit && (
-                    <td className="p-4">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(guest)}
-                          className="p-2 hover:bg-gold-50 rounded-lg text-gold-600"
-                          title="Edit guest"
-                        >
-                          <HiOutlinePencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(guest.id)}
-                          className="p-2 hover:bg-red-50 rounded-lg text-red-600"
-                          title="Delete guest"
-                        >
-                          <HiOutlineTrash className="w-4 h-4" />
-                        </button>
-                      </div>
+                    <td className="p-2">
+                      <button
+                        onClick={() => removePendingRow(row._key)}
+                        className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600"
+                        title="Remove row"
+                      >
+                        <HiOutlineX className="w-4 h-4" />
+                      </button>
                     </td>
                   )}
                 </tr>
               ))}
-              {filteredGuests.length === 0 && (
-                <tr>
-                  <td colSpan={canEdit ? 6 : 5} className="p-8 text-center text-gray-500">
-                    No guests found
+
+              {pendingRows.length > 0 && (
+                <tr className="bg-amber-50/20">
+                  <td colSpan={canEdit ? 6 : 5} className="px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <button
+                        onClick={duplicateLastRow}
+                        className="flex items-center gap-1.5 text-sm text-gold-700 hover:text-gold-900 font-medium transition-colors"
+                        title="Add another row based on the last entry"
+                      >
+                        <HiOutlinePlus className="w-4 h-4" />
+                        Duplicate last row
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setPendingRows([])}
+                          className="btn-outline text-sm py-1.5 px-3"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={saveAllPending}
+                          disabled={isSavingAll}
+                          className="btn-primary text-sm py-1.5 px-4 flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                          <HiOutlineSave className="w-4 h-4" />
+                          {isSavingAll
+                            ? 'Saving...'
+                            : `Save ${pendingRows.length} Guest${pendingRows.length > 1 ? 's' : ''}`}
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {pendingDeletes.size > 0 && pendingRows.length === 0 && (
+                <tr className="bg-red-50/60">
+                  <td colSpan={canEdit ? 6 : 5} className="px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-red-700 font-medium">
+                        {pendingDeletes.size} guest{pendingDeletes.size > 1 ? 's' : ''} marked for
+                        deletion
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setPendingDeletes(new Set())}
+                          className="btn-outline text-sm py-1.5 px-3"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={commitDeletes}
+                          disabled={isDeletingAll}
+                          className="text-sm py-1.5 px-4 flex items-center gap-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50"
+                        >
+                          <HiOutlineTrash className="w-4 h-4" />
+                          {isDeletingAll ? 'Deleting...' : `Delete ${pendingDeletes.size} Guest${pendingDeletes.size > 1 ? 's' : ''}`}
+                        </button>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               )}
@@ -407,17 +634,15 @@ export default function Guests() {
         </div>
       </div>
 
-      {canEdit && showAddModal && (
+      {canEdit && showEditModal && (
         <Portal>
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between p-6 border-b border-gold-200">
-                <h2 className="text-xl font-display font-bold text-maroon-800">
-                  {editingGuest ? 'Edit Guest' : 'Add New Guest'}
-                </h2>
+                <h2 className="text-xl font-display font-bold text-maroon-800">Edit Guest</h2>
                 <button
                   onClick={() => {
-                    setShowAddModal(false);
+                    setShowEditModal(false);
                     resetForm();
                   }}
                   className="p-2 hover:bg-gray-100 rounded-lg"
@@ -426,7 +651,7 @@ export default function Guests() {
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
                     <label className="label">First Name *</label>
@@ -577,7 +802,7 @@ export default function Guests() {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowAddModal(false);
+                    setShowEditModal(false);
                     resetForm();
                   }}
                   className="btn-outline flex-1"
@@ -586,40 +811,11 @@ export default function Guests() {
                 </button>
                 <button
                   type="submit"
-                  onClick={handleSubmit}
-                  disabled={createMutation.isPending || updateMutation.isPending}
+                  onClick={handleEditSubmit}
+                  disabled={updateMutation.isPending}
                   className="btn-primary flex-1 disabled:opacity-50"
                 >
-                  {createMutation.isPending || updateMutation.isPending
-                    ? 'Saving...'
-                    : editingGuest
-                      ? 'Update Guest'
-                      : 'Add Guest'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
-
-      {deleteConfirm && (
-        <Portal>
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 max-w-md">
-              <h3 className="text-lg font-bold text-maroon-800 mb-2">Confirm Deletion</h3>
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to delete this guest? This action cannot be undone.
-              </p>
-              <div className="flex gap-3">
-                <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(deleteConfirm)}
-                  disabled={deleteMutation.isPending}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 disabled:opacity-50"
-                >
-                  {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                  {updateMutation.isPending ? 'Saving...' : 'Update Guest'}
                 </button>
               </div>
             </div>

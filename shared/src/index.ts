@@ -13,8 +13,6 @@ export type {
   DbRsvpStatus,
   DbMealPreference,
   DbAgeGroup,
-  DbGender,
-  DbPaymentStatus,
   DbPaymentMethod,
   DbTaskPriority,
   DbTaskStatus,
@@ -39,7 +37,15 @@ export type {
   GuestWithDetails,
 } from './domain/guest.types';
 
-export type { VenueRow, VenueInsert } from './domain/venue.types';
+export type {
+  VenueRow,
+  VenueInsert,
+  RoomRow,
+  RoomInsert,
+  RoomAllocationRow,
+  RoomAllocationInsert,
+  RoomWithAllocations,
+} from './domain/venue.types';
 
 export type { EventRow, EventInsert, EventWithVenue } from './domain/event.types';
 
@@ -56,16 +62,6 @@ export type {
   ExpenseSummaryInsert,
   ExpenseWithDetails,
 } from './domain/expense.types';
-
-export type {
-  AccommodationRow,
-  AccommodationInsert,
-  RoomRow,
-  RoomInsert,
-  RoomAllocationRow,
-  RoomAllocationInsert,
-  RoomWithAllocations,
-} from './domain/accommodation.types';
 
 export type { TaskRow, TaskInsert } from './domain/task.types';
 

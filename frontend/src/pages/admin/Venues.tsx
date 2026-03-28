@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   HiOutlineLocationMarker,
@@ -7,10 +7,55 @@ import {
   HiOutlineUsers,
   HiOutlineCurrencyRupee,
   HiOutlineX,
+  HiOutlineExternalLink,
+  HiOutlineAnnotation,
+  HiOutlineCalendar,
+  HiOutlineHome,
+  HiOutlineChevronDown,
+  HiOutlineChevronUp,
 } from 'react-icons/hi';
-import { useVenues, useCreateVenue, useUpdateVenue, useDeleteVenue } from '../../hooks/useApi';
+import {
+  useVenues,
+  useCreateVenue,
+  useUpdateVenue,
+  useDeleteVenue,
+  useAccommodationRooms,
+} from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import Portal from '../../components/Portal';
+
+const PRESET_ROOM_TYPES: { label: string; capacity: number; prefix: string }[] = [
+  { label: 'Standard Room', capacity: 2, prefix: 'STD' },
+  { label: 'Deluxe Room', capacity: 2, prefix: 'DLX' },
+  { label: 'Super Deluxe Room', capacity: 2, prefix: 'SDL' },
+  { label: 'Premium Room', capacity: 2, prefix: 'PRM' },
+  { label: 'Executive Room', capacity: 2, prefix: 'EXC' },
+  { label: 'Club Room', capacity: 2, prefix: 'CLB' },
+  { label: 'Junior Suite', capacity: 2, prefix: 'JSU' },
+  { label: 'Suite', capacity: 2, prefix: 'SU' },
+  { label: 'Executive Suite', capacity: 2, prefix: 'ESU' },
+  { label: 'Luxury Suite', capacity: 2, prefix: 'LSU' },
+  { label: 'Presidential Suite', capacity: 4, prefix: 'PSU' },
+];
+
+const PRESET_BY_LABEL: Record<string, { capacity: number; prefix: string }> =
+  Object.fromEntries(PRESET_ROOM_TYPES.map((t) => [t.label, { capacity: t.capacity, prefix: t.prefix }]));
+
+interface RoomCategoryEntry {
+  room_type: string;        // preset label or custom text
+  is_custom: boolean;
+  count: number | string;
+  capacity: number | string;
+  rate_per_night: number | string;
+}
+
+const DEFAULT_CATEGORY: RoomCategoryEntry = {
+  room_type: 'Standard Room',
+  is_custom: false,
+  count: '',
+  capacity: 2,
+  rate_per_night: '',
+};
 
 interface VenueFormData {
   name: string;
@@ -19,10 +64,12 @@ interface VenueFormData {
   city: string;
   capacity: number | string;
   total_cost: number | string;
-  payment_status: string;
+  has_accommodation: boolean;
   contact_person: string;
   contact_phone: string;
   google_maps_link: string;
+  default_check_in_date: string;
+  default_check_out_date: string;
 }
 
 const DEFAULT_FORM: VenueFormData = {
@@ -32,11 +79,100 @@ const DEFAULT_FORM: VenueFormData = {
   city: '',
   capacity: 0,
   total_cost: 0,
-  payment_status: 'pending',
+  has_accommodation: false,
   contact_person: '',
   contact_phone: '',
   google_maps_link: '',
+  default_check_in_date: '',
+  default_check_out_date: '',
 };
+
+function VenueRoomsSection({ venueId }: { venueId: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const { data: rooms = [], isLoading } = useAccommodationRooms(venueId);
+
+  const grouped = useMemo(() => {
+    const map: Record<string, { count: number; capacity: number | null; rate: number | null }> = {};
+    (rooms as any[]).forEach((r: any) => {
+      const type = r.room_type as string;
+      if (!map[type]) map[type] = { count: 0, capacity: r.capacity ?? null, rate: r.rate_per_night ?? null };
+      map[type].count++;
+    });
+    return Object.entries(map);
+  }, [rooms]);
+
+  const totalRooms = (rooms as any[]).length;
+
+  if (isLoading) {
+    return <p className="text-xs text-gray-400">Loading rooms…</p>;
+  }
+
+  if (totalRooms === 0) {
+    return <p className="text-sm text-gray-400 italic">No rooms added yet.</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {/* Summary pills */}
+      <div className="flex flex-wrap gap-1.5">
+        {grouped.map(([type, info]) => (
+          <span
+            key={type}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gold-50 text-gold-800 text-xs font-medium border border-gold-200"
+          >
+            {type}
+            <span className="bg-gold-200 text-gold-900 rounded-full px-1.5 font-semibold">{info.count}</span>
+          </span>
+        ))}
+      </div>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-400">{totalRooms} room{totalRooms !== 1 ? 's' : ''} total</p>
+        <button
+          onClick={() => setExpanded((p) => !p)}
+          className="flex items-center gap-1 text-xs text-gold-700 hover:text-gold-900 font-medium transition-colors"
+        >
+          {expanded ? (
+            <><HiOutlineChevronUp className="w-3.5 h-3.5" /> Collapse</>
+          ) : (
+            <><HiOutlineChevronDown className="w-3.5 h-3.5" /> View details</>
+          )}
+        </button>
+      </div>
+
+      {/* Expanded table */}
+      {expanded && (
+        <div className="mt-2 rounded-lg border border-gray-200 overflow-hidden">
+          <table className="w-full text-xs">
+            <thead className="bg-gray-50 text-gray-500 uppercase tracking-wide">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">Room</th>
+                <th className="px-3 py-2 text-left font-medium">Type</th>
+                <th className="px-3 py-2 text-center font-medium">Occ.</th>
+                <th className="px-3 py-2 text-right font-medium">Rate / night</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {(rooms as any[]).map((r: any) => (
+                <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-3 py-2 font-mono font-medium text-gray-800">{r.room_number}</td>
+                  <td className="px-3 py-2 text-gray-600">{r.room_type}</td>
+                  <td className="px-3 py-2 text-center text-gray-600">
+                    {r.capacity ? `${r.capacity}` : <span className="text-gray-300">—</span>}
+                  </td>
+                  <td className="px-3 py-2 text-right text-gray-600">
+                    {r.rate_per_night
+                      ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(r.rate_per_night)
+                      : <span className="text-gray-300">—</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Venues() {
   const { canEdit } = useAuth();
@@ -44,15 +180,18 @@ export default function Venues() {
   const [formData, setFormData] = useState<VenueFormData>(DEFAULT_FORM);
   const [editingVenue, setEditingVenue] = useState<any>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [roomCategories, setRoomCategories] = useState<RoomCategoryEntry[]>([]);
 
   const { data: venues = [], isLoading, error } = useVenues();
   const createMutation = useCreateVenue();
   const updateMutation = useUpdateVenue();
   const deleteMutation = useDeleteVenue();
+  const { data: existingRooms = [] } = useAccommodationRooms(editingVenue?.id);
 
   const resetForm = () => {
     setFormData(DEFAULT_FORM);
     setEditingVenue(null);
+    setRoomCategories([]);
   };
 
   const handleEdit = (venue: any) => {
@@ -64,22 +203,63 @@ export default function Venues() {
       city: venue.city || '',
       capacity: venue.capacity || 0,
       total_cost: venue.total_cost || 0,
-      payment_status: venue.payment_status || 'pending',
+      has_accommodation: venue.has_accommodation ?? false,
       contact_person: venue.contact_person || '',
       contact_phone: venue.contact_phone || '',
       google_maps_link: venue.google_maps_link || '',
+      default_check_in_date: venue.default_check_in_date || '',
+      default_check_out_date: venue.default_check_out_date || '',
     });
     setShowVenueModal(true);
   };
 
+  const buildRoomsPayload = () => {
+    const validCategories = roomCategories.filter((c) => Number(c.count) > 0);
+    if (validCategories.length === 0) return [];
+
+    const existingCountByType = (existingRooms as any[]).reduce(
+      (acc: Record<string, number>, r: any) => {
+        acc[r.room_type] = (acc[r.room_type] || 0) + 1;
+        return acc;
+      },
+      {},
+    );
+
+    const rooms: Array<{
+      room_number: string;
+      room_type: string;
+      capacity?: number;
+      rate_per_night?: number;
+    }> = [];
+
+    for (const entry of validCategories) {
+      const preset = PRESET_BY_LABEL[entry.room_type];
+      const prefix =
+        preset?.prefix ?? entry.room_type.slice(0, 4).toUpperCase().replace(/\s/g, '');
+      const startIdx = (existingCountByType[entry.room_type] || 0) + 1;
+      const count = Number(entry.count);
+      for (let i = 0; i < count; i++) {
+        rooms.push({
+          room_number: `${prefix}-${startIdx + i}`,
+          room_type: entry.room_type,
+          ...(entry.capacity !== '' && { capacity: Number(entry.capacity) }),
+          ...(entry.rate_per_night !== '' && { rate_per_night: Number(entry.rate_per_night) }),
+        });
+      }
+    }
+
+    return rooms;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const rooms = buildRoomsPayload();
     try {
       if (editingVenue) {
-        await updateMutation.mutateAsync({ id: editingVenue.id, ...formData });
+        await updateMutation.mutateAsync({ id: editingVenue.id, ...formData, rooms });
         toast.success('Venue updated successfully!');
       } else {
-        await createMutation.mutateAsync(formData);
+        await createMutation.mutateAsync({ ...formData, rooms });
         toast.success('Venue added successfully!');
       }
       setShowVenueModal(false);
@@ -107,15 +287,6 @@ export default function Venues() {
       currency: 'INR',
       maximumFractionDigits: 0,
     }).format(amount);
-  };
-
-  const getStatusBadge = (status: string) => {
-    const badges: Record<string, string> = {
-      paid: 'badge-success',
-      partial: 'badge-warning',
-      pending: 'badge-danger',
-    };
-    return badges[status] ?? 'badge-info';
   };
 
   if (isLoading) {
@@ -154,84 +325,168 @@ export default function Venues() {
         </div>
       ) : (
         <div className="grid md:grid-cols-2 gap-6">
-          {venues.map((venue) => (
-            <div key={venue.id} className="card-hover">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-display font-bold text-maroon-800">{venue.name}</h3>
-                  <p className="text-sm text-gray-500 capitalize">
-                    {(venue as any).venue_type?.replace('_', ' ')}
-                  </p>
-                </div>
-                <span className={getStatusBadge((venue as any).payment_status)}>
-                  {(venue as any).payment_status?.charAt(0).toUpperCase() +
-                    (venue as any).payment_status?.slice(1)}
-                </span>
-              </div>
+          {venues.map((venue) => {
+            const v = venue as any;
+            const venueTypeLabel = v.venue_type?.replace(/_/g, ' ') ?? '';
+            const fullAddress = [v.address, v.city].filter(Boolean).join(', ');
+            const hasContact = v.contact_person || v.contact_phone;
+            const hasRooms = v.has_accommodation;
+            const hasEvents = v.events && v.events.length > 0;
 
-              <div className="space-y-3 text-sm">
-                <div className="flex items-start gap-2 text-gray-600">
-                  <HiOutlineLocationMarker className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>{(venue as any).address}</span>
-                </div>
-
-                {(venue as any).capacity && (
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <HiOutlineUsers className="w-4 h-4" />
-                    <span>Capacity: {(venue as any).capacity} guests</span>
+            return (
+              <div key={venue.id} className="card-hover flex flex-col">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-display font-bold text-maroon-800 leading-tight">
+                      {venue.name}
+                    </h3>
+                    {v.city && (
+                      <p className="text-sm text-gray-500 mt-0.5">{v.city}</p>
+                    )}
                   </div>
-                )}
-
-                {(venue as any).total_cost && (
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <HiOutlineCurrencyRupee className="w-4 h-4" />
-                    <span>Cost: {formatCurrency((venue as any).total_cost)}</span>
-                  </div>
-                )}
-
-                {((venue as any).contact_person || (venue as any).contact_phone) && (
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <HiOutlinePhone className="w-4 h-4" />
-                    <span>
-                      {(venue as any).contact_person && `${(venue as any).contact_person}`}
-                      {(venue as any).contact_person && (venue as any).contact_phone && ' - '}
-                      {(venue as any).contact_phone}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {(venue as any).events && (venue as any).events.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gold-100">
-                  <p className="text-xs text-gray-500 mb-2">Events:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {(venue as any).events.map((event: any) => (
-                      <span key={event.id} className="badge bg-gold-100 text-gold-700">
-                        {event.name}
+                  <div className="flex flex-wrap gap-1.5 shrink-0">
+                    {venueTypeLabel && (
+                      <span className="badge bg-maroon-50 text-maroon-700 capitalize whitespace-nowrap">
+                        {venueTypeLabel}
                       </span>
-                    ))}
+                    )}
+                    {hasRooms && (
+                      <span className="badge badge-info whitespace-nowrap">Has Rooms</span>
+                    )}
                   </div>
                 </div>
-              )}
 
-              {canEdit && (
-                <div className="flex gap-2 mt-4">
-                  <button
-                    onClick={() => handleEdit(venue)}
-                    className="btn-outline flex-1 text-sm py-2"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => setDeleteConfirm(venue.id)}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 text-sm"
-                  >
-                    Delete
-                  </button>
+                {/* Body */}
+                <div className="flex-1 space-y-0 divide-y divide-gray-100">
+
+                  {/* Location */}
+                  <div className="py-3 space-y-2">
+                    {fullAddress && (
+                      <div className="flex items-start gap-2 text-sm text-gray-700">
+                        <HiOutlineLocationMarker className="w-4 h-4 mt-0.5 shrink-0 text-gold-600" />
+                        <span>{fullAddress}</span>
+                      </div>
+                    )}
+                    {v.google_maps_link && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <HiOutlineExternalLink className="w-4 h-4 shrink-0 text-gold-600" />
+                        <a
+                          href={v.google_maps_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 hover:underline truncate"
+                        >
+                          View on Google Maps
+                        </a>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Capacity & Cost */}
+                  <div className="py-3 grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <HiOutlineUsers className="w-4 h-4 shrink-0 text-gold-600" />
+                      <div>
+                        <p className="text-xs text-gray-400 leading-none">Capacity</p>
+                        {v.capacity && Number(v.capacity) > 0
+                          ? <p className="font-medium">{v.capacity} guests</p>
+                          : <p className="text-gray-400 italic text-xs">Not specified</p>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <HiOutlineCurrencyRupee className="w-4 h-4 shrink-0 text-gold-600" />
+                      <div>
+                        <p className="text-xs text-gray-400 leading-none">Total Cost</p>
+                        {v.total_cost && Number(v.total_cost) > 0
+                          ? <p className="font-medium">{formatCurrency(v.total_cost)}</p>
+                          : <p className="text-gray-400 italic text-xs">Not specified</p>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contact */}
+                  {hasContact && (
+                    <div className="py-3 space-y-1.5">
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Contact</p>
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <HiOutlinePhone className="w-4 h-4 shrink-0 text-gold-600" />
+                        <span>
+                          {v.contact_person}
+                          {v.contact_person && v.contact_phone && ' · '}
+                          {v.contact_phone && (
+                            <a
+                              href={`tel:${v.contact_phone}`}
+                              className="font-medium hover:text-maroon-700"
+                            >
+                              {v.contact_phone}
+                            </a>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Accommodation rooms summary */}
+                  {hasRooms && (
+                    <div className="py-3 space-y-2">
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                        <HiOutlineHome className="w-3.5 h-3.5" />
+                        Accommodation
+                      </p>
+                      <VenueRoomsSection venueId={venue.id} />
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {v.notes && (
+                    <div className="py-3 space-y-1.5">
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Notes</p>
+                      <div className="flex items-start gap-2 text-sm text-gray-700">
+                        <HiOutlineAnnotation className="w-4 h-4 mt-0.5 shrink-0 text-gold-600" />
+                        <span className="whitespace-pre-line">{v.notes}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Events */}
+                  {hasEvents && (
+                    <div className="py-3 space-y-2">
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                        <HiOutlineCalendar className="w-3.5 h-3.5" />
+                        Events at this venue
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {v.events.map((event: any) => (
+                          <span key={event.id} className="badge bg-gold-100 text-gold-700">
+                            {event.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+
+                {/* Actions */}
+                {canEdit && (
+                  <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                    <button
+                      onClick={() => handleEdit(venue)}
+                      className="btn-outline flex-1 text-sm py-2"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm(venue.id)}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 text-sm"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -280,22 +535,231 @@ export default function Venues() {
                       <option value="banquet">Banquet</option>
                       <option value="outdoor">Outdoor</option>
                       <option value="resort">Resort</option>
+                      <option value="hotel">Hotel</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="label">Payment Status *</label>
-                    <select
-                      value={formData.payment_status}
-                      onChange={(e) => setFormData({ ...formData, payment_status: e.target.value })}
-                      className="input"
-                      required
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="partial">Partial</option>
-                      <option value="paid">Paid</option>
-                    </select>
+                  <div className="flex items-center gap-3 pt-6">
+                    <input
+                      type="checkbox"
+                      id="has_accommodation"
+                      checked={formData.has_accommodation}
+                      onChange={(e) =>
+                        setFormData({ ...formData, has_accommodation: e.target.checked })
+                      }
+                      className="w-4 h-4 accent-gold-600"
+                    />
+                    <label htmlFor="has_accommodation" className="label mb-0 cursor-pointer">
+                      Has guest rooms / accommodation
+                    </label>
                   </div>
                 </div>
+
+                {formData.has_accommodation && (
+                  <div className="border border-gold-200 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold text-maroon-800">Room Categories</h3>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Rooms auto-numbered per category (e.g. D-1, D-2…)
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRoomCategories((prev) => [...prev, { ...DEFAULT_CATEGORY }])
+                        }
+                        className="text-xs text-gold-700 hover:text-gold-800 font-medium border border-gold-300 rounded-lg px-3 py-1 hover:bg-gold-50 transition-colors"
+                      >
+                        + Add Category
+                      </button>
+                    </div>
+
+                    {existingRooms.length > 0 && (() => {
+                      const groups: Record<string, { count: number; rate: number | null }> = {};
+                      (existingRooms as any[]).forEach((r: any) => {
+                        const t = r.room_type as string;
+                        if (!groups[t]) groups[t] = { count: 0, rate: r.rate_per_night ?? null };
+                        groups[t].count++;
+                      });
+                      return (
+                        <div className="space-y-1">
+                          <p className="text-xs text-gray-500">Already added rooms:</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {Object.entries(groups).map(([type, info]) => (
+                              <span key={type} className="badge bg-gray-100 text-gray-600 text-xs">
+                                {type} × {info.count}
+                                {info.rate ? ` · ₹${info.rate}/night` : ''}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {roomCategories.length === 0 && existingRooms.length === 0 && (
+                      <p className="text-xs text-gray-400 text-center py-2">
+                        No categories yet. Click "+ Add Category" to bulk-add rooms.
+                      </p>
+                    )}
+
+                    {roomCategories.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-[1fr_72px_72px_100px_32px] gap-2">
+                          <span className="text-xs text-gray-500 font-medium">Category</span>
+                          <span className="text-xs text-gray-500 font-medium">Count</span>
+                          <span className="text-xs text-gray-500 font-medium">Occupancy</span>
+                          <span className="text-xs text-gray-500 font-medium">Rate / night</span>
+                          <span />
+                        </div>
+                        {roomCategories.map((cat, idx) => (
+                          <div
+                            key={idx}
+                            className="grid grid-cols-[1fr_72px_72px_100px_32px] gap-2 items-center"
+                          >
+                            {cat.is_custom ? (
+                              <input
+                                type="text"
+                                value={cat.room_type}
+                                onChange={(e) =>
+                                  setRoomCategories((prev) =>
+                                    prev.map((c, i) =>
+                                      i === idx ? { ...c, room_type: e.target.value } : c,
+                                    ),
+                                  )
+                                }
+                                className="input text-sm py-1.5"
+                                placeholder="Category name"
+                                autoFocus
+                              />
+                            ) : (
+                              <select
+                                value={cat.room_type}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === '__custom__') {
+                                    setRoomCategories((prev) =>
+                                      prev.map((c, i) =>
+                                        i === idx
+                                          ? { ...c, is_custom: true, room_type: '', capacity: 2 }
+                                          : c,
+                                      ),
+                                    );
+                                  } else {
+                                    const preset = PRESET_BY_LABEL[val];
+                                    setRoomCategories((prev) =>
+                                      prev.map((c, i) =>
+                                        i === idx
+                                          ? {
+                                              ...c,
+                                              room_type: val,
+                                              capacity: preset?.capacity ?? c.capacity,
+                                            }
+                                          : c,
+                                      ),
+                                    );
+                                  }
+                                }}
+                                className="input text-sm py-1.5"
+                              >
+                                {PRESET_ROOM_TYPES.map((t) => (
+                                  <option key={t.label} value={t.label}>
+                                    {t.label}
+                                  </option>
+                                ))}
+                                <option value="__custom__">Custom…</option>
+                              </select>
+                            )}
+                            <input
+                              type="number"
+                              value={cat.count}
+                              onChange={(e) =>
+                                setRoomCategories((prev) =>
+                                  prev.map((c, i) =>
+                                    i === idx ? { ...c, count: e.target.value } : c,
+                                  ),
+                                )
+                              }
+                              className="input text-sm py-1.5"
+                              placeholder="0"
+                              min={1}
+                            />
+                            <input
+                              type="number"
+                              value={cat.capacity}
+                              onChange={(e) =>
+                                setRoomCategories((prev) =>
+                                  prev.map((c, i) =>
+                                    i === idx ? { ...c, capacity: e.target.value } : c,
+                                  ),
+                                )
+                              }
+                              className="input text-sm py-1.5"
+                              placeholder="2"
+                              min={1}
+                            />
+                            <input
+                              type="number"
+                              value={cat.rate_per_night}
+                              onChange={(e) =>
+                                setRoomCategories((prev) =>
+                                  prev.map((c, i) =>
+                                    i === idx ? { ...c, rate_per_night: e.target.value } : c,
+                                  ),
+                                )
+                              }
+                              className="input text-sm py-1.5"
+                              placeholder="₹ 0"
+                              min={0}
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setRoomCategories((prev) => prev.filter((_, i) => i !== idx))
+                              }
+                              className="w-8 h-8 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <HiOutlineX className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                        <p className="text-xs text-gray-400 pt-1">
+                          Total rooms to add:{' '}
+                          <span className="font-medium text-maroon-700">
+                            {roomCategories.reduce((s, c) => s + (Number(c.count) || 0), 0)}
+                          </span>
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="grid sm:grid-cols-2 gap-3 pt-2 border-t border-gold-100">
+                      <div>
+                        <label className="label">Default Check-in Date</label>
+                        <input
+                          type="date"
+                          value={formData.default_check_in_date}
+                          onChange={(e) =>
+                            setFormData({ ...formData, default_check_in_date: e.target.value })
+                          }
+                          className="input"
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Default Check-out Date</label>
+                        <input
+                          type="date"
+                          value={formData.default_check_out_date}
+                          onChange={(e) =>
+                            setFormData({ ...formData, default_check_out_date: e.target.value })
+                          }
+                          className="input"
+                        />
+                      </div>
+                      <p className="sm:col-span-2 text-xs text-gray-500 -mt-1">
+                        Pre-filled when assigning guests to rooms in this hotel.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>

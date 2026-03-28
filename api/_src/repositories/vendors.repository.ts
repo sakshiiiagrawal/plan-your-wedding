@@ -88,9 +88,29 @@ export async function findPaymentsByVendor(vendorId: string) {
     .from('payments')
     .select('*')
     .eq('vendor_id', vendorId)
-    .order('payment_date', { ascending: false });
+    .order('payment_date', { ascending: true });
   if (error) throw error;
   return data ?? [];
+}
+
+export async function insertVendorPayment(payload: {
+  vendor_id: string;
+  user_id: string;
+  amount: number;
+  payment_date: string;
+  payment_method: string;
+  side?: string | null;
+  transaction_reference?: string | null;
+  notes?: string | null;
+}) {
+  const { data, error } = await supabase.from('payments').insert([payload]).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deletePayment(id: string): Promise<void> {
+  const { error } = await supabase.from('payments').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export async function findVendorExpenseSummary(ownerId: string) {
