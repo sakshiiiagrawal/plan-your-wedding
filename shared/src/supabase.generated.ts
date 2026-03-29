@@ -753,6 +753,7 @@ export interface Database {
           side: DbGuestSide | null;
           transaction_reference: string | null;
           notes: string | null;
+          is_planned: boolean;
           created_at: string;
         };
         Insert: {
@@ -766,6 +767,7 @@ export interface Database {
           side?: DbGuestSide | null;
           transaction_reference?: string | null;
           notes?: string | null;
+          is_planned?: boolean;
           created_at?: string;
         };
         Update: {
@@ -779,6 +781,7 @@ export interface Database {
           side?: DbGuestSide | null;
           transaction_reference?: string | null;
           notes?: string | null;
+          is_planned?: boolean;
           created_at?: string;
         };
         Relationships: [

@@ -24,8 +24,7 @@ export type {
 // Domain types
 // ---------------------------------------------------------------------------
 
-export type { UserRow, UserInsert, AuthenticatedUser, UserRole } from './domain/user.types';
-export { USER_ROLES } from './domain/user.types';
+export type { UserRow, UserInsert, AuthenticatedUser } from './domain/user.types';
 
 export type {
   GuestRow,
@@ -87,7 +86,7 @@ export type { GuestSide, RsvpStatus, MealPreference, AgeGroup, Gender } from './
 export { PAYMENT_STATUSES, PAYMENT_METHODS, EXPENSE_CATEGORIES } from './enums/expense.enums';
 export type { PaymentStatus, PaymentMethod, ExpenseCategoryName } from './enums/expense.enums';
 
-export { VENDOR_CATEGORIES } from './enums/vendor.enums';
+export { VENDOR_CATEGORIES, VENDOR_CATEGORY_LABELS } from './enums/vendor.enums';
 export type { VendorCategory } from './enums/vendor.enums';
 
 export { TASK_PRIORITIES, TASK_STATUSES, ROOM_TYPES } from './enums/task.enums';

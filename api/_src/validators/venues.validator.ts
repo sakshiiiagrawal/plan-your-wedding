@@ -62,6 +62,7 @@ export const createPaymentSchema = z.object({
   side: z.enum(['bride', 'groom', 'mutual']).optional().nullable(),
   transaction_reference: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  is_planned: z.boolean().optional().default(false),
 });
 
 export type CreateVenueInput = z.infer<typeof createVenueSchema>;

@@ -6,6 +6,7 @@ import {
   HiOutlineX,
   HiOutlinePencil,
   HiOutlineTrash,
+  HiOutlineCurrencyRupee,
 } from 'react-icons/hi';
 import {
   useVendors,
@@ -14,6 +15,8 @@ import {
   useUpdateVendor,
   useDeleteVendor,
 } from '../../hooks/useApi';
+import { VENDOR_CATEGORY_LABELS } from '@wedding-planner/shared';
+import VendorPaymentsModal from './VendorPaymentsModal';
 import toast from 'react-hot-toast';
 import Portal from '../../components/Portal';
 
@@ -45,6 +48,7 @@ export default function Vendors() {
   const [formData, setFormData] = useState<VendorFormData>(DEFAULT_FORM);
   const [editingVendor, setEditingVendor] = useState<any>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [payingVendor, setPayingVendor] = useState<any | null>(null);
 
   const { data: vendors, isLoading: loadingVendors } = useVendors(selectedCategory);
   const { data: categoryList, isLoading: loadingCategories } = useVendorCategories();
@@ -116,9 +120,28 @@ export default function Vendors() {
 
   const getVendorPaymentInfo = (vendor: any) => {
     const payments: any[] = vendor.payments || [];
-    const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+    const actual = payments.filter((p) => !p.is_planned);
+    const planned = payments.filter((p) => p.is_planned);
+    const totalPaid = actual.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
     const totalCost = parseFloat(vendor.total_cost || 0);
-    return { totalCost, paid: totalPaid, due: totalCost - totalPaid };
+    return { totalCost, paid: totalPaid, due: totalCost - totalPaid, actual, planned };
+  };
+
+  const daysUntil = (dateStr: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(dateStr);
+    target.setHours(0, 0, 0, 0);
+    return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  const plannedBadge = (dateStr: string) => {
+    const days = daysUntil(dateStr);
+    if (days < 0) return { label: 'Overdue', cls: 'bg-red-100 text-red-700' };
+    if (days === 0) return { label: 'Due today', cls: 'bg-red-100 text-red-700' };
+    if (days <= 3) return { label: `Due in ${days}d`, cls: 'bg-orange-100 text-orange-700' };
+    if (days <= 7) return { label: `Due in ${days}d`, cls: 'bg-amber-100 text-amber-700' };
+    return { label: new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), cls: 'bg-gray-100 text-gray-600' };
   };
 
   const getVendorEvents = (vendor: any): string[] => {
@@ -179,9 +202,8 @@ export default function Vendors() {
                     <h3 className="font-semibold text-maroon-800">{vendor.name}</h3>
                     <p className="text-sm text-gold-600">
                       {vendor.category
-                        ?.split('_')
-                        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
-                        .join(' ')}
+                        ? (VENDOR_CATEGORY_LABELS as Record<string, string>)[vendor.category] ?? vendor.category
+                        : null}
                     </p>
                   </div>
                 </div>
@@ -207,25 +229,77 @@ export default function Vendors() {
                   )}
                 </div>
 
+                {/* Planned payment reminders */}
+                {paymentInfo.planned.length > 0 && (
+                  <div className="mt-4 space-y-1">
+                    {paymentInfo.planned.map((p: any) => {
+                      const badge = plannedBadge(p.payment_date);
+                      return (
+                        <div key={p.id} className="flex items-center justify-between px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
+                          <div className="flex items-center gap-2 text-xs">
+                            <span>📅</span>
+                            <span className="font-medium text-amber-800">{formatCurrency(parseFloat(p.amount))}</span>
+                          </div>
+                          <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${badge.cls}`}>
+                            {badge.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {paymentInfo.totalCost > 0 && (
-                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex justify-between text-sm mb-1">
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg space-y-1">
+                    {paymentInfo.actual.length > 0 ? (
+                      <>
+                        {paymentInfo.actual.slice(0, 3).map((p: any) => (
+                          <div key={p.id} className="flex justify-between text-xs text-gray-600">
+                            <span>{new Date(p.payment_date).toLocaleDateString('en-IN')}</span>
+                            <span className="font-medium text-green-700">
+                              {formatCurrency(parseFloat(p.amount))}
+                            </span>
+                          </div>
+                        ))}
+                        {paymentInfo.actual.length > 3 && (
+                          <button
+                            onClick={() => setPayingVendor(vendor)}
+                            className="text-xs text-maroon-700 hover:text-maroon-900 font-medium"
+                          >
+                            +{paymentInfo.actual.length - 3} more…
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-xs text-gray-400 italic">No payments recorded</p>
+                    )}
+                    <div className="flex justify-between items-center text-xs pt-1 border-t border-gray-200 mt-1">
                       <span className="text-gray-500">Total Cost:</span>
                       <span className="font-medium">{formatCurrency(paymentInfo.totalCost)}</span>
                     </div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-gray-500">Paid:</span>
-                      <span className="font-medium text-green-600">
-                        {formatCurrency(paymentInfo.paid)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Due:</span>
-                      <span className="font-medium text-red-600">
-                        {formatCurrency(paymentInfo.due)}
-                      </span>
-                    </div>
+                    {paymentInfo.due > 0 && (
+                      <div className="flex justify-between text-xs font-semibold">
+                        <span className="text-red-600">Outstanding:</span>
+                        <span className="text-red-600">{formatCurrency(paymentInfo.due)}</span>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setPayingVendor(vendor)}
+                      className="flex items-center gap-1 text-xs text-maroon-700 hover:text-maroon-900 font-medium mt-1 pt-1 border-t border-gray-200 w-full"
+                    >
+                      <HiOutlineCurrencyRupee className="w-3.5 h-3.5" />
+                      Record payment
+                    </button>
                   </div>
+                )}
+                {paymentInfo.totalCost === 0 && (
+                  <button
+                    onClick={() => setPayingVendor(vendor)}
+                    className="mt-3 flex items-center gap-1 text-xs text-maroon-700 hover:text-maroon-900 font-medium"
+                  >
+                    <HiOutlineCurrencyRupee className="w-3.5 h-3.5" />
+                    Record payment
+                  </button>
                 )}
 
                 {events.length > 0 && (
@@ -456,6 +530,13 @@ export default function Vendors() {
             </div>
           </div>
         </Portal>
+      )}
+
+      {payingVendor && (
+        <VendorPaymentsModal
+          vendor={payingVendor}
+          onClose={() => setPayingVendor(null)}
+        />
       )}
     </div>
   );

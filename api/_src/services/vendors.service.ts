@@ -1,5 +1,5 @@
 import { NotFoundError } from '../shared/errors/HttpError';
-import { VENDOR_CATEGORIES } from '../constants/enums';
+import { VENDOR_CATEGORIES, VENDOR_CATEGORY_LABELS } from '../constants/enums';
 import type { VendorInsert } from '@wedding-planner/shared';
 import * as repo from '../repositories/vendors.repository';
 
@@ -10,10 +10,7 @@ export async function listVendors(ownerId: string, category?: string) {
 export function getCategories() {
   return VENDOR_CATEGORIES.map((cat) => ({
     value: cat,
-    label: cat
-      .split('_')
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' '),
+    label: VENDOR_CATEGORY_LABELS[cat],
   }));
 }
 
@@ -68,6 +65,7 @@ export async function addPayment(
     side?: string | null;
     transaction_reference?: string | null;
     notes?: string | null;
+    is_planned?: boolean;
   },
 ) {
   return repo.insertVendorPayment({ ...payload, vendor_id: vendorId, user_id: ownerId });

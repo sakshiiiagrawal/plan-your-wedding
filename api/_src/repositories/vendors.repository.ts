@@ -4,7 +4,7 @@ import type { VendorInsert, VendorRow } from '@wedding-planner/shared';
 export async function findAllByOwner(ownerId: string, category?: string) {
   let query = supabase
     .from('vendors')
-    .select('*, vendor_event_assignments(event_id, events(name))')
+    .select('*, vendor_event_assignments(event_id, events(name)), payments(*)')
     .eq('user_id', ownerId);
 
   if (category && category !== 'all') {
@@ -102,6 +102,7 @@ export async function insertVendorPayment(payload: {
   side?: string | null;
   transaction_reference?: string | null;
   notes?: string | null;
+  is_planned?: boolean;
 }) {
   const { data, error } = await supabase.from('payments').insert([payload]).select().single();
   if (error) throw error;

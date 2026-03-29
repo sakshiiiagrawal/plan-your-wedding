@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { HiOutlineX } from 'react-icons/hi';
 import Portal from '../../../components/Portal';
+import { VENDOR_CATEGORY_LABELS } from '@wedding-planner/shared';
 
 export interface VendorRow {
   vendorId: string;
@@ -26,23 +27,6 @@ interface FormData {
   is_shared: boolean;
 }
 
-const VENDOR_CATEGORIES = [
-  'catering',
-  'photography',
-  'videography',
-  'decoration',
-  'music',
-  'venue',
-  'transport',
-  'attire',
-  'jewelry',
-  'makeup',
-  'invitation',
-  'cake',
-  'flowers',
-  'accommodation',
-  'other',
-];
 
 export default function EditVendorModal({
   vendor,
@@ -56,7 +40,7 @@ export default function EditVendorModal({
     if (vendor) {
       setFormData({
         name: vendor.description || '',
-        category: vendor.category?.replace(/ /g, '_') || 'other',
+        category: vendor.category || 'other',
         total_cost: vendor.amount || '',
         side: vendor.is_shared ? 'mutual' : vendor.side || 'mutual',
         is_shared: vendor.is_shared || false,
@@ -110,9 +94,9 @@ export default function EditVendorModal({
                 onChange={(e) => set({ category: e.target.value })}
                 className="input"
               >
-                {VENDOR_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c.replace(/_/g, ' ')}
+                {(Object.entries(VENDOR_CATEGORY_LABELS) as [string, string][]).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
                 ))}
               </select>

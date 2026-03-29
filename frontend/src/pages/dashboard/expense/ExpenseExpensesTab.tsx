@@ -42,7 +42,7 @@ export default function ExpenseExpensesTab({
             {allExpenses.map((row) => (
               <tr key={row.id} className="table-row group">
                 <td className="p-4 font-medium min-w-[120px]">{row.description}</td>
-                <td className="p-4 text-gray-600 capitalize hidden sm:table-cell">
+                <td className="p-4 text-gray-600 hidden sm:table-cell">
                   {row.category}
                 </td>
                 <td className="p-4">

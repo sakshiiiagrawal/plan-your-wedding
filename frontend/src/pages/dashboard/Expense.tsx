@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { HiOutlinePlus, HiOutlineCurrencyRupee } from 'react-icons/hi';
+import { VENDOR_CATEGORY_LABELS } from '@wedding-planner/shared';
 import {
   useExpenseSummary,
   useExpenseOverview,
@@ -133,7 +134,7 @@ export default function Expense() {
       vendorId: v.id,
       type: 'vendor' as const,
       description: v.name,
-      category: v.category?.replace(/_/g, ' ') || 'Vendor',
+      category: v.category ? ((VENDOR_CATEGORY_LABELS as Record<string, string>)[v.category] ?? v.category) : 'Vendor',
       amount: v.totalCost || 0,
       date: null,
       paid_by: null,
