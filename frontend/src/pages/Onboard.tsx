@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,8 +22,16 @@ interface FormData {
 }
 
 export default function Onboard() {
-  const { register } = useAuth();
+  const { register, isAuthenticated, slug, loading } = useAuth();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
+
+  useEffect(() => {
+    if (!loading && isAuthenticated && slug) {
+      navigate(`/${slug}/dashboard`, { replace: true });
+    }
+  }, [loading, isAuthenticated, slug, navigate]);
+  
   const [submitting, setSubmitting] = useState(false);
   const [successSlug, setSuccessSlug] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({

@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Outlet, NavLink, useParams } from 'react-router-dom';
 import { HiOutlineMenu, HiOutlineX } from 'react-icons/hi';
 import { useHeroContent } from '../hooks/useApi';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function PublicLayout() {
   const { slug } = useParams<{ slug: string }>();
   const { data: heroContent } = useHeroContent(slug);
+  const { isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const brideName = heroContent?.bride_name || 'Bride';
   const groomName = heroContent?.groom_name || 'Groom';
@@ -52,10 +54,10 @@ export default function PublicLayout() {
             </div>
 
             <NavLink
-              to={`/${slug}/dashboard`}
+              to={isAuthenticated ? `/${slug}/dashboard` : `/${slug}/login`}
               className="hidden md:block text-sm text-gold-600 hover:text-gold-700"
             >
-              Planner
+              {isAuthenticated ? 'Dashboard' : 'Login'}
             </NavLink>
 
             <button
@@ -104,11 +106,11 @@ export default function PublicLayout() {
                 RSVP
               </a>
               <NavLink
-                to={`/${slug}/dashboard`}
+                to={isAuthenticated ? `/${slug}/dashboard` : `/${slug}/login`}
                 onClick={() => setMobileMenuOpen(false)}
                 className="block px-4 py-3 text-gold-600 hover:text-gold-700 hover:bg-gold-50 rounded-lg transition-colors"
               >
-                Planner
+                {isAuthenticated ? 'Dashboard' : 'Login'}
               </NavLink>
             </div>
           </div>

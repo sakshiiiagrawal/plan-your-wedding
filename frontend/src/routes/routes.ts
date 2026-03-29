@@ -1,7 +1,7 @@
 export const ROUTES = {
   home: '/',
   onboard: '/onboard',
-  login: (slug: string) => `/${slug}/login`,
+  login: (slug?: string) => (slug ? `/${slug}/login` : '/login'),
   publicSite: (slug: string) => `/${slug}`,
   dashboard: {
     root: (slug: string) => `/${slug}/dashboard`,

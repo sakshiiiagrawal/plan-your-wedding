@@ -37,6 +37,9 @@ function App() {
             {/* Marketing landing page */}
             <Route path="/" element={<Marketing />} />
 
+            {/* Global login (slug-less) */}
+            <Route path="/login" element={<Login />} />
+
             {/* Onboarding wizard */}
             <Route path="/onboard" element={<Onboard />} />
 

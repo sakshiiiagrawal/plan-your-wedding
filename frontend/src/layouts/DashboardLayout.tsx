@@ -43,7 +43,7 @@ export default function DashboardLayout() {
 
   const handleLogout = () => {
     logout();
-    navigate(`/${slug}/login`);
+    navigate(`/${slug}/login`, { replace: true });
   };
 
   if (loading) {
