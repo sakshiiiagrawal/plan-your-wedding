@@ -28,9 +28,9 @@ export default function DashboardLayout() {
 
   const navItems = [
     { path: `/${slug}/dashboard`, label: 'Dashboard', icon: HiOutlineHome, end: true },
+    { path: `/${slug}/dashboard/venues`, label: 'Venues', icon: HiOutlineLocationMarker },
     { path: `/${slug}/dashboard/events`, label: 'Events', icon: HiOutlineCalendar },
     { path: `/${slug}/dashboard/guests`, label: 'Guests', icon: HiOutlineUserGroup },
-    { path: `/${slug}/dashboard/venues`, label: 'Venues', icon: HiOutlineLocationMarker },
     {
       path: `/${slug}/dashboard/accommodations`,
       label: 'Accommodations',
