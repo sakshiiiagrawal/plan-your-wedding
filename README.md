@@ -4,13 +4,12 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node ≥20](https://img.shields.io/badge/Node-%E2%89%A520-brightgreen)](https://nodejs.org)
 
-An open-source, multi-tenant wedding planning SaaS built with React, Express, and Supabase. Each wedding gets its own slug-scoped admin dashboard and public website.
+An open-source, multi-tenant wedding planning SaaS built with React, Express, and Supabase. Each wedding gets its own slug-scoped dashboard and public website.
 
 ## Features
 
 - **Multi-tenant** — one deployment serves unlimited weddings, each isolated by slug
-- **Admin dashboard** — manage guests, events, venues, accommodations, vendors, tasks, and expense
-- **Role-based access** — `admin` (full), `family` (view + finance), `friends` (view only, no finance)
+- **Dashboard** — manage guests, events, venues, accommodations, vendors, tasks, and expense
 - **Public wedding website** — hero section, countdown timer, event schedule, gallery
 - **Expense tracking** — expense categories, side-wise splits (bride/groom/shared), vendor cost tracking
 - **Room allocation** — hotel rooms, guest assignments, Excel import/export
@@ -28,7 +27,7 @@ npm run db:migrate     # apply schema to your Supabase project
 npm run dev            # API on :3001, frontend on :5173
 ```
 
-Open `http://localhost:5173/onboard` to create your admin account.
+Open `http://localhost:5173/onboard` to create your account.
 
 > **Windows?** Use `npm run setup:win` instead of `npm run setup`.
 
@@ -40,7 +39,7 @@ cd plan-your-wedding
 docker compose up      # postgres + postgrest + API + frontend start automatically
 ```
 
-Open `http://localhost:5173/onboard` to create your admin account.
+Open `http://localhost:5173/onboard` to create your account.
 
 ## Stack
 
@@ -70,7 +69,7 @@ wedding-planner/
 │       ├── modules/        # Feature-scoped hooks
 │       ├── pages/          # Route-level page components
 │       ├── contexts/       # Auth context
-│       └── layouts/        # AdminLayout, PublicLayout
+│       └── layouts/        # DashboardLayout, PublicLayout
 └── shared/                 # TypeScript types only (no runtime)
     └── src/
         ├── domain/         # Row types derived from Supabase generated types

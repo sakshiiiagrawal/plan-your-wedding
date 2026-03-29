@@ -12,12 +12,11 @@ import {
   HiOutlineClipboardList,
   HiOutlineLogout,
   HiOutlineMenu,
-  HiOutlineLockClosed,
 } from 'react-icons/hi';
 import { useState } from 'react';
 
-export default function AdminLayout() {
-  const { logout, user, isAuthenticated, loading, canViewFinance, isReadOnly, isAdmin } = useAuth();
+export default function DashboardLayout() {
+  const { logout, user, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -27,37 +26,20 @@ export default function AdminLayout() {
   const groomName = heroContent?.groom_name || 'Groom';
   const initials = `${brideName.charAt(0)}${groomName.charAt(0)}`;
 
-  const allNavItems = [
-    { path: `/${slug}/admin`, label: 'Dashboard', icon: HiOutlineHome, end: true },
-    { path: `/${slug}/admin/events`, label: 'Events', icon: HiOutlineCalendar },
-    { path: `/${slug}/admin/guests`, label: 'Guests', icon: HiOutlineUserGroup },
-    { path: `/${slug}/admin/venues`, label: 'Venues', icon: HiOutlineLocationMarker },
+  const navItems = [
+    { path: `/${slug}/dashboard`, label: 'Dashboard', icon: HiOutlineHome, end: true },
+    { path: `/${slug}/dashboard/events`, label: 'Events', icon: HiOutlineCalendar },
+    { path: `/${slug}/dashboard/guests`, label: 'Guests', icon: HiOutlineUserGroup },
+    { path: `/${slug}/dashboard/venues`, label: 'Venues', icon: HiOutlineLocationMarker },
     {
-      path: `/${slug}/admin/accommodations`,
+      path: `/${slug}/dashboard/accommodations`,
       label: 'Accommodations',
       icon: HiOutlineOfficeBuilding,
     },
-    { path: `/${slug}/admin/vendors`, label: 'Vendors', icon: HiOutlineBriefcase },
-    {
-      path: `/${slug}/admin/expense`,
-      label: 'Expense',
-      icon: HiOutlineCurrencyRupee,
-      requiresFinanceAccess: true,
-    },
-    { path: `/${slug}/admin/tasks`, label: 'Tasks', icon: HiOutlineClipboardList },
-    {
-      path: `/${slug}/admin/team`,
-      label: 'Team Access',
-      icon: HiOutlineLockClosed,
-      adminOnly: true,
-    },
+    { path: `/${slug}/dashboard/vendors`, label: 'Vendors', icon: HiOutlineBriefcase },
+    { path: `/${slug}/dashboard/expense`, label: 'Expense', icon: HiOutlineCurrencyRupee },
+    { path: `/${slug}/dashboard/tasks`, label: 'Tasks', icon: HiOutlineClipboardList },
   ];
-
-  const navItems = allNavItems.filter((item) => {
-    if (item.requiresFinanceAccess && !canViewFinance) return false;
-    if (item.adminOnly && !isAdmin) return false;
-    return true;
-  });
 
   const handleLogout = () => {
     logout();
@@ -95,7 +77,7 @@ export default function AdminLayout() {
       >
         <div className="h-full flex flex-col">
           <div className="p-6 border-b border-gold-200">
-            <NavLink to={`/${slug}/admin`} className="flex items-center gap-2">
+            <NavLink to={`/${slug}/dashboard`} className="flex items-center gap-2">
               <div className="w-10 h-10 bg-gradient-to-r from-maroon-800 to-gold-600 rounded-full flex items-center justify-center">
                 <span className="text-white font-script text-xl">{initials}</span>
               </div>
@@ -133,21 +115,16 @@ export default function AdminLayout() {
             <div className="flex items-center gap-3 mb-3 px-4">
               <div className="w-8 h-8 bg-gold-500 rounded-full flex items-center justify-center">
                 <span className="text-maroon-800 font-medium text-sm">
-                  {user?.name?.charAt(0) || 'A'}
+                  {user?.name?.charAt(0) || 'U'}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-800 truncate">
-                  {user?.name || 'Admin'}
+                  {user?.name || 'User'}
                 </p>
                 <p className="text-xs text-gray-500 truncate">{user?.email}</p>
               </div>
             </div>
-            {isReadOnly && (
-              <div className="mb-3 mx-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-xs text-amber-700 font-medium text-center">View Only Mode</p>
-              </div>
-            )}
             <button
               onClick={handleLogout}
               className="flex items-center gap-3 px-4 py-3 w-full text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
@@ -168,7 +145,7 @@ export default function AdminLayout() {
             <HiOutlineMenu className="w-6 h-6 text-maroon-800" />
           </button>
           <div className="flex-1">
-            <h2 className="font-display font-semibold text-maroon-800">Wedding Dashboard</h2>
+            <h2 className="font-display font-semibold text-maroon-800">Wedding Planner</h2>
           </div>
           <div className="flex items-center gap-4">
             <NavLink
@@ -180,7 +157,7 @@ export default function AdminLayout() {
             <div className="hidden sm:flex items-center gap-3 pl-4 border-l border-gold-200">
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-700">{user?.name}</p>
-                <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
               </div>
               <button
                 onClick={handleLogout}

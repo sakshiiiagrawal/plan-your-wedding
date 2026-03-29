@@ -23,7 +23,7 @@ export default function Login() {
     try {
       await login(email, password);
       toast.success('Welcome to Wedding Planner!');
-      navigate(`/${slug}/admin`);
+      navigate(`/${slug}/dashboard`);
     } catch (error) {
       const err = error as { response?: { data?: { error?: string } } };
       toast.error(err?.response?.data?.error || 'Invalid credentials');
@@ -39,7 +39,7 @@ export default function Login() {
           <h1 className="font-script text-5xl text-cream mb-2">
             {brideName} & {groomName}
           </h1>
-          <p className="text-gold-300">Wedding Planner Admin</p>
+          <p className="text-gold-300">Wedding Planner</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">

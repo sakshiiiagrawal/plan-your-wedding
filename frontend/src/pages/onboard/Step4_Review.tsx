@@ -58,7 +58,7 @@ export default function Step4_Review({ data, onSubmit, onBack, loading }: Step4P
           </div>
         )}
         <div className="border-t border-gold-100 pt-4">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Admin Account</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Account</p>
           <p className="text-gray-700 font-medium">{name}</p>
           <p className="text-gray-500 text-sm">{email}</p>
         </div>

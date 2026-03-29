@@ -5,9 +5,9 @@ import { useAuth } from '../contexts/AuthContext';
 
 import Step1_Welcome from './onboard/Step1_Welcome';
 import Step2_WeddingDetails from './onboard/Step2_WeddingDetails';
-import Step3_AdminAccount from './onboard/Step3_AdminAccount';
 import Step4_Review from './onboard/Step4_Review';
 import OnboardSuccess from './onboard/OnboardSuccess';
+import Step3_Account from './onboard/Step3_Account';
 
 interface FormData {
   brideName: string;
@@ -113,7 +113,7 @@ export default function Onboard() {
                 onBack={() => setStep(1)}
               />
             ) : step === 3 ? (
-              <Step3_AdminAccount
+              <Step3_Account
                 key="step3"
                 data={{
                   name: formData.name,

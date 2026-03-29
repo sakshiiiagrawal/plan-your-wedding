@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import {
   useDashboardStats,
   useDashboardSummary,
@@ -36,7 +35,6 @@ interface Countdown {
 
 export default function Dashboard() {
   const { slug } = useParams<{ slug: string }>();
-  const { canEdit, canViewFinance } = useAuth();
   const [countdown, setCountdown] = useState<Countdown>({
     days: 0,
     hours: 0,
@@ -155,16 +153,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {canViewFinance && (
-          <div className="stat-card">
-            <HiOutlineCurrencyRupee className="w-8 h-8 text-gold-500 mb-2" />
-            <div className="stat-value">{formatCurrency(stats?.expense?.spent || 0)}</div>
-            <div className="stat-label">Spent</div>
-            <div className="text-xs text-gray-400 mt-1">
-              of {formatCurrency(stats?.expense?.total || 0)}
-            </div>
+        <div className="stat-card">
+          <HiOutlineCurrencyRupee className="w-8 h-8 text-gold-500 mb-2" />
+          <div className="stat-value">{formatCurrency(stats?.expense?.spent || 0)}</div>
+          <div className="stat-label">Spent</div>
+          <div className="text-xs text-gray-400 mt-1">
+            of {formatCurrency(stats?.expense?.total || 0)}
           </div>
-        )}
+        </div>
 
         <div className="stat-card">
           <HiOutlineClipboardList className="w-8 h-8 text-gold-500 mb-2" />
@@ -196,30 +192,21 @@ export default function Dashboard() {
         {[
           {
             label: 'Add Guest',
-            path: `/${slug}/admin/guests`,
+            path: `/${slug}/dashboard/guests`,
             icon: HiOutlineUserGroup,
-            requiresEdit: true,
           },
           {
             label: 'Add Expense',
-            path: `/${slug}/admin/expense`,
+            path: `/${slug}/dashboard/expense`,
             icon: HiOutlineCurrencyRupee,
-            requiresEdit: true,
-            requiresFinance: true,
           },
           {
             label: 'Add Task',
-            path: `/${slug}/admin/tasks`,
+            path: `/${slug}/dashboard/tasks`,
             icon: HiOutlineClipboardList,
-            requiresEdit: true,
           },
-          { label: 'View Events', path: `/${slug}/admin/events`, icon: HiOutlineCalendar },
+          { label: 'View Events', path: `/${slug}/dashboard/events`, icon: HiOutlineCalendar },
         ]
-          .filter((action) => {
-            if (action.requiresEdit && !canEdit) return false;
-            if (action.requiresFinance && !canViewFinance) return false;
-            return true;
-          })
           .map((action) => (
             <Link
               key={action.label}
@@ -269,20 +256,18 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {canViewFinance && (
-          <div className="card">
-            <h3 className="section-title mb-4">Expense Overview</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={expenseData} layout="vertical">
-                <XAxis type="number" tickFormatter={(v: number) => `₹${v / 100000}L`} />
-                <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: any) => formatCurrency(v)} />
-                <Bar dataKey="allocated" fill="#D4AF37" name="Allocated" />
-                <Bar dataKey="spent" fill="#8B0000" name="Spent" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        <div className="card">
+          <h3 className="section-title mb-4">Expense Overview</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={expenseData} layout="vertical">
+              <XAxis type="number" tickFormatter={(v: number) => `₹${v / 100000}L`} />
+              <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(v: any) => formatCurrency(v)} />
+              <Bar dataKey="allocated" fill="#D4AF37" name="Allocated" />
+              <Bar dataKey="spent" fill="#8B0000" name="Spent" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       <div className="card">

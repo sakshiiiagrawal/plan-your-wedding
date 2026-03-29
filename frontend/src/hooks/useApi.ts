@@ -19,44 +19,6 @@ export const useSetupStatus = () =>
     staleTime: Infinity,
   });
 
-// =====================================================
-// USER MANAGEMENT HOOKS
-// =====================================================
-
-export interface TeamMember {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'family' | 'friends';
-  created_at: string;
-}
-
-export const useUsers = () =>
-  useQuery<TeamMember[]>({
-    queryKey: ['users'],
-    queryFn: () => api.get('/auth/users').then((res) => res.data),
-  });
-
-export const useCreateUser = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (userData: { name: string; email: string; password: string; role: string }) =>
-      api.post('/auth/create-user', userData).then((res) => res.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
-  });
-};
-
-export const useDeleteUser = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => api.delete(`/auth/users/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
-  });
-};
 
 // =====================================================
 // WEBSITE CONTENT HOOKS

@@ -1,13 +1,10 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api/axios';
 
-export type UserRole = 'admin' | 'family' | 'friends';
-
 export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  role: UserRole;
   slug?: string | null;
 }
 
@@ -29,12 +26,6 @@ interface AuthContextValue {
   register: (data: RegisterData) => Promise<{ user: AuthUser; slug: string | null }>;
   logout: () => void;
   isAuthenticated: boolean;
-  isAdmin: boolean;
-  isFamily: boolean;
-  isFriends: boolean;
-  canEdit: boolean;
-  canViewFinance: boolean;
-  isReadOnly: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -114,13 +105,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setSlug(null);
   };
 
-  const isAdmin = user?.role === 'admin';
-  const isFamily = user?.role === 'family';
-  const isFriends = user?.role === 'friends';
-  const canEdit = isAdmin;
-  const canViewFinance = isAdmin || isFamily;
-  const isReadOnly = isFamily || isFriends;
-
   return (
     <AuthContext.Provider
       value={{
@@ -131,12 +115,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         register,
         logout,
         isAuthenticated: !!user,
-        isAdmin,
-        isFamily,
-        isFriends,
-        canEdit,
-        canViewFinance,
-        isReadOnly,
       }}
     >
       {children}

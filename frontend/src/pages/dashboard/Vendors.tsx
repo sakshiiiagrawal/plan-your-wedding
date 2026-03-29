@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useMemo } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import {
   HiOutlinePhone,
   HiOutlineMail,
@@ -41,7 +40,6 @@ const DEFAULT_FORM: VendorFormData = {
 };
 
 export default function Vendors() {
-  const { canEdit } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState<VendorFormData>(DEFAULT_FORM);
@@ -144,14 +142,12 @@ export default function Vendors() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="page-title">Vendors</h1>
-        {canEdit && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="btn-primary self-start sm:self-auto"
-          >
-            Add Vendor
-          </button>
-        )}
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="btn-primary self-start sm:self-auto"
+        >
+          Add Vendor
+        </button>
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -246,24 +242,22 @@ export default function Vendors() {
                 )}
 
                 <div className="mt-4 pt-4 border-t border-gold-100 flex justify-end items-center">
-                  {canEdit && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEdit(vendor)}
-                        className="p-2 hover:bg-gold-50 rounded-lg text-gold-600"
-                        title="Edit vendor"
-                      >
-                        <HiOutlinePencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirm(vendor.id)}
-                        className="p-2 hover:bg-red-50 rounded-lg text-red-600"
-                        title="Delete vendor"
-                      >
-                        <HiOutlineTrash className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(vendor)}
+                      className="p-2 hover:bg-gold-50 rounded-lg text-gold-600"
+                      title="Edit vendor"
+                    >
+                      <HiOutlinePencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm(vendor.id)}
+                      className="p-2 hover:bg-red-50 rounded-lg text-red-600"
+                      title="Delete vendor"
+                    >
+                      <HiOutlineTrash className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -275,7 +269,7 @@ export default function Vendors() {
         </div>
       )}
 
-      {canEdit && showAddModal && (
+      {showAddModal && (
         <Portal>
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">

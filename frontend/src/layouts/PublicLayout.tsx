@@ -52,10 +52,10 @@ export default function PublicLayout() {
             </div>
 
             <NavLink
-              to={`/${slug}/admin`}
+              to={`/${slug}/dashboard`}
               className="hidden md:block text-sm text-gold-600 hover:text-gold-700"
             >
-              Admin
+              Planner
             </NavLink>
 
             <button
@@ -104,11 +104,11 @@ export default function PublicLayout() {
                 RSVP
               </a>
               <NavLink
-                to={`/${slug}/admin`}
+                to={`/${slug}/dashboard`}
                 onClick={() => setMobileMenuOpen(false)}
                 className="block px-4 py-3 text-gold-600 hover:text-gold-700 hover:bg-gold-50 rounded-lg transition-colors"
               >
-                Admin
+                Planner
               </NavLink>
             </div>
           </div>

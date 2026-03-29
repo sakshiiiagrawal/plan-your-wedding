@@ -5,7 +5,6 @@ export async function findBySlug(slug: string): Promise<{ id: string; name: stri
     .from('users')
     .select('id, name')
     .eq('slug', slug)
-    .eq('role', 'admin')
     .maybeSingle();
 
   if (error) throw error;

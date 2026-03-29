@@ -1,7 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../../contexts/AuthContext';
 import {
   HiOutlineOfficeBuilding,
   HiOutlinePlus,
@@ -109,7 +108,6 @@ function fuzzyMatch(query: string, text: string): boolean {
 }
 
 export default function Accommodations() {
-  const { canEdit } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: allocationMatrix = [], isLoading, error } = useAllocationMatrix();
@@ -404,20 +402,16 @@ export default function Accommodations() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="page-title">Accommodations & Room Allocation</h1>
         <div className="flex gap-2 flex-wrap">
-          {canEdit && (
-            <>
-              <button
-                onClick={() => setShowImportModal(true)}
-                className="btn-outline flex items-center gap-2"
-              >
-                <HiOutlineUpload className="w-4 h-4" />
-                Import
-              </button>
-              <button onClick={() => setShowHotelModal(true)} className="btn-primary">
-                Add Hotel
-              </button>
-            </>
-          )}
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="btn-outline flex items-center gap-2"
+          >
+            <HiOutlineUpload className="w-4 h-4" />
+            Import
+          </button>
+          <button onClick={() => setShowHotelModal(true)} className="btn-primary">
+            Add Hotel
+          </button>
         </div>
       </div>
 
@@ -560,21 +554,19 @@ export default function Accommodations() {
                           {hotel.default_check_out_date ?? <span className="italic text-gray-400">not set</span>}
                         </span>
                       </div>
-                      {canEdit && (
-                        <button
-                          onClick={() => {
-                            setEditHotelDateValues({
-                              default_check_in_date: hotel.default_check_in_date ?? '',
-                              default_check_out_date: hotel.default_check_out_date ?? '',
-                            });
-                            setEditingHotelDates(true);
-                          }}
-                          className="opacity-0 group-hover/dates:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
-                          title="Edit default dates"
-                        >
-                          <HiOutlinePencil className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => {
+                          setEditHotelDateValues({
+                            default_check_in_date: hotel.default_check_in_date ?? '',
+                            default_check_out_date: hotel.default_check_out_date ?? '',
+                          });
+                          setEditingHotelDates(true);
+                        }}
+                        className="opacity-0 group-hover/dates:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
+                        title="Edit default dates"
+                      >
+                        <HiOutlinePencil className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   )}
                 </div>
@@ -593,18 +585,16 @@ export default function Accommodations() {
                       <span>Available</span>
                     </div>
                   </div>
-                  {canEdit && (
-                    <button
-                      onClick={() => {
-                        setRoomFormData({ ...roomFormData, accommodationId: selectedHotel.id });
-                        setShowRoomModal(true);
-                      }}
-                      className="btn-outline text-sm flex items-center gap-2"
-                    >
-                      <HiOutlinePlus className="w-4 h-4" />
-                      Add Room
-                    </button>
-                  )}
+                  <button
+                    onClick={() => {
+                      setRoomFormData({ ...roomFormData, accommodationId: selectedHotel.id });
+                      setShowRoomModal(true);
+                    }}
+                    className="btn-outline text-sm flex items-center gap-2"
+                  >
+                    <HiOutlinePlus className="w-4 h-4" />
+                    Add Room
+                  </button>
                 </div>
               </div>
 
@@ -618,7 +608,7 @@ export default function Accommodations() {
                           <th className="text-left p-3">Type</th>
                           <th className="text-left p-3">Capacity</th>
                           <th className="text-left p-3">Guests</th>
-                          {canEdit && <th className="text-left p-3">Actions</th>}
+                          <th className="text-left p-3">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -685,15 +675,13 @@ export default function Accommodations() {
                                   ) : (
                                     <span className="inline-flex items-center gap-1.5">
                                       {room.room_number}
-                                      {canEdit && (
-                                        <button
-                                          onClick={startEditing}
-                                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-opacity"
-                                          title="Edit room number"
-                                        >
-                                          <HiOutlinePencil className="w-3.5 h-3.5" />
-                                        </button>
-                                      )}
+                                      <button
+                                        onClick={startEditing}
+                                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-opacity"
+                                        title="Edit room number"
+                                      >
+                                        <HiOutlinePencil className="w-3.5 h-3.5" />
+                                      </button>
                                     </span>
                                   )}
                                 </td>
@@ -712,15 +700,13 @@ export default function Accommodations() {
                                   ) : (
                                     <span className="inline-flex items-center gap-1.5">
                                       {room.capacity || 0}
-                                      {canEdit && (
-                                        <button
-                                          onClick={startEditing}
-                                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-opacity"
-                                          title="Edit capacity"
-                                        >
-                                          <HiOutlinePencil className="w-3.5 h-3.5" />
-                                        </button>
-                                      )}
+                                      <button
+                                        onClick={startEditing}
+                                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-opacity"
+                                        title="Edit capacity"
+                                      >
+                                        <HiOutlinePencil className="w-3.5 h-3.5" />
+                                      </button>
                                     </span>
                                   )}
                                 </td>
@@ -743,64 +729,62 @@ export default function Accommodations() {
                                     <span className="text-gray-400 italic">Available</span>
                                   )}
                                 </td>
-                                {canEdit && (
-                                  <td className="p-3">
-                                    {isEditingRoom ? (
-                                      <div className="flex items-center gap-2">
-                                        <button
-                                          onClick={handleRoomEditSave}
-                                          disabled={updateRoomMutation.isPending}
-                                          className="text-sm text-green-600 hover:text-green-700 font-medium disabled:opacity-50"
-                                        >
-                                          {updateRoomMutation.isPending ? 'Saving…' : 'Save'}
-                                        </button>
-                                        <button
-                                          onClick={() => setEditingRoomId(null)}
-                                          className="text-sm text-gray-500 hover:text-gray-700"
-                                        >
-                                          Cancel
-                                        </button>
-                                      </div>
-                                    ) : (
+                                <td className="p-3">
+                                  {isEditingRoom ? (
+                                    <div className="flex items-center gap-2">
                                       <button
-                                        onClick={() => {
-                                          setRoomCapacity(room.capacity ?? 0);
-                                          if (existingAlloc) {
-                                            setEditAllocation({
-                                              id: existingAlloc.id,
-                                              currentGuests: guests.map((g) => ({
-                                                id: g.id,
-                                                first_name: g.first_name,
-                                                last_name: g.last_name,
-                                                needs_accommodation: g.needs_accommodation ?? true,
-                                                side: g.side,
-                                              })),
-                                            });
-                                            setAllocationFormData({
-                                              room_id: room.id,
-                                              guest_ids: existingAlloc.guest_ids ?? [],
-                                              check_in_date: existingAlloc.check_in_date ?? '',
-                                              check_out_date: existingAlloc.check_out_date ?? '',
-                                            });
-                                          } else {
-                                            setEditAllocation(null);
-                                            setAllocationFormData({
-                                              room_id: room.id,
-                                              guest_ids: [],
-                                              check_in_date: hotel.default_check_in_date ?? '',
-                                              check_out_date: hotel.default_check_out_date ?? '',
-                                            });
-                                          }
-                                          setGuestSearchQuery('');
-                                          setShowAllocationModal(true);
-                                        }}
-                                        className="text-sm text-gold-600 hover:text-gold-700"
+                                        onClick={handleRoomEditSave}
+                                        disabled={updateRoomMutation.isPending}
+                                        className="text-sm text-green-600 hover:text-green-700 font-medium disabled:opacity-50"
                                       >
-                                        {guests.length > 0 ? 'Edit' : 'Assign'}
+                                        {updateRoomMutation.isPending ? 'Saving…' : 'Save'}
                                       </button>
-                                    )}
-                                  </td>
-                                )}
+                                      <button
+                                        onClick={() => setEditingRoomId(null)}
+                                        className="text-sm text-gray-500 hover:text-gray-700"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        setRoomCapacity(room.capacity ?? 0);
+                                        if (existingAlloc) {
+                                          setEditAllocation({
+                                            id: existingAlloc.id,
+                                            currentGuests: guests.map((g) => ({
+                                              id: g.id,
+                                              first_name: g.first_name,
+                                              last_name: g.last_name,
+                                              needs_accommodation: g.needs_accommodation ?? true,
+                                              side: g.side,
+                                            })),
+                                          });
+                                          setAllocationFormData({
+                                            room_id: room.id,
+                                            guest_ids: existingAlloc.guest_ids ?? [],
+                                            check_in_date: existingAlloc.check_in_date ?? '',
+                                            check_out_date: existingAlloc.check_out_date ?? '',
+                                          });
+                                        } else {
+                                          setEditAllocation(null);
+                                          setAllocationFormData({
+                                            room_id: room.id,
+                                            guest_ids: [],
+                                            check_in_date: hotel.default_check_in_date ?? '',
+                                            check_out_date: hotel.default_check_out_date ?? '',
+                                          });
+                                        }
+                                        setGuestSearchQuery('');
+                                        setShowAllocationModal(true);
+                                      }}
+                                      className="text-sm text-gold-600 hover:text-gold-700"
+                                    >
+                                      {guests.length > 0 ? 'Edit' : 'Assign'}
+                                    </button>
+                                  )}
+                                </td>
                               </tr>
                             );
                           },
@@ -831,7 +815,7 @@ export default function Accommodations() {
       )}
 
       {/* Add Hotel Modal */}
-      {canEdit && showHotelModal && (
+      {showHotelModal && (
         <Portal>
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -972,7 +956,7 @@ export default function Accommodations() {
       )}
 
       {/* Add Room Modal */}
-      {canEdit && showRoomModal && (
+      {showRoomModal && (
         <Portal>
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -1080,7 +1064,7 @@ export default function Accommodations() {
       )}
 
       {/* Assign Guest to Room Modal */}
-      {canEdit && showAllocationModal && (() => {
+      {showAllocationModal && (() => {
         // In edit mode, merge currently-assigned guests back in (they're excluded from unassignedGuests)
         const unassigned = unassignedGuests as GuestOption[];
         const currentGuestIds = new Set(editAllocation?.currentGuests.map((g) => g.id) ?? []);
@@ -1430,7 +1414,7 @@ export default function Accommodations() {
       })()}
 
       {/* Import Modal */}
-      {canEdit && showImportModal && (
+      {showImportModal && (
         <Portal>
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl">

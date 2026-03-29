@@ -1,6 +1,4 @@
 import { useState, useMemo } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import { HiOutlinePlus, HiOutlineCurrencyRupee } from 'react-icons/hi';
 import {
   useExpenseSummary,
@@ -60,8 +58,6 @@ type VendorTableRow = VendorRow & {
 type AllExpenseRow = ExpenseTableRow | VendorTableRow;
 
 export default function Expense() {
-  const { slug } = useParams<{ slug: string }>();
-  const { canEdit, canViewFinance } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null);
@@ -249,8 +245,6 @@ export default function Expense() {
     }
   };
 
-  if (!canViewFinance) return <Navigate to={`/${slug}/admin`} replace />;
-
   if (loadingSummary || loadingOverview) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -267,15 +261,13 @@ export default function Expense() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="page-title">Expense & Finance</h1>
-        {canEdit && (
-          <button
-            onClick={() => setShowExpenseModal(true)}
-            className="btn-primary flex items-center gap-2 self-start sm:self-auto"
-          >
-            <HiOutlinePlus className="w-4 h-4" />
-            Add Expense
-          </button>
-        )}
+        <button
+          onClick={() => setShowExpenseModal(true)}
+          className="btn-primary flex items-center gap-2 self-start sm:self-auto"
+        >
+          <HiOutlinePlus className="w-4 h-4" />
+          Add Expense
+        </button>
       </div>
 
       {/* Summary Cards */}
@@ -350,7 +342,6 @@ export default function Expense() {
           allExpenses={allExpenses}
           loading={loadingExpenses || loadingVendorExpense}
           formatCurrency={formatCurrency}
-          canEdit={canEdit}
           onEdit={(row: AllExpenseRow) =>
             row.type === 'vendor'
               ? setEditingVendor(row as VendorTableRow)
@@ -382,7 +373,6 @@ export default function Expense() {
         onSubmit={handleExpenseUpdate}
         isPending={updateExpenseMutation.isPending}
         vendors={vendors}
-        canEdit={canEdit}
       />
 
       <AddExpenseModal
@@ -391,7 +381,6 @@ export default function Expense() {
         onSubmit={handleExpenseSubmit}
         isPending={createExpenseMutation.isPending}
         vendors={vendors}
-        canEdit={canEdit}
       />
     </div>
   );

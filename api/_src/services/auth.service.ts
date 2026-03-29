@@ -9,15 +9,13 @@ export interface UserRow {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'family' | 'friends';
   slug: string | null;
-  created_by: string | null;
   password_hash?: string;
   created_at?: string;
 }
 
-export function signToken(user: { id: string; email: string; role: string }): string {
-  return jwt.sign({ id: user.id, email: user.email, role: user.role }, env.JWT_SECRET, {
+export function signToken(user: { id: string; email: string }): string {
+  return jwt.sign({ id: user.id, email: user.email }, env.JWT_SECRET, {
     expiresIn: '7d',
   });
 }
@@ -33,7 +31,7 @@ export async function comparePasswords(password: string, hash: string): Promise<
 export async function findUserByEmail(email: string): Promise<UserRow | null> {
   const { data, error } = await supabase
     .from('users')
-    .select('id, email, name, role, password_hash, slug, created_by')
+    .select('id, email, name, password_hash, slug')
     .eq('email', email.toLowerCase().trim())
     .single();
 
@@ -44,7 +42,7 @@ export async function findUserByEmail(email: string): Promise<UserRow | null> {
 export async function findUserById(id: string): Promise<UserRow | null> {
   const { data, error } = await supabase
     .from('users')
-    .select('id, email, name, role, slug, created_by')
+    .select('id, email, name, slug')
     .eq('id', id)
     .single();
 
@@ -52,7 +50,7 @@ export async function findUserById(id: string): Promise<UserRow | null> {
   return data as UserRow;
 }
 
-export async function createAdminUser(input: RegisterInput): Promise<UserRow> {
+export async function createUser(input: RegisterInput): Promise<UserRow> {
   const { name, email, password, slug, brideName, groomName, weddingDate } = input;
 
   // Check slug uniqueness
@@ -74,10 +72,9 @@ export async function createAdminUser(input: RegisterInput): Promise<UserRow> {
       name,
       email: email.toLowerCase().trim(),
       password_hash,
-      role: 'admin',
       slug,
     })
-    .select('id, email, name, role, slug')
+    .select('id, email, name, slug')
     .single();
 
   if (userError) throw userError;
@@ -108,11 +105,3 @@ export async function createAdminUser(input: RegisterInput): Promise<UserRow> {
   return newUser;
 }
 
-export async function findAdminByCreatedBy(
-  userId: string,
-): Promise<{ slug: string | null } | null> {
-  const { data, error } = await supabase.from('users').select('slug').eq('id', userId).single();
-
-  if (error || !data) return null;
-  return data as { slug: string | null };
-}

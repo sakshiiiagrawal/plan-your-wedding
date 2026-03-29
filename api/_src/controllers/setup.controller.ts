@@ -7,7 +7,7 @@ export const getSetupStatus = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const { data, error } = await supabase.from('users').select('id').eq('role', 'admin').limit(1);
+    const { data, error } = await supabase.from('users').select('id').limit(1);
 
     // If the table doesn't exist yet, treat as not set up
     if (error) {

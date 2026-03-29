@@ -21,8 +21,8 @@ export const createVenueSchema = z.object({
   capacity: z.coerce.number().int().nonnegative().optional().nullable(),
   total_cost: z.coerce.number().nonnegative().optional().nullable(),
   has_accommodation: z.boolean().optional(),
-  default_check_in_date: z.string().optional().nullable(),
-  default_check_out_date: z.string().optional().nullable(),
+  default_check_in_date: z.string().optional().nullable().transform((v) => v || null),
+  default_check_out_date: z.string().optional().nullable().transform((v) => v || null),
   notes: z.string().optional().nullable(),
   rooms: z.array(roomInputSchema).optional(),
 });

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import {
   useEvents,
   useVenues,
@@ -49,7 +48,6 @@ const DEFAULT_FORM: EventFormData = {
 };
 
 export default function Events() {
-  const { canEdit } = useAuth();
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [formData, setFormData] = useState<EventFormData>(DEFAULT_FORM);
@@ -154,15 +152,13 @@ export default function Events() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="page-title">Events & Itinerary</h1>
-        {canEdit && (
-          <button
-            onClick={() => setShowEventModal(true)}
-            className="btn-primary flex items-center gap-2 self-start sm:self-auto"
-          >
-            <HiOutlinePlus className="w-4 h-4" />
-            Add Event
-          </button>
-        )}
+        <button
+          onClick={() => setShowEventModal(true)}
+          className="btn-primary flex items-center gap-2 self-start sm:self-auto"
+        >
+          <HiOutlinePlus className="w-4 h-4" />
+          Add Event
+        </button>
       </div>
 
       <div className="relative">
@@ -248,19 +244,15 @@ export default function Events() {
                       </div>
 
                       <div className="flex gap-3 mt-6">
-                        {canEdit && (
-                          <>
-                            <button onClick={() => handleEdit(event)} className="btn-primary">
-                              Edit Event
-                            </button>
-                            <button
-                              onClick={() => setDeleteConfirm(event.id)}
-                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-                            >
-                              <HiOutlineTrash className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
+                        <button onClick={() => handleEdit(event)} className="btn-primary">
+                          Edit Event
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(event.id)}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                        >
+                          <HiOutlineTrash className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   )}
@@ -274,7 +266,7 @@ export default function Events() {
         </div>
       </div>
 
-      {canEdit && showEventModal && (
+      {showEventModal && (
         <Portal>
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">

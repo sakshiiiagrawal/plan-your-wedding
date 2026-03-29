@@ -5,7 +5,6 @@ interface ExpenseExpensesTabProps {
   allExpenses: any[];
   loading: boolean;
   formatCurrency: (amount: number) => string;
-  canEdit: boolean;
   onEdit: (row: any) => void;
 }
 
@@ -13,7 +12,6 @@ export default function ExpenseExpensesTab({
   allExpenses,
   loading,
   formatCurrency,
-  canEdit,
   onEdit,
 }: ExpenseExpensesTabProps) {
   if (loading) {
@@ -37,7 +35,7 @@ export default function ExpenseExpensesTab({
               <th className="text-left p-4 hidden md:table-cell">Date</th>
               <th className="text-left p-4 hidden md:table-cell">Paid By</th>
               <th className="text-left p-4">Side</th>
-              {canEdit && <th className="p-4 w-10" />}
+              <th className="p-4 w-10" />
             </tr>
           </thead>
           <tbody>
@@ -72,17 +70,15 @@ export default function ExpenseExpensesTab({
                     </span>
                   )}
                 </td>
-                {canEdit && (
-                  <td className="p-4">
-                    <button
-                      onClick={() => onEdit(row)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-maroon-700 hover:bg-maroon-50 transition-colors opacity-0 group-hover:opacity-100"
-                      title={`Edit ${row.type}`}
-                    >
-                      <HiOutlinePencil className="w-4 h-4" />
-                    </button>
-                  </td>
-                )}
+                <td className="p-4">
+                  <button
+                    onClick={() => onEdit(row)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-maroon-700 hover:bg-maroon-50 transition-colors opacity-0 group-hover:opacity-100"
+                    title={`Edit ${row.type}`}
+                  >
+                    <HiOutlinePencil className="w-4 h-4" />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -94,7 +90,7 @@ export default function ExpenseExpensesTab({
               <td className="p-4 text-right text-maroon-800">
                 {formatCurrency(allExpenses.reduce((s, r) => s + r.amount, 0))}
               </td>
-              <td colSpan={canEdit ? 4 : 3}></td>
+              <td colSpan={4}></td>
             </tr>
           </tfoot>
         </table>

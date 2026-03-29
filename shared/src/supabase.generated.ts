@@ -60,40 +60,26 @@ export interface Database {
           email: string;
           password_hash: string;
           name: string;
-          role: 'admin' | 'family' | 'friends';
           slug: string | null;
           created_at: string;
-          created_by: string | null;
         };
         Insert: {
           id?: string;
           email: string;
           password_hash: string;
           name: string;
-          role: 'admin' | 'family' | 'friends';
           slug?: string | null;
           created_at?: string;
-          created_by?: string | null;
         };
         Update: {
           id?: string;
           email?: string;
           password_hash?: string;
           name?: string;
-          role?: 'admin' | 'family' | 'friends';
           slug?: string | null;
           created_at?: string;
-          created_by?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: 'users_created_by_fkey';
-            columns: ['created_by'];
-            isOneToOne: false;
-            referencedRelation: 'users';
-            referencedColumns: ['id'];
-          },
-        ];
+        Relationships: [];
       };
 
       venues: {

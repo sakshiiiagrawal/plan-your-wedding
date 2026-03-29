@@ -1,21 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { HiOutlineX } from 'react-icons/hi';
 import Portal from '../../../components/Portal';
 import CategorySelector from '../../../components/CategorySelector';
 import CustomCategoryModal from '../../../components/CustomCategoryModal';
 
-interface AddExpenseModalProps {
-  show: boolean;
+export interface ExpenseRow {
+  id: string;
+  type: 'expense';
+  description: string;
+  amount: number;
+  category_id: string | null;
+  expense_date: string;
+  paid_by: string | null;
+  side: string | null;
+  is_shared: boolean;
+  share_percentage: number | null;
+  payment_method: string | null;
+  vendor_id: string | null;
+  event_id: string | null;
+  paid_amount: number | null;
+}
+
+interface EditExpenseModalProps {
+  expense: ExpenseRow | null;
   onClose: () => void;
-  onSubmit: (payload: Record<string, unknown>) => Promise<void>;
+  onSubmit: (id: string, payload: Record<string, unknown>) => Promise<void>;
   isPending: boolean;
   vendors: Array<{ id: string; name: string }>;
-  canEdit: boolean;
 }
 
 interface FormData {
   description: string;
-  amount: string;
+  amount: number | string;
   category_id: string | null;
   expense_date: string;
   paid_by: string;
@@ -26,55 +42,54 @@ interface FormData {
   vendor_id: string | null;
   event_id: string | null;
   is_partially_paid: boolean;
-  paid_amount: string;
+  paid_amount: number | string;
 }
 
-const INITIAL_FORM: FormData = {
-  description: '',
-  amount: '',
-  category_id: null,
-  expense_date: new Date().toISOString().split('T')[0] ?? '',
-  paid_by: '',
-  side: 'bride',
-  is_shared: false,
-  share_percentage: 50,
-  payment_method: 'cash',
-  vendor_id: null,
-  event_id: null,
-  is_partially_paid: false,
-  paid_amount: '',
-};
-
-export default function AddExpenseModal({
-  show,
+export default function EditExpenseModal({
+  expense,
   onClose,
   onSubmit,
   isPending,
   vendors,
-  canEdit,
-}: AddExpenseModalProps) {
-  const [formData, setFormData] = useState<FormData>(INITIAL_FORM);
+}: EditExpenseModalProps) {
+  const [formData, setFormData] = useState<FormData | null>(null);
   const [showCustomCategoryModal, setShowCustomCategoryModal] = useState(false);
   const [customCategoryParentId, setCustomCategoryParentId] = useState<string | null>(null);
 
-  const set = (patch: Partial<FormData>) => setFormData((prev) => ({ ...prev, ...patch }));
+  useEffect(() => {
+    if (expense) {
+      setFormData({
+        description: expense.description || '',
+        amount: expense.amount || '',
+        category_id: expense.category_id || null,
+        expense_date: (expense.expense_date || new Date().toISOString().split('T')[0]) ?? '',
+        paid_by: expense.paid_by || '',
+        side: expense.side || 'bride',
+        is_shared: expense.is_shared || false,
+        share_percentage: expense.share_percentage || 50,
+        payment_method: expense.payment_method || 'cash',
+        vendor_id: expense.vendor_id || null,
+        event_id: expense.event_id || null,
+        is_partially_paid: expense.paid_amount != null && expense.paid_amount < expense.amount,
+        paid_amount: expense.paid_amount || '',
+      });
+    }
+  }, [expense]);
 
-  const handleClose = () => {
-    setFormData(INITIAL_FORM);
-    onClose();
-  };
+  if (!expense || !formData) return null;
+
+  const set = (patch: Partial<FormData>) =>
+    setFormData((prev) => (prev ? { ...prev, ...patch } : null));
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!formData) return;
     const { is_partially_paid, paid_amount, ...rest } = formData;
-    await onSubmit({
+    await onSubmit(expense.id, {
       ...rest,
-      paid_amount: is_partially_paid ? parseFloat(paid_amount) : null,
+      paid_amount: is_partially_paid ? parseFloat(String(paid_amount)) : null,
     });
-    setFormData(INITIAL_FORM);
   };
-
-  if (!show) return null;
 
   return (
     <>
@@ -82,8 +97,8 @@ export default function AddExpenseModal({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gold-200">
-              <h2 className="text-xl font-display font-bold text-maroon-800">Add Expense</h2>
-              <button onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-lg">
+              <h2 className="text-xl font-display font-bold text-maroon-800">Edit Expense</h2>
+              <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
                 <HiOutlineX className="w-5 h-5" />
               </button>
             </div>
@@ -96,7 +111,6 @@ export default function AddExpenseModal({
                   value={formData.description}
                   onChange={(e) => set({ description: e.target.value })}
                   className="input"
-                  placeholder="Expense description"
                   required
                 />
               </div>
@@ -139,7 +153,8 @@ export default function AddExpenseModal({
                       <p className="text-sm text-gray-500 mt-1">
                         Remaining: ₹
                         {(
-                          parseFloat(formData.amount) - parseFloat(formData.paid_amount || '0')
+                          parseFloat(String(formData.amount)) -
+                          parseFloat(String(formData.paid_amount) || '0')
                         ).toLocaleString('en-IN')}
                       </p>
                     )}
@@ -150,7 +165,7 @@ export default function AddExpenseModal({
               <CategorySelector
                 value={formData.category_id ?? ''}
                 onChange={(categoryId: string | null) => set({ category_id: categoryId })}
-                allowCustom={canEdit}
+                allowCustom={true}
                 onAddCustom={(parentId: string | null) => {
                   setCustomCategoryParentId(parentId);
                   setShowCustomCategoryModal(true);
@@ -266,27 +281,28 @@ export default function AddExpenseModal({
                     className="input"
                   >
                     <option value="">None</option>
-                    {vendors.map((vendor) => (
-                      <option key={vendor.id} value={vendor.id}>
-                        {vendor.name}
+                    {vendors.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
-              <div className="flex gap-3 pt-2 border-t border-gold-200 mt-2">
-                <button type="button" onClick={handleClose} className="btn-outline flex-1">
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="btn-primary flex-1 disabled:opacity-50"
-                >
-                  {isPending ? 'Saving...' : 'Add Expense'}
-                </button>
-              </div>
             </form>
+
+            <div className="flex gap-3 p-6 border-t border-gold-200">
+              <button type="button" onClick={onClose} className="btn-outline flex-1">
+                Cancel
+              </button>
+              <button
+                onClick={(e) => handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>)}
+                disabled={isPending}
+                className="btn-primary flex-1 disabled:opacity-50"
+              >
+                {isPending ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
           </div>
         </div>
       </Portal>

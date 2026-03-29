@@ -6,7 +6,6 @@ export async function findOwnerBySlug(slug: string): Promise<string | null> {
     .from('users')
     .select('id')
     .eq('slug', slug)
-    .eq('role', 'admin')
     .maybeSingle();
   return data?.id ?? null;
 }

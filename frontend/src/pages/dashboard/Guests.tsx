@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../../contexts/AuthContext';
 import {
   useGuests,
   useGuestSummary,
@@ -58,7 +57,6 @@ const DEFAULT_FORM: GuestFormData = {
 };
 
 export default function Guests() {
-  const { canEdit } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [sideFilter, setSideFilter] = useState('all');
@@ -303,24 +301,20 @@ export default function Guests() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="page-title">Guest Management</h1>
         <div className="flex gap-2">
-          {canEdit && (
-            <>
-              <button
-                onClick={() => setShowImportModal(true)}
-                className="btn-outline flex items-center gap-2"
-              >
-                <HiOutlineUpload className="w-4 h-4" />
-                Import
-              </button>
-              <button
-                onClick={() => addPendingRow()}
-                className="btn-primary flex items-center gap-2"
-              >
-                <HiOutlinePlus className="w-4 h-4" />
-                Add Guest
-              </button>
-            </>
-          )}
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="btn-outline flex items-center gap-2"
+          >
+            <HiOutlineUpload className="w-4 h-4" />
+            Import
+          </button>
+          <button
+            onClick={() => addPendingRow()}
+            className="btn-primary flex items-center gap-2"
+          >
+            <HiOutlinePlus className="w-4 h-4" />
+            Add Guest
+          </button>
         </div>
       </div>
 
@@ -397,7 +391,7 @@ export default function Guests() {
                 <th className="text-left p-4 hidden sm:table-cell">Phone</th>
                 <th className="text-left p-4">Diet</th>
                 <th className="text-left p-4 hidden md:table-cell">Accommodation</th>
-                {canEdit && <th className="text-left p-4">Actions</th>}
+                <th className="text-left p-4">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -444,45 +438,43 @@ export default function Guests() {
                         <span className="text-gray-400">—</span>
                       )}
                     </td>
-                    {canEdit && (
-                      <td className="p-4">
-                        <div className="flex gap-2">
-                          {!isMarkedForDelete ? (
-                            <>
-                              <button
-                                onClick={() => handleEdit(guest)}
-                                className="p-2 hover:bg-gold-50 rounded-lg text-gold-600"
-                                title="Edit guest"
-                              >
-                                <HiOutlinePencil className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => markForDelete(guest.id)}
-                                className="p-2 hover:bg-red-50 rounded-lg text-red-600"
-                                title="Mark for deletion"
-                              >
-                                <HiOutlineTrash className="w-4 h-4" />
-                              </button>
-                            </>
-                          ) : (
+                    <td className="p-4">
+                      <div className="flex gap-2">
+                        {!isMarkedForDelete ? (
+                          <>
                             <button
-                              onClick={() => unmarkForDelete(guest.id)}
-                              className="p-2 hover:bg-gray-100 rounded-lg text-gray-500"
-                              title="Undo deletion"
+                              onClick={() => handleEdit(guest)}
+                              className="p-2 hover:bg-gold-50 rounded-lg text-gold-600"
+                              title="Edit guest"
                             >
-                              <HiOutlineX className="w-4 h-4" />
+                              <HiOutlinePencil className="w-4 h-4" />
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    )}
+                            <button
+                              onClick={() => markForDelete(guest.id)}
+                              className="p-2 hover:bg-red-50 rounded-lg text-red-600"
+                              title="Mark for deletion"
+                            >
+                              <HiOutlineTrash className="w-4 h-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => unmarkForDelete(guest.id)}
+                            className="p-2 hover:bg-gray-100 rounded-lg text-gray-500"
+                            title="Undo deletion"
+                          >
+                            <HiOutlineX className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
 
               {filteredGuests.length === 0 && pendingRows.length === 0 && (
                 <tr>
-                  <td colSpan={canEdit ? 6 : 5} className="p-8 text-center text-gray-500">
+                  <td colSpan={6} className="p-8 text-center text-gray-500">
                     No guests found
                   </td>
                 </tr>
@@ -553,23 +545,21 @@ export default function Guests() {
                       className="w-4 h-4 text-maroon-800 cursor-pointer"
                     />
                   </td>
-                  {canEdit && (
-                    <td className="p-2">
-                      <button
-                        onClick={() => removePendingRow(row._key)}
-                        className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600"
-                        title="Remove row"
-                      >
-                        <HiOutlineX className="w-4 h-4" />
-                      </button>
-                    </td>
-                  )}
+                  <td className="p-2">
+                    <button
+                      onClick={() => removePendingRow(row._key)}
+                      className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600"
+                      title="Remove row"
+                    >
+                      <HiOutlineX className="w-4 h-4" />
+                    </button>
+                  </td>
                 </tr>
               ))}
 
               {pendingRows.length > 0 && (
                 <tr className="bg-amber-50/20">
-                  <td colSpan={canEdit ? 6 : 5} className="px-4 py-3">
+                  <td colSpan={6} className="px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
                       <button
                         onClick={duplicateLastRow}
@@ -603,7 +593,7 @@ export default function Guests() {
               )}
               {pendingDeletes.size > 0 && pendingRows.length === 0 && (
                 <tr className="bg-red-50/60">
-                  <td colSpan={canEdit ? 6 : 5} className="px-4 py-3">
+                  <td colSpan={6} className="px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm text-red-700 font-medium">
                         {pendingDeletes.size} guest{pendingDeletes.size > 1 ? 's' : ''} marked for
@@ -634,7 +624,7 @@ export default function Guests() {
         </div>
       </div>
 
-      {canEdit && showEditModal && (
+      {showEditModal && (
         <Portal>
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -823,7 +813,7 @@ export default function Guests() {
         </Portal>
       )}
 
-      {canEdit && showImportModal && (
+      {showImportModal && (
         <Portal>
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl">

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useMemo } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import {
   HiOutlineLocationMarker,
   HiOutlinePhone,
@@ -175,7 +174,6 @@ function VenueRoomsSection({ venueId }: { venueId: string }) {
 }
 
 export default function Venues() {
-  const { canEdit } = useAuth();
   const [showVenueModal, setShowVenueModal] = useState(false);
   const [formData, setFormData] = useState<VenueFormData>(DEFAULT_FORM);
   const [editingVenue, setEditingVenue] = useState<any>(null);
@@ -309,14 +307,12 @@ export default function Venues() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="page-title">Venues</h1>
-        {canEdit && (
-          <button
-            onClick={() => setShowVenueModal(true)}
-            className="btn-primary self-start sm:self-auto"
-          >
-            Add Venue
-          </button>
-        )}
+        <button
+          onClick={() => setShowVenueModal(true)}
+          className="btn-primary self-start sm:self-auto"
+        >
+          Add Venue
+        </button>
       </div>
 
       {venues.length === 0 ? (
@@ -468,29 +464,27 @@ export default function Venues() {
                 </div>
 
                 {/* Actions */}
-                {canEdit && (
-                  <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
-                    <button
-                      onClick={() => handleEdit(venue)}
-                      className="btn-outline flex-1 text-sm py-2"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => setDeleteConfirm(venue.id)}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 text-sm"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                )}
+                <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                  <button
+                    onClick={() => handleEdit(venue)}
+                    className="btn-outline flex-1 text-sm py-2"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirm(venue.id)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 text-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             );
           })}
         </div>
       )}
 
-      {canEdit && showVenueModal && (
+      {showVenueModal && (
         <Portal>
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
