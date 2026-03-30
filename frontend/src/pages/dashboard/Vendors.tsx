@@ -10,19 +10,19 @@ import {
 } from 'react-icons/hi';
 import {
   useVendors,
-  useVendorCategories,
+  useCategoryTree,
   useCreateVendor,
   useUpdateVendor,
   useDeleteVendor,
 } from '../../hooks/useApi';
-import { VENDOR_CATEGORY_LABELS } from '@wedding-planner/shared';
 import VendorPaymentsModal from './VendorPaymentsModal';
+import CategoryCombobox from '../../components/CategoryCombobox';
 import toast from 'react-hot-toast';
 import Portal from '../../components/Portal';
 
 interface VendorFormData {
   name: string;
-  category: string;
+  category_id: string | null;
   contact_person: string;
   phone: string;
   email: string;
@@ -33,7 +33,7 @@ interface VendorFormData {
 
 const DEFAULT_FORM: VendorFormData = {
   name: '',
-  category: 'decorator',
+  category_id: null,
   contact_person: '',
   phone: '',
   email: '',
@@ -50,16 +50,31 @@ export default function Vendors() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [payingVendor, setPayingVendor] = useState<any | null>(null);
 
-  const { data: vendors, isLoading: loadingVendors } = useVendors(selectedCategory);
-  const { data: categoryList, isLoading: loadingCategories } = useVendorCategories();
+  const { data: vendors, isLoading: loadingVendors } = useVendors();
+  const { data: categoryTree = [], isLoading: loadingCategories } = useCategoryTree() as {
+    data: any[];
+    isLoading: boolean;
+  };
   const createMutation = useCreateVendor();
   const updateMutation = useUpdateVendor();
   const deleteMutation = useDeleteVendor();
 
-  const categories = useMemo(() => {
-    if (!categoryList) return [{ value: 'all', label: 'All' }];
-    return [{ value: 'all', label: 'All' }, ...(categoryList as any[])];
-  }, [categoryList]);
+  // Filter vendors client-side by parent category
+  const filteredVendors = useMemo(() => {
+    if (!vendors) return [];
+    if (selectedCategory === 'all') return vendors as any[];
+    const parent = (categoryTree as any[]).find((p: any) => p.id === selectedCategory);
+    if (!parent) return vendors as any[];
+    const validIds = new Set<string>([
+      parent.id,
+      ...((parent.children ?? []) as any[]).map((c: any) => c.id),
+    ]);
+    return (vendors as any[]).filter((v: any) => {
+      if (v.category_id) return validIds.has(v.category_id);
+      // Fallback: match by legacy text category name against parent name
+      return v.category === parent.name;
+    });
+  }, [vendors, selectedCategory, categoryTree]);
 
   const resetForm = () => {
     setFormData(DEFAULT_FORM);
@@ -70,7 +85,7 @@ export default function Vendors() {
     setEditingVendor(vendor);
     setFormData({
       name: vendor.name || '',
-      category: vendor.category || 'decorator',
+      category_id: vendor.category_id || null,
       contact_person: vendor.contact_person || '',
       phone: vendor.phone || '',
       email: vendor.email || '',
@@ -153,6 +168,12 @@ export default function Vendors() {
       .filter(Boolean);
   };
 
+  // Get display name for vendor category
+  const getVendorCategoryLabel = (vendor: any): string | null => {
+    if (vendor.expense_categories?.name) return vendor.expense_categories.name;
+    return vendor.category ?? null;
+  };
+
   if (loadingVendors || loadingCategories) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -173,25 +194,36 @@ export default function Vendors() {
         </button>
       </div>
 
+      {/* Category filter pills — parent categories */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        {(categories as any[]).map((cat) => (
+        <button
+          onClick={() => setSelectedCategory('all')}
+          className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${
+            selectedCategory === 'all'
+              ? 'bg-maroon-800 text-white'
+              : 'bg-white text-gray-600 hover:bg-gold-50'
+          }`}
+        >
+          All
+        </button>
+        {(categoryTree as any[]).map((cat: any) => (
           <button
-            key={cat.value}
-            onClick={() => setSelectedCategory(cat.value)}
+            key={cat.id}
+            onClick={() => setSelectedCategory(cat.id)}
             className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${
-              selectedCategory === cat.value
+              selectedCategory === cat.id
                 ? 'bg-maroon-800 text-white'
                 : 'bg-white text-gray-600 hover:bg-gold-50'
             }`}
           >
-            {cat.label}
+            {cat.name}
           </button>
         ))}
       </div>
 
-      {vendors && (vendors as any[]).length > 0 ? (
+      {filteredVendors.length > 0 ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {(vendors as any[]).map((vendor) => {
+          {filteredVendors.map((vendor: any) => {
             const paymentInfo = getVendorPaymentInfo(vendor);
             const events = getVendorEvents(vendor);
 
@@ -200,11 +232,7 @@ export default function Vendors() {
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <h3 className="font-semibold text-maroon-800">{vendor.name}</h3>
-                    <p className="text-sm text-gold-600">
-                      {vendor.category
-                        ? (VENDOR_CATEGORY_LABELS as Record<string, string>)[vendor.category] ?? vendor.category
-                        : null}
-                    </p>
+                    <p className="text-sm text-gold-600">{getVendorCategoryLabel(vendor)}</p>
                   </div>
                 </div>
 
@@ -378,18 +406,12 @@ export default function Vendors() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
                     <label className="label">Category *</label>
-                    <select
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="input"
-                      required
-                    >
-                      {(categoryList as any[] | undefined)?.map((cat) => (
-                        <option key={cat.value} value={cat.value}>
-                          {cat.label}
-                        </option>
-                      ))}
-                    </select>
+                    <CategoryCombobox
+                      value={formData.category_id}
+                      onChange={(id) => setFormData({ ...formData, category_id: id })}
+                      level="subcategory"
+                      placeholder="Search categories…"
+                    />
                   </div>
                   <div>
                     <label className="label">Contact Person</label>

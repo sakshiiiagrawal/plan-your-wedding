@@ -1,21 +1,25 @@
 import { useState, useMemo } from 'react';
 import { HiOutlinePlus, HiOutlineCurrencyRupee } from 'react-icons/hi';
-import { VENDOR_CATEGORY_LABELS } from '@wedding-planner/shared';
 import {
   useExpenseSummary,
   useExpenseOverview,
   useExpenses,
   useCreateExpense,
   useUpdateExpense,
+  useDeleteExpense,
   useVendorExpenseSummary,
   useSideSummary,
   useVendors,
   useUpdateVendor,
+  useExpenseCategories,
+  useExpenseOutstanding,
+  useExpenseAlerts,
 } from '../../hooks/useApi';
 import ExpenseOverviewTab from './expense/ExpenseOverviewTab';
 import ExpenseExpensesTab from './expense/ExpenseExpensesTab';
 import ExpenseSideWiseTab from './expense/ExpenseSideWiseTab';
 import ExpenseCategoriesTab from './expense/ExpenseCategoriesTab';
+import ExpensePaymentsTab from './expense/ExpensePaymentsTab';
 import AddExpenseModal from './expense/AddExpenseModal';
 import EditExpenseModal from './expense/EditExpenseModal';
 import EditVendorModal from './expense/EditVendorModal';
@@ -33,6 +37,7 @@ const TABS: Tab[] = [
   { id: 'expenses', label: 'Expenses' },
   { id: 'sidewise', label: 'Side-wise' },
   { id: 'categories', label: 'Categories' },
+  { id: 'payments', label: 'Payments' },
 ];
 
 const formatCurrency = (amount: number) =>
@@ -70,8 +75,12 @@ export default function Expense() {
   const { data: vendorExpenseData = [], isLoading: loadingVendorExpense } = useVendorExpenseSummary();
   const { data: sideSummary = { bride: { total: 0 }, groom: { total: 0 } } } = useSideSummary();
   const { data: vendors = [] } = useVendors();
+  const { data: categories = [] } = useExpenseCategories();
+  const { data: outstanding } = useExpenseOutstanding();
+  const { data: alerts } = useExpenseAlerts();
   const createExpenseMutation = useCreateExpense();
   const updateExpenseMutation = useUpdateExpense();
+  const deleteExpenseMutation = useDeleteExpense();
   const updateVendorMutation = useUpdateVendor();
 
   const vendorCostTotal = useMemo(
@@ -134,7 +143,7 @@ export default function Expense() {
       vendorId: v.id,
       type: 'vendor' as const,
       description: v.name,
-      category: v.category ? ((VENDOR_CATEGORY_LABELS as Record<string, string>)[v.category] ?? v.category) : 'Vendor',
+      category: v.category ?? 'Vendor',
       amount: v.totalCost || 0,
       date: null,
       paid_by: null,
@@ -147,9 +156,14 @@ export default function Expense() {
   }, [expenses, vendorExpenseData]);
 
   const categoryAnalysis = useMemo(() => {
+    const allocations: Record<string, number> = {};
+    (categories as Array<{ id: string; allocated_amount?: string | number }>).forEach((cat) => {
+      allocations[cat.id] = parseFloat(String(cat.allocated_amount || 0));
+    });
+
     const analysis: Record<
       string,
-      { name: string; total: number; bride: number; groom: number; shared: number; count: number }
+      { name: string; total: number; bride: number; groom: number; shared: number; count: number; allocated: number }
     > = {};
     (
       (expenses || []) as Array<{
@@ -169,6 +183,7 @@ export default function Expense() {
           groom: 0,
           shared: 0,
           count: 0,
+          allocated: e.category_id ? (allocations[e.category_id] ?? 0) : 0,
         };
       }
       const amount = parseFloat(String(e.amount || 0));
@@ -179,7 +194,7 @@ export default function Expense() {
       else analysis[key].groom += amount;
     });
     return Object.values(analysis).sort((a, b) => b.total - a.total);
-  }, [expenses]);
+  }, [expenses, categories]);
 
   const sideWiseExpenses = useMemo(() => {
     const all = (expenses || []) as Array<{
@@ -232,6 +247,16 @@ export default function Expense() {
     }
   };
 
+  const handleExpenseDelete = async (id: string) => {
+    if (!window.confirm('Delete this expense? This cannot be undone.')) return;
+    try {
+      await deleteExpenseMutation.mutateAsync(id);
+      toast.success('Expense deleted.');
+    } catch {
+      toast.error('Failed to delete expense.');
+    }
+  };
+
   const handleExpenseSubmit = async (payload: Record<string, unknown>) => {
     try {
       await createExpenseMutation.mutateAsync(payload);
@@ -256,6 +281,7 @@ export default function Expense() {
 
   const total = expenseSummary?.totalExpense || 0;
   const spent = expenseSummary?.totalSpent || 0;
+  const outstandingTotal = outstanding?.totalOutstanding ?? 0;
 
   return (
     <div className="space-y-6">
@@ -271,12 +297,36 @@ export default function Expense() {
         </button>
       </div>
 
+      {/* Alerts Banner */}
+      {alerts && (alerts.overdueCount > 0 || alerts.upcomingCount > 0 || alerts.overBudgetCategories?.length > 0) && (
+        <div className="space-y-2">
+          {alerts.overdueCount > 0 && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+              <span className="font-bold">⚠</span>
+              <span>{alerts.overdueCount} overdue payment{alerts.overdueCount !== 1 ? 's' : ''} totalling {formatCurrency(alerts.overdueTotal)}</span>
+            </div>
+          )}
+          {alerts.upcomingCount > 0 && (
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-700">
+              <span className="font-bold">⚠</span>
+              <span>{alerts.upcomingCount} payment{alerts.upcomingCount !== 1 ? 's' : ''} due in the next 7 days totalling {formatCurrency(alerts.upcomingTotal)}</span>
+            </div>
+          )}
+          {alerts.overBudgetCategories?.map((cat: { id: string; name: string; overBy: number }) => (
+            <div key={cat.id} className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 text-sm text-orange-700">
+              <span className="font-bold">⚠</span>
+              <span>{cat.name} is over budget by {formatCurrency(cat.overBy)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card text-center">
           <HiOutlineCurrencyRupee className="w-8 h-8 text-gold-500 mx-auto mb-2" />
           <div className="text-2xl font-bold text-maroon-800">{formatCurrency(total)}</div>
-          <div className="text-sm text-gray-500">Total Expense</div>
+          <div className="text-sm text-gray-500">Total Budget</div>
         </div>
         <div className="card text-center">
           <div className="text-2xl font-bold text-green-600">{formatCurrency(spent)}</div>
@@ -293,8 +343,10 @@ export default function Expense() {
           <div className="text-sm text-gray-500">Vendor Costs</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-maroon-800">{formatCurrency(total - spent)}</div>
-          <div className="text-sm text-gray-500">Remaining</div>
+          <div className={`text-2xl font-bold ${outstandingTotal > 0 ? 'text-orange-600' : 'text-maroon-800'}`}>
+            {formatCurrency(outstandingTotal)}
+          </div>
+          <div className="text-sm text-gray-500">Outstanding</div>
         </div>
       </div>
 
@@ -348,6 +400,7 @@ export default function Expense() {
               ? setEditingVendor(row as VendorTableRow)
               : setEditingExpense(row as ExpenseRow)
           }
+          onDelete={(id: string) => handleExpenseDelete(id)}
         />
       )}
       {activeTab === 'sidewise' && (
@@ -359,6 +412,9 @@ export default function Expense() {
           loading={loadingExpenses}
           formatCurrency={formatCurrency}
         />
+      )}
+      {activeTab === 'payments' && (
+        <ExpensePaymentsTab formatCurrency={formatCurrency} />
       )}
 
       <EditVendorModal

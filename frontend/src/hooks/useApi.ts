@@ -19,7 +19,6 @@ export const useSetupStatus = () =>
     staleTime: Infinity,
   });
 
-
 // =====================================================
 // WEBSITE CONTENT HOOKS
 // =====================================================
@@ -191,8 +190,7 @@ export const useCreateGuest = () => {
 export const useBulkCreateGuests = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (guests: any[]) =>
-      api.post('/guests/bulk', { guests }).then((res) => res.data),
+    mutationFn: (guests: any[]) => api.post('/guests/bulk', { guests }).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
@@ -534,11 +532,10 @@ export const useDeleteVendorPayment = () => {
 // VENDORS HOOKS
 // =====================================================
 
-export const useVendors = (category?: string) =>
+export const useVendors = () =>
   useQuery<any[]>({
-    queryKey: ['vendors', { category }],
-    queryFn: () =>
-      api.get('/vendors', { params: category ? { category } : {} }).then((res) => res.data),
+    queryKey: ['vendors'],
+    queryFn: () => api.get('/vendors').then((res) => res.data),
   });
 
 export const useVendor = (id?: string | null) =>
@@ -714,6 +711,24 @@ export const useCreateCustomCategory = () => {
     },
   });
 };
+
+export const useExpensePayments = () =>
+  useQuery<any[]>({
+    queryKey: ['expense', 'payments'],
+    queryFn: () => api.get('/expense/payments').then((res) => res.data),
+  });
+
+export const useExpenseOutstanding = () =>
+  useQuery<{ items: any[]; totalOutstanding: number }>({
+    queryKey: ['expense', 'outstanding'],
+    queryFn: () => api.get('/expense/outstanding').then((res) => res.data),
+  });
+
+export const useExpenseAlerts = () =>
+  useQuery<any>({
+    queryKey: ['expense', 'alerts'],
+    queryFn: () => api.get('/expense/alerts').then((res) => res.data),
+  });
 
 // =====================================================
 // TASKS HOOKS

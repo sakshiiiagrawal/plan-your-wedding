@@ -92,9 +92,18 @@ function ExpenseList({
                   {e.expense_categories?.name || 'Uncategorized'}
                 </div>
                 {isShared ? (
-                  <div className="text-xs text-gray-400">
-                    Split: {e.share_percentage || 50}% / {100 - (e.share_percentage || 50)}%
-                  </div>
+                  <>
+                    <div className="text-xs text-gray-400">
+                      Split: {e.share_percentage || 50}% / {100 - (e.share_percentage || 50)}%
+                    </div>
+                    <div className="text-xs text-pink-500">
+                      Bride: {formatCurrency(parseFloat(e.amount || 0) * ((e.share_percentage || 50) / 100))}
+                      {' · '}
+                      <span className="text-blue-500">
+                        Groom: {formatCurrency(parseFloat(e.amount || 0) * ((100 - (e.share_percentage || 50)) / 100))}
+                      </span>
+                    </div>
+                  </>
                 ) : (
                   <div className="text-xs text-gray-400">
                     {e.expense_date ? new Date(e.expense_date).toLocaleDateString('en-IN') : '—'}

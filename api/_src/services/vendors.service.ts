@@ -1,17 +1,15 @@
 import { NotFoundError } from '../shared/errors/HttpError';
-import { VENDOR_CATEGORIES, VENDOR_CATEGORY_LABELS } from '../constants/enums';
 import type { VendorInsert } from '@wedding-planner/shared';
 import * as repo from '../repositories/vendors.repository';
+import { getCategoryTree } from './expense.service';
 
 export async function listVendors(ownerId: string, category?: string) {
   return repo.findAllByOwner(ownerId, category);
 }
 
-export function getCategories() {
-  return VENDOR_CATEGORIES.map((cat) => ({
-    value: cat,
-    label: VENDOR_CATEGORY_LABELS[cat],
-  }));
+export async function getCategories(ownerId: string) {
+  // Delegate to the shared category tree so vendors and expenses use the same categories
+  return getCategoryTree(ownerId);
 }
 
 export async function getVendor(id: string, ownerId: string) {
@@ -20,13 +18,27 @@ export async function getVendor(id: string, ownerId: string) {
   return vendor;
 }
 
+// When only category_id is provided (no legacy category text), look up the name
+// so the NOT NULL category column is always populated.
+async function withCategoryName<T extends { category?: string | null; category_id?: string | null }>(
+  payload: T,
+): Promise<T> {
+  if (payload.category_id && !payload.category) {
+    const name = await repo.findCategoryNameById(payload.category_id);
+    if (name) return { ...payload, category: name };
+  }
+  return payload;
+}
+
 export async function createVendor(payload: Omit<VendorInsert, 'user_id'>, ownerId: string) {
-  return repo.insertVendor({ ...payload, user_id: ownerId });
+  const resolved = await withCategoryName(payload);
+  return repo.insertVendor({ ...resolved, user_id: ownerId });
 }
 
 export async function updateVendor(id: string, ownerId: string, payload: Partial<VendorInsert>) {
   await getVendor(id, ownerId);
-  return repo.updateVendor(id, ownerId, payload);
+  const resolved = await withCategoryName(payload);
+  return repo.updateVendor(id, ownerId, resolved);
 }
 
 export async function deleteVendor(id: string, ownerId: string) {

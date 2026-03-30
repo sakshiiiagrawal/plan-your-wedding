@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { HiOutlineX } from 'react-icons/hi';
 import Portal from '../../../components/Portal';
-import CategorySelector from '../../../components/CategorySelector';
+import CategoryCombobox from '../../../components/CategoryCombobox';
 import CustomCategoryModal from '../../../components/CustomCategoryModal';
 
 interface AddExpenseModalProps {
@@ -145,16 +145,21 @@ export default function AddExpenseModal({
                 )}
               </div>
 
-              <CategorySelector
-                value={formData.category_id ?? ''}
-                onChange={(categoryId: string | null) => set({ category_id: categoryId })}
-                allowCustom={true}
-                onAddCustom={(parentId: string | null) => {
-                  setCustomCategoryParentId(parentId);
-                  setShowCustomCategoryModal(true);
-                }}
-                required
-              />
+              <div>
+                <label className="label">Category *</label>
+                <CategoryCombobox
+                  value={formData.category_id}
+                  onChange={(id) => set({ category_id: id })}
+                  level="any"
+                  placeholder="Search categories…"
+                  allowCustom
+                  onAddCustom={(parentId) => {
+                    setCustomCategoryParentId(parentId);
+                    setShowCustomCategoryModal(true);
+                  }}
+                  required
+                />
+              </div>
 
               <div>
                 <label className="label">Expense Date *</label>

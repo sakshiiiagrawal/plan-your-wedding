@@ -83,11 +83,13 @@ export {
 } from './enums/guest.enums';
 export type { GuestSide, RsvpStatus, MealPreference, AgeGroup, Gender } from './enums/guest.enums';
 
-export { PAYMENT_STATUSES, PAYMENT_METHODS, EXPENSE_CATEGORIES } from './enums/expense.enums';
+export {
+  PAYMENT_STATUSES,
+  PAYMENT_METHODS,
+  EXPENSE_CATEGORIES,
+  DEFAULT_CATEGORY_TREE,
+} from './enums/expense.enums';
 export type { PaymentStatus, PaymentMethod, ExpenseCategoryName } from './enums/expense.enums';
-
-export { VENDOR_CATEGORIES, VENDOR_CATEGORY_LABELS } from './enums/vendor.enums';
-export type { VendorCategory } from './enums/vendor.enums';
 
 export { TASK_PRIORITIES, TASK_STATUSES, ROOM_TYPES } from './enums/task.enums';
 export type { TaskPriority, TaskStatus, RoomType } from './enums/task.enums';

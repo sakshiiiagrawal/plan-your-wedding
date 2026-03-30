@@ -30,7 +30,9 @@ export default function ExpenseOverviewTab({
       spent: parseFloat(cat.spent || 0),
     })) || [];
 
-  const pieData = categoryData.map((cat, i) => ({
+  const categoriesWithSpend = categoryData.filter((c) => c.spent > 0);
+
+  const pieData = categoriesWithSpend.map((cat, i) => ({
     name: cat.name,
     value: cat.spent,
     color: COLORS[i % COLORS.length],
@@ -40,32 +42,51 @@ export default function ExpenseOverviewTab({
     <div className="grid lg:grid-cols-2 gap-6">
       <div className="card">
         <h3 className="section-title mb-4">Spending by Category</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie
-              data={pieData}
-              cx="50%"
-              cy="45%"
-              outerRadius={90}
-              dataKey="value"
-              label={({ percent }: any) => `${(percent * 100).toFixed(0)}%`}
-              labelLine={false}
-            >
-              {pieData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color ?? ''} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(value: any) => formatCurrency(value)} />
-            <Legend
-              layout="horizontal"
-              verticalAlign="bottom"
-              align="center"
-              iconType="circle"
-              iconSize={10}
-              formatter={(value) => <span style={{ fontSize: 12 }}>{value}</span>}
-            />
-          </PieChart>
-        </ResponsiveContainer>
+        <div className="flex flex-col sm:flex-row gap-4 min-h-0">
+          {pieData.length === 0 ? (
+            <p className="text-sm text-gray-400 py-8 text-center w-full">No spending recorded by category yet.</p>
+          ) : (
+            <>
+              <div className="w-full sm:w-[min(100%,220px)] shrink-0 mx-auto sm:mx-0 h-[240px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={88}
+                      dataKey="value"
+                      label={({ percent }: any) => `${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color ?? ''} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: any) => formatCurrency(value)} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex-1 min-w-0 max-h-[min(50vh,280px)] sm:max-h-[280px] overflow-y-auto overscroll-contain pr-1 border-t sm:border-t-0 sm:border-l border-gray-100 pt-3 sm:pt-0 sm:pl-4">
+                <ul className="space-y-2 text-sm">
+                  {pieData.map((entry, index) => (
+                    <li key={`${entry.name}-${index}`} className="flex items-start gap-2 min-w-0">
+                      <span
+                        className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: entry.color }}
+                        aria-hidden
+                      />
+                      <span className="flex-1 min-w-0 text-gray-700 break-words">{entry.name}</span>
+                      <span className="shrink-0 tabular-nums text-maroon-800 font-medium">
+                        {formatCurrency(entry.value)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="card">

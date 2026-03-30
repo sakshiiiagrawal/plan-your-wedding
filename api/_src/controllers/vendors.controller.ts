@@ -14,9 +14,9 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
-export const getCategories = (_req: Request, res: Response, next: NextFunction): void => {
+export const getCategories = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    res.json(service.getCategories());
+    res.json(await service.getCategories(getWeddingOwnerId(req)));
   } catch (e) {
     next(e);
   }

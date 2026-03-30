@@ -243,6 +243,42 @@ export const getExpensesByCategoryTree = async (
 };
 
 // ---------------------------------------------------------------------------
+// Payments / outstanding / alerts
+// ---------------------------------------------------------------------------
+
+export const getPayments = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res.json(await service.getPayments(getWeddingOwnerId(req)));
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const getOutstanding = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res.json(await service.getOutstanding(getWeddingOwnerId(req)));
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const getAlerts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    res.json(await service.getAlerts(getWeddingOwnerId(req)));
+  } catch (e) {
+    next(e);
+  }
+};
+
+// ---------------------------------------------------------------------------
 // Vendor expense (served under /expense/vendors/*)
 // ---------------------------------------------------------------------------
 

@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { VENDOR_CATEGORIES } from '../constants/enums';
 
 export const createVendorSchema = z.object({
   name: z.string().min(1),
-  category: z.enum(VENDOR_CATEGORIES),
+  category: z.string().optional().nullable(),
+  category_id: z.string().uuid().optional().nullable(),
   contact_person: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   email: z.preprocess((v) => (v === '' ? null : v), z.string().email().optional().nullable()),

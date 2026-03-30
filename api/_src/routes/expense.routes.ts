@@ -40,6 +40,11 @@ router.post('/expenses', validateBody(createExpenseSchema), ctrl.createExpense);
 router.put('/expenses/:id', validateBody(updateExpenseSchema), ctrl.updateExpense);
 router.delete('/expenses/:id', ctrl.deleteExpense);
 
+// Payments / outstanding / alerts
+router.get('/payments', ctrl.getPayments);
+router.get('/outstanding', ctrl.getOutstanding);
+router.get('/alerts', ctrl.getAlerts);
+
 // Vendor expense tracking
 router.get('/vendors/summary', ctrl.getVendorExpenseSummary);
 router.get('/vendors/by-side', ctrl.getVendorsBySide);
