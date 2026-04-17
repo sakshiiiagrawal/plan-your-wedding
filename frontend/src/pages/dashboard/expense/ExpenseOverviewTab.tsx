@@ -24,27 +24,31 @@ export default function ExpenseOverviewTab({
   formatCurrency,
 }: ExpenseOverviewTabProps) {
   const categoryData =
-    expenseOverview?.map((cat) => ({
-      name: cat.name,
-      allocated: parseFloat(cat.allocated_amount || 0),
-      spent: parseFloat(cat.spent || 0),
+    expenseOverview?.map((category) => ({
+      name: category.name,
+      allocated: parseFloat(category.allocated_amount || 0),
+      committed: parseFloat(category.committed || category.spent || 0),
+      paid: parseFloat(category.paid || 0),
+      outstanding: parseFloat(category.outstanding || 0),
     })) || [];
 
-  const categoriesWithSpend = categoryData.filter((c) => c.spent > 0);
+  const categoriesWithSpend = categoryData.filter((category) => category.committed > 0);
 
-  const pieData = categoriesWithSpend.map((cat, i) => ({
-    name: cat.name,
-    value: cat.spent,
-    color: COLORS[i % COLORS.length],
+  const pieData = categoriesWithSpend.map((category, index) => ({
+    name: category.name,
+    value: category.committed,
+    color: COLORS[index % COLORS.length],
   }));
 
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       <div className="card">
-        <h3 className="section-title mb-4">Spending by Category</h3>
+        <h3 className="section-title mb-4">Committed by Category</h3>
         <div className="flex flex-col sm:flex-row gap-4 min-h-0">
           {pieData.length === 0 ? (
-            <p className="text-sm text-gray-400 py-8 text-center w-full">No spending recorded by category yet.</p>
+            <p className="text-sm text-gray-400 py-8 text-center w-full">
+              No committed expenses recorded by category yet.
+            </p>
           ) : (
             <>
               <div className="w-full sm:w-[min(100%,220px)] shrink-0 mx-auto sm:mx-0 h-[240px]">
@@ -90,15 +94,15 @@ export default function ExpenseOverviewTab({
       </div>
 
       <div className="card">
-        <h3 className="section-title mb-4">Allocated vs Spent</h3>
+        <h3 className="section-title mb-4">Allocated vs Committed</h3>
         <ResponsiveContainer width="100%" height={250}>
           <BarChart data={categoryData} layout="vertical">
-            <XAxis type="number" tickFormatter={(v: number) => `₹${v / 100000}L`} />
+            <XAxis type="number" tickFormatter={(value: number) => `₹${value / 100000}L`} />
             <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 12 }} />
             <Tooltip formatter={(value: any) => formatCurrency(value)} />
             <Legend />
             <Bar dataKey="allocated" fill="#D4AF37" name="Allocated" />
-            <Bar dataKey="spent" fill="#8B0000" name="Spent" />
+            <Bar dataKey="committed" fill="#8B0000" name="Committed" />
           </BarChart>
         </ResponsiveContainer>
       </div>

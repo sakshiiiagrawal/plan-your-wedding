@@ -13,7 +13,6 @@ import {
   HiOutlinePencil,
   HiOutlineChevronDown,
   HiOutlineChevronUp,
-  HiOutlineHome,
 } from 'react-icons/hi';
 import {
   useAllocationMatrix,
@@ -359,14 +358,6 @@ export default function Accommodations() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   const enrichedHotels = useMemo(() => {
     return allocationMatrix.map(
       (hotel: {
@@ -588,7 +579,7 @@ export default function Accommodations() {
               No accommodation venues yet
             </h2>
             <p className="text-gray-500 text-sm max-w-sm">
-              Add a venue in the Venues page and enable "Has Accommodation" to start managing room
+              Add a venue in the Venues page and enable &quot;Has Accommodation&quot; to start managing room
               allocations here.
             </p>
           </div>
@@ -1139,7 +1130,7 @@ export default function Accommodations() {
 
                       {roomCategories.length === 0 && (
                         <p className="text-xs text-gray-400 text-center py-2">
-                          No categories yet. Click "+ Add Category" to bulk-add rooms.
+                          No categories yet. Click &quot;+ Add Category&quot; to bulk-add rooms.
                         </p>
                       )}
 
@@ -1569,7 +1560,7 @@ export default function Accommodations() {
 
                               {filteredNeedsAccomm.length === 0 && filteredOther.length === 0 && (
                                 <div className="px-4 py-6 text-center text-sm text-gray-500">
-                                  No guests match "{guestSearchQuery}"
+                                  No guests match &quot;{guestSearchQuery}&quot;
                                 </div>
                               )}
                             </div>

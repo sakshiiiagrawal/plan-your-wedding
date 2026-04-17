@@ -6,6 +6,29 @@ export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 export const PAYMENT_METHODS = ['cash', 'bank_transfer', 'upi', 'cheque', 'credit_card'] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
+export const FINANCE_SOURCE_TYPES = ['manual', 'vendor', 'venue'] as const;
+export type FinanceSourceType = (typeof FINANCE_SOURCE_TYPES)[number];
+
+export const FINANCE_HEADER_STATUSES = ['active', 'closed', 'terminated'] as const;
+export type FinanceHeaderStatus = (typeof FINANCE_HEADER_STATUSES)[number];
+
+export const FINANCE_ITEM_SIDES = ['bride', 'groom', 'shared'] as const;
+export type FinanceItemSide = (typeof FINANCE_ITEM_SIDES)[number];
+
+export const FINANCE_PAYMENT_DIRECTIONS = ['outflow', 'inflow'] as const;
+export type FinancePaymentDirection = (typeof FINANCE_PAYMENT_DIRECTIONS)[number];
+
+export const FINANCE_PAYMENT_STATUSES = [
+  'scheduled',
+  'posted',
+  'cancelled',
+  'entered_in_error',
+] as const;
+export type FinancePaymentStatus = (typeof FINANCE_PAYMENT_STATUSES)[number];
+
+export const FINANCE_PAID_BY_SIDES = ['bride', 'groom', 'shared'] as const;
+export type FinancePaidBySide = (typeof FINANCE_PAID_BY_SIDES)[number];
+
 /**
  * Well-known top-level expense / vendor category names.
  * These are the parent-level buckets used for budget tracking.
@@ -179,6 +202,8 @@ export const DEFAULT_CATEGORY_TREE: ReadonlyArray<{
       'Security / Bouncers',
       'Valet Parking',
       'Printing & Misc Stationery',
+      'Tips & Gratuities',
+      'Taxes & Fees',
     ],
   },
 ] as const;

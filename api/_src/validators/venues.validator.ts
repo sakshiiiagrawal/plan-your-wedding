@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { financeItemSchema, financePaymentSchema } from './expense.validator';
 
 const roomInputSchema = z.object({
   room_number: z.string().min(1),
@@ -20,11 +21,22 @@ export const createVenueSchema = z.object({
   contact_phone: z.string().optional().nullable(),
   capacity: z.coerce.number().int().nonnegative().optional().nullable(),
   total_cost: z.coerce.number().nonnegative().optional().nullable(),
+  expense_date: z.string().optional().nullable(),
+  side: z.enum(['bride', 'groom', 'shared', 'mutual']).optional().nullable(),
+  bride_share_percentage: z.coerce.number().min(0).max(100).optional().nullable(),
   has_accommodation: z.boolean().optional(),
   default_check_in_date: z.string().optional().nullable().transform((v) => v || null),
   default_check_out_date: z.string().optional().nullable().transform((v) => v || null),
   notes: z.string().optional().nullable(),
   rooms: z.array(roomInputSchema).optional(),
+  finance: z
+    .object({
+      expense_date: z.string().min(1),
+      notes: z.string().optional().nullable(),
+      items: z.array(financeItemSchema).min(1),
+      payments: z.array(financePaymentSchema).optional(),
+    })
+    .optional(),
 });
 
 export const updateVenueSchema = createVenueSchema.partial();
@@ -55,15 +67,7 @@ export const createAllocationSchema = z.object({
 
 export const updateAllocationSchema = createAllocationSchema.partial();
 
-export const createPaymentSchema = z.object({
-  amount: z.coerce.number().positive(),
-  payment_date: z.string().min(1),
-  payment_method: z.enum(['cash', 'bank_transfer', 'upi', 'cheque', 'credit_card']),
-  side: z.enum(['bride', 'groom', 'mutual']).optional().nullable(),
-  transaction_reference: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-  is_planned: z.boolean().optional().default(false),
-});
+export const createPaymentSchema = financePaymentSchema;
 
 export type CreateVenueInput = z.infer<typeof createVenueSchema>;
 export type UpdateVenueInput = z.infer<typeof updateVenueSchema>;

@@ -1,8 +1,8 @@
 import { z } from 'zod';
+import { financeItemSchema, financePaymentSchema } from './expense.validator';
 
 export const createVendorSchema = z.object({
   name: z.string().min(1),
-  category: z.string().optional().nullable(),
   category_id: z.string().uuid().optional().nullable(),
   contact_person: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
@@ -11,10 +11,19 @@ export const createVendorSchema = z.object({
     (v) => (v === '' ? null : v),
     z.coerce.number().nonnegative().optional().nullable(),
   ),
-  side: z.enum(['bride', 'groom', 'mutual']).optional().nullable(),
-  is_shared: z.boolean().optional(),
+  expense_date: z.string().optional().nullable(),
+  side: z.enum(['bride', 'groom', 'shared', 'mutual']).optional().nullable(),
+  bride_share_percentage: z.coerce.number().min(0).max(100).optional().nullable(),
   is_confirmed: z.boolean().optional(),
   notes: z.string().optional().nullable(),
+  finance: z
+    .object({
+      expense_date: z.string().min(1),
+      notes: z.string().optional().nullable(),
+      items: z.array(financeItemSchema).min(1),
+      payments: z.array(financePaymentSchema).optional(),
+    })
+    .optional(),
 });
 
 export const updateVendorSchema = createVendorSchema.partial();

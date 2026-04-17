@@ -155,10 +155,10 @@ export default function Dashboard() {
 
         <div className="stat-card">
           <HiOutlineCurrencyRupee className="w-8 h-8 text-gold-500 mb-2" />
-          <div className="stat-value">{formatCurrency(stats?.expense?.spent || 0)}</div>
-          <div className="stat-label">Spent</div>
+          <div className="stat-value">{formatCurrency(stats?.expense?.paid || 0)}</div>
+          <div className="stat-label">Paid</div>
           <div className="text-xs text-gray-400 mt-1">
-            of {formatCurrency(stats?.expense?.total || 0)}
+            {formatCurrency(stats?.expense?.committed || 0)} committed
           </div>
         </div>
 
@@ -264,7 +264,7 @@ export default function Dashboard() {
               <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 11 }} />
               <Tooltip formatter={(v: any) => formatCurrency(v)} />
               <Bar dataKey="allocated" fill="#D4AF37" name="Allocated" />
-              <Bar dataKey="spent" fill="#8B0000" name="Spent" />
+              <Bar dataKey="committed" fill="#8B0000" name="Committed" />
             </BarChart>
           </ResponsiveContainer>
         </div>

@@ -1,93 +1,126 @@
-import { useState, useEffect } from 'react';
-import { HiOutlineX } from 'react-icons/hi';
+import { useEffect, useMemo, useState } from 'react';
+import { HiOutlinePlus, HiOutlineTrash, HiOutlineX } from 'react-icons/hi';
 import Portal from '../../../components/Portal';
 import CategoryCombobox from '../../../components/CategoryCombobox';
 import CustomCategoryModal from '../../../components/CustomCategoryModal';
+import type { ExpenseWithDetails } from '@wedding-planner/shared';
 
-export interface ExpenseRow {
-  id: string;
-  type: 'expense';
-  description: string;
-  amount: number;
-  category_id: string | null;
-  expense_date: string;
-  paid_by: string | null;
-  side: string | null;
-  is_shared: boolean;
-  share_percentage: number | null;
-  payment_method: string | null;
-  vendor_id: string | null;
-  event_id: string | null;
-  paid_amount: number | null;
-}
+export type ExpenseRow = ExpenseWithDetails;
 
 interface EditExpenseModalProps {
   expense: ExpenseRow | null;
   onClose: () => void;
   onSubmit: (id: string, payload: Record<string, unknown>) => Promise<void>;
   isPending: boolean;
-  vendors: Array<{ id: string; name: string }>;
+}
+
+interface ExpenseItemForm {
+  id?: string;
+  local_id: string;
+  description: string;
+  amount: string;
+  category_id: string | null;
+  side: 'bride' | 'groom' | 'shared';
+  bride_share_percentage: number;
 }
 
 interface FormData {
   description: string;
-  amount: number | string;
-  category_id: string | null;
   expense_date: string;
-  paid_by: string;
-  side: string;
-  is_shared: boolean;
-  share_percentage: number;
-  payment_method: string;
-  vendor_id: string | null;
-  event_id: string | null;
-  is_partially_paid: boolean;
-  paid_amount: number | string;
+  notes: string;
+  items: ExpenseItemForm[];
 }
+
+const createItem = (): ExpenseItemForm => ({
+  local_id: Math.random().toString(36).slice(2),
+  description: '',
+  amount: '',
+  category_id: null,
+  side: 'shared',
+  bride_share_percentage: 50,
+});
 
 export default function EditExpenseModal({
   expense,
   onClose,
   onSubmit,
   isPending,
-  vendors,
 }: EditExpenseModalProps) {
   const [formData, setFormData] = useState<FormData | null>(null);
   const [showCustomCategoryModal, setShowCustomCategoryModal] = useState(false);
   const [customCategoryParentId, setCustomCategoryParentId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (expense) {
-      setFormData({
-        description: expense.description || '',
-        amount: expense.amount || '',
-        category_id: expense.category_id || null,
-        expense_date: (expense.expense_date || new Date().toISOString().split('T')[0]) ?? '',
-        paid_by: expense.paid_by || '',
-        side: expense.side || 'bride',
-        is_shared: expense.is_shared || false,
-        share_percentage: expense.share_percentage || 50,
-        payment_method: expense.payment_method || 'cash',
-        vendor_id: expense.vendor_id || null,
-        event_id: expense.event_id || null,
-        is_partially_paid: expense.paid_amount != null && expense.paid_amount < expense.amount,
-        paid_amount: expense.paid_amount || '',
-      });
-    }
+    if (!expense) return;
+    setFormData({
+      description: expense.description,
+      expense_date: expense.expense_date,
+      notes: expense.notes ?? '',
+      items:
+        expense.items.length > 0
+          ? expense.items.map((item) => ({
+              id: item.id,
+              local_id: item.id,
+              description: item.description,
+              amount: String(item.amount),
+              category_id: item.category_id,
+              side: item.side,
+              bride_share_percentage: item.bride_share_percentage ?? 50,
+            }))
+          : [createItem()],
+    });
   }, [expense]);
+
+  const totalCommitted = useMemo(
+    () =>
+      formData?.items.reduce((sum, item) => sum + Number(item.amount || 0), 0) ?? 0,
+    [formData],
+  );
 
   if (!expense || !formData) return null;
 
-  const set = (patch: Partial<FormData>) =>
-    setFormData((prev) => (prev ? { ...prev, ...patch } : null));
+  const updateItem = (id: string, patch: Partial<ExpenseItemForm>) => {
+    setFormData((prev) =>
+      prev
+        ? {
+            ...prev,
+            items: prev.items.map((item) =>
+              item.local_id === id ? { ...item, ...patch } : item,
+            ),
+          }
+        : prev,
+    );
+  };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!formData) return;
-    const { is_partially_paid, paid_amount, ...rest } = formData;
+  const removeItem = (id: string) => {
+    setFormData((prev) =>
+      prev
+        ? {
+            ...prev,
+            items:
+              prev.items.length > 1
+                ? prev.items.filter((item) => item.local_id !== id)
+                : prev.items,
+          }
+        : prev,
+    );
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     await onSubmit(expense.id, {
-      ...rest,
-      paid_amount: is_partially_paid ? parseFloat(String(paid_amount)) : null,
+      description: formData.description,
+      expense_date: formData.expense_date,
+      notes: formData.notes || null,
+      items: formData.items.map((item, index) => ({
+        ...(item.id ? { id: item.id } : {}),
+        category_id: item.category_id,
+        description: item.description,
+        amount: Number(item.amount || 0),
+        side: item.side,
+        bride_share_percentage: item.side === 'shared' ? item.bride_share_percentage : null,
+        display_order: index + 1,
+      })),
     });
   };
 
@@ -95,7 +128,7 @@ export default function EditExpenseModal({
     <>
       <Portal>
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gold-200">
               <h2 className="text-xl font-display font-bold text-maroon-800">Edit Expense</h2>
               <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -103,195 +136,186 @@ export default function EditExpenseModal({
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="label">Description *</label>
-                <input
-                  type="text"
-                  value={formData.description}
-                  onChange={(e) => set({ description: e.target.value })}
-                  className="input"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="label">Total Amount *</label>
-                <input
-                  type="number"
-                  value={formData.amount}
-                  onChange={(e) => set({ amount: e.target.value })}
-                  className="input"
-                  placeholder="0"
-                  required
-                />
-              </div>
-
-              <div className="space-y-3">
-                <label className="flex items-center gap-3 cursor-pointer select-none">
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Expense Title *</label>
                   <input
-                    type="checkbox"
-                    checked={formData.is_partially_paid}
-                    onChange={(e) => set({ is_partially_paid: e.target.checked, paid_amount: '' })}
-                    className="w-4 h-4 accent-maroon-800"
+                    type="text"
+                    value={formData.description}
+                    onChange={(event) =>
+                      setFormData((prev) =>
+                        prev ? { ...prev, description: event.target.value } : prev,
+                      )
+                    }
+                    className="input"
+                    required
                   />
-                  <span className="label mb-0">Partially Paid</span>
-                </label>
-                {formData.is_partially_paid && (
-                  <div>
-                    <label className="label">Amount Paid So Far *</label>
-                    <input
-                      type="number"
-                      value={formData.paid_amount}
-                      onChange={(e) => set({ paid_amount: e.target.value })}
-                      className="input"
-                      placeholder="0"
-                      max={formData.amount || undefined}
-                      required
-                    />
-                    {formData.amount && formData.paid_amount && (
-                      <p className="text-sm text-gray-500 mt-1">
-                        Remaining: ₹
-                        {(
-                          parseFloat(String(formData.amount)) -
-                          parseFloat(String(formData.paid_amount) || '0')
-                        ).toLocaleString('en-IN')}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="label">Category *</label>
-                <CategoryCombobox
-                  value={formData.category_id}
-                  onChange={(id) => set({ category_id: id })}
-                  level="any"
-                  placeholder="Search categories…"
-                  allowCustom
-                  onAddCustom={(parentId) => {
-                    setCustomCategoryParentId(parentId);
-                    setShowCustomCategoryModal(true);
-                  }}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="label">Expense Date *</label>
-                <input
-                  type="date"
-                  value={formData.expense_date}
-                  onChange={(e) => set({ expense_date: e.target.value })}
-                  className="input"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="label">Paid By</label>
-                <input
-                  type="text"
-                  value={formData.paid_by}
-                  onChange={(e) => set({ paid_by: e.target.value })}
-                  className="input"
-                  placeholder="Person name"
-                />
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Side *</label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => set({ side: 'bride', is_shared: false })}
-                      className={`flex-1 py-2 rounded-lg border-2 transition-colors ${
-                        formData.side === 'bride' && !formData.is_shared
-                          ? 'border-pink-500 bg-pink-50 text-pink-700'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      Bride
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => set({ side: 'groom', is_shared: false })}
-                      className={`flex-1 py-2 rounded-lg border-2 transition-colors ${
-                        formData.side === 'groom' && !formData.is_shared
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      Groom
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => set({ is_shared: true })}
-                      className={`flex-1 py-2 rounded-lg border-2 transition-colors ${
-                        formData.is_shared
-                          ? 'border-gold-500 bg-gold-50 text-gold-700'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      Shared
-                    </button>
-                  </div>
-                </div>
-
-                {formData.is_shared && (
-                  <div>
-                    <label className="label">Share Split</label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-pink-600 text-sm">Bride</span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={formData.share_percentage || 50}
-                        onChange={(e) => set({ share_percentage: Number(e.target.value) })}
-                        className="flex-1"
-                      />
-                      <span className="text-blue-600 text-sm">Groom</span>
-                    </div>
-                    <div className="text-center text-sm text-gray-500 mt-1">
-                      {formData.share_percentage || 50}% - {100 - (formData.share_percentage || 50)}
-                      %
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Payment Method</label>
-                  <select
-                    value={formData.payment_method}
-                    onChange={(e) => set({ payment_method: e.target.value })}
-                    className="input"
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                    <option value="upi">UPI</option>
-                    <option value="cheque">Cheque</option>
-                    <option value="credit_card">Credit Card</option>
-                  </select>
                 </div>
                 <div>
-                  <label className="label">Vendor (Optional)</label>
-                  <select
-                    value={formData.vendor_id || ''}
-                    onChange={(e) => set({ vendor_id: e.target.value || null })}
+                  <label className="label">Expense Date *</label>
+                  <input
+                    type="date"
+                    value={formData.expense_date}
+                    onChange={(event) =>
+                      setFormData((prev) =>
+                        prev ? { ...prev, expense_date: event.target.value } : prev,
+                      )
+                    }
                     className="input"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Notes</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(event) =>
+                    setFormData((prev) => (prev ? { ...prev, notes: event.target.value } : prev))
+                  }
+                  className="input min-h-[88px]"
+                  placeholder="Optional notes"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="section-title">Line Items</h3>
+                    <p className="text-sm text-gray-500">
+                      Keep the committed amount aligned with the real category breakdown.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) =>
+                        prev ? { ...prev, items: [...prev.items, createItem()] } : prev,
+                      )
+                    }
+                    className="text-sm text-maroon-700 hover:text-maroon-900 font-medium flex items-center gap-1"
                   >
-                    <option value="">None</option>
-                    {vendors.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                      </option>
-                    ))}
-                  </select>
+                    <HiOutlinePlus className="w-4 h-4" />
+                    Add Item
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {formData.items.map((item, index) => (
+                    <div key={item.local_id} className="rounded-xl border border-gold-200 p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-maroon-800">Item {index + 1}</h4>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(item.local_id)}
+                          disabled={formData.items.length === 1}
+                          className="p-2 rounded-lg text-red-500 hover:bg-red-50 disabled:opacity-40"
+                        >
+                          <HiOutlineTrash className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="label">Item Description *</label>
+                          <input
+                            type="text"
+                            value={item.description}
+                            onChange={(event) =>
+                              updateItem(item.local_id, { description: event.target.value })
+                            }
+                            className="input"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="label">Amount *</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.amount}
+                            onChange={(event) =>
+                              updateItem(item.local_id, { amount: event.target.value })
+                            }
+                            className="input"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="label">Category *</label>
+                        <CategoryCombobox
+                          value={item.category_id}
+                          onChange={(id) => updateItem(item.local_id, { category_id: id })}
+                          level="subcategory"
+                          placeholder="Search categories…"
+                          allowCustom
+                          onAddCustom={(parentId) => {
+                            setCustomCategoryParentId(parentId);
+                            setShowCustomCategoryModal(true);
+                          }}
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="label">Liability Side</label>
+                        <div className="flex gap-2">
+                          {(['bride', 'groom', 'shared'] as const).map((side) => (
+                            <button
+                              key={side}
+                              type="button"
+                              onClick={() => updateItem(item.local_id, { side })}
+                              className={`flex-1 py-2 rounded-lg border-2 transition-colors ${
+                                item.side === side
+                                  ? side === 'bride'
+                                    ? 'border-pink-500 bg-pink-50 text-pink-700'
+                                    : side === 'groom'
+                                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                      : 'border-gold-500 bg-gold-50 text-gold-700'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              {side === 'shared'
+                                ? 'Shared'
+                                : `${side.charAt(0).toUpperCase()}${side.slice(1)}`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {item.side === 'shared' && (
+                        <div>
+                          <label className="label">
+                            Bride Share Percentage ({item.bride_share_percentage}%)
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={item.bride_share_percentage}
+                            onChange={(event) =>
+                              updateItem(item.local_id, {
+                                bride_share_percentage: Number(event.target.value),
+                              })
+                            }
+                            className="w-full"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-xl bg-gray-50 px-4 py-3 flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Committed Total</span>
+                  <span className="text-lg font-semibold text-maroon-800">
+                    ₹{totalCommitted.toLocaleString('en-IN')}
+                  </span>
                 </div>
               </div>
             </form>
@@ -301,7 +325,7 @@ export default function EditExpenseModal({
                 Cancel
               </button>
               <button
-                onClick={(e) => handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>)}
+                onClick={(event) => void handleSubmit(event as unknown as React.FormEvent<HTMLFormElement>)}
                 disabled={isPending}
                 className="btn-primary flex-1 disabled:opacity-50"
               >

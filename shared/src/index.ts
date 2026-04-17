@@ -39,6 +39,7 @@ export type {
 export type {
   VenueRow,
   VenueInsert,
+  VenueWithFinance,
   RoomRow,
   RoomInsert,
   RoomAllocationRow,
@@ -48,18 +49,32 @@ export type {
 
 export type { EventRow, EventInsert, EventWithVenue } from './domain/event.types';
 
-export type { VendorRow, VendorInsert } from './domain/vendor.types';
+export type { VendorRow, VendorInsert, VendorWithFinance } from './domain/vendor.types';
 
 export type {
   ExpenseCategoryRow,
   ExpenseCategoryInsert,
   ExpenseRow,
   ExpenseInsert,
+  ExpenseItemRow,
+  ExpenseItemInput,
   PaymentRow,
   PaymentInsert,
+  PaymentAllocationRow,
+  PaymentAllocationInput,
+  FinanceActivityRow,
+  ExpenseBalanceSummary,
   ExpenseSummaryRow,
   ExpenseSummaryInsert,
   ExpenseWithDetails,
+  FinanceSourceType,
+  FinanceHeaderStatus,
+  FinanceItemSide,
+  FinancePaymentDirection,
+  FinancePaymentStatus,
+  FinancePaidBySide,
+  FinanceActivityEntityType,
+  FinanceActivityActionType,
 } from './domain/expense.types';
 
 export type { TaskRow, TaskInsert } from './domain/task.types';
@@ -86,10 +101,26 @@ export type { GuestSide, RsvpStatus, MealPreference, AgeGroup, Gender } from './
 export {
   PAYMENT_STATUSES,
   PAYMENT_METHODS,
+  FINANCE_SOURCE_TYPES,
+  FINANCE_HEADER_STATUSES,
+  FINANCE_ITEM_SIDES,
+  FINANCE_PAYMENT_DIRECTIONS,
+  FINANCE_PAYMENT_STATUSES,
+  FINANCE_PAID_BY_SIDES,
   EXPENSE_CATEGORIES,
   DEFAULT_CATEGORY_TREE,
 } from './enums/expense.enums';
-export type { PaymentStatus, PaymentMethod, ExpenseCategoryName } from './enums/expense.enums';
+export type {
+  PaymentStatus,
+  PaymentMethod,
+  FinanceSourceType as EnumFinanceSourceType,
+  FinanceHeaderStatus as EnumFinanceHeaderStatus,
+  FinanceItemSide as EnumFinanceItemSide,
+  FinancePaymentDirection as EnumFinancePaymentDirection,
+  FinancePaymentStatus as EnumFinancePaymentStatus,
+  FinancePaidBySide as EnumFinancePaidBySide,
+  ExpenseCategoryName,
+} from './enums/expense.enums';
 
 export { TASK_PRIORITIES, TASK_STATUSES, ROOM_TYPES } from './enums/task.enums';
 export type { TaskPriority, TaskStatus, RoomType } from './enums/task.enums';

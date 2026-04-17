@@ -183,7 +183,7 @@ export default function errorMiddleware(
 
   // AppError (our own structured errors)
   if (err instanceof AppError) {
-    res.status(err.statusCode).json({ error: err.message });
+    res.status(err.statusCode).json({ error: err.message, code: err.code });
     return;
   }
 

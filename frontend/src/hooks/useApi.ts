@@ -5,7 +5,11 @@ import type {
   HeroContent,
   GuestWithDetails,
   EventWithVenue,
-  VenueRow,
+  ExpenseBalanceSummary,
+  ExpenseWithDetails,
+  PaymentRow,
+  VendorWithFinance,
+  VenueWithFinance,
 } from '@wedding-planner/shared';
 
 // =====================================================
@@ -95,7 +99,44 @@ export interface DashboardStats {
   guests: { total: number; bride: number; groom: number };
   rsvp: { confirmed: number; pending: number };
   tasks: { pending: number; completed: number };
-  expense: { total: number; spent: number };
+  expense: {
+    total: number;
+    committed: number;
+    paid: number;
+    outstanding: number;
+    remaining: number;
+  };
+}
+
+export interface FinanceTimelinePayment extends PaymentRow {
+  expense: {
+    id: string;
+    description: string;
+    source_type: 'manual' | 'vendor' | 'venue';
+    source_id: string | null;
+  };
+  expense_summary: ExpenseBalanceSummary | null;
+}
+
+export interface ExpenseOutstandingItem {
+  id: string;
+  name: string;
+  type: 'manual' | 'vendor' | 'venue';
+  totalCost: number;
+  paid: number;
+  outstanding: number;
+  expense_id: string;
+}
+
+export interface ExpenseAlerts {
+  overduePayments: FinanceTimelinePayment[];
+  overdueCount: number;
+  overdueTotal: number;
+  upcomingPayments: FinanceTimelinePayment[];
+  upcomingCount: number;
+  upcomingTotal: number;
+  overBudgetCategories: Array<{ id: string; name: string; overBy: number }>;
+  nearBudgetCategories: Array<{ id: string; name: string; percentage: number }>;
 }
 
 export const useDashboardStats = () =>
@@ -301,13 +342,13 @@ export const useDeleteEvent = () => {
 // =====================================================
 
 export const useVenues = () =>
-  useQuery<VenueRow[]>({
+  useQuery<VenueWithFinance[]>({
     queryKey: ['venues'],
     queryFn: () => api.get('/venues').then((res) => res.data),
   });
 
 export const useVenue = (id?: string | null) =>
-  useQuery<any>({
+  useQuery<VenueWithFinance>({
     queryKey: ['venues', id],
     queryFn: () => api.get(`/venues/${id}`).then((res) => res.data),
     enabled: !!id,
@@ -319,6 +360,8 @@ export const useCreateVenue = () => {
     mutationFn: (venueData: any) => api.post('/venues', venueData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -330,6 +373,8 @@ export const useUpdateVenue = () => {
       api.put(`/venues/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -340,6 +385,8 @@ export const useDeleteVenue = () => {
     mutationFn: (id: string) => api.delete(`/venues/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -474,7 +521,7 @@ export const useDeleteAllocation = () => {
 // =====================================================
 
 export const useVenuePayments = (venueId?: string | null) =>
-  useQuery<any[]>({
+  useQuery<PaymentRow[]>({
     queryKey: ['venues', venueId, 'payments'],
     queryFn: () => api.get(`/venues/${venueId}/payments`).then((res) => res.data),
     enabled: !!venueId,
@@ -487,6 +534,8 @@ export const useAddVenuePayment = () => {
       api.post(`/venues/${venueId}/payments`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -498,6 +547,8 @@ export const useDeleteVenuePayment = () => {
       api.delete(`/venues/${venueId}/payments/${paymentId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -513,6 +564,8 @@ export const useAddVendorPayment = () => {
       api.post(`/vendors/${vendorId}/payments`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -524,6 +577,8 @@ export const useDeleteVendorPayment = () => {
       api.delete(`/vendors/${vendorId}/payments/${paymentId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -533,13 +588,13 @@ export const useDeleteVendorPayment = () => {
 // =====================================================
 
 export const useVendors = () =>
-  useQuery<any[]>({
+  useQuery<VendorWithFinance[]>({
     queryKey: ['vendors'],
     queryFn: () => api.get('/vendors').then((res) => res.data),
   });
 
 export const useVendor = (id?: string | null) =>
-  useQuery<any>({
+  useQuery<VendorWithFinance>({
     queryKey: ['vendors', id],
     queryFn: () => api.get(`/vendors/${id}`).then((res) => res.data),
     enabled: !!id,
@@ -552,7 +607,7 @@ export const useVendorCategories = () =>
   });
 
 export const useVendorPayments = (vendorId?: string | null) =>
-  useQuery<any[]>({
+  useQuery<PaymentRow[]>({
     queryKey: ['vendors', vendorId, 'payments'],
     queryFn: () => api.get(`/vendors/${vendorId}/payments`).then((res) => res.data),
     enabled: !!vendorId,
@@ -564,6 +619,8 @@ export const useCreateVendor = () => {
     mutationFn: (vendorData: any) => api.post('/vendors', vendorData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -575,6 +632,8 @@ export const useUpdateVendor = () => {
       api.put(`/vendors/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -585,6 +644,8 @@ export const useDeleteVendor = () => {
     mutationFn: (id: string) => api.delete(`/vendors/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -595,7 +656,14 @@ export const useDeleteVendor = () => {
 
 export interface ExpenseSummary {
   totalExpense: number;
+  brideContribution: number;
+  groomContribution: number;
+  totalCommitted: number;
   totalSpent: number;
+  totalPaid: number;
+  totalOutstanding: number;
+  remainingBudget: number;
+  remaining: number;
 }
 
 export const useExpenseSummary = () =>
@@ -641,7 +709,7 @@ export const useExpensesByCategoryTree = () =>
   });
 
 export const useExpenses = (filters: Record<string, string> = {}) =>
-  useQuery<any[]>({
+  useQuery<ExpenseWithDetails[]>({
     queryKey: ['expense', 'expenses', filters],
     queryFn: () => api.get('/expense/expenses', { params: filters }).then((res) => res.data),
   });
@@ -676,6 +744,9 @@ export const useCreateExpense = () => {
       api.post('/expense/expenses', expenseData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -687,6 +758,9 @@ export const useUpdateExpense = () => {
       api.put(`/expense/expenses/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -697,6 +771,9 @@ export const useDeleteExpense = () => {
     mutationFn: (id: string) => api.delete(`/expense/expenses/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -713,22 +790,58 @@ export const useCreateCustomCategory = () => {
 };
 
 export const useExpensePayments = () =>
-  useQuery<any[]>({
+  useQuery<FinanceTimelinePayment[]>({
     queryKey: ['expense', 'payments'],
     queryFn: () => api.get('/expense/payments').then((res) => res.data),
   });
 
 export const useExpenseOutstanding = () =>
-  useQuery<{ items: any[]; totalOutstanding: number }>({
+  useQuery<{ items: ExpenseOutstandingItem[]; totalOutstanding: number }>({
     queryKey: ['expense', 'outstanding'],
     queryFn: () => api.get('/expense/outstanding').then((res) => res.data),
   });
 
 export const useExpenseAlerts = () =>
-  useQuery<any>({
+  useQuery<ExpenseAlerts>({
     queryKey: ['expense', 'alerts'],
     queryFn: () => api.get('/expense/alerts').then((res) => res.data),
   });
+
+export const useSourcePayments = (
+  sourceType: 'vendor' | 'venue',
+  sourceId?: string | null,
+) =>
+  useQuery<PaymentRow[]>({
+    queryKey: [sourceType, sourceId, 'payments'],
+    queryFn: () => api.get(`/${sourceType}s/${sourceId}/payments`).then((res) => res.data),
+    enabled: !!sourceId,
+  });
+
+export const useCreateSourcePayment = (sourceType: 'vendor' | 'venue') => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sourceId, ...data }: { sourceId: string } & Record<string, any>) =>
+      api.post(`/${sourceType}s/${sourceId}/payments`, data).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [sourceType === 'vendor' ? 'vendors' : 'venues'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+export const useDeleteSourcePayment = (sourceType: 'vendor' | 'venue') => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sourceId, paymentId }: { sourceId: string; paymentId: string }) =>
+      api.delete(`/${sourceType}s/${sourceId}/payments/${paymentId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [sourceType === 'vendor' ? 'vendors' : 'venues'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
 
 // =====================================================
 // TASKS HOOKS

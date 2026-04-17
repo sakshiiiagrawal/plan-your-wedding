@@ -7,6 +7,8 @@ import {
   createCustomCategorySchema,
   createExpenseSchema,
   updateExpenseSchema,
+  createExpensePaymentSchema,
+  updateExpensePaymentSchema,
 } from '../validators/expense.validator';
 import * as ctrl from '../controllers/expense.controller';
 
@@ -39,6 +41,10 @@ router.get('/expenses/:id', ctrl.getExpenseById);
 router.post('/expenses', validateBody(createExpenseSchema), ctrl.createExpense);
 router.put('/expenses/:id', validateBody(updateExpenseSchema), ctrl.updateExpense);
 router.delete('/expenses/:id', ctrl.deleteExpense);
+router.get('/expenses/:id/payments', ctrl.getExpensePayments);
+router.post('/expenses/:id/payments', validateBody(createExpensePaymentSchema), ctrl.createExpensePayment);
+router.patch('/payments/:paymentId', validateBody(updateExpensePaymentSchema), ctrl.updateExpensePayment);
+router.delete('/payments/:paymentId', ctrl.deleteExpensePayment);
 
 // Payments / outstanding / alerts
 router.get('/payments', ctrl.getPayments);

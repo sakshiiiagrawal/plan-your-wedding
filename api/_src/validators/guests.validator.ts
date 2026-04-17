@@ -1,28 +1,39 @@
 import { z } from 'zod';
 
-const emptyStringToNull = z.string().transform((v) => v || null);
+const emptyStringToNull = z.preprocess(
+  (value) => (value === '' ? null : value),
+  z.union([z.string(), z.null()]).optional(),
+);
+
+const emptyStringToNullEmail = z.preprocess(
+  (value) => (value === '' ? null : value),
+  z.union([z.string().email(), z.null()]).optional(),
+);
 
 export const createGuestSchema = z.object({
   first_name: z.string().min(1),
-  last_name: emptyStringToNull.optional().nullable(),
-  phone: emptyStringToNull.optional().nullable(),
-  email: emptyStringToNull.pipe(z.string().email().optional().nullable()).optional().nullable(),
+  last_name: emptyStringToNull,
+  phone: emptyStringToNull,
+  email: emptyStringToNullEmail,
   side: z.enum(['bride', 'groom', 'mutual']),
-  group_id: z.string().uuid().optional().nullable(),
-  relationship: emptyStringToNull.optional().nullable(),
+  group_id: z.preprocess(
+    (value) => (value === '' ? null : value),
+    z.union([z.string().uuid(), z.null()]).optional(),
+  ),
+  relationship: emptyStringToNull,
   is_vip: z.boolean().optional(),
   age_group: z.enum(['child', 'adult', 'senior']).optional(),
   gender: z.enum(['male', 'female', 'other']).optional().nullable(),
   meal_preference: z.enum(['vegetarian', 'jain', 'vegan', 'non_vegetarian']).optional(),
-  dietary_restrictions: emptyStringToNull.optional().nullable(),
+  dietary_restrictions: emptyStringToNull,
   needs_accommodation: z.boolean().optional(),
   needs_pickup: z.boolean().optional(),
-  pickup_location: emptyStringToNull.optional().nullable(),
-  arrival_date: emptyStringToNull.optional().nullable(),
-  arrival_time: emptyStringToNull.optional().nullable(),
-  departure_date: emptyStringToNull.optional().nullable(),
-  departure_time: emptyStringToNull.optional().nullable(),
-  notes: emptyStringToNull.optional().nullable(),
+  pickup_location: emptyStringToNull,
+  arrival_date: emptyStringToNull,
+  arrival_time: emptyStringToNull,
+  departure_date: emptyStringToNull,
+  departure_time: emptyStringToNull,
+  notes: emptyStringToNull,
   // Frontend may send an array of event IDs to attach the guest to
   events: z.array(z.string().uuid()).optional(),
 });

@@ -1,50 +1,79 @@
-import { DEFAULT_CATEGORY_TREE } from '../constants/enums';
-import type { ExpenseCategoryInsert, ExpenseInsert } from '@wedding-planner/shared';
+import type {
+  ExpenseCategoryInsert,
+  ExpenseInsert,
+  ExpenseItemRow,
+  ExpenseSummaryInsert,
+  ExpenseWithDetails,
+  PaymentRow,
+} from '@wedding-planner/shared';
 import * as repo from '../repositories/expense.repository';
-import type { ExpenseFilters } from '../repositories/expense.repository';
+import * as finance from './finance.service';
+import { ensureDefaultCategories } from './expense-categories.service';
 
-const toFloat = (v: unknown) => parseFloat(String(v ?? 0));
+const toFloat = (value: unknown) => parseFloat(String(value ?? 0));
+
+export type ExpenseQueryFilters = finance.ExpenseQueryFilters;
+
+function flattenExpenseItems(expenses: ExpenseWithDetails[]) {
+  return expenses.flatMap((expense) =>
+    expense.items.map((item) => ({
+      ...item,
+      expense_id: expense.id,
+      expense_description: expense.description,
+      expense_date: expense.expense_date,
+      expense_status: expense.status,
+      source_type: expense.source_type,
+      source_id: expense.source_id,
+      summary: expense.summary,
+    })),
+  );
+}
+
+function buildSideTotals(items: ExpenseItemRow[]) {
+  const bride = { total: 0, items: [] as ExpenseItemRow[] };
+  const groom = { total: 0, items: [] as ExpenseItemRow[] };
+  const shared = { total: 0, items: [] as ExpenseItemRow[] };
+
+  for (const item of items) {
+    const amount = toFloat(item.amount);
+    if (item.side === 'bride') {
+      bride.total += amount;
+      bride.items.push(item);
+    } else if (item.side === 'groom') {
+      groom.total += amount;
+      groom.items.push(item);
+    } else {
+      shared.total += amount;
+      shared.items.push(item);
+      const bridePct = toFloat(item.bride_share_percentage ?? 50) / 100;
+      bride.total += amount * bridePct;
+      groom.total += amount * (1 - bridePct);
+    }
+  }
+
+  return { bride, groom, shared };
+}
 
 // ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 
 export async function getExpenseSummary(ownerId: string) {
-  const [expense, expenses, vendorPaymentsTotal] = await Promise.all([
+  const [summary, totals] = await Promise.all([
     repo.findSummaryByOwner(ownerId),
-    repo.findExpensesAmountWithSharedByOwner(ownerId),
-    repo.findActualPaymentsTotalByOwner(ownerId),
+    finance.getFinanceDashboardTotals(ownerId),
   ]);
 
-  // Bug 6 fix: totalSpent includes both expense records AND actual vendor/venue payments
-  const expenseTotal = expenses.reduce((s, e) => s + toFloat(e.amount), 0);
-  const totalSpent = expenseTotal + vendorPaymentsTotal;
-
-  // Bug 3 fix: shared expenses are split proportionally between bride and groom
-  let brideSpent = 0;
-  let groomSpent = 0;
-  expenses.forEach((e) => {
-    const amount = toFloat(e.amount);
-    if (e.is_shared) {
-      const pct = toFloat((e as { share_percentage?: unknown }).share_percentage ?? 50);
-      brideSpent += amount * (pct / 100);
-      groomSpent += amount * ((100 - pct) / 100);
-    } else if (e.side === 'bride') {
-      brideSpent += amount;
-    } else if (e.side === 'groom') {
-      groomSpent += amount;
-    }
-  });
-
   return {
-    totalExpense: toFloat(expense?.total_expense),
-    brideContribution: toFloat(expense?.bride_side_contribution),
-    groomContribution: toFloat(expense?.groom_side_contribution),
-    totalSpent,
-    vendorPaymentsTotal,
-    brideSpent,
-    groomSpent,
-    remaining: toFloat(expense?.total_expense) - totalSpent,
+    totalExpense: toFloat(summary?.total_expense),
+    brideContribution: toFloat(summary?.bride_side_contribution),
+    groomContribution: toFloat(summary?.groom_side_contribution),
+    totalCommitted: totals.committed,
+    totalPaid: totals.paid,
+    totalOutstanding: totals.outstanding,
+    remainingBudget: toFloat(summary?.total_expense) - totals.committed,
+    totalSpent: totals.paid,
+    remaining: toFloat(summary?.total_expense) - totals.paid,
   };
 }
 
@@ -56,7 +85,7 @@ export async function updateTotalExpense(
     groom_side_contribution?: number;
   },
 ) {
-  return repo.upsertSummary(ownerId, payload);
+  return repo.upsertSummary(ownerId, payload as Omit<ExpenseSummaryInsert, 'user_id'>);
 }
 
 // ---------------------------------------------------------------------------
@@ -64,25 +93,29 @@ export async function updateTotalExpense(
 // ---------------------------------------------------------------------------
 
 export async function getExpenseOverview(ownerId: string) {
-  const [categories, expenses] = await Promise.all([
+  const [categories, rollups] = await Promise.all([
     repo.findCategoriesByOwner(ownerId),
-    repo.findExpensesForCategoryGrouping(ownerId),
+    finance.getCategoryRollups(ownerId),
   ]);
 
-  const spending: Record<string, number> = {};
-  expenses.forEach((e) => {
-    if (e.category_id) spending[e.category_id] = (spending[e.category_id] ?? 0) + toFloat(e.amount);
-  });
+  const spending = new Map(rollups.map((rollup) => [rollup.category_id, rollup]));
 
-  return categories.map((cat) => ({
-    ...cat,
-    spent: spending[cat.id] ?? 0,
-    remaining: toFloat(cat.allocated_amount) - (spending[cat.id] ?? 0),
-    percentage:
-      toFloat(cat.allocated_amount) > 0
-        ? Math.round(((spending[cat.id] ?? 0) / toFloat(cat.allocated_amount)) * 100)
-        : 0,
-  }));
+  return categories.map((cat) => {
+    const rollup = spending.get(cat.id);
+    const committed = rollup?.committed_amount ?? 0;
+    return {
+      ...cat,
+      committed,
+      paid: rollup?.paid_amount ?? 0,
+      outstanding: rollup?.outstanding_amount ?? 0,
+      spent: committed,
+      remaining: toFloat(cat.allocated_amount) - committed,
+      percentage:
+        toFloat(cat.allocated_amount) > 0
+          ? Math.round((committed / toFloat(cat.allocated_amount)) * 100)
+          : 0,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -90,67 +123,27 @@ export async function getExpenseOverview(ownerId: string) {
 // ---------------------------------------------------------------------------
 
 export async function getBySide(ownerId: string) {
-  const expenses = await repo.findExpensesBySideDetail(ownerId);
-  // is_shared expenses should not appear under bride/groom exclusively
-  const brideExpenses = expenses.filter((e) => !e.is_shared && e.side === 'bride');
-  const groomExpenses = expenses.filter((e) => !e.is_shared && e.side === 'groom');
-  const sharedExpenses = expenses.filter((e) => e.is_shared);
-
-  // Bug 4 fix: bride/groom totals include their proportional share of shared expenses
-  const sharedBrideTotal = sharedExpenses.reduce((s, e) => {
-    const pct = toFloat((e as { share_percentage?: unknown }).share_percentage ?? 50);
-    return s + toFloat(e.amount) * (pct / 100);
-  }, 0);
-  const sharedGroomTotal = sharedExpenses.reduce((s, e) => {
-    const pct = toFloat((e as { share_percentage?: unknown }).share_percentage ?? 50);
-    return s + toFloat(e.amount) * ((100 - pct) / 100);
-  }, 0);
-
-  return {
-    bride: {
-      expenses: brideExpenses,
-      total: brideExpenses.reduce((s, e) => s + toFloat(e.amount), 0) + sharedBrideTotal,
-    },
-    groom: {
-      expenses: groomExpenses,
-      total: groomExpenses.reduce((s, e) => s + toFloat(e.amount), 0) + sharedGroomTotal,
-    },
-    shared: {
-      expenses: sharedExpenses,
-      total: sharedExpenses.reduce((s, e) => s + toFloat(e.amount), 0),
-    },
-  };
+  const expenses = await finance.listExpenses(ownerId);
+  const items = flattenExpenseItems(expenses);
+  return buildSideTotals(items);
 }
 
 export async function getSideSummary(ownerId: string) {
-  // Bug 5 fix: vendor costs removed to avoid double-counting with expense records.
-  // Vendor total_cost is the contract value; actual spending is tracked through payments
-  // (on the Vendors page) and expense records (on the Expense page).
-  const expenses = await repo.findExpensesForSideSummary(ownerId);
-
+  const rollups = await finance.getSideLiabilityRollups(ownerId);
   const summary = {
-    bride: { expenses: 0, sharedExpenses: 0, total: 0 },
-    groom: { expenses: 0, sharedExpenses: 0, total: 0 },
-    shared: { expenses: 0, total: 0 },
+    bride: { committed: 0, paid: 0, outstanding: 0, total: 0 },
+    groom: { committed: 0, paid: 0, outstanding: 0, total: 0 },
+    shared: { committed: 0, paid: 0, outstanding: 0, total: 0 },
   };
 
-  expenses.forEach((e) => {
-    const amount = toFloat(e.amount);
-    if (e.is_shared) {
-      summary.shared.expenses += amount;
-      const pct = toFloat(e.share_percentage ?? 50);
-      summary.bride.sharedExpenses += amount * (pct / 100);
-      summary.groom.sharedExpenses += amount * ((100 - pct) / 100);
-    } else if (e.side === 'bride') {
-      summary.bride.expenses += amount;
-    } else if (e.side === 'groom') {
-      summary.groom.expenses += amount;
-    }
-  });
-
-  summary.bride.total = summary.bride.expenses + summary.bride.sharedExpenses;
-  summary.groom.total = summary.groom.expenses + summary.groom.sharedExpenses;
-  summary.shared.total = summary.shared.expenses;
+  for (const row of rollups) {
+    summary[row.side] = {
+      committed: row.committed_amount,
+      paid: row.paid_amount,
+      outstanding: row.outstanding_amount,
+      total: row.committed_amount,
+    };
+  }
 
   return summary;
 }
@@ -204,95 +197,51 @@ export async function createCustomCategory(
   });
 }
 
-async function ensureDefaultCategories(ownerId: string): Promise<void> {
-  const existing = await repo.findCategoriesByOwner(ownerId);
-
-  if (existing.length === 0) {
-    // New user: seed the full two-level tree
-    for (let i = 0; i < DEFAULT_CATEGORY_TREE.length; i++) {
-      const entry = DEFAULT_CATEGORY_TREE[i]!;
-      const parent = await repo.insertCategory({
-        name: entry.name,
-        user_id: ownerId,
-        display_order: i + 1,
-        allocated_amount: 0,
-      });
-      for (let j = 0; j < entry.children.length; j++) {
-        await repo.insertCategory({
-          name: entry.children[j]!,
-          parent_category_id: parent.id,
-          user_id: ownerId,
-          display_order: j + 1,
-          allocated_amount: 0,
-        });
-      }
-    }
-    return;
-  }
-
-  // Existing user: backfill subcategories for any parent that has none yet.
-  // This migrates users who were seeded with the old flat-12 list.
-  const parents = existing.filter((c) => !c.parent_category_id);
-  const childIds = new Set(existing.filter((c) => c.parent_category_id).map((c) => c.parent_category_id));
-
-  for (const entry of DEFAULT_CATEGORY_TREE) {
-    const parent = parents.find((p) => p.name === entry.name);
-    if (!parent) continue; // Not in this user's list
-    if (childIds.has(parent.id)) continue; // Already has subcategories
-
-    for (let j = 0; j < entry.children.length; j++) {
-      await repo.insertCategory({
-        name: entry.children[j]!,
-        parent_category_id: parent.id,
-        user_id: ownerId,
-        display_order: j + 1,
-        allocated_amount: 0,
-      });
-    }
-  }
-}
-
 export async function getCategoryTree(ownerId: string) {
   await ensureDefaultCategories(ownerId);
 
-  const [allCategories, expenses] = await Promise.all([
+  const [allCategories, rollups] = await Promise.all([
     repo.findCategoriesByOwner(ownerId),
-    repo.findExpensesForCategoryGrouping(ownerId),
+    finance.getCategoryRollups(ownerId),
   ]);
 
-  const spending: Record<string, number> = {};
-  expenses.forEach((e) => {
-    if (e.category_id) spending[e.category_id] = (spending[e.category_id] ?? 0) + toFloat(e.amount);
-  });
-
-  const parents = allCategories.filter((c) => !c.parent_category_id);
-  const children = allCategories.filter((c) => c.parent_category_id);
+  const spending = new Map(rollups.map((rollup) => [rollup.category_id, rollup]));
+  const parents = allCategories.filter((category) => !category.parent_category_id);
+  const children = allCategories.filter((category) => category.parent_category_id);
 
   return parents.map((parent) => {
-    const parentChildren = children.filter((c) => c.parent_category_id === parent.id);
+    const parentChildren = children.filter((child) => child.parent_category_id === parent.id);
+    const childRows = parentChildren.map((child) => {
+      const rollup = spending.get(child.id);
+      const committed = rollup?.committed_amount ?? 0;
+      return {
+        ...child,
+        committed,
+        paid: rollup?.paid_amount ?? 0,
+        outstanding: rollup?.outstanding_amount ?? 0,
+        spent: committed,
+        remaining: toFloat(child.allocated_amount) - committed,
+        percentage:
+          toFloat(child.allocated_amount) > 0
+            ? Math.round((committed / toFloat(child.allocated_amount)) * 100)
+            : 0,
+      };
+    });
 
-    const childrenWithSpent = parentChildren.map((child) => ({
-      ...child,
-      spent: spending[child.id] ?? 0,
-      remaining: toFloat(child.allocated_amount) - (spending[child.id] ?? 0),
-      percentage:
-        toFloat(child.allocated_amount) > 0
-          ? Math.round(((spending[child.id] ?? 0) / toFloat(child.allocated_amount)) * 100)
-          : 0,
-    }));
-
-    const parentSpent =
-      (spending[parent.id] ?? 0) + childrenWithSpent.reduce((s, c) => s + c.spent, 0);
+    const parentCommitted = childRows.reduce((sum, child) => sum + child.committed, 0);
 
     return {
       ...parent,
-      spent: parentSpent,
-      remaining: toFloat(parent.allocated_amount) - parentSpent,
+      committed: parentCommitted,
+      paid: childRows.reduce((sum, child) => sum + child.paid, 0),
+      outstanding: childRows.reduce((sum, child) => sum + child.outstanding, 0),
+      spent: parentCommitted,
+      remaining: toFloat(parent.allocated_amount) - parentCommitted,
       percentage:
         toFloat(parent.allocated_amount) > 0
-          ? Math.round((parentSpent / toFloat(parent.allocated_amount)) * 100)
+          ? Math.round((parentCommitted / toFloat(parent.allocated_amount)) * 100)
           : 0,
-      children: childrenWithSpent.length > 0 ? childrenWithSpent : undefined,
+      children: childRows.length > 0 ? childRows : undefined,
     };
   });
 }
@@ -301,51 +250,56 @@ export async function getCategoryTree(ownerId: string) {
 // Expenses
 // ---------------------------------------------------------------------------
 
-export async function listExpenses(ownerId: string, filters: ExpenseFilters) {
-  const data = await repo.findExpensesByOwner(ownerId, filters);
-  return data.map((e) => {
-    const total = toFloat(e.amount);
-    const paid = e.paid_amount != null ? toFloat(e.paid_amount) : total;
-    return { ...e, paidAmount: paid, remainingAmount: total - paid };
-  });
+export async function listExpenses(ownerId: string, filters: finance.ExpenseQueryFilters) {
+  return finance.listExpenses(ownerId, filters);
 }
 
 export async function getExpense(id: string, ownerId: string) {
-  return repo.findExpenseByIdAndOwner(id, ownerId);
+  return finance.getExpense(ownerId, id);
 }
 
-export async function createExpense(payload: Omit<ExpenseInsert, 'user_id'>, ownerId: string) {
-  return repo.insertExpense({ ...payload, user_id: ownerId });
+export async function createExpense(payload: Omit<ExpenseInsert, 'user_id'> & { items: finance.ExpenseWriteInput['items']; payments?: finance.PaymentMutationInput[] }, ownerId: string) {
+  return finance.createManualExpense(ownerId, { ...payload, items: payload.items });
 }
 
-export async function updateExpense(id: string, ownerId: string, payload: Partial<ExpenseInsert>) {
-  return repo.updateExpense(id, ownerId, payload);
+export async function updateExpense(
+  id: string,
+  ownerId: string,
+  payload: Partial<finance.ExpenseWriteInput>,
+) {
+  return finance.updateExpense(ownerId, id, payload);
 }
 
 export async function deleteExpense(id: string, ownerId: string) {
-  return repo.deleteExpense(id, ownerId);
+  return finance.deleteExpense(ownerId, id);
 }
 
 export async function getExpensesByCategory(ownerId: string) {
-  const data = await repo.findExpensesForCategoryGrouping(ownerId);
-  const grouped: Record<string, number> = {};
-  data.forEach((e) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const name = (e.expense_categories as any)?.name ?? 'Uncategorized';
-    grouped[name] = (grouped[name] ?? 0) + toFloat(e.amount);
-  });
-  return Object.entries(grouped).map(([name, total]) => ({ name, total }));
+  const [categories, rollups] = await Promise.all([
+    repo.findCategoriesByOwner(ownerId),
+    finance.getCategoryRollups(ownerId),
+  ]);
+  const categoryMap = new Map(categories.map((category) => [category.id, category.name]));
+  return rollups.map((rollup) => ({
+    id: rollup.category_id,
+    name: categoryMap.get(rollup.category_id) ?? 'Uncategorized',
+    committed: rollup.committed_amount,
+    paid: rollup.paid_amount,
+    outstanding: rollup.outstanding_amount,
+    total: rollup.committed_amount,
+  }));
 }
 
 export async function getExpensesByVendor(ownerId: string) {
-  const data = await repo.findExpensesForVendorGrouping(ownerId);
-  const grouped: Record<string, number> = {};
-  data.forEach((e) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const name = (e.vendors as any)?.name ?? 'No Vendor';
-    grouped[name] = (grouped[name] ?? 0) + toFloat(e.amount);
-  });
-  return Object.entries(grouped).map(([name, total]) => ({ name, total }));
+  const expenses = await finance.listExpenses(ownerId, { source_type: 'vendor' });
+  return expenses.map((expense) => ({
+    id: expense.id,
+    name: expense.description,
+    committed: expense.summary.committed_amount,
+    paid: expense.summary.paid_amount,
+    outstanding: expense.summary.outstanding_amount,
+    total: expense.summary.committed_amount,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -353,53 +307,53 @@ export async function getExpensesByVendor(ownerId: string) {
 // ---------------------------------------------------------------------------
 
 export async function getPayments(ownerId: string) {
-  return repo.findPaymentsByOwner(ownerId);
+  const expenses = await finance.listExpenses(ownerId);
+  const byExpense = new Map(expenses.map((expense) => [expense.id, expense]));
+  return expenses
+    .flatMap((expense) =>
+      expense.payments.map((payment) => ({
+        ...payment,
+        expense: {
+          id: expense.id,
+          description: expense.description,
+          source_type: expense.source_type,
+          source_id: expense.source_id,
+        },
+      })),
+    )
+    .sort((a, b) => {
+      const left = a.paid_date ?? a.due_date ?? a.created_at;
+      const right = b.paid_date ?? b.due_date ?? b.created_at;
+      return right.localeCompare(left);
+    })
+    .map((payment) => ({
+      ...payment,
+      expense_summary: byExpense.get(payment.expense.id)?.summary ?? null,
+    }));
 }
 
 // ---------------------------------------------------------------------------
-// Outstanding balances (vendor total_cost minus actual payments)
+// Outstanding balances
 // ---------------------------------------------------------------------------
 
 export async function getOutstanding(ownerId: string) {
-  const [vendors, venues, vendorPaid, venuePaid] = await Promise.all([
-    repo.findVendorsForOutstanding(ownerId),
-    repo.findVenuesForOutstanding(ownerId),
-    repo.findVendorPaymentSumsForOutstanding(ownerId),
-    repo.findVenuePaymentSumsForOutstanding(ownerId),
-  ]);
+  const expenses = await finance.listExpenses(ownerId);
+  const items = expenses
+    .filter((expense) => expense.summary.outstanding_amount > 0)
+    .map((expense) => ({
+      id: expense.id,
+      name: expense.description,
+      type: expense.source_type,
+      totalCost: expense.summary.committed_amount,
+      paid: expense.summary.paid_amount,
+      outstanding: expense.summary.outstanding_amount,
+      expense_id: expense.id,
+    }));
 
-  const vendorOutstanding = vendors.map((v) => {
-    const paid = vendorPaid[v.id] ?? 0;
-    const outstanding = toFloat(v.total_cost) - paid;
-    return {
-      id: v.id,
-      name: v.name,
-      type: 'vendor' as const,
-      side: v.side,
-      totalCost: toFloat(v.total_cost),
-      paid,
-      outstanding,
-    };
-  });
-
-  const venueOutstanding = venues.map((v) => {
-    const paid = venuePaid[v.id] ?? 0;
-    const outstanding = toFloat(v.total_cost) - paid;
-    return {
-      id: v.id,
-      name: v.name,
-      type: 'venue' as const,
-      side: null,
-      totalCost: toFloat(v.total_cost),
-      paid,
-      outstanding,
-    };
-  });
-
-  const all = [...vendorOutstanding, ...venueOutstanding];
-  const totalOutstanding = all.reduce((s, x) => s + Math.max(0, x.outstanding), 0);
-
-  return { items: all, totalOutstanding };
+  return {
+    items,
+    totalOutstanding: items.reduce((sum, item) => sum + item.outstanding, 0),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -407,56 +361,56 @@ export async function getOutstanding(ownerId: string) {
 // ---------------------------------------------------------------------------
 
 export async function getAlerts(ownerId: string) {
-  const [overdue, upcoming, categories, expenses] = await Promise.all([
-    repo.findOverduePlannedPayments(ownerId),
-    repo.findUpcomingPlannedPayments(ownerId, 7),
+  const [scheduled, categories, rollups] = await Promise.all([
+    finance.getScheduledPayments(ownerId),
     repo.findCategoriesByOwner(ownerId),
-    repo.findExpensesForCategoryGrouping(ownerId),
+    finance.getCategoryRollups(ownerId),
   ]);
 
-  const spending: Record<string, number> = {};
-  expenses.forEach((e) => {
-    if (e.category_id) spending[e.category_id] = (spending[e.category_id] ?? 0) + toFloat(e.amount);
-  });
+  const today = new Date().toISOString().slice(0, 10);
+  const nextWeek = new Date();
+  nextWeek.setDate(nextWeek.getDate() + 7);
+  const nextWeekStr = nextWeek.toISOString().slice(0, 10);
+  const spending = new Map(rollups.map((rollup) => [rollup.category_id, rollup]));
 
   const overBudgetCategories = categories
-    .filter(
-      (cat) =>
-        toFloat(cat.allocated_amount) > 0 &&
-        (spending[cat.id] ?? 0) > toFloat(cat.allocated_amount),
-    )
-    .map((cat) => ({
-      id: cat.id,
-      name: cat.name,
-      allocated: toFloat(cat.allocated_amount),
-      spent: spending[cat.id] ?? 0,
-      overBy: (spending[cat.id] ?? 0) - toFloat(cat.allocated_amount),
+    .map((category) => ({
+      id: category.id,
+      name: category.name,
+      allocated: toFloat(category.allocated_amount),
+      spent: spending.get(category.id)?.committed_amount ?? 0,
+    }))
+    .filter((category) => category.allocated > 0 && category.spent > category.allocated)
+    .map((category) => ({
+      ...category,
+      overBy: category.spent - category.allocated,
     }));
 
   const nearBudgetCategories = categories
-    .filter((cat) => {
-      const alloc = toFloat(cat.allocated_amount);
-      const spent = spending[cat.id] ?? 0;
-      return alloc > 0 && spent <= alloc && spent / alloc >= 0.8;
-    })
-    .map((cat) => ({
-      id: cat.id,
-      name: cat.name,
-      allocated: toFloat(cat.allocated_amount),
-      spent: spending[cat.id] ?? 0,
-      percentage: Math.round(((spending[cat.id] ?? 0) / toFloat(cat.allocated_amount)) * 100),
+    .map((category) => ({
+      id: category.id,
+      name: category.name,
+      allocated: toFloat(category.allocated_amount),
+      spent: spending.get(category.id)?.committed_amount ?? 0,
+    }))
+    .filter((category) => category.allocated > 0 && category.spent <= category.allocated && category.spent / category.allocated >= 0.8)
+    .map((category) => ({
+      ...category,
+      percentage: Math.round((category.spent / category.allocated) * 100),
     }));
 
-  const overdueTotal = overdue.reduce((s, p) => s + toFloat(p.amount), 0);
-  const upcomingTotal = upcoming.reduce((s, p) => s + toFloat(p.amount), 0);
+  const overdue = scheduled.filter((payment) => payment.due_date != null && payment.due_date < today);
+  const upcoming = scheduled.filter(
+    (payment) => payment.due_date != null && payment.due_date >= today && payment.due_date <= nextWeekStr,
+  );
 
   return {
     overduePayments: overdue,
     overdueCount: overdue.length,
-    overdueTotal,
+    overdueTotal: overdue.reduce((sum, payment) => sum + payment.amount, 0),
     upcomingPayments: upcoming,
     upcomingCount: upcoming.length,
-    upcomingTotal,
+    upcomingTotal: upcoming.reduce((sum, payment) => sum + payment.amount, 0),
     overBudgetCategories,
     nearBudgetCategories,
   };
@@ -465,34 +419,34 @@ export async function getAlerts(ownerId: string) {
 export async function getExpensesByCategoryTree(ownerId: string) {
   const [allCategories, expenses] = await Promise.all([
     repo.findCategoriesByOwner(ownerId),
-    repo.findExpensesWithCategoryTree(ownerId),
+    finance.listExpenses(ownerId),
   ]);
 
-  const byCategory: Record<string, typeof expenses> = {};
-  expenses.forEach((e) => {
-    if (e.category_id) {
-      if (!byCategory[e.category_id]) byCategory[e.category_id] = [];
-      byCategory[e.category_id]!.push(e);
-    }
-  });
+  const items = flattenExpenseItems(expenses);
+  const byCategory = new Map<string, typeof items>();
+  for (const item of items) {
+    const existing = byCategory.get(item.category_id) ?? [];
+    existing.push(item);
+    byCategory.set(item.category_id, existing);
+  }
 
-  const parents = allCategories.filter((c) => !c.parent_category_id);
-  const children = allCategories.filter((c) => c.parent_category_id);
+  const parents = allCategories.filter((category) => !category.parent_category_id);
+  const children = allCategories.filter((category) => category.parent_category_id);
 
   return parents.map((parent) => {
-    const parentChildren = children.filter((c) => c.parent_category_id === parent.id);
+    const parentChildren = children.filter((child) => child.parent_category_id === parent.id);
     const childrenWithExpenses = parentChildren.map((child) => {
-      const childExpenses = byCategory[child.id] ?? [];
+      const childExpenses = byCategory.get(child.id) ?? [];
       return {
         ...child,
         expenses: childExpenses,
-        totalSpent: childExpenses.reduce((s, e) => s + toFloat(e.amount), 0),
+        totalSpent: childExpenses.reduce((sum, item) => sum + toFloat(item.amount), 0),
       };
     });
 
-    const parentExpenses = byCategory[parent.id] ?? [];
-    const parentDirectSpent = parentExpenses.reduce((s, e) => s + toFloat(e.amount), 0);
-    const childrenTotalSpent = childrenWithExpenses.reduce((s, c) => s + c.totalSpent, 0);
+    const parentExpenses = byCategory.get(parent.id) ?? [];
+    const parentDirectSpent = parentExpenses.reduce((sum, item) => sum + toFloat(item.amount), 0);
+    const childrenTotalSpent = childrenWithExpenses.reduce((sum, child) => sum + child.totalSpent, 0);
 
     return {
       ...parent,
@@ -502,4 +456,28 @@ export async function getExpensesByCategoryTree(ownerId: string) {
       children: childrenWithExpenses.length > 0 ? childrenWithExpenses : undefined,
     };
   });
+}
+
+export async function getExpensePayments(expenseId: string, ownerId: string): Promise<PaymentRow[]> {
+  return finance.listExpensePayments(ownerId, expenseId);
+}
+
+export async function createExpensePayment(
+  expenseId: string,
+  ownerId: string,
+  payload: finance.PaymentMutationInput,
+) {
+  return finance.createExpensePayment(ownerId, expenseId, payload);
+}
+
+export async function updateExpensePayment(
+  paymentId: string,
+  ownerId: string,
+  payload: finance.PaymentMutationInput,
+) {
+  return finance.updateExpensePayment(ownerId, paymentId, payload);
+}
+
+export async function deleteExpensePayment(paymentId: string, ownerId: string) {
+  return finance.deleteExpensePayment(ownerId, paymentId);
 }

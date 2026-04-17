@@ -1,5 +1,6 @@
 import type { HeroContent } from '@wedding-planner/shared';
 import * as repo from '../repositories/dashboard.repository';
+import { getFinanceDashboardTotals, getScheduledPayments } from './finance.service';
 
 export async function getCountdown(ownerId: string) {
   const heroRow = await repo.findHeroContent(ownerId);
@@ -41,16 +42,15 @@ export async function getCountdown(ownerId: string) {
 }
 
 export async function getStats(ownerId: string) {
-  const [guests, rsvps, tasks, expense, expenses] = await Promise.all([
+  const [guests, rsvps, tasks, expense, finance] = await Promise.all([
     repo.findGuestSides(ownerId),
     repo.findRsvpStatuses(ownerId),
     repo.findTaskStatuses(ownerId),
     repo.findExpenseSummary(ownerId),
-    repo.findExpenseAmounts(ownerId),
+    getFinanceDashboardTotals(ownerId),
   ]);
 
   const totalExpense = parseFloat(String(expense?.total_expense ?? 0));
-  const totalSpent = expenses.reduce((s, e) => s + parseFloat(String(e.amount)), 0);
 
   return {
     guests: {
@@ -66,16 +66,22 @@ export async function getStats(ownerId: string) {
       pending: tasks.filter((t) => t.status === 'pending').length,
       completed: tasks.filter((t) => t.status === 'completed').length,
     },
-    expense: { total: totalExpense, spent: totalSpent, remaining: totalExpense - totalSpent },
+    expense: {
+      total: totalExpense,
+      committed: finance.committed,
+      paid: finance.paid,
+      outstanding: finance.outstanding,
+      remaining: totalExpense - finance.committed,
+    },
   };
 }
 
 export async function getSummary(ownerId: string) {
-  const [events, upcomingTasks, pendingPayments] = await Promise.all([
+  const [events, upcomingTasks, scheduledPayments] = await Promise.all([
     repo.findUpcomingEvents(ownerId),
     repo.findUpcomingTasks(ownerId),
-    repo.findPendingPayments(ownerId),
+    getScheduledPayments(ownerId),
   ]);
 
-  return { events, upcomingTasks, pendingPayments };
+  return { events, upcomingTasks, pendingPayments: scheduledPayments };
 }

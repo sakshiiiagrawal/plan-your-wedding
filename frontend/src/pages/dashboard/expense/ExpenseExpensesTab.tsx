@@ -1,79 +1,95 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import { HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
 
+export interface ExpenseListRow {
+  id: string;
+  description: string;
+  source_type: 'manual' | 'vendor' | 'venue';
+  category_summary: string;
+  committed: number;
+  paid: number;
+  outstanding: number;
+  expense_date: string;
+  side_key: 'bride' | 'groom' | 'shared' | 'mixed';
+  side_label: string;
+  item_count: number;
+  status: 'active' | 'closed' | 'terminated';
+  editable: boolean;
+}
+
 interface ExpenseExpensesTabProps {
-  allExpenses: any[];
+  rows: ExpenseListRow[];
   loading: boolean;
   formatCurrency: (amount: number) => string;
-  onEdit: (row: any) => void;
-  onDelete: (id: string, type: 'expense' | 'vendor') => void;
+  onEdit: (row: ExpenseListRow) => void;
+  onDelete: (id: string) => void;
 }
 
 export default function ExpenseExpensesTab({
-  allExpenses,
+  rows,
   loading,
   formatCurrency,
   onEdit,
   onDelete,
 }: ExpenseExpensesTabProps) {
-  const [filterType, setFilterType] = useState<'all' | 'expense' | 'vendor'>('all');
-  const [filterSide, setFilterSide] = useState<'all' | 'bride' | 'groom' | 'shared'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'manual' | 'vendor' | 'venue'>('all');
+  const [filterSide, setFilterSide] = useState<'all' | 'bride' | 'groom' | 'shared' | 'mixed'>(
+    'all',
+  );
 
   if (loading) {
     return <div className="card p-8 text-center text-gray-500">Loading expenses...</div>;
   }
 
-  const filtered = allExpenses.filter((row) => {
-    if (filterType !== 'all' && row.type !== filterType) return false;
-    if (filterSide === 'shared' && !row.is_shared) return false;
-    if (filterSide === 'bride' && (row.is_shared || row.side !== 'bride')) return false;
-    if (filterSide === 'groom' && (row.is_shared || row.side !== 'groom')) return false;
+  const filtered = rows.filter((row) => {
+    if (filterType !== 'all' && row.source_type !== filterType) return false;
+    if (filterSide !== 'all' && row.side_key !== filterSide) return false;
     return true;
   });
 
-  // Footer total only sums expense rows to avoid double-counting with vendor cost card
-  const expenseTotal = filtered
-    .filter((r) => r.type === 'expense')
-    .reduce((s, r) => s + r.amount, 0);
+  const committedTotal = filtered.reduce((sum, row) => sum + row.committed, 0);
 
-  if (!filtered.length && allExpenses.length === 0) {
+  if (!filtered.length && rows.length === 0) {
     return <div className="card p-8 text-center text-gray-500">No expenses recorded yet.</div>;
   }
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
         <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-          {(['all', 'expense', 'vendor'] as const).map((t) => (
+          {(['all', 'manual', 'vendor', 'venue'] as const).map((type) => (
             <button
-              key={t}
-              onClick={() => setFilterType(t)}
+              key={type}
+              onClick={() => setFilterType(type)}
               className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                filterType === t ? 'bg-white shadow text-maroon-800 font-medium' : 'text-gray-500 hover:text-gray-700'
+                filterType === type
+                  ? 'bg-white shadow text-maroon-800 font-medium'
+                  : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {t === 'all' ? 'All Types' : t === 'expense' ? 'Expenses' : 'Vendor Costs'}
+              {type === 'all'
+                ? 'All'
+                : `${type.charAt(0).toUpperCase()}${type.slice(1)}s`}
             </button>
           ))}
         </div>
         <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-          {(['all', 'bride', 'groom', 'shared'] as const).map((s) => (
+          {(['all', 'bride', 'groom', 'shared', 'mixed'] as const).map((side) => (
             <button
-              key={s}
-              onClick={() => setFilterSide(s)}
+              key={side}
+              onClick={() => setFilterSide(side)}
               className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                filterSide === s ? 'bg-white shadow text-maroon-800 font-medium' : 'text-gray-500 hover:text-gray-700'
+                filterSide === side
+                  ? 'bg-white shadow text-maroon-800 font-medium'
+                  : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {s === 'all' ? 'All Sides' : s.charAt(0).toUpperCase() + s.slice(1)}
+              {side === 'all'
+                ? 'All Sides'
+                : `${side.charAt(0).toUpperCase()}${side.slice(1)}`}
             </button>
           ))}
         </div>
-        {filtered.length !== allExpenses.length && (
-          <span className="text-sm text-gray-400">{filtered.length} of {allExpenses.length} shown</span>
-        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -84,12 +100,13 @@ export default function ExpenseExpensesTab({
             <table className="w-full">
               <thead className="table-header">
                 <tr>
-                  <th className="text-left p-4 min-w-[120px]">Description</th>
-                  <th className="text-left p-4 hidden sm:table-cell">Category</th>
-                  <th className="text-left p-4">Type</th>
-                  <th className="text-right p-4">Amount</th>
+                  <th className="text-left p-4 min-w-[140px]">Description</th>
+                  <th className="text-left p-4 hidden sm:table-cell">Categories</th>
+                  <th className="text-left p-4">Source</th>
+                  <th className="text-right p-4">Committed</th>
+                  <th className="text-right p-4 hidden md:table-cell">Paid</th>
+                  <th className="text-right p-4 hidden md:table-cell">Outstanding</th>
                   <th className="text-left p-4 hidden md:table-cell">Date</th>
-                  <th className="text-left p-4 hidden md:table-cell">Paid By</th>
                   <th className="text-left p-4">Side</th>
                   <th className="p-4 w-20" />
                 </tr>
@@ -97,52 +114,50 @@ export default function ExpenseExpensesTab({
               <tbody>
                 {filtered.map((row) => (
                   <tr key={row.id} className="table-row group">
-                    <td className="p-4 font-medium min-w-[120px]">{row.description}</td>
-                    <td className="p-4 text-gray-600 hidden sm:table-cell">{row.category}</td>
+                    <td className="p-4 font-medium min-w-[140px]">
+                      <div>{row.description}</div>
+                      <div className="text-xs text-gray-400">{row.item_count} line items</div>
+                    </td>
+                    <td className="p-4 text-gray-600 hidden sm:table-cell">{row.category_summary}</td>
                     <td className="p-4">
-                      <span
-                        className={`badge text-xs ${row.type === 'vendor' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}
-                      >
-                        {row.type === 'vendor' ? 'Vendor' : 'Expense'}
+                      <span className="badge text-xs bg-gray-100 text-gray-700 capitalize">
+                        {row.source_type}
                       </span>
                     </td>
                     <td className="p-4 text-right font-medium text-maroon-800">
-                      {formatCurrency(row.amount)}
+                      {formatCurrency(row.committed)}
+                    </td>
+                    <td className="p-4 text-right text-green-700 hidden md:table-cell">
+                      {formatCurrency(row.paid)}
+                    </td>
+                    <td className="p-4 text-right text-orange-700 hidden md:table-cell">
+                      {formatCurrency(row.outstanding)}
                     </td>
                     <td className="p-4 text-gray-600 hidden md:table-cell">
-                      {row.date ? new Date(row.date).toLocaleDateString('en-IN') : '—'}
-                    </td>
-                    <td className="p-4 text-gray-600 hidden md:table-cell">{row.paid_by || '—'}</td>
-                    <td className="p-4">
-                      {row.is_shared ? (
-                        <span className="badge" style={{ backgroundColor: '#D4AF37', color: 'white' }}>
-                          Shared {row.share_percentage ? `(${row.share_percentage}%)` : ''}
-                        </span>
-                      ) : (
-                        <span className={row.side === 'bride' ? 'badge-bride' : 'badge-groom'}>
-                          {row.side === 'bride' ? 'Bride' : 'Groom'}
-                        </span>
-                      )}
+                      {new Date(row.expense_date).toLocaleDateString('en-IN')}
                     </td>
                     <td className="p-4">
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => onEdit(row)}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-maroon-700 hover:bg-maroon-50 transition-colors"
-                          title={`Edit ${row.type}`}
-                        >
-                          <HiOutlinePencil className="w-4 h-4" />
-                        </button>
-                        {row.type === 'expense' && (
+                      <span className="badge bg-gray-100 text-gray-700">{row.side_label}</span>
+                    </td>
+                    <td className="p-4">
+                      {row.editable && (
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
-                            onClick={() => onDelete(row.id, row.type)}
+                            onClick={() => onEdit(row)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-maroon-700 hover:bg-maroon-50 transition-colors"
+                            title="Edit expense"
+                          >
+                            <HiOutlinePencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => onDelete(row.id)}
                             className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                             title="Delete expense"
                           >
                             <HiOutlineTrash className="w-4 h-4" />
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -150,15 +165,10 @@ export default function ExpenseExpensesTab({
               <tfoot className="bg-gray-100 font-bold">
                 <tr>
                   <td colSpan={3} className="p-4">
-                    Expense Total
-                    {filterType === 'all' && (
-                      <span className="text-xs font-normal text-gray-400 ml-1">(expenses only)</span>
-                    )}
+                    Total Committed
                   </td>
-                  <td className="p-4 text-right text-maroon-800">
-                    {formatCurrency(expenseTotal)}
-                  </td>
-                  <td colSpan={4}></td>
+                  <td className="p-4 text-right text-maroon-800">{formatCurrency(committedTotal)}</td>
+                  <td colSpan={5}></td>
                 </tr>
               </tfoot>
             </table>

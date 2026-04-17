@@ -22,6 +22,8 @@ import {
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import Portal from '../../components/Portal';
+import VendorPaymentsModal from './VendorPaymentsModal';
+import type { VenueWithFinance } from '@wedding-planner/shared';
 
 const PRESET_ROOM_TYPES: { label: string; capacity: number; prefix: string }[] = [
   { label: 'Standard Room', capacity: 2, prefix: 'STD' },
@@ -63,6 +65,9 @@ interface VenueFormData {
   city: string;
   capacity: number | string;
   total_cost: number | string;
+  expense_date: string;
+  side: 'bride' | 'groom' | 'shared';
+  bride_share_percentage: number;
   has_accommodation: boolean;
   contact_person: string;
   contact_phone: string;
@@ -78,6 +83,9 @@ const DEFAULT_FORM: VenueFormData = {
   city: '',
   capacity: 0,
   total_cost: 0,
+  expense_date: new Date().toISOString().slice(0, 10),
+  side: 'shared',
+  bride_share_percentage: 50,
   has_accommodation: false,
   contact_person: '',
   contact_phone: '',
@@ -176,9 +184,10 @@ function VenueRoomsSection({ venueId }: { venueId: string }) {
 export default function Venues() {
   const [showVenueModal, setShowVenueModal] = useState(false);
   const [formData, setFormData] = useState<VenueFormData>(DEFAULT_FORM);
-  const [editingVenue, setEditingVenue] = useState<any>(null);
+  const [editingVenue, setEditingVenue] = useState<VenueWithFinance | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [roomCategories, setRoomCategories] = useState<RoomCategoryEntry[]>([]);
+  const [paymentSource, setPaymentSource] = useState<VenueWithFinance | null>(null);
 
   const { data: venues = [], isLoading, error } = useVenues();
   const createMutation = useCreateVenue();
@@ -192,7 +201,8 @@ export default function Venues() {
     setRoomCategories([]);
   };
 
-  const handleEdit = (venue: any) => {
+  const handleEdit = (venue: VenueWithFinance) => {
+    const firstItem = venue.finance?.items?.[0];
     setEditingVenue(venue);
     setFormData({
       name: venue.name || '',
@@ -200,7 +210,10 @@ export default function Venues() {
       address: venue.address || '',
       city: venue.city || '',
       capacity: venue.capacity || 0,
-      total_cost: venue.total_cost || 0,
+      total_cost: venue.finance_summary?.committed_amount || 0,
+      expense_date: venue.finance?.expense_date || new Date().toISOString().slice(0, 10),
+      side: firstItem?.side || 'shared',
+      bride_share_percentage: firstItem?.bride_share_percentage || 50,
       has_accommodation: venue.has_accommodation ?? false,
       contact_person: venue.contact_person || '',
       contact_phone: venue.contact_phone || '',
@@ -322,12 +335,17 @@ export default function Venues() {
       ) : (
         <div className="grid md:grid-cols-2 gap-6">
           {venues.map((venue) => {
-            const v = venue as any;
+            const v = venue as VenueWithFinance & { events?: Array<{ id: string; name: string }> };
             const venueTypeLabel = v.venue_type?.replace(/_/g, ' ') ?? '';
             const fullAddress = [v.address, v.city].filter(Boolean).join(', ');
             const hasContact = v.contact_person || v.contact_phone;
             const hasRooms = v.has_accommodation;
             const hasEvents = v.events && v.events.length > 0;
+            const committed = v.finance_summary?.committed_amount ?? 0;
+            const paid = v.finance_summary?.paid_amount ?? 0;
+            const outstanding = v.finance_summary?.outstanding_amount ?? 0;
+            const plannedPayments =
+              v.finance?.payments?.filter((payment) => payment.status === 'scheduled') ?? [];
 
             return (
               <div key={venue.id} className="card-hover flex flex-col">
@@ -393,13 +411,66 @@ export default function Venues() {
                     <div className="flex items-center gap-2 text-sm text-gray-700">
                       <HiOutlineCurrencyRupee className="w-4 h-4 shrink-0 text-gold-600" />
                       <div>
-                        <p className="text-xs text-gray-400 leading-none">Total Cost</p>
-                        {v.total_cost && Number(v.total_cost) > 0
-                          ? <p className="font-medium">{formatCurrency(v.total_cost)}</p>
+                        <p className="text-xs text-gray-400 leading-none">Committed</p>
+                        {committed > 0
+                          ? <p className="font-medium">{formatCurrency(committed)}</p>
                           : <p className="text-gray-400 italic text-xs">Not specified</p>}
                       </div>
                     </div>
                   </div>
+
+                  {(committed > 0 || paid > 0 || plannedPayments.length > 0) && (
+                    <div className="py-3 space-y-3">
+                      <div className="grid grid-cols-3 gap-3 text-sm">
+                        <div>
+                          <p className="text-xs text-gray-400 leading-none">Paid</p>
+                          <p className="font-medium text-green-700">{formatCurrency(paid)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400 leading-none">Outstanding</p>
+                          <p className="font-medium text-orange-700">{formatCurrency(outstanding)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400 leading-none">Side</p>
+                          <p className="font-medium capitalize">
+                            {v.finance?.items?.[0]?.side ?? 'shared'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {plannedPayments.length > 0 && (
+                        <div className="space-y-1">
+                          {plannedPayments.slice(0, 2).map((payment) => (
+                            <div
+                              key={payment.id}
+                              className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs"
+                            >
+                              <span className="font-medium text-amber-800">
+                                {formatCurrency(payment.amount)}
+                              </span>
+                              <span className="text-amber-700">
+                                {new Date(payment.due_date ?? payment.created_at).toLocaleDateString('en-IN')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {v.expense_id ? (
+                        <button
+                          onClick={() => setPaymentSource(v)}
+                          className="flex items-center gap-1 text-xs text-maroon-700 hover:text-maroon-900 font-medium"
+                        >
+                          <HiOutlineCurrencyRupee className="w-3.5 h-3.5" />
+                          Manage payments
+                        </button>
+                      ) : (
+                        <p className="text-xs text-gray-400">
+                          Add a committed amount to unlock payment tracking.
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Contact */}
                   {hasContact && (
@@ -453,7 +524,7 @@ export default function Venues() {
                         Events at this venue
                       </p>
                       <div className="flex flex-wrap gap-1.5">
-                        {v.events.map((event: any) => (
+                        {(v.events ?? []).map((event: any) => (
                           <span key={event.id} className="badge bg-gold-100 text-gold-700">
                             {event.name}
                           </span>
@@ -592,7 +663,7 @@ export default function Venues() {
 
                     {roomCategories.length === 0 && existingRooms.length === 0 && (
                       <p className="text-xs text-gray-400 text-center py-2">
-                        No categories yet. Click "+ Add Category" to bulk-add rooms.
+                        No categories yet. Click &quot;+ Add Category&quot; to bulk-add rooms.
                       </p>
                     )}
 
@@ -792,7 +863,7 @@ export default function Venues() {
                     />
                   </div>
                   <div>
-                    <label className="label">Total Cost</label>
+                    <label className="label">Committed Amount</label>
                     <input
                       type="number"
                       value={formData.total_cost}
@@ -802,6 +873,61 @@ export default function Venues() {
                     />
                   </div>
                 </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Obligation Date</label>
+                    <input
+                      type="date"
+                      value={formData.expense_date}
+                      onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })}
+                      className="input"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Liability Side</label>
+                    <div className="flex gap-2">
+                      {(['bride', 'groom', 'shared'] as const).map((side) => (
+                        <button
+                          key={side}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, side })}
+                          className={`flex-1 py-2 rounded-lg border-2 transition-colors ${
+                            formData.side === side
+                              ? side === 'bride'
+                                ? 'border-pink-500 bg-pink-50 text-pink-700'
+                                : side === 'groom'
+                                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                  : 'border-gold-500 bg-gold-50 text-gold-700'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          {side === 'shared'
+                            ? 'Shared'
+                            : `${side.charAt(0).toUpperCase()}${side.slice(1)}`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {formData.side === 'shared' && (
+                  <div>
+                    <label className="label">
+                      Bride Share Percentage ({formData.bride_share_percentage}%)
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={formData.bride_share_percentage}
+                      onChange={(e) =>
+                        setFormData({ ...formData, bride_share_percentage: Number(e.target.value) })
+                      }
+                      className="w-full"
+                    />
+                  </div>
+                )}
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
@@ -890,6 +1016,20 @@ export default function Venues() {
             </div>
           </div>
         </Portal>
+      )}
+
+      {paymentSource && (
+        <VendorPaymentsModal
+          source={{
+            id: paymentSource.id,
+            name: paymentSource.name,
+            type: 'venue',
+            expense_id: paymentSource.expense_id,
+            finance_summary: paymentSource.finance_summary,
+            finance: paymentSource.finance,
+          }}
+          onClose={() => setPaymentSource(null)}
+        />
       )}
     </div>
   );

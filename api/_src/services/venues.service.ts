@@ -1,8 +1,25 @@
-import { NotFoundError, BadRequestError } from '../shared/errors/HttpError';
-import type { VenueInsert, VenueRow, RoomInsert, RoomAllocationInsert } from '@wedding-planner/shared';
+import { NotFoundError, BadRequestError, ConflictError } from '../shared/errors/HttpError';
+import type {
+  VenueInsert,
+  VenueRow,
+  RoomInsert,
+  RoomAllocationInsert,
+  VenueWithFinance,
+} from '@wedding-planner/shared';
 import type { RoomInput } from '../validators/venues.validator';
 import * as repo from '../repositories/venues.repository';
 import type { VenueWithEventSummary } from '../repositories/venues.repository';
+import {
+  buildVenueSourceItems,
+  createExpensePayment,
+  deleteExpensePayment,
+  getExpenseDetailsTx,
+  getSourceExpense,
+  listExpenses,
+  type PaymentMutationInput,
+  upsertSourceExpenseTx,
+} from './finance.service';
+import { withPgTransaction } from '../config/postgres';
 import {
   generateRoomAllocationTemplate,
   generateAllVenuesAllocationTemplate,
@@ -18,54 +35,393 @@ import {
 // Venues CRUD
 // ---------------------------------------------------------------------------
 
-export async function listVenues(ownerId: string): Promise<VenueWithEventSummary[]> {
-  return repo.findAllByOwner(ownerId);
+function normalizeDate(value: string | null | undefined): string {
+  return value && value.trim() !== '' ? value : new Date().toISOString().slice(0, 10);
 }
 
-export async function getVenue(id: string, ownerId: string): Promise<VenueWithEventSummary> {
+async function extractVenueFinanceInput(
+  ownerId: string,
+  payload: {
+    name: string;
+    venue_type?: string | null | undefined;
+    total_cost?: number | null | undefined;
+    expense_date?: string | null | undefined;
+    side?: 'bride' | 'groom' | 'shared' | 'mutual' | null | undefined;
+    bride_share_percentage?: number | null | undefined;
+    notes?: string | null | undefined;
+    finance?: {
+      expense_date: string;
+      notes?: string | null;
+      items: Awaited<ReturnType<typeof buildVenueSourceItems>>;
+      payments?: PaymentMutationInput[];
+    } | null;
+  },
+) {
+  if (payload.finance) {
+    return {
+      description: payload.name,
+      expense_date: payload.finance.expense_date,
+      notes: payload.finance.notes ?? payload.notes ?? null,
+      items: payload.finance.items,
+      payments: payload.finance.payments ?? [],
+    };
+  }
+
+  const items = await buildVenueSourceItems(
+    ownerId,
+    payload.venue_type ?? null,
+    payload.name,
+    payload.total_cost ?? null,
+    payload.side ?? 'shared',
+    payload.bride_share_percentage ?? null,
+  );
+
+  return {
+    description: payload.name,
+    expense_date: normalizeDate(payload.expense_date),
+    notes: payload.notes ?? null,
+    items,
+    payments: [] as PaymentMutationInput[],
+  };
+}
+
+function mergeVenueWithFinance(
+  venue: VenueWithEventSummary,
+  finance: Awaited<ReturnType<typeof getSourceExpense>>,
+) {
+  return {
+    ...venue,
+    expense_id: finance?.id ?? null,
+    finance_summary: finance?.summary ?? null,
+    finance: finance ?? null,
+  } as VenueWithFinance & VenueWithEventSummary;
+}
+
+export async function listVenues(ownerId: string): Promise<Array<VenueWithEventSummary & { expense_id: string | null }>> {
+  const [venues, financeRows] = await Promise.all([
+    repo.findAllByOwner(ownerId),
+    listExpenses(ownerId, { source_type: 'venue' }),
+  ]);
+  const financeBySource = new Map(
+    financeRows
+      .filter((expense) => expense.source_id)
+      .map((expense) => [expense.source_id!, expense]),
+  );
+  return venues.map((venue) => mergeVenueWithFinance(venue, financeBySource.get(venue.id) ?? null));
+}
+
+export async function getVenue(id: string, ownerId: string): Promise<VenueWithEventSummary & { expense_id: string | null }> {
   const venue = await repo.findByIdAndOwner(id, ownerId);
   if (!venue) throw new NotFoundError('Venue not found');
-  return venue;
+  const finance = await getSourceExpense(ownerId, 'venue', id);
+  return mergeVenueWithFinance(venue, finance);
 }
 
 export async function createVenue(
-  payload: Omit<VenueInsert, 'user_id'> & { rooms?: RoomInput[] },
+  payload: Omit<VenueInsert, 'user_id'> & {
+    rooms?: RoomInput[];
+    total_cost?: number | null;
+    expense_date?: string | null;
+    side?: 'bride' | 'groom' | 'shared' | 'mutual' | null;
+    bride_share_percentage?: number | null;
+    finance?: {
+      expense_date: string;
+      notes?: string | null;
+      items: Awaited<ReturnType<typeof buildVenueSourceItems>>;
+      payments?: PaymentMutationInput[];
+    } | null;
+  },
   ownerId: string,
 ): Promise<VenueRow> {
-  const { rooms, ...venuePayload } = payload;
-  const venue = await repo.insertVenue({ ...venuePayload, user_id: ownerId });
+  return withPgTransaction(async (client) => {
+    const { rooms = [], total_cost, expense_date, side, bride_share_percentage, finance, ...venuePayload } = payload as typeof payload;
+    const { rows } = await client.query<Record<string, unknown>>(
+      `
+        INSERT INTO venues (
+          user_id,
+          name,
+          venue_type,
+          address,
+          city,
+          google_maps_link,
+          contact_person,
+          contact_phone,
+          capacity,
+          has_accommodation,
+          default_check_in_date,
+          default_check_out_date,
+          notes
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING *
+      `,
+      [
+        ownerId,
+        venuePayload.name,
+        venuePayload.venue_type ?? null,
+        venuePayload.address ?? null,
+        venuePayload.city ?? null,
+        venuePayload.google_maps_link ?? null,
+        venuePayload.contact_person ?? null,
+        venuePayload.contact_phone ?? null,
+        venuePayload.capacity ?? null,
+        venuePayload.has_accommodation ?? false,
+        venuePayload.default_check_in_date ?? null,
+        venuePayload.default_check_out_date ?? null,
+        venuePayload.notes ?? null,
+      ],
+    );
+    const venue = rows[0] as VenueRow | undefined;
+    if (!venue) throw new NotFoundError('Venue could not be created');
 
-  if (rooms && rooms.length > 0) {
-    try {
-      await repo.insertRoomsBulk(rooms.map((r) => ({ ...r, venue_id: venue.id })) as RoomInsert[]);
-    } catch (err) {
-      await repo.deleteVenue(venue.id, ownerId);
-      throw err;
+    for (const room of rooms) {
+      await client.query(
+        `
+          INSERT INTO rooms (
+            venue_id,
+            room_number,
+            room_type,
+            capacity,
+            rate_per_night,
+            notes
+          )
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `,
+        [
+          venue.id,
+          room.room_number,
+          room.room_type,
+          room.capacity ?? null,
+          room.rate_per_night ?? null,
+          room.notes ?? null,
+        ],
+      );
     }
-  }
 
-  return venue;
+    const financeInput = await extractVenueFinanceInput(ownerId, {
+      name: venue.name,
+      venue_type: venue.venue_type,
+      total_cost,
+      expense_date,
+      side,
+      bride_share_percentage,
+      notes: venue.notes,
+      finance: finance ?? null,
+    });
+    await upsertSourceExpenseTx(client, ownerId, 'venue', venue.id, financeInput);
+    return venue;
+  });
 }
 
 export async function updateVenue(
   id: string,
   ownerId: string,
-  payload: Partial<VenueInsert> & { rooms?: RoomInput[] },
+  payload: Partial<VenueInsert> & {
+    rooms?: RoomInput[];
+    total_cost?: number | null;
+    expense_date?: string | null;
+    side?: 'bride' | 'groom' | 'shared' | 'mutual' | null;
+    bride_share_percentage?: number | null;
+    finance?: {
+      expense_date: string;
+      notes?: string | null;
+      items: Awaited<ReturnType<typeof buildVenueSourceItems>>;
+      payments?: PaymentMutationInput[];
+    } | null;
+  },
 ): Promise<VenueRow> {
-  await getVenue(id, ownerId);
-  const { rooms, ...venuePayload } = payload;
-  const venue = await repo.updateVenue(id, ownerId, venuePayload);
+  return withPgTransaction(async (client) => {
+    const { rows: existingRows } = await client.query<Record<string, unknown>>(
+      `SELECT * FROM venues WHERE id = $1 AND user_id = $2 FOR UPDATE`,
+      [id, ownerId],
+    );
+    const existing = existingRows[0] as VenueRow | undefined;
+    if (!existing) throw new NotFoundError('Venue not found');
 
-  if (rooms && rooms.length > 0) {
-    await repo.insertRoomsBulk(rooms.map((r) => ({ ...r, venue_id: id })) as RoomInsert[]);
-  }
+    const {
+      rooms = [],
+      total_cost,
+      expense_date,
+      side,
+      bride_share_percentage,
+      finance,
+      ...venuePayload
+    } = payload as typeof payload;
 
-  return venue;
+    const nextValues = {
+      name: venuePayload.name ?? existing.name,
+      venue_type: venuePayload.venue_type ?? existing.venue_type,
+      address: venuePayload.address ?? existing.address,
+      city: venuePayload.city ?? existing.city,
+      google_maps_link: venuePayload.google_maps_link ?? existing.google_maps_link,
+      contact_person: venuePayload.contact_person ?? existing.contact_person,
+      contact_phone: venuePayload.contact_phone ?? existing.contact_phone,
+      capacity: venuePayload.capacity ?? existing.capacity,
+      has_accommodation: venuePayload.has_accommodation ?? existing.has_accommodation,
+      default_check_in_date:
+        venuePayload.default_check_in_date ?? existing.default_check_in_date,
+      default_check_out_date:
+        venuePayload.default_check_out_date ?? existing.default_check_out_date,
+      notes: venuePayload.notes ?? existing.notes,
+    };
+
+    const { rows } = await client.query<Record<string, unknown>>(
+      `
+        UPDATE venues
+        SET
+          name = $3,
+          venue_type = $4,
+          address = $5,
+          city = $6,
+          google_maps_link = $7,
+          contact_person = $8,
+          contact_phone = $9,
+          capacity = $10,
+          has_accommodation = $11,
+          default_check_in_date = $12,
+          default_check_out_date = $13,
+          notes = $14
+        WHERE id = $1
+          AND user_id = $2
+        RETURNING *
+      `,
+      [
+        id,
+        ownerId,
+        nextValues.name,
+        nextValues.venue_type,
+        nextValues.address,
+        nextValues.city,
+        nextValues.google_maps_link,
+        nextValues.contact_person,
+        nextValues.contact_phone,
+        nextValues.capacity,
+        nextValues.has_accommodation,
+        nextValues.default_check_in_date,
+        nextValues.default_check_out_date,
+        nextValues.notes,
+      ],
+    );
+    const venue = rows[0] as VenueRow | undefined;
+    if (!venue) throw new NotFoundError('Venue not found');
+
+    for (const room of rooms) {
+      await client.query(
+        `
+          INSERT INTO rooms (
+            venue_id,
+            room_number,
+            room_type,
+            capacity,
+            rate_per_night,
+            notes
+          )
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `,
+        [
+          venue.id,
+          room.room_number,
+          room.room_type,
+          room.capacity ?? null,
+          room.rate_per_night ?? null,
+          room.notes ?? null,
+        ],
+      );
+    }
+
+    const { rows: expenseRows } = await client.query<Record<string, unknown>>(
+      `
+        SELECT id
+        FROM expenses
+        WHERE user_id = $1
+          AND source_type = 'venue'
+          AND source_id = $2
+        ORDER BY created_at DESC
+        LIMIT 1
+      `,
+      [ownerId, id],
+    );
+    const linkedExpenseId = expenseRows[0]?.id ? String(expenseRows[0].id) : null;
+    const linkedExpense = linkedExpenseId
+      ? await getExpenseDetailsTx(client, ownerId, linkedExpenseId)
+      : null;
+
+    const shouldTouchFinance =
+      finance !== undefined ||
+      total_cost !== undefined ||
+      expense_date !== undefined ||
+      side !== undefined ||
+      bride_share_percentage !== undefined ||
+      payload.name !== undefined;
+
+    if (shouldTouchFinance) {
+      const financeInput =
+        finance != null || total_cost !== undefined
+          ? await extractVenueFinanceInput(ownerId, {
+              name: venue.name,
+              venue_type: venue.venue_type,
+              total_cost: total_cost ?? linkedExpense?.summary.committed_amount ?? null,
+              expense_date: expense_date ?? linkedExpense?.expense_date ?? null,
+              side: side ?? 'shared',
+              bride_share_percentage: bride_share_percentage ?? null,
+              notes: venue.notes,
+              finance: finance ?? null,
+            })
+          : linkedExpense
+            ? {
+                description: venue.name,
+                expense_date: linkedExpense.expense_date,
+                notes: linkedExpense.notes,
+                items: linkedExpense.items,
+                payments: [],
+              }
+            : {
+                description: venue.name,
+                expense_date: normalizeDate(expense_date),
+                notes: venue.notes,
+                items: [],
+                payments: [],
+              };
+      await upsertSourceExpenseTx(client, ownerId, 'venue', id, financeInput);
+    }
+
+    return venue;
+  });
 }
 
 export async function deleteVenue(id: string, ownerId: string): Promise<void> {
-  await getVenue(id, ownerId);
-  return repo.deleteVenue(id, ownerId);
+  return withPgTransaction(async (client) => {
+    const { rows } = await client.query<Record<string, unknown>>(
+      `SELECT * FROM venues WHERE id = $1 AND user_id = $2 FOR UPDATE`,
+      [id, ownerId],
+    );
+    const venue = rows[0] as VenueRow | undefined;
+    if (!venue) throw new NotFoundError('Venue not found');
+
+    const { rows: expenseRows } = await client.query<Record<string, unknown>>(
+      `
+        SELECT id
+        FROM expenses
+        WHERE user_id = $1
+          AND source_type = 'venue'
+          AND source_id = $2
+        ORDER BY created_at DESC
+        LIMIT 1
+      `,
+      [ownerId, id],
+    );
+    const expenseId = expenseRows[0]?.id ? String(expenseRows[0].id) : null;
+
+    if (expenseId) {
+      const finance = await getExpenseDetailsTx(client, ownerId, expenseId);
+      if (finance.payments.length > 0) {
+        throw new ConflictError('Cannot delete venue with linked payment history.');
+      }
+      await client.query(`DELETE FROM expenses WHERE id = $1 AND user_id = $2`, [expenseId, ownerId]);
+    }
+
+    await client.query(`DELETE FROM venues WHERE id = $1 AND user_id = $2`, [id, ownerId]);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -512,25 +868,23 @@ export async function importAllVenuesAllocations(buffer: Buffer, ownerId: string
 // Payments
 // ---------------------------------------------------------------------------
 
-export async function getVenuePayments(venueId: string) {
-  return repo.findPaymentsByVenue(venueId);
+export async function getVenuePayments(venueId: string, ownerId: string) {
+  const finance = await getSourceExpense(ownerId, 'venue', venueId);
+  return finance?.payments ?? [];
 }
 
 export async function addVenuePayment(
   venueId: string,
   ownerId: string,
-  payload: {
-    amount: number;
-    payment_date: string;
-    payment_method: string;
-    side?: string | null;
-    transaction_reference?: string | null;
-    notes?: string | null;
-  },
+  payload: PaymentMutationInput,
 ) {
-  return repo.insertVenuePayment({ ...payload, venue_id: venueId, user_id: ownerId });
+  const finance = await getSourceExpense(ownerId, 'venue', venueId);
+  if (!finance) {
+    throw new NotFoundError('Create a venue obligation before recording payments.');
+  }
+  return createExpensePayment(ownerId, finance.id, payload);
 }
 
-export async function deleteVenuePayment(paymentId: string) {
-  return repo.deletePayment(paymentId);
+export async function deleteVenuePayment(paymentId: string, ownerId: string) {
+  return deleteExpensePayment(ownerId, paymentId);
 }
