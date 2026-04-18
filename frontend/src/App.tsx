@@ -27,6 +27,8 @@ const Accommodations = lazy(() => import('./pages/dashboard/Accommodations'));
 const Vendors = lazy(() => import('./pages/dashboard/Vendors'));
 const Expense = lazy(() => import('./pages/dashboard/Expense'));
 const Tasks = lazy(() => import('./pages/dashboard/Tasks'));
+const Gallery = lazy(() => import('./pages/dashboard/Gallery'));
+const Website = lazy(() => import('./pages/dashboard/Website'));
 
 function App() {
   return (
@@ -183,6 +185,34 @@ function App() {
                     }
                   >
                     <Tasks />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="gallery"
+                element={
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center py-12 text-gray-500">
+                        Loading...
+                      </div>
+                    }
+                  >
+                    <Gallery />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="website"
+                element={
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center py-12 text-gray-500">
+                        Loading...
+                      </div>
+                    }
+                  >
+                    <Website />
                   </Suspense>
                 }
               />

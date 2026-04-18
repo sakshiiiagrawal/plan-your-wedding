@@ -116,6 +116,7 @@ export async function createVendor(
     } | null;
   },
   ownerId: string,
+  userId?: string,
 ) {
   return withPgTransaction(async (client) => {
     const { rows } = await client.query<Record<string, unknown>>(
@@ -128,9 +129,10 @@ export async function createVendor(
           phone,
           email,
           is_confirmed,
-          notes
+          notes,
+          created_by
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
       `,
       [
@@ -142,6 +144,7 @@ export async function createVendor(
         payload.email ?? null,
         payload.is_confirmed ?? false,
         payload.notes ?? null,
+        userId ?? ownerId,
       ],
     );
     const vendor = rows[0] as VendorRow & Record<string, unknown> | undefined;
@@ -168,6 +171,7 @@ export async function updateVendor(
       payments?: PaymentMutationInput[];
     } | null;
   },
+  userId?: string,
 ) {
   return withPgTransaction(async (client) => {
     const { rows: existingRows } = await client.query<Record<string, unknown>>(
@@ -204,7 +208,8 @@ export async function updateVendor(
           phone = $6,
           email = $7,
           is_confirmed = $8,
-          notes = $9
+          notes = $9,
+          updated_by = $10
         WHERE id = $1
           AND user_id = $2
         RETURNING *
@@ -219,6 +224,7 @@ export async function updateVendor(
         nextValues.email,
         nextValues.is_confirmed,
         nextValues.notes,
+        userId ?? ownerId,
       ],
     );
 

@@ -136,6 +136,7 @@ export default function Expense() {
 
     return (expenseOverview ?? [])
       .map((category: any) => ({
+        id: category.id,
         name: category.name,
         committed: parseFloat(category.committed || category.spent || 0),
         paid: parseFloat(category.paid || 0),
@@ -291,7 +292,7 @@ export default function Expense() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card">
-          <div className="stat-value text-maroon-800">{formatCurrency(totalBudget)}</div>
+          <div className="stat-value" style={{ color: 'var(--gold-deep)' }}>{formatCurrency(totalBudget)}</div>
           <div className="stat-label">Budget</div>
         </div>
         <div className="stat-card">
@@ -317,11 +318,11 @@ export default function Expense() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-maroon-800 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              style={{
+                padding: '8px 16px', borderRadius: 8, fontWeight: 500, fontSize: 14, cursor: 'pointer', transition: 'all 150ms',
+                background: activeTab === tab.id ? 'var(--gold)' : 'var(--bg-raised)',
+                color: activeTab === tab.id ? 'white' : 'var(--ink-low)',
+              }}
             >
               {tab.label}
             </button>

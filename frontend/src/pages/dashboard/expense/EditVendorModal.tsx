@@ -67,16 +67,19 @@ export default function EditVendorModal({
 
   return (
     <Portal>
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl w-full max-w-md">
-          <div className="flex items-center justify-between p-6 border-b border-gold-200">
-            <h2 className="text-xl font-display font-bold text-maroon-800">Edit Vendor</h2>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
-              <HiOutlineX className="w-5 h-5" />
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
+        <div style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
+            <div>
+              <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Vendor</div>
+              <h2 className="display" style={{ margin: 0, fontSize: 20, color: 'var(--ink-high)' }}>Edit Vendor</h2>
+            </div>
+            <button onClick={onClose} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
+              <HiOutlineX style={{ width: 16, height: 16 }} />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <form id="edit-vendor-form" onSubmit={handleSubmit} className="p-6 space-y-4">
             <div>
               <label className="label">Vendor Name *</label>
               <input
@@ -112,39 +115,33 @@ export default function EditVendorModal({
 
             <div>
               <label className="label">Side *</label>
-              <div className="flex gap-2">
-                {(['bride', 'groom', 'mutual'] as const).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => set({ side: s, is_shared: s === 'mutual' })}
-                    className={`flex-1 py-2 rounded-lg border-2 capitalize transition-colors ${
-                      formData.side === s
-                        ? s === 'bride'
-                          ? 'border-pink-500 bg-pink-50 text-pink-700'
-                          : s === 'groom'
-                            ? 'border-blue-500 bg-blue-50 text-blue-700'
-                            : 'border-gold-500 bg-gold-50 text-gold-700'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
+              <div style={{ display: 'flex', gap: 6 }}>
+                {(['bride', 'groom', 'mutual'] as const).map((s) => {
+                  const isActive = formData.side === s;
+                  const activeStyle = s === 'bride'
+                    ? { borderColor: '#be185d', background: 'rgba(190,24,93,0.06)', color: '#be185d' }
+                    : s === 'groom'
+                    ? { borderColor: '#1d4ed8', background: 'rgba(29,78,216,0.06)', color: '#1d4ed8' }
+                    : { borderColor: 'var(--gold)', background: 'var(--gold-glow)', color: 'var(--gold-deep)' };
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => set({ side: s, is_shared: s === 'mutual' })}
+                      style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: `2px solid ${isActive ? activeStyle.borderColor : 'var(--line)'}`, background: isActive ? activeStyle.background : 'transparent', color: isActive ? activeStyle.color : 'var(--ink-low)', fontSize: 12, fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize', transition: 'all 150ms' }}
+                    >
+                      {s}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </form>
 
-          <div className="flex gap-3 p-6 border-t border-gold-200">
-            <button type="button" onClick={onClose} className="btn-outline flex-1">
-              Cancel
-            </button>
-            <button
-              onClick={(e) => handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>)}
-              disabled={isPending}
-              className="btn-primary flex-1 disabled:opacity-50"
-            >
-              {isPending ? 'Saving...' : 'Save Changes'}
+          <div style={{ display: 'flex', gap: 10, padding: '16px 24px', borderTop: '1px solid var(--line-soft)' }}>
+            <button type="button" onClick={onClose} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
+            <button type="submit" form="edit-vendor-form" disabled={isPending} className="btn-primary" style={{ flex: 1, opacity: isPending ? 0.5 : 1 }}>
+              {isPending ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         </div>

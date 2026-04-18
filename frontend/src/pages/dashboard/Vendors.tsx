@@ -6,6 +6,7 @@ import {
   HiOutlinePhone,
   HiOutlineTrash,
   HiOutlineX,
+  HiOutlineStar,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import Portal from '../../components/Portal';
@@ -19,6 +20,7 @@ import {
   useVendors,
 } from '../../hooks/useApi';
 import type { VendorWithFinance } from '@wedding-planner/shared';
+import { SectionHeader } from '../../components/ui';
 
 interface VendorFormData {
   name: string;
@@ -79,15 +81,15 @@ function daysUntil(dateStr: string) {
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function plannedBadge(dateStr: string) {
+function plannedBadge(dateStr: string): { label: string; style: React.CSSProperties } {
   const days = daysUntil(dateStr);
-  if (days < 0) return { label: 'Overdue', cls: 'bg-red-100 text-red-700' };
-  if (days === 0) return { label: 'Due today', cls: 'bg-red-100 text-red-700' };
-  if (days <= 3) return { label: `Due in ${days}d`, cls: 'bg-orange-100 text-orange-700' };
-  if (days <= 7) return { label: `Due in ${days}d`, cls: 'bg-amber-100 text-amber-700' };
+  if (days < 0) return { label: 'Overdue', style: { background: 'rgba(220,38,38,0.1)', color: '#dc2626' } };
+  if (days === 0) return { label: 'Due today', style: { background: 'rgba(220,38,38,0.1)', color: '#dc2626' } };
+  if (days <= 3) return { label: `Due in ${days}d`, style: { background: 'rgba(234,88,12,0.1)', color: '#ea580c' } };
+  if (days <= 7) return { label: `Due in ${days}d`, style: { background: 'var(--gold-glow)', color: 'var(--gold-deep)' } };
   return {
     label: new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-    cls: 'bg-gray-100 text-gray-600',
+    style: { background: 'var(--bg-raised)', color: 'var(--ink-low)' },
   };
 }
 
@@ -191,195 +193,181 @@ export default function Vendors() {
 
   if (loadingVendors || loadingCategories) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-gray-500">Loading vendors...</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 0' }}>
+        <div style={{ width: 44, height: 44, borderRadius: '50%', border: '3px solid var(--line-soft)', borderTopColor: 'var(--gold)', animation: 'spin 0.8s linear infinite' }} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h1 className="page-title">Vendors</h1>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="btn-primary self-start sm:self-auto"
-        >
-          Add Vendor
-        </button>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        <button
-          onClick={() => setSelectedCategory('all')}
-          className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${
-            selectedCategory === 'all'
-              ? 'bg-maroon-800 text-white'
-              : 'bg-white text-gray-600 hover:bg-gold-50'
-          }`}
-        >
-          All
-        </button>
-        {categoryTree.map((category) => (
-          <button
-            key={category.id}
-            onClick={() => setSelectedCategory(category.id)}
-            className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${
-              selectedCategory === category.id
-                ? 'bg-maroon-800 text-white'
-                : 'bg-white text-gray-600 hover:bg-gold-50'
-            }`}
-          >
-            {category.name}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <SectionHeader
+        eyebrow="Service providers"
+        title="Vendors"
+        action={
+          <button onClick={() => setShowAddModal(true)} className="btn-primary" style={{ fontSize: 13 }}>
+            Add vendor
           </button>
-        ))}
+        }
+      />
+
+      {/* Category filter pills */}
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+        {[{ id: 'all', name: 'All' }, ...categoryTree].map((cat) => {
+          const isActive = selectedCategory === cat.id;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              style={{
+                padding: '6px 16px', borderRadius: 100, fontSize: 12, whiteSpace: 'nowrap',
+                background: isActive ? 'var(--gold)' : 'var(--bg-panel)',
+                color: isActive ? 'white' : 'var(--ink-mid)',
+                border: `1px solid ${isActive ? 'var(--gold)' : 'var(--line)'}`,
+                fontWeight: isActive ? 500 : 400, cursor: 'pointer', transition: 'all 150ms',
+              }}
+            >
+              {cat.name}
+            </button>
+          );
+        })}
       </div>
 
       {filteredVendors.length > 0 ? (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {filteredVendors.map((vendor) => {
-            const plannedPayments =
-              vendor.finance?.payments?.filter((payment) => payment.status === 'scheduled') ?? [];
-            const postedPayments =
-              vendor.finance?.payments?.filter((payment) => payment.status === 'posted') ?? [];
-            const firstItem = getFirstFinanceItem(vendor);
+            const plannedPayments = vendor.finance?.payments?.filter((p) => p.status === 'scheduled') ?? [];
             const events = getVendorEvents(vendor);
             const committed = vendor.finance_summary?.committed_amount ?? 0;
             const paid = vendor.finance_summary?.paid_amount ?? 0;
-            const outstanding = vendor.finance_summary?.outstanding_amount ?? 0;
+
+            const paidPct = committed > 0 ? Math.min(100, (paid / committed) * 100) : 0;
+            const statusLabel = paid >= committed && committed > 0 ? 'Confirmed' : paid > 0 ? 'Deposit paid' : 'Quoted';
+            const statusDotColor = paid >= committed && committed > 0 ? '#16a34a' : paid > 0 ? 'var(--gold)' : 'var(--line-strong)';
 
             return (
-              <div key={vendor.id} className="card-hover">
-                <div className="flex justify-between items-start mb-3 gap-3">
-                  <div className="min-w-0">
-                    <h3 className="font-semibold text-maroon-800">{vendor.name}</h3>
-                    <p className="text-sm text-gold-600">{getVendorCategoryLabel(vendor) ?? 'Vendor'}</p>
+              <div key={vendor.id} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>
+                      {getVendorCategoryLabel(vendor) ?? 'Vendor'}
+                    </div>
+                    <h3 className="display" style={{ margin: 0, fontSize: 20, color: 'var(--ink-high)', lineHeight: 1.2 }}>
+                      {vendor.name}
+                    </h3>
                   </div>
-                  {vendor.finance_summary && (
-                    <span className="badge bg-gray-100 text-gray-700 capitalize">
-                      {firstItem?.side ?? 'shared'}
-                    </span>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: statusDotColor, display: 'inline-block' }} />
+                    <span style={{ fontSize: 11, color: 'var(--ink-low)' }}>{statusLabel}</span>
+                  </div>
                 </div>
 
-                <div className="space-y-2 text-sm">
+                {/* Star rating */}
+                <div style={{ display: 'flex', gap: 2, marginBottom: 14 }}>
+                  {[1,2,3,4,5].map((star) => (
+                    <HiOutlineStar
+                      key={star}
+                      style={{ width: 13, height: 13, color: star <= 4 ? 'var(--gold)' : 'var(--line-strong)', fill: star <= 4 ? 'var(--gold)' : 'none' }}
+                    />
+                  ))}
+                </div>
+
+                {/* Contact details */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
                   {vendor.contact_person && (
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <span className="font-medium">Contact:</span>
-                      <span>{vendor.contact_person}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="uppercase-eyebrow" style={{ width: 52, flexShrink: 0 }}>Contact</span>
+                      <span style={{ fontSize: 12, color: 'var(--ink-mid)' }}>{vendor.contact_person}</span>
                     </div>
                   )}
                   {vendor.phone && (
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <HiOutlinePhone className="w-4 h-4" />
-                      <span>{vendor.phone}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <HiOutlinePhone style={{ width: 13, height: 13, color: 'var(--ink-dim)', flexShrink: 0 }} />
+                      <span className="mono" style={{ fontSize: 12, color: 'var(--ink-mid)' }}>{vendor.phone}</span>
                     </div>
                   )}
                   {vendor.email && (
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <HiOutlineMail className="w-4 h-4" />
-                      <span className="truncate">{vendor.email}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <HiOutlineMail style={{ width: 13, height: 13, color: 'var(--ink-dim)', flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, color: 'var(--ink-mid)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{vendor.email}</span>
                     </div>
                   )}
                 </div>
 
+                {/* Payment progress */}
+                {committed > 0 && (
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ height: 4, background: 'var(--line-soft)', borderRadius: 100, overflow: 'hidden', marginBottom: 6 }}>
+                      <div style={{ height: '100%', borderRadius: 100, background: 'linear-gradient(90deg, #16a34a, var(--gold))', width: `${paidPct}%`, transition: 'width 0.3s' }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span className="mono" style={{ fontSize: 10, color: '#16a34a' }}>{formatCurrency(paid)} paid</span>
+                      <span className="mono" style={{ fontSize: 10, color: 'var(--ink-dim)' }}>of {formatCurrency(committed)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upcoming payment alerts */}
                 {plannedPayments.length > 0 && (
-                  <div className="mt-4 space-y-1">
-                    {plannedPayments.map((payment) => {
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+                    {plannedPayments.slice(0, 2).map((payment) => {
                       const dueDate = payment.due_date ?? payment.created_at;
                       const badge = plannedBadge(dueDate);
                       return (
-                        <div
-                          key={payment.id}
-                          className="flex items-center justify-between px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg"
-                        >
-                          <div className="flex items-center gap-2 text-xs">
-                            <span>📅</span>
-                            <span className="font-medium text-amber-800">
-                              {formatCurrency(payment.amount)}
-                            </span>
-                          </div>
-                          <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${badge.cls}`}>
-                            {badge.label}
-                          </span>
+                        <div key={payment.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--gold-glow)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: 8 }}>
+                          <span className="mono" style={{ fontSize: 11, color: 'var(--gold-deep)' }}>{formatCurrency(payment.amount)}</span>
+                          <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 6px', borderRadius: 4, ...badge.style }}>{badge.label}</span>
                         </div>
                       );
                     })}
                   </div>
                 )}
 
-                <div className="mt-4 p-3 bg-gray-50 rounded-lg space-y-2">
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div>
-                      <p className="text-gray-400">Committed</p>
-                      <p className="font-medium">{formatCurrency(committed)}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400">Paid</p>
-                      <p className="font-medium text-green-700">{formatCurrency(paid)}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400">Outstanding</p>
-                      <p className="font-medium text-orange-700">{formatCurrency(outstanding)}</p>
-                    </div>
-                  </div>
+                {/* Manage payments */}
+                {vendor.expense_id && (
+                  <button
+                    onClick={() => setPaymentSource(vendor)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--gold-deep)', background: 'transparent', cursor: 'pointer', marginBottom: 12, fontWeight: 500 }}
+                  >
+                    <HiOutlineCurrencyRupee style={{ width: 13, height: 13 }} />
+                    Manage payments
+                  </button>
+                )}
 
-                  {postedPayments.length > 0 ? (
-                    <div className="space-y-1 pt-1 border-t border-gray-200">
-                      {postedPayments.slice(0, 3).map((payment) => (
-                        <div key={payment.id} className="flex justify-between text-xs text-gray-600">
-                          <span>
-                            {new Date(payment.paid_date ?? payment.created_at).toLocaleDateString('en-IN')}
-                          </span>
-                          <span className="font-medium text-green-700">
-                            {formatCurrency(payment.amount)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-400 italic">No posted payments yet</p>
-                  )}
-
-                  {vendor.expense_id ? (
-                    <button
-                      onClick={() => setPaymentSource(vendor)}
-                      className="flex items-center gap-1 text-xs text-maroon-700 hover:text-maroon-900 font-medium pt-1 border-t border-gray-200 w-full"
-                    >
-                      <HiOutlineCurrencyRupee className="w-3.5 h-3.5" />
-                      Manage payments
-                    </button>
-                  ) : (
-                    <p className="text-xs text-gray-400 pt-1 border-t border-gray-200">
-                      Add a committed amount to unlock payment tracking.
-                    </p>
-                  )}
-                </div>
-
+                {/* Events */}
                 {events.length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
                     {events.map((event) => (
-                      <span key={event} className="text-xs bg-gold-100 text-gold-700 px-2 py-1 rounded">
-                        {event}
-                      </span>
+                      <span key={event} style={{ fontSize: 10, background: 'var(--gold-glow)', color: 'var(--gold-deep)', padding: '2px 8px', borderRadius: 100, border: '1px solid rgba(212,175,55,0.25)' }}>{event}</span>
                     ))}
                   </div>
                 )}
 
-                <div className="mt-4 pt-4 border-t border-gold-100 flex justify-end items-center gap-2">
-                  <button
-                    onClick={() => handleEdit(vendor)}
-                    className="p-2 hover:bg-gold-50 rounded-lg text-gold-600"
-                    title="Edit vendor"
+                {/* Actions */}
+                <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--line-soft)', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2 }}>
+                  {vendor.phone && (
+                    <a href={`tel:${vendor.phone}`} title="Call vendor"
+                      style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-raised)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                    >
+                      <HiOutlinePhone style={{ width: 15, height: 15 }} />
+                    </a>
+                  )}
+                  <button onClick={() => handleEdit(vendor)} title="Edit vendor"
+                    style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--gold-glow)'; (e.currentTarget as HTMLElement).style.color = 'var(--gold-deep)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)'; }}
                   >
-                    <HiOutlinePencil className="w-4 h-4" />
+                    <HiOutlinePencil style={{ width: 15, height: 15 }} />
                   </button>
-                  <button
-                    onClick={() => setDeleteConfirm(vendor.id)}
-                    className="p-2 hover:bg-red-50 rounded-lg text-red-600"
-                    title="Delete vendor"
+                  <button onClick={() => setDeleteConfirm(vendor.id)} title="Delete vendor"
+                    style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.08)'; (e.currentTarget as HTMLElement).style.color = 'var(--err)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)'; }}
                   >
-                    <HiOutlineTrash className="w-4 h-4" />
+                    <HiOutlineTrash style={{ width: 15, height: 15 }} />
                   </button>
                 </div>
               </div>
@@ -387,190 +375,108 @@ export default function Vendors() {
           })}
         </div>
       ) : (
-        <div className="card text-center py-12">
-          <p className="text-gray-500">No vendors found.</p>
+        <div className="card" style={{ textAlign: 'center', padding: '48px 0' }}>
+          <p style={{ color: 'var(--ink-low)', fontSize: 13 }}>No vendors found.</p>
         </div>
       )}
 
       {showAddModal && (
         <Portal>
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b border-gold-200">
-                <h2 className="text-xl font-display font-bold text-maroon-800">
-                  {editingVendor ? 'Edit Vendor' : 'Add New Vendor'}
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowAddModal(false);
-                    resetForm();
-                  }}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <HiOutlineX className="w-5 h-5" />
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
+            <div style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 600, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
+                <div>
+                  <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Service providers</div>
+                  <h2 className="display" style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}>{editingVendor ? 'Edit vendor' : 'Add vendor'}</h2>
+                </div>
+                <button onClick={() => { setShowAddModal(false); resetForm(); }} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
+                  <HiOutlineX style={{ width: 16, height: 16 }} />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
                   <label className="label">Vendor Name *</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
-                    className="input"
-                    placeholder="Vendor name"
-                    required
-                  />
+                  <input type="text" value={formData.name} onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))} className="input" placeholder="Vendor name" required />
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="label">Category *</label>
-                    <CategoryCombobox
-                      value={formData.category_id}
-                      onChange={(id) => setFormData((prev) => ({ ...prev, category_id: id }))}
-                      level="subcategory"
-                      placeholder="Search categories…"
-                    />
+                    <CategoryCombobox value={formData.category_id} onChange={(id) => setFormData((p) => ({ ...p, category_id: id }))} level="subcategory" placeholder="Search categories…" />
                   </div>
                   <div>
                     <label className="label">Contact Person</label>
-                    <input
-                      type="text"
-                      value={formData.contact_person}
-                      onChange={(event) =>
-                        setFormData((prev) => ({ ...prev, contact_person: event.target.value }))
-                      }
-                      className="input"
-                      placeholder="Contact name"
-                    />
+                    <input type="text" value={formData.contact_person} onChange={(e) => setFormData((p) => ({ ...p, contact_person: e.target.value }))} className="input" placeholder="Contact name" />
                   </div>
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="label">Phone</label>
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(event) => setFormData((prev) => ({ ...prev, phone: event.target.value }))}
-                      className="input"
-                      placeholder="Phone number"
-                    />
+                    <input type="tel" value={formData.phone} onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))} className="input" placeholder="Phone number" />
                   </div>
                   <div>
                     <label className="label">Email</label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(event) => setFormData((prev) => ({ ...prev, email: event.target.value }))}
-                      className="input"
-                      placeholder="Email address"
-                    />
+                    <input type="email" value={formData.email} onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))} className="input" placeholder="Email address" />
                   </div>
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="label">Committed Amount</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.total_cost}
-                      onChange={(event) =>
-                        setFormData((prev) => ({ ...prev, total_cost: event.target.value }))
-                      }
-                      className="input"
-                      placeholder="0"
-                    />
+                    <input type="number" min="0" step="0.01" value={formData.total_cost} onChange={(e) => setFormData((p) => ({ ...p, total_cost: e.target.value }))} className="input" placeholder="0" />
                   </div>
                   <div>
                     <label className="label">Obligation Date</label>
-                    <input
-                      type="date"
-                      value={formData.expense_date}
-                      onChange={(event) =>
-                        setFormData((prev) => ({ ...prev, expense_date: event.target.value }))
-                      }
-                      className="input"
-                    />
+                    <input type="date" value={formData.expense_date} onChange={(e) => setFormData((p) => ({ ...p, expense_date: e.target.value }))} className="input" />
                   </div>
                 </div>
 
                 <div>
                   <label className="label">Liability Side</label>
-                  <div className="flex gap-2">
-                    {(['bride', 'groom', 'shared'] as const).map((side) => (
-                      <button
-                        key={side}
-                        type="button"
-                        onClick={() => setFormData((prev) => ({ ...prev, side }))}
-                        className={`flex-1 py-2 rounded-lg border-2 transition-colors ${
-                          formData.side === side
-                            ? side === 'bride'
-                              ? 'border-pink-500 bg-pink-50 text-pink-700'
-                              : side === 'groom'
-                                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                : 'border-gold-500 bg-gold-50 text-gold-700'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        {side === 'shared'
-                          ? 'Shared'
-                          : `${side.charAt(0).toUpperCase()}${side.slice(1)} Side`}
-                      </button>
-                    ))}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {(['bride', 'groom', 'shared'] as const).map((side) => {
+                      const isActive = formData.side === side;
+                      const activeColors = side === 'bride'
+                        ? { border: '#be185d', bg: 'rgba(190,24,93,0.08)', color: '#be185d' }
+                        : side === 'groom'
+                          ? { border: '#1d4ed8', bg: 'rgba(29,78,216,0.08)', color: '#1d4ed8' }
+                          : { border: 'var(--gold)', bg: 'var(--gold-glow)', color: 'var(--gold-deep)' };
+                      return (
+                        <button
+                          key={side}
+                          type="button"
+                          onClick={() => setFormData((p) => ({ ...p, side }))}
+                          style={{
+                            flex: 1, padding: '8px 12px', borderRadius: 8, fontSize: 12,
+                            border: `2px solid ${isActive ? activeColors.border : 'var(--line)'}`,
+                            background: isActive ? activeColors.bg : 'transparent',
+                            color: isActive ? activeColors.color : 'var(--ink-mid)',
+                            cursor: 'pointer', transition: 'all 150ms', fontWeight: isActive ? 500 : 400,
+                          }}
+                        >
+                          {side === 'shared' ? 'Shared' : `${side.charAt(0).toUpperCase()}${side.slice(1)} side`}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 {formData.side === 'shared' && (
                   <div>
-                    <label className="label">
-                      Bride Share Percentage ({formData.bride_share_percentage}%)
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={formData.bride_share_percentage}
-                      onChange={(event) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          bride_share_percentage: Number(event.target.value),
-                        }))
-                      }
-                      className="w-full"
-                    />
+                    <label className="label">Bride Share — {formData.bride_share_percentage}%</label>
+                    <input type="range" min="0" max="100" value={formData.bride_share_percentage} onChange={(e) => setFormData((p) => ({ ...p, bride_share_percentage: Number(e.target.value) }))} style={{ width: '100%', accentColor: 'var(--gold)' }} />
                   </div>
                 )}
-              </form>
 
-              <div className="flex gap-3 p-6 border-t border-gold-200">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddModal(false);
-                    resetForm();
-                  }}
-                  className="btn-outline flex-1"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={(event) => void handleSubmit(event as unknown as React.FormEvent)}
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="btn-primary flex-1 disabled:opacity-50"
-                >
-                  {createMutation.isPending || updateMutation.isPending
-                    ? 'Saving...'
-                    : editingVendor
-                      ? 'Update Vendor'
-                      : 'Add Vendor'}
-                </button>
-              </div>
+                <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+                  <button type="button" onClick={() => { setShowAddModal(false); resetForm(); }} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
+                  <button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="btn-primary" style={{ flex: 1, opacity: createMutation.isPending || updateMutation.isPending ? 0.5 : 1 }}>
+                    {createMutation.isPending || updateMutation.isPending ? 'Saving…' : editingVendor ? 'Update vendor' : 'Add vendor'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </Portal>
@@ -578,22 +484,14 @@ export default function Vendors() {
 
       {deleteConfirm && (
         <Portal>
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 max-w-md">
-              <h3 className="text-lg font-bold text-maroon-800 mb-2">Confirm Deletion</h3>
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to delete this vendor? This action cannot be undone.
-              </p>
-              <div className="flex gap-3">
-                <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(deleteConfirm)}
-                  disabled={deleteMutation.isPending}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 disabled:opacity-50"
-                >
-                  {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
+            <div style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', padding: 28, maxWidth: 380, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+              <h3 className="display" style={{ margin: '0 0 8px', fontSize: 20, color: 'var(--ink-high)' }}>Delete vendor?</h3>
+              <p style={{ fontSize: 13, color: 'var(--ink-low)', marginBottom: 24 }}>This action cannot be undone.</p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => setDeleteConfirm(null)} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
+                <button onClick={() => handleDelete(deleteConfirm)} disabled={deleteMutation.isPending} style={{ flex: 1, padding: '9px 16px', background: 'var(--err)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', opacity: deleteMutation.isPending ? 0.5 : 1 }}>
+                  {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
                 </button>
               </div>
             </div>

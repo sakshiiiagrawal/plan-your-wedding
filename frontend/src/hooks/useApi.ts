@@ -38,6 +38,17 @@ export const useHeroContent = (slug?: string | null) =>
     enabled: true,
   });
 
+export const useUpdateWebsiteContent = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ section, payload }: { section: string; payload: Record<string, any> }) =>
+      api.put(`/website-content/${section}`, payload).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['website-content'] });
+    },
+  });
+};
+
 export const useCoupleContent = (slug?: string | null) =>
   useQuery<any>({
     queryKey: ['website-content', 'couple', slug || 'authed'],
@@ -160,6 +171,19 @@ export const useDashboardSummary = () =>
   useQuery<DashboardSummary>({
     queryKey: ['dashboard', 'summary'],
     queryFn: () => api.get('/dashboard/summary').then((res) => res.data),
+  });
+
+export interface ActivityItem {
+  what: string;
+  when: string;
+  actor_name: string | null;
+}
+
+export const useRecentActivity = () =>
+  useQuery<ActivityItem[]>({
+    queryKey: ['dashboard', 'activity'],
+    queryFn: () => api.get('/dashboard/activity').then((res) => res.data),
+    staleTime: 30 * 1000,
   });
 
 export interface CountdownData {
@@ -689,6 +713,17 @@ export const useExpenseBySide = () =>
     queryKey: ['expense', 'by-side'],
     queryFn: () => api.get('/expense/by-side').then((res) => res.data),
   });
+
+export const useUpdateExpenseCategory = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, allocated_amount }: { id: string; allocated_amount: number }) =>
+      api.put(`/expense/categories/${id}`, { allocated_amount }).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+    },
+  });
+};
 
 export const useExpenseCategories = () =>
   useQuery<any[]>({

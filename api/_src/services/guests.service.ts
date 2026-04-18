@@ -31,9 +31,10 @@ export async function getGuest(id: string, ownerId: string) {
 export async function createGuest(
   body: { events?: string[] } & Omit<GuestInsert, 'user_id'>,
   ownerId: string,
+  userId?: string,
 ) {
   const { events, ...guestData } = body;
-  const guest = await repo.insertGuest({ ...guestData, user_id: ownerId });
+  const guest = await repo.insertGuest({ ...guestData, user_id: ownerId, created_by: userId ?? ownerId });
 
   if (events && events.length > 0) {
     const rsvpEntries = events.map((eventId) => ({
@@ -47,17 +48,17 @@ export async function createGuest(
   return guest;
 }
 
-export async function bulkCreateGuests(guests: Omit<GuestInsert, 'user_id'>[], ownerId: string) {
-  const payloads = guests.map((g) => ({ ...g, user_id: ownerId }));
+export async function bulkCreateGuests(guests: Omit<GuestInsert, 'user_id'>[], ownerId: string, userId?: string) {
+  const payloads = guests.map((g) => ({ ...g, user_id: ownerId, created_by: userId ?? ownerId }));
   // insertGuestsBulk expects ParsedGuest & { user_id }, but Omit<GuestInsert, 'user_id'> is compatible
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const created = await repo.insertGuestsBulk(payloads as any);
   return { created: created.length, guests: created };
 }
 
-export async function updateGuest(id: string, ownerId: string, payload: Partial<GuestInsert>) {
+export async function updateGuest(id: string, ownerId: string, payload: Partial<GuestInsert>, userId?: string) {
   await getGuest(id, ownerId);
-  return repo.updateGuest(id, ownerId, payload);
+  return repo.updateGuest(id, ownerId, { ...payload, updated_by: userId ?? ownerId });
 }
 
 export async function deleteGuest(id: string, ownerId: string) {

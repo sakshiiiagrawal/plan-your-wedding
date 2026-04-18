@@ -51,10 +51,21 @@ export default {
           600: '#4E342E',
         },
       },
+      borderRadius: {
+        sm: '4px',
+        DEFAULT: '8px',
+        md: '8px',
+        lg: '14px',
+        xl: '22px',
+        '2xl': '22px',
+        full: '9999px',
+      },
       fontFamily: {
         display: ['Playfair Display', 'serif'],
+        'serif-display': ['Cormorant Garamond', 'serif'],
         body: ['Poppins', 'sans-serif'],
         script: ['Great Vibes', 'cursive'],
+        mono: ['JetBrains Mono', 'monospace'],
       },
       backgroundImage: {
         'mandala-pattern': "url('/images/mandala-pattern.svg')",

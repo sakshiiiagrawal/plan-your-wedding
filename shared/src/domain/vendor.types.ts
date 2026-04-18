@@ -12,6 +12,8 @@ export interface VendorRow {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
 }
 
 export interface VendorInsert {
@@ -23,6 +25,8 @@ export interface VendorInsert {
   email?: string | null;
   is_confirmed?: boolean;
   notes?: string | null;
+  created_by?: string | null;
+  updated_by?: string | null;
 }
 
 export interface VendorWithFinance extends VendorRow {

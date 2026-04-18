@@ -290,6 +290,8 @@ export interface Database {
           created_at: string;
           updated_at: string;
           user_id: string;
+          created_by: string | null;
+          updated_by: string | null;
         };
         Insert: {
           id?: string;
@@ -314,6 +316,8 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           user_id: string;
+          created_by?: string | null;
+          updated_by?: string | null;
         };
         Update: {
           id?: string;
@@ -338,6 +342,8 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           user_id?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
         };
         Relationships: [
           {
@@ -869,6 +875,8 @@ export interface Database {
           created_at: string;
           updated_at: string;
           user_id: string;
+          created_by: string | null;
+          updated_by: string | null;
         };
         Insert: {
           id?: string;
@@ -884,6 +892,8 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           user_id: string;
+          created_by?: string | null;
+          updated_by?: string | null;
         };
         Update: {
           id?: string;
@@ -899,6 +909,8 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           user_id?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
         };
         Relationships: [
           {

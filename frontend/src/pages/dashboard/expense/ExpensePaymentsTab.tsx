@@ -95,7 +95,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                     <tr key={payment.id} className="table-row">
                       <td className="p-4 font-medium">{payment.expense.description}</td>
                       <td className="p-4 text-gray-500 capitalize">{payment.expense.source_type}</td>
-                      <td className="p-4 text-right font-medium text-maroon-800">
+                      <td className="p-4 text-right font-medium" style={{ color: 'var(--gold-deep)' }}>
                         {formatCurrency(payment.amount)}
                       </td>
                       <td className="p-4 text-gray-600">
@@ -111,8 +111,8 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
       )}
 
       <div className="card overflow-hidden p-0">
-        <div className="p-4 border-b border-gold-200">
-          <h3 className="font-semibold text-maroon-800">Payment History</h3>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--line-soft)' }}>
+          <h3 style={{ fontWeight: 600, color: 'var(--ink-high)', fontSize: 14 }}>Payment History</h3>
         </div>
         {postedPayments.length === 0 ? (
           <div className="p-8 text-center text-gray-400 text-sm">No payments recorded yet.</div>

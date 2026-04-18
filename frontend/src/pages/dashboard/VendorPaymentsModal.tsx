@@ -166,68 +166,67 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
 
   return (
     <Portal>
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-          <div className="flex items-center justify-between p-6 border-b border-gold-200">
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
+        <div style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 672, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
             <div>
-              <h2 className="text-xl font-display font-bold text-maroon-800">{source.name}</h2>
-              <div className="flex flex-wrap gap-4 text-sm mt-1">
-                <span className="text-gray-600">Committed: {formatCurrency(committed)}</span>
-                <span className="text-green-700">Paid: {formatCurrency(paid)}</span>
-                <span className="text-orange-700">Outstanding: {formatCurrency(outstanding)}</span>
+              <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Payments</div>
+              <h2 className="display" style={{ margin: '0 0 6px', fontSize: 20, color: 'var(--ink-high)' }}>{source.name}</h2>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', fontSize: 12 }}>
+                <span style={{ color: 'var(--ink-low)' }}>Committed: <strong style={{ color: 'var(--ink-mid)' }}>{formatCurrency(committed)}</strong></span>
+                <span style={{ color: 'var(--ok)' }}>Paid: <strong>{formatCurrency(paid)}</strong></span>
+                <span style={{ color: 'var(--warn)' }}>Outstanding: <strong>{formatCurrency(outstanding)}</strong></span>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
-              <HiOutlineX className="w-5 h-5" />
+            <button onClick={onClose} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
+              <HiOutlineX style={{ width: 18, height: 18 }} />
             </button>
           </div>
 
-          <div className="overflow-y-auto flex-1 p-6 space-y-6">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
+          <div style={{ overflowY: 'auto', flex: 1, padding: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {/* Payment timeline */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <h3 className="section-title">Payment Timeline</h3>
                 {!source.expense_id && (
-                  <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1">
+                  <span style={{ fontSize: 11, color: 'var(--warn)', background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.2)', borderRadius: 100, padding: '3px 10px' }}>
                     No obligation linked yet
                   </span>
                 )}
               </div>
 
               {sortedPayments.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-gray-200 p-5 text-sm text-gray-400 text-center">
+                <div style={{ border: '1.5px dashed var(--line)', borderRadius: 10, padding: '18px 20px', fontSize: 13, color: 'var(--ink-dim)', textAlign: 'center' }}>
                   No payments recorded yet.
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {sortedPayments.map((payment) => {
                     const dateLabel = payment.paid_date ?? payment.due_date ?? payment.created_at;
                     const isDeleteAllowed = payment.status === 'scheduled';
                     const isInflow = payment.direction === 'inflow';
+                    const amtColor = isInflow ? '#0369a1' : payment.status === 'posted' ? 'var(--ok)' : 'var(--gold-deep)';
                     return (
                       <div
                         key={payment.id}
-                        className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 px-4 py-3"
+                        style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, border: '1px solid var(--line-soft)', borderRadius: 10, padding: '10px 14px' }}
                       >
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`font-semibold ${
-                                isInflow ? 'text-sky-700' : payment.status === 'posted' ? 'text-green-700' : 'text-maroon-800'
-                              }`}
-                            >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontWeight: 600, fontSize: 14, color: amtColor }}>
                               {formatCurrency(payment.amount)}
                             </span>
-                            <span className="badge bg-gray-100 text-gray-700 capitalize">
+                            <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: 'var(--bg-raised)', color: 'var(--ink-low)', textTransform: 'capitalize' }}>
                               {payment.status.replaceAll('_', ' ')}
                             </span>
-                            <span className="badge bg-gray-100 text-gray-700 capitalize">
+                            <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: 'var(--bg-raised)', color: 'var(--ink-low)', textTransform: 'capitalize' }}>
                               {payment.direction}
                             </span>
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>
                             {new Date(dateLabel).toLocaleDateString('en-IN')}
-                            {payment.payment_method &&
-                              ` · ${PAYMENT_METHOD_LABELS[payment.payment_method] ?? payment.payment_method}`}
+                            {payment.payment_method && ` · ${PAYMENT_METHOD_LABELS[payment.payment_method] ?? payment.payment_method}`}
                             {payment.notes ? ` · ${payment.notes}` : ''}
                           </div>
                         </div>
@@ -235,10 +234,11 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
                           <button
                             onClick={() => handleDelete(payment.id)}
                             disabled={deletePayment.isPending}
-                            className="p-2 rounded-lg text-red-500 hover:bg-red-50 disabled:opacity-50"
-                            title="Delete scheduled payment"
+                            style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--err)', background: 'transparent', cursor: 'pointer', flexShrink: 0, opacity: deletePayment.isPending ? 0.5 : 1 }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.08)'; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                           >
-                            <HiOutlineTrash className="w-4 h-4" />
+                            <HiOutlineTrash style={{ width: 15, height: 15 }} />
                           </button>
                         )}
                       </div>
@@ -248,67 +248,31 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
               )}
             </div>
 
-            <div className="space-y-4">
+            {/* Add payment form */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <h3 className="section-title">Add Payment</h3>
 
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label className="label">Amount</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.amount}
-                    onChange={(event) =>
-                      setFormData((prev) => ({ ...prev, amount: event.target.value }))
-                    }
-                    className="input"
-                    placeholder="0"
-                  />
+                  <input type="number" min="0" step="0.01" value={formData.amount} onChange={(e) => setFormData((p) => ({ ...p, amount: e.target.value }))} className="input" placeholder="0" />
                 </div>
                 <div>
                   <label className="label">{isScheduled ? 'Due Date' : 'Payment Date'}</label>
-                  <input
-                    type="date"
-                    value={formData.payment_date}
-                    onChange={(event) =>
-                      setFormData((prev) => ({ ...prev, payment_date: event.target.value }))
-                    }
-                    className="input"
-                  />
+                  <input type="date" value={formData.payment_date} onChange={(e) => setFormData((p) => ({ ...p, payment_date: e.target.value }))} className="input" />
                 </div>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label className="label">Payment Method</label>
-                  <select
-                    value={formData.payment_method}
-                    onChange={(event) =>
-                      setFormData((prev) => ({ ...prev, payment_method: event.target.value }))
-                    }
-                    className="input"
-                    disabled={isScheduled}
-                  >
-                    {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
+                  <select value={formData.payment_method} onChange={(e) => setFormData((p) => ({ ...p, payment_method: e.target.value }))} className="input" disabled={isScheduled}>
+                    {Object.entries(PAYMENT_METHOD_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="label">Paid By Side</label>
-                  <select
-                    value={formData.paid_by_side}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        paid_by_side: event.target.value as 'bride' | 'groom' | 'shared',
-                      }))
-                    }
-                    className="input"
-                  >
+                  <select value={formData.paid_by_side} onChange={(e) => setFormData((p) => ({ ...p, paid_by_side: e.target.value as 'bride' | 'groom' | 'shared' }))} className="input">
                     <option value="bride">Bride</option>
                     <option value="groom">Groom</option>
                     <option value="shared">Shared</option>
@@ -318,74 +282,34 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
 
               <div>
                 <label className="label">Notes</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(event) =>
-                    setFormData((prev) => ({ ...prev, notes: event.target.value }))
-                  }
-                  className="input min-h-[88px]"
-                  placeholder={
-                    isScheduled
-                      ? 'Optional reminder note'
-                      : 'Optional reference, cheque number, or note'
-                  }
-                />
+                <textarea value={formData.notes} onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))} className="input" style={{ minHeight: 72 }} placeholder={isScheduled ? 'Optional reminder note' : 'Optional reference, cheque number, or note'} />
               </div>
 
               {isScheduled && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <div style={{ border: '1px solid rgba(217,119,6,0.25)', background: 'rgba(217,119,6,0.06)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--warn)' }}>
                   This will be saved as a scheduled payment reminder.
                 </div>
               )}
 
               {excessAmount > 0 && (
-                <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 space-y-4">
-                  <div className="text-sm text-orange-800">
-                    You are paying {formatCurrency(excessAmount)} more than the current outstanding
-                    amount. Classify this extra amount so it can be added as a new finance item in
-                    the same transaction.
+                <div style={{ border: '1px solid rgba(234,88,12,0.25)', background: 'rgba(234,88,12,0.05)', borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ fontSize: 13, color: '#9a3412' }}>
+                    You are paying {formatCurrency(excessAmount)} more than the current outstanding amount. Classify this extra amount so it can be added as a new finance item.
                   </div>
 
                   <div>
                     <label className="label">Extra Amount Category</label>
-                    <CategoryCombobox
-                      value={formData.extra_category_id}
-                      onChange={(id) =>
-                        setFormData((prev) => ({ ...prev, extra_category_id: id }))
-                      }
-                      level="subcategory"
-                      placeholder="Select category"
-                    />
+                    <CategoryCombobox value={formData.extra_category_id} onChange={(id) => setFormData((p) => ({ ...p, extra_category_id: id }))} level="subcategory" placeholder="Select category" />
                   </div>
 
-                  <div className="grid sm:grid-cols-2 gap-4">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div>
                       <label className="label">Extra Amount Label</label>
-                      <input
-                        type="text"
-                        value={formData.extra_description}
-                        onChange={(event) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            extra_description: event.target.value,
-                          }))
-                        }
-                        className="input"
-                        placeholder="Tip, late fee, extra service"
-                      />
+                      <input type="text" value={formData.extra_description} onChange={(e) => setFormData((p) => ({ ...p, extra_description: e.target.value }))} className="input" placeholder="Tip, late fee, extra service" />
                     </div>
                     <div>
                       <label className="label">Liability Side</label>
-                      <select
-                        value={formData.extra_side}
-                        onChange={(event) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            extra_side: event.target.value as 'bride' | 'groom' | 'shared',
-                          }))
-                        }
-                        className="input"
-                      >
+                      <select value={formData.extra_side} onChange={(e) => setFormData((p) => ({ ...p, extra_side: e.target.value as 'bride' | 'groom' | 'shared' }))} className="input">
                         <option value="bride">Bride</option>
                         <option value="groom">Groom</option>
                         <option value="shared">Shared</option>
@@ -395,22 +319,8 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
 
                   {formData.extra_side === 'shared' && (
                     <div>
-                      <label className="label">
-                        Bride Share Percentage ({formData.extra_bride_share_percentage}%)
-                      </label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={formData.extra_bride_share_percentage}
-                        onChange={(event) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            extra_bride_share_percentage: Number(event.target.value),
-                          }))
-                        }
-                        className="w-full"
-                      />
+                      <label className="label">Bride Share Percentage ({formData.extra_bride_share_percentage}%)</label>
+                      <input type="range" min="0" max="100" value={formData.extra_bride_share_percentage} onChange={(e) => setFormData((p) => ({ ...p, extra_bride_share_percentage: Number(e.target.value) }))} style={{ width: '100%', accentColor: 'var(--gold)' }} />
                     </div>
                   )}
                 </div>
@@ -418,21 +328,10 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
             </div>
           </div>
 
-          <div className="flex gap-3 p-6 border-t border-gold-200">
-            <button type="button" onClick={onClose} className="btn-outline flex-1">
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={createPayment.isPending}
-              className="btn-primary flex-1 disabled:opacity-50"
-            >
-              {createPayment.isPending
-                ? 'Saving...'
-                : isScheduled
-                  ? 'Save Planned Payment'
-                  : 'Record Payment'}
+          <div style={{ display: 'flex', gap: 10, padding: '16px 24px', borderTop: '1px solid var(--line-soft)' }}>
+            <button type="button" onClick={onClose} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
+            <button type="button" onClick={handleSave} disabled={createPayment.isPending} className="btn-primary" style={{ flex: 1, opacity: createPayment.isPending ? 0.5 : 1 }}>
+              {createPayment.isPending ? 'Saving…' : isScheduled ? 'Save Planned Payment' : 'Record Payment'}
             </button>
           </div>
         </div>
