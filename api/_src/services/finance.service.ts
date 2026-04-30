@@ -510,14 +510,15 @@ function buildFlatSourceItem(input: {
   bride_share_percentage?: number | null | undefined;
 }): ExpenseItemInput {
   const side =
-    input.side === 'mutual' || input.side == null ? 'shared' : (input.side as ExpenseItemRow['side']);
+    input.side === 'mutual' || input.side == null
+      ? 'shared'
+      : (input.side as ExpenseItemRow['side']);
   return ensureSharedPercentage({
     category_id: input.category_id,
     description: input.description,
     amount: normalizeMoney(input.amount),
     side,
-    bride_share_percentage:
-      side === 'shared' ? (input.bride_share_percentage ?? 50) : null,
+    bride_share_percentage: side === 'shared' ? (input.bride_share_percentage ?? 50) : null,
   });
 }
 
@@ -584,7 +585,16 @@ async function updateExpenseHeader(
     ],
   );
   const updated = mapExpenseRow(rows[0] ?? {});
-  await insertActivity(client, ownerId, expenseId, 'expense', expenseId, 'updated', current, updated);
+  await insertActivity(
+    client,
+    ownerId,
+    expenseId,
+    'expense',
+    expenseId,
+    'updated',
+    current,
+    updated,
+  );
   return updated;
 }
 
@@ -627,7 +637,7 @@ async function syncExpenseItems(
           item.description,
           normalizeMoney(item.amount),
           item.side,
-          item.side === 'shared' ? item.bride_share_percentage ?? 50 : null,
+          item.side === 'shared' ? (item.bride_share_percentage ?? 50) : null,
           item.display_order,
         ],
       );
@@ -669,14 +679,23 @@ async function syncExpenseItems(
         item.description,
         normalizeMoney(item.amount),
         item.side,
-        item.side === 'shared' ? item.bride_share_percentage ?? 50 : null,
+        item.side === 'shared' ? (item.bride_share_percentage ?? 50) : null,
         item.display_order,
       ],
     );
     const created = mapExpenseItemRow(rows[0] ?? {});
     keptIds.add(created.id);
     nextRows.push(created);
-    await insertActivity(client, ownerId, expenseId, 'expense_item', created.id, 'created', null, created);
+    await insertActivity(
+      client,
+      ownerId,
+      expenseId,
+      'expense_item',
+      created.id,
+      'created',
+      null,
+      created,
+    );
   }
 
   for (const row of existing) {
@@ -808,14 +827,19 @@ async function removeExistingAllocations(
 }
 
 function validateAllocationSum(amount: number, allocations: PaymentAllocationInput[]): void {
-  const sum = normalizeMoney(allocations.reduce((total, allocation) => total + allocation.amount, 0));
+  const sum = normalizeMoney(
+    allocations.reduce((total, allocation) => total + allocation.amount, 0),
+  );
   if (normalizeMoney(amount) !== sum) {
     throw new BadRequestError('Payment allocations must add up to the full payment amount.');
   }
 }
 
 function buildWorkingAvailability(params: {
-  balances: Map<string, { committed_amount: number; paid_amount: number; outstanding_amount: number }>;
+  balances: Map<
+    string,
+    { committed_amount: number; paid_amount: number; outstanding_amount: number }
+  >;
   currentPayment?: PaymentRow | null;
   removedAllocations?: Map<string, number>;
 }): Map<string, { outstanding: number; paid: number }> {
@@ -849,10 +873,14 @@ export async function createPaymentRecordTx(
   const header = await lockExpenseHeader(client, ownerId, expenseId);
   const items = await lockExpenseItems(client, expenseId);
   if (items.length === 0) {
-    throw new BadRequestError('You must add at least one finance line item before recording payments.');
+    throw new BadRequestError(
+      'You must add at least one finance line item before recording payments.',
+    );
   }
 
-  const currentLockedPayments = currentPayment ? await lockPayments(client, [currentPayment.id]) : [];
+  const currentLockedPayments = currentPayment
+    ? await lockPayments(client, [currentPayment.id])
+    : [];
   const lockedCurrentPayment = currentLockedPayments[0] ?? currentPayment;
   const removedAllocations =
     lockedCurrentPayment != null
@@ -923,8 +951,7 @@ export async function createPaymentRecordTx(
       if (!itemState) {
         throw new BadRequestError('Payment allocation references an invalid expense item.');
       }
-      const limit =
-        normalized.direction === 'inflow' ? itemState.paid : itemState.outstanding;
+      const limit = normalized.direction === 'inflow' ? itemState.paid : itemState.outstanding;
       if (normalizeMoney(allocation.amount) > normalizeMoney(limit)) {
         throw new ConflictError(
           normalized.direction === 'inflow'
@@ -1016,7 +1043,16 @@ export async function createPaymentRecordTx(
       ],
     );
     payment = mapPaymentRow(rows[0] ?? {});
-    await insertActivity(client, ownerId, expenseId, 'payment', payment.id, 'created', null, payment);
+    await insertActivity(
+      client,
+      ownerId,
+      expenseId,
+      'payment',
+      payment.id,
+      'created',
+      null,
+      payment,
+    );
   }
 
   if (allocations.length > 0) {
@@ -1038,7 +1074,16 @@ export async function deleteScheduledPaymentTx(
     throw new ConflictError('Only scheduled payments can be deleted.');
   }
   await client.query(`DELETE FROM payments WHERE id = $1`, [paymentId]);
-  await insertActivity(client, ownerId, payment.expense_id, 'payment', paymentId, 'deleted', payment, null);
+  await insertActivity(
+    client,
+    ownerId,
+    payment.expense_id,
+    'payment',
+    paymentId,
+    'deleted',
+    payment,
+    null,
+  );
 }
 
 async function normalizeTerminatedExpense(
@@ -1064,7 +1109,16 @@ async function normalizeTerminatedExpense(
     const targetAmount = normalizeMoney(balance?.paid_amount ?? 0);
     if (targetAmount === 0) {
       await client.query(`DELETE FROM expense_items WHERE id = $1`, [item.id]);
-      await insertActivity(client, ownerId, expenseId, 'expense_item', item.id, 'deleted', item, null);
+      await insertActivity(
+        client,
+        ownerId,
+        expenseId,
+        'expense_item',
+        item.id,
+        'deleted',
+        item,
+        null,
+      );
       continue;
     }
     if (item.amount === targetAmount) continue;
@@ -1153,7 +1207,16 @@ export async function createManualExpense(
       source_id: payload.source_id ?? null,
       status: payload.status ?? 'active',
     });
-    await insertActivity(client, ownerId, expense.id, 'expense', expense.id, 'created', null, expense);
+    await insertActivity(
+      client,
+      ownerId,
+      expense.id,
+      'expense',
+      expense.id,
+      'created',
+      null,
+      expense,
+    );
     await syncExpenseItems(client, ownerId, expense.id, payload.items);
     for (const payment of payload.payments ?? []) {
       await createPaymentRecordTx(client, ownerId, expense.id, payment);
@@ -1196,7 +1259,16 @@ export async function deleteExpense(ownerId: string, expenseId: string): Promise
       throw new ConflictError('Expenses with payment history cannot be deleted.');
     }
     await client.query(`DELETE FROM expenses WHERE id = $1 AND user_id = $2`, [expenseId, ownerId]);
-    await insertActivity(client, ownerId, expenseId, 'expense', expenseId, 'deleted', expense, null);
+    await insertActivity(
+      client,
+      ownerId,
+      expenseId,
+      'expense',
+      expenseId,
+      'deleted',
+      expense,
+      null,
+    );
   });
 }
 
@@ -1303,8 +1375,20 @@ export async function upsertSourceExpenseTx(
       );
     }
     const expense = await lockExpenseHeader(client, ownerId, existingId);
-    await client.query(`DELETE FROM expenses WHERE id = $1 AND user_id = $2`, [existingId, ownerId]);
-    await insertActivity(client, ownerId, existingId, 'expense', existingId, 'deleted', expense, null);
+    await client.query(`DELETE FROM expenses WHERE id = $1 AND user_id = $2`, [
+      existingId,
+      ownerId,
+    ]);
+    await insertActivity(
+      client,
+      ownerId,
+      existingId,
+      'expense',
+      existingId,
+      'deleted',
+      expense,
+      null,
+    );
     return null;
   }
 
@@ -1331,7 +1415,16 @@ export async function upsertSourceExpenseTx(
     notes: input.notes ?? null,
     status: 'active',
   });
-  await insertActivity(client, ownerId, created.id, 'expense', created.id, 'created', null, created);
+  await insertActivity(
+    client,
+    ownerId,
+    created.id,
+    'expense',
+    created.id,
+    'created',
+    null,
+    created,
+  );
   await syncExpenseItems(client, ownerId, created.id, items);
   for (const payment of input.payments ?? []) {
     await createPaymentRecordTx(client, ownerId, created.id, payment);

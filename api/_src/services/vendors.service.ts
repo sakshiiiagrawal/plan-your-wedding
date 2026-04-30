@@ -144,11 +144,17 @@ export async function createVendor(
         payload.notes ?? null,
       ],
     );
-    const vendor = rows[0] as VendorRow & Record<string, unknown> | undefined;
+    const vendor = rows[0] as (VendorRow & Record<string, unknown>) | undefined;
     if (!vendor) throw new NotFoundError('Vendor could not be created');
 
     const financeInput = await extractVendorFinanceInput(ownerId, payload);
-    const linkedExpense = await upsertSourceExpenseTx(client, ownerId, 'vendor', vendor.id, financeInput);
+    const linkedExpense = await upsertSourceExpenseTx(
+      client,
+      ownerId,
+      'vendor',
+      vendor.id,
+      financeInput,
+    );
     return mergeVendorWithFinance(vendor, linkedExpense);
   });
 }
@@ -174,7 +180,7 @@ export async function updateVendor(
       `SELECT * FROM vendors WHERE id = $1 AND user_id = $2 FOR UPDATE`,
       [id, ownerId],
     );
-    const existing = existingRows[0] as VendorRow & Record<string, unknown> | undefined;
+    const existing = existingRows[0] as (VendorRow & Record<string, unknown>) | undefined;
     if (!existing) throw new NotFoundError('Vendor not found');
 
     const nextValues = {
@@ -188,9 +194,7 @@ export async function updateVendor(
       phone: payload.phone !== undefined ? payload.phone : (existing.phone ?? null),
       email: payload.email !== undefined ? payload.email : (existing.email ?? null),
       is_confirmed:
-        payload.is_confirmed !== undefined
-          ? payload.is_confirmed
-          : Boolean(existing.is_confirmed),
+        payload.is_confirmed !== undefined ? payload.is_confirmed : Boolean(existing.is_confirmed),
       notes: payload.notes !== undefined ? payload.notes : (existing.notes ?? null),
     };
 
@@ -222,7 +226,7 @@ export async function updateVendor(
       ],
     );
 
-    const vendor = rows[0] as VendorRow & Record<string, unknown> | undefined;
+    const vendor = rows[0] as (VendorRow & Record<string, unknown>) | undefined;
     if (!vendor) throw new NotFoundError('Vendor not found');
 
     const shouldTouchFinance =
@@ -312,7 +316,10 @@ export async function deleteVendor(id: string, ownerId: string) {
       if (finance.payments.length > 0) {
         throw new ConflictError('Cannot delete vendor with linked payment history.');
       }
-      await client.query(`DELETE FROM expenses WHERE id = $1 AND user_id = $2`, [expenseId, ownerId]);
+      await client.query(`DELETE FROM expenses WHERE id = $1 AND user_id = $2`, [
+        expenseId,
+        ownerId,
+      ]);
     }
 
     await client.query(`DELETE FROM vendors WHERE id = $1 AND user_id = $2`, [id, ownerId]);
@@ -341,11 +348,7 @@ export async function getPayments(vendorId: string, ownerId: string) {
   return expense?.payments ?? [];
 }
 
-export async function addPayment(
-  vendorId: string,
-  ownerId: string,
-  payload: PaymentMutationInput,
-) {
+export async function addPayment(vendorId: string, ownerId: string, payload: PaymentMutationInput) {
   const expenseId = await getSourceExpenseId(ownerId, 'vendor', vendorId);
   if (!expenseId) {
     throw new NotFoundError('Create a vendor obligation before recording payments.');
@@ -363,7 +366,8 @@ export async function getVendorExpenseSummary(ownerId: string) {
     id: vendor.id,
     name: vendor.name,
     category_id: vendor.category_id,
-    category: (vendor as { expense_categories?: { name?: string } }).expense_categories?.name ?? null,
+    category:
+      (vendor as { expense_categories?: { name?: string } }).expense_categories?.name ?? null,
     expense_id: vendor.expense_id,
     totalCost: vendor.finance_summary?.committed_amount ?? 0,
     paidAmount: vendor.finance_summary?.paid_amount ?? 0,

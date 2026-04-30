@@ -87,9 +87,7 @@ export async function findSummaryByOwner(ownerId: string) {
 export async function findByIdAndOwner(id: string, ownerId: string): Promise<GuestDetail | null> {
   const { data, error } = await supabase
     .from('guests')
-    .select(
-      '*, guest_groups!group_id(*), guest_event_rsvp(*)',
-    )
+    .select('*, guest_groups!group_id(*), guest_event_rsvp(*)')
     .eq('id', id)
     .eq('user_id', ownerId)
     .single();
@@ -135,11 +133,7 @@ export async function deleteGuest(id: string, ownerId: string): Promise<void> {
 }
 
 export async function deleteGuestsBulk(ids: string[], ownerId: string): Promise<void> {
-  const { error } = await supabase
-    .from('guests')
-    .delete()
-    .in('id', ids)
-    .eq('user_id', ownerId);
+  const { error } = await supabase.from('guests').delete().in('id', ids).eq('user_id', ownerId);
   if (error) throw error;
 }
 

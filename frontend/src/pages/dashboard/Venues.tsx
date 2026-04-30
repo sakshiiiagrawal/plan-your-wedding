@@ -39,11 +39,12 @@ const PRESET_ROOM_TYPES: { label: string; capacity: number; prefix: string }[] =
   { label: 'Presidential Suite', capacity: 4, prefix: 'PSU' },
 ];
 
-const PRESET_BY_LABEL: Record<string, { capacity: number; prefix: string }> =
-  Object.fromEntries(PRESET_ROOM_TYPES.map((t) => [t.label, { capacity: t.capacity, prefix: t.prefix }]));
+const PRESET_BY_LABEL: Record<string, { capacity: number; prefix: string }> = Object.fromEntries(
+  PRESET_ROOM_TYPES.map((t) => [t.label, { capacity: t.capacity, prefix: t.prefix }]),
+);
 
 interface RoomCategoryEntry {
-  room_type: string;        // preset label or custom text
+  room_type: string; // preset label or custom text
   is_custom: boolean;
   count: number | string;
   capacity: number | string;
@@ -102,7 +103,8 @@ function VenueRoomsSection({ venueId }: { venueId: string }) {
     const map: Record<string, { count: number; capacity: number | null; rate: number | null }> = {};
     (rooms as any[]).forEach((r: any) => {
       const type = r.room_type as string;
-      if (!map[type]) map[type] = { count: 0, capacity: r.capacity ?? null, rate: r.rate_per_night ?? null };
+      if (!map[type])
+        map[type] = { count: 0, capacity: r.capacity ?? null, rate: r.rate_per_night ?? null };
       map[type].count++;
     });
     return Object.entries(map);
@@ -128,20 +130,28 @@ function VenueRoomsSection({ venueId }: { venueId: string }) {
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gold-50 text-gold-800 text-xs font-medium border border-gold-200"
           >
             {type}
-            <span className="bg-gold-200 text-gold-900 rounded-full px-1.5 font-semibold">{info.count}</span>
+            <span className="bg-gold-200 text-gold-900 rounded-full px-1.5 font-semibold">
+              {info.count}
+            </span>
           </span>
         ))}
       </div>
       <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-400">{totalRooms} room{totalRooms !== 1 ? 's' : ''} total</p>
+        <p className="text-xs text-gray-400">
+          {totalRooms} room{totalRooms !== 1 ? 's' : ''} total
+        </p>
         <button
           onClick={() => setExpanded((p) => !p)}
           className="flex items-center gap-1 text-xs text-gold-700 hover:text-gold-900 font-medium transition-colors"
         >
           {expanded ? (
-            <><HiOutlineChevronUp className="w-3.5 h-3.5" /> Collapse</>
+            <>
+              <HiOutlineChevronUp className="w-3.5 h-3.5" /> Collapse
+            </>
           ) : (
-            <><HiOutlineChevronDown className="w-3.5 h-3.5" /> View details</>
+            <>
+              <HiOutlineChevronDown className="w-3.5 h-3.5" /> View details
+            </>
           )}
         </button>
       </div>
@@ -167,9 +177,15 @@ function VenueRoomsSection({ venueId }: { venueId: string }) {
                     {r.capacity ? `${r.capacity}` : <span className="text-gray-300">—</span>}
                   </td>
                   <td className="px-3 py-2 text-right text-gray-600">
-                    {r.rate_per_night
-                      ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(r.rate_per_night)
-                      : <span className="text-gray-300">—</span>}
+                    {r.rate_per_night ? (
+                      new Intl.NumberFormat('en-IN', {
+                        style: 'currency',
+                        currency: 'INR',
+                        maximumFractionDigits: 0,
+                      }).format(r.rate_per_night)
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -245,8 +261,7 @@ export default function Venues() {
 
     for (const entry of validCategories) {
       const preset = PRESET_BY_LABEL[entry.room_type];
-      const prefix =
-        preset?.prefix ?? entry.room_type.slice(0, 4).toUpperCase().replace(/\s/g, '');
+      const prefix = preset?.prefix ?? entry.room_type.slice(0, 4).toUpperCase().replace(/\s/g, '');
       const startIdx = (existingCountByType[entry.room_type] || 0) + 1;
       const count = Number(entry.count);
       for (let i = 0; i < count; i++) {
@@ -355,9 +370,7 @@ export default function Venues() {
                     <h3 className="text-lg font-display font-bold text-maroon-800 leading-tight">
                       {venue.name}
                     </h3>
-                    {v.city && (
-                      <p className="text-sm text-gray-500 mt-0.5">{v.city}</p>
-                    )}
+                    {v.city && <p className="text-sm text-gray-500 mt-0.5">{v.city}</p>}
                   </div>
                   <div className="flex flex-wrap gap-1.5 shrink-0">
                     {venueTypeLabel && (
@@ -373,7 +386,6 @@ export default function Venues() {
 
                 {/* Body */}
                 <div className="flex-1 space-y-0 divide-y divide-gray-100">
-
                   {/* Location */}
                   <div className="py-3 space-y-2">
                     {fullAddress && (
@@ -403,18 +415,22 @@ export default function Venues() {
                       <HiOutlineUsers className="w-4 h-4 shrink-0 text-gold-600" />
                       <div>
                         <p className="text-xs text-gray-400 leading-none">Capacity</p>
-                        {v.capacity && Number(v.capacity) > 0
-                          ? <p className="font-medium">{v.capacity} guests</p>
-                          : <p className="text-gray-400 italic text-xs">Not specified</p>}
+                        {v.capacity && Number(v.capacity) > 0 ? (
+                          <p className="font-medium">{v.capacity} guests</p>
+                        ) : (
+                          <p className="text-gray-400 italic text-xs">Not specified</p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-700">
                       <HiOutlineCurrencyRupee className="w-4 h-4 shrink-0 text-gold-600" />
                       <div>
                         <p className="text-xs text-gray-400 leading-none">Committed</p>
-                        {committed > 0
-                          ? <p className="font-medium">{formatCurrency(committed)}</p>
-                          : <p className="text-gray-400 italic text-xs">Not specified</p>}
+                        {committed > 0 ? (
+                          <p className="font-medium">{formatCurrency(committed)}</p>
+                        ) : (
+                          <p className="text-gray-400 italic text-xs">Not specified</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -428,7 +444,9 @@ export default function Venues() {
                         </div>
                         <div>
                           <p className="text-xs text-gray-400 leading-none">Outstanding</p>
-                          <p className="font-medium text-orange-700">{formatCurrency(outstanding)}</p>
+                          <p className="font-medium text-orange-700">
+                            {formatCurrency(outstanding)}
+                          </p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-400 leading-none">Side</p>
@@ -449,7 +467,9 @@ export default function Venues() {
                                 {formatCurrency(payment.amount)}
                               </span>
                               <span className="text-amber-700">
-                                {new Date(payment.due_date ?? payment.created_at).toLocaleDateString('en-IN')}
+                                {new Date(
+                                  payment.due_date ?? payment.created_at,
+                                ).toLocaleDateString('en-IN')}
                               </span>
                             </div>
                           ))}
@@ -475,7 +495,9 @@ export default function Venues() {
                   {/* Contact */}
                   {hasContact && (
                     <div className="py-3 space-y-1.5">
-                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Contact</p>
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                        Contact
+                      </p>
                       <div className="flex items-center gap-2 text-sm text-gray-700">
                         <HiOutlinePhone className="w-4 h-4 shrink-0 text-gold-600" />
                         <span>
@@ -508,7 +530,9 @@ export default function Venues() {
                   {/* Notes */}
                   {v.notes && (
                     <div className="py-3 space-y-1.5">
-                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Notes</p>
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                        Notes
+                      </p>
                       <div className="flex items-start gap-2 text-sm text-gray-700">
                         <HiOutlineAnnotation className="w-4 h-4 mt-0.5 shrink-0 text-gold-600" />
                         <span className="whitespace-pre-line">{v.notes}</span>
@@ -639,27 +663,31 @@ export default function Venues() {
                       </button>
                     </div>
 
-                    {existingRooms.length > 0 && (() => {
-                      const groups: Record<string, { count: number; rate: number | null }> = {};
-                      (existingRooms as any[]).forEach((r: any) => {
-                        const t = r.room_type as string;
-                        if (!groups[t]) groups[t] = { count: 0, rate: r.rate_per_night ?? null };
-                        groups[t].count++;
-                      });
-                      return (
-                        <div className="space-y-1">
-                          <p className="text-xs text-gray-500">Already added rooms:</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {Object.entries(groups).map(([type, info]) => (
-                              <span key={type} className="badge bg-gray-100 text-gray-600 text-xs">
-                                {type} × {info.count}
-                                {info.rate ? ` · ₹${info.rate}/night` : ''}
-                              </span>
-                            ))}
+                    {existingRooms.length > 0 &&
+                      (() => {
+                        const groups: Record<string, { count: number; rate: number | null }> = {};
+                        (existingRooms as any[]).forEach((r: any) => {
+                          const t = r.room_type as string;
+                          if (!groups[t]) groups[t] = { count: 0, rate: r.rate_per_night ?? null };
+                          groups[t].count++;
+                        });
+                        return (
+                          <div className="space-y-1">
+                            <p className="text-xs text-gray-500">Already added rooms:</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {Object.entries(groups).map(([type, info]) => (
+                                <span
+                                  key={type}
+                                  className="badge bg-gray-100 text-gray-600 text-xs"
+                                >
+                                  {type} × {info.count}
+                                  {info.rate ? ` · ₹${info.rate}/night` : ''}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })()}
+                        );
+                      })()}
 
                     {roomCategories.length === 0 && existingRooms.length === 0 && (
                       <p className="text-xs text-gray-400 text-center py-2">

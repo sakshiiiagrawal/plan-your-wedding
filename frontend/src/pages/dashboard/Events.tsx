@@ -125,7 +125,9 @@ function EventTypeCombobox({ value, isOther, onSelect }: EventTypeComboboxProps)
         <span className={displayLabel ? 'text-gray-900' : 'text-gray-400'}>
           {displayLabel || 'Select event type'}
         </span>
-        <HiOutlineChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <HiOutlineChevronDown
+          className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
       </button>
 
       {open && (
@@ -162,7 +164,9 @@ function EventTypeCombobox({ value, isOther, onSelect }: EventTypeComboboxProps)
                       setQuery('');
                     }}
                     className={`w-full text-left px-4 py-2 text-sm hover:bg-gold-50 transition-colors ${
-                      value === t.value && !isOther ? 'bg-gold-50 text-gold-700 font-medium' : 'text-gray-700'
+                      value === t.value && !isOther
+                        ? 'bg-gold-50 text-gold-700 font-medium'
+                        : 'text-gray-700'
                     }`}
                   >
                     {t.label}
@@ -557,9 +561,7 @@ export default function Events() {
                       <input
                         type="text"
                         value={formData.event_type}
-                        onChange={(e) =>
-                          setFormData({ ...formData, event_type: e.target.value })
-                        }
+                        onChange={(e) => setFormData({ ...formData, event_type: e.target.value })}
                         className="input mt-2"
                         placeholder="Describe your custom event type"
                         required

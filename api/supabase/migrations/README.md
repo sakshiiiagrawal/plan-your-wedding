@@ -20,7 +20,7 @@ npm run db:migrate:print
 
 | File                                    | Description                                                 |
 | --------------------------------------- | ----------------------------------------------------------- |
-| `001_initial_schema.sql`                | Core tables: guests, events, venues, expense, etc.           |
+| `001_initial_schema.sql`                | Core tables: guests, events, venues, expense, etc.          |
 | `002_example_seed.sql`                  | **Optional** example data for development                   |
 | `003_example_comprehensive_seed.sql`    | **Optional** larger example dataset                         |
 | `004_users_and_website_content_fix.sql` | `users` table + composite unique index on `website_content` |

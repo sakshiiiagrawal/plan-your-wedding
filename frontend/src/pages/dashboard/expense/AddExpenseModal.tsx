@@ -238,7 +238,9 @@ export default function AddExpenseModal({
                             min="0"
                             step="0.01"
                             value={item.amount}
-                            onChange={(event) => updateItem(item.id, { amount: event.target.value })}
+                            onChange={(event) =>
+                              updateItem(item.id, { amount: event.target.value })
+                            }
                             className="input"
                             placeholder="0"
                             required

@@ -111,9 +111,7 @@ function ExpenseList({
           ))}
           <div className={`p-3 ${totalBg} flex justify-between font-bold ${totalColor}`}>
             <span>Total</span>
-            <span>
-              {formatCurrency(items.reduce((sum, item) => sum + item.amount, 0))}
-            </span>
+            <span>{formatCurrency(items.reduce((sum, item) => sum + item.amount, 0))}</span>
           </div>
         </div>
       ) : (

@@ -97,7 +97,9 @@ function mergeVenueWithFinance(
   } as VenueWithFinance & VenueWithEventSummary;
 }
 
-export async function listVenues(ownerId: string): Promise<Array<VenueWithEventSummary & { expense_id: string | null }>> {
+export async function listVenues(
+  ownerId: string,
+): Promise<Array<VenueWithEventSummary & { expense_id: string | null }>> {
   const [venues, financeRows] = await Promise.all([
     repo.findAllByOwner(ownerId),
     listExpenses(ownerId, { source_type: 'venue' }),
@@ -110,7 +112,10 @@ export async function listVenues(ownerId: string): Promise<Array<VenueWithEventS
   return venues.map((venue) => mergeVenueWithFinance(venue, financeBySource.get(venue.id) ?? null));
 }
 
-export async function getVenue(id: string, ownerId: string): Promise<VenueWithEventSummary & { expense_id: string | null }> {
+export async function getVenue(
+  id: string,
+  ownerId: string,
+): Promise<VenueWithEventSummary & { expense_id: string | null }> {
   const venue = await repo.findByIdAndOwner(id, ownerId);
   if (!venue) throw new NotFoundError('Venue not found');
   const finance = await getSourceExpense(ownerId, 'venue', id);
@@ -134,7 +139,15 @@ export async function createVenue(
   ownerId: string,
 ): Promise<VenueRow> {
   return withPgTransaction(async (client) => {
-    const { rooms = [], total_cost, expense_date, side, bride_share_percentage, finance, ...venuePayload } = payload as typeof payload;
+    const {
+      rooms = [],
+      total_cost,
+      expense_date,
+      side,
+      bride_share_percentage,
+      finance,
+      ...venuePayload
+    } = payload as typeof payload;
     const { rows } = await client.query<Record<string, unknown>>(
       `
         INSERT INTO venues (
@@ -258,8 +271,7 @@ export async function updateVenue(
       contact_phone: venuePayload.contact_phone ?? existing.contact_phone,
       capacity: venuePayload.capacity ?? existing.capacity,
       has_accommodation: venuePayload.has_accommodation ?? existing.has_accommodation,
-      default_check_in_date:
-        venuePayload.default_check_in_date ?? existing.default_check_in_date,
+      default_check_in_date: venuePayload.default_check_in_date ?? existing.default_check_in_date,
       default_check_out_date:
         venuePayload.default_check_out_date ?? existing.default_check_out_date,
       notes: venuePayload.notes ?? existing.notes,
@@ -417,7 +429,10 @@ export async function deleteVenue(id: string, ownerId: string): Promise<void> {
       if (finance.payments.length > 0) {
         throw new ConflictError('Cannot delete venue with linked payment history.');
       }
-      await client.query(`DELETE FROM expenses WHERE id = $1 AND user_id = $2`, [expenseId, ownerId]);
+      await client.query(`DELETE FROM expenses WHERE id = $1 AND user_id = $2`, [
+        expenseId,
+        ownerId,
+      ]);
     }
 
     await client.query(`DELETE FROM venues WHERE id = $1 AND user_id = $2`, [id, ownerId]);
@@ -438,14 +453,19 @@ export async function addRoom(venueId: string, payload: Omit<RoomInsert, 'venue_
 
 export async function updateRoom(
   id: string,
-  payload: Partial<Pick<RoomInsert, 'room_number' | 'capacity' | 'room_type' | 'rate_per_night' | 'notes'>>,
+  payload: Partial<
+    Pick<RoomInsert, 'room_number' | 'capacity' | 'room_type' | 'rate_per_night' | 'notes'>
+  >,
 ) {
   // If lowering capacity, make sure it doesn't go below current occupancy
   if (payload.capacity !== undefined) {
     const existing = await repo.findRoomById(id);
     if (existing) {
       const allocs = await repo.findAllocationsByRoom(id);
-      const occupancy = allocs.reduce((sum, a) => sum + ((a.guest_ids as string[])?.length ?? 0), 0);
+      const occupancy = allocs.reduce(
+        (sum, a) => sum + ((a.guest_ids as string[])?.length ?? 0),
+        0,
+      );
       if (payload.capacity < occupancy) {
         throw new BadRequestError(
           `Cannot set capacity to ${payload.capacity} — room currently has ${occupancy} guest${occupancy !== 1 ? 's' : ''} assigned.`,
@@ -634,7 +654,12 @@ async function processAllocations(
 
   // Resolve rooms and build allocation payloads
   const allocationsToInsert: RoomAllocationInsert[] = [];
-  const allocationsToUpdate: { id: string; guest_ids: string[]; check_in_date: string; check_out_date: string }[] = [];
+  const allocationsToUpdate: {
+    id: string;
+    guest_ids: string[];
+    check_in_date: string;
+    check_out_date: string;
+  }[] = [];
   const createdRooms: { room_number: string }[] = [];
   const roomCache = new Map<string, { id: string; capacity: number; room_number: string }>();
 
@@ -668,9 +693,7 @@ async function processAllocations(
 
     if (existing) {
       // Merge guest IDs (avoid duplicates)
-      const mergedIds = Array.from(
-        new Set([...(existing.guest_ids ?? []), ...group.guestIds]),
-      );
+      const mergedIds = Array.from(new Set([...(existing.guest_ids ?? []), ...group.guestIds]));
       allocationsToUpdate.push({
         id: existing.id,
         guest_ids: mergedIds,
@@ -692,7 +715,12 @@ async function processAllocations(
 
 async function commitAndFormat(
   allocationsToInsert: RoomAllocationInsert[],
-  allocationsToUpdate: { id: string; guest_ids: string[]; check_in_date: string; check_out_date: string }[],
+  allocationsToUpdate: {
+    id: string;
+    guest_ids: string[];
+    check_in_date: string;
+    check_out_date: string;
+  }[],
 ): Promise<FormattedAllocation[]> {
   const formatted: FormattedAllocation[] = [];
 
@@ -796,7 +824,8 @@ export async function importAllVenuesAllocations(buffer: Buffer, ownerId: string
 
   if (venues.length === 0) {
     return {
-      error: 'No accommodation venues found. Please create venues with "Has Accommodation" enabled first.',
+      error:
+        'No accommodation venues found. Please create venues with "Has Accommodation" enabled first.',
     } as const;
   }
 

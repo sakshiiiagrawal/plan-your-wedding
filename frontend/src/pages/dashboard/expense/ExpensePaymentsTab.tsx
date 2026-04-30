@@ -24,9 +24,7 @@ function plannedBadge(paymentDate: string) {
       </span>
     );
   }
-  return (
-    <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Scheduled</span>
-  );
+  return <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Scheduled</span>;
 }
 
 export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTabProps) {
@@ -94,14 +92,20 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   .map((payment) => (
                     <tr key={payment.id} className="table-row">
                       <td className="p-4 font-medium">{payment.expense.description}</td>
-                      <td className="p-4 text-gray-500 capitalize">{payment.expense.source_type}</td>
+                      <td className="p-4 text-gray-500 capitalize">
+                        {payment.expense.source_type}
+                      </td>
                       <td className="p-4 text-right font-medium text-maroon-800">
                         {formatCurrency(payment.amount)}
                       </td>
                       <td className="p-4 text-gray-600">
-                        {new Date(payment.due_date ?? payment.created_at).toLocaleDateString('en-IN')}
+                        {new Date(payment.due_date ?? payment.created_at).toLocaleDateString(
+                          'en-IN',
+                        )}
                       </td>
-                      <td className="p-4">{plannedBadge(payment.due_date ?? payment.created_at)}</td>
+                      <td className="p-4">
+                        {plannedBadge(payment.due_date ?? payment.created_at)}
+                      </td>
                     </tr>
                   ))}
               </tbody>
@@ -139,7 +143,9 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   .map((payment) => (
                     <tr key={payment.id} className="table-row">
                       <td className="p-4 font-medium">{payment.expense.description}</td>
-                      <td className="p-4 text-gray-500 capitalize">{payment.expense.source_type}</td>
+                      <td className="p-4 text-gray-500 capitalize">
+                        {payment.expense.source_type}
+                      </td>
                       <td
                         className={`p-4 text-right font-medium ${
                           payment.direction === 'inflow' ? 'text-sky-700' : 'text-green-700'
@@ -148,7 +154,9 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                         {formatCurrency(payment.amount)}
                       </td>
                       <td className="p-4 text-gray-600">
-                        {new Date(payment.paid_date ?? payment.created_at).toLocaleDateString('en-IN')}
+                        {new Date(payment.paid_date ?? payment.created_at).toLocaleDateString(
+                          'en-IN',
+                        )}
                       </td>
                       <td className="p-4 text-gray-600 capitalize">
                         {payment.payment_method?.replace('_', ' ') || '—'}

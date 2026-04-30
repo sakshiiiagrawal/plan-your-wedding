@@ -28,7 +28,6 @@ interface FormData {
   is_shared: boolean;
 }
 
-
 export default function EditVendorModal({
   vendor,
   onClose,

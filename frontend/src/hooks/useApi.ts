@@ -807,10 +807,7 @@ export const useExpenseAlerts = () =>
     queryFn: () => api.get('/expense/alerts').then((res) => res.data),
   });
 
-export const useSourcePayments = (
-  sourceType: 'vendor' | 'venue',
-  sourceId?: string | null,
-) =>
+export const useSourcePayments = (sourceType: 'vendor' | 'venue', sourceId?: string | null) =>
   useQuery<PaymentRow[]>({
     queryKey: [sourceType, sourceId, 'payments'],
     queryFn: () => api.get(`/${sourceType}s/${sourceId}/payments`).then((res) => res.data),

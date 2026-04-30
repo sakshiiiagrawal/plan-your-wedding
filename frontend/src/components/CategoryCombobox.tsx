@@ -99,10 +99,7 @@ export default function CategoryCombobox({
     if (!isOpen) return;
     function onMouseDown(e: MouseEvent) {
       const target = e.target as Node;
-      if (
-        inputRef.current?.contains(target) ||
-        dropdownRef.current?.contains(target)
-      ) {
+      if (inputRef.current?.contains(target) || dropdownRef.current?.contains(target)) {
         return;
       }
       setIsOpen(false);
@@ -128,92 +125,91 @@ export default function CategoryCombobox({
     return <div className="input text-gray-400 text-sm">Loading categories…</div>;
   }
 
-  const dropdown = isOpen && !disabled ? (
-    <div
-      ref={dropdownRef}
-      style={dropdownStyle}
-      className="bg-white border border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto"
-    >
-      {filteredGroups.length === 0 ? (
-        <p className="px-4 py-3 text-sm text-gray-500">No categories found</p>
-      ) : (
-        filteredGroups.map(({ parent, children }) => (
-          <div key={parent.id}>
-            {/* In 'subcategory' mode: parent is a header ONLY if it has children to choose from.
+  const dropdown =
+    isOpen && !disabled ? (
+      <div
+        ref={dropdownRef}
+        style={dropdownStyle}
+        className="bg-white border border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto"
+      >
+        {filteredGroups.length === 0 ? (
+          <p className="px-4 py-3 text-sm text-gray-500">No categories found</p>
+        ) : (
+          filteredGroups.map(({ parent, children }) => (
+            <div key={parent.id}>
+              {/* In 'subcategory' mode: parent is a header ONLY if it has children to choose from.
                 If it has no children, make it selectable directly. */}
-            {level !== 'subcategory' || children.length === 0 ? (
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleSelect(parent.id);
-                }}
-                className={`w-full text-left px-4 py-2 text-sm font-semibold transition-colors hover:bg-gold-50 ${
-                  value === parent.id ? 'bg-gold-100 text-maroon-800' : 'text-maroon-700'
-                }`}
-              >
-                {parent.name}
-              </button>
-            ) : (
-              <div className="px-4 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400 bg-gray-50">
-                {parent.name}
-              </div>
-            )}
+              {level !== 'subcategory' || children.length === 0 ? (
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelect(parent.id);
+                  }}
+                  className={`w-full text-left px-4 py-2 text-sm font-semibold transition-colors hover:bg-gold-50 ${
+                    value === parent.id ? 'bg-gold-100 text-maroon-800' : 'text-maroon-700'
+                  }`}
+                >
+                  {parent.name}
+                </button>
+              ) : (
+                <div className="px-4 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400 bg-gray-50">
+                  {parent.name}
+                </div>
+              )}
 
-            {children.map((child) => (
-              <button
-                key={child.id}
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleSelect(child.id);
-                }}
-                className={`w-full text-left px-4 py-2 pl-8 text-sm transition-colors hover:bg-gold-50 ${
-                  value === child.id
-                    ? 'bg-gold-100 text-maroon-800 font-medium'
-                    : 'text-gray-700'
-                }`}
-              >
-                {child.name}
-              </button>
-            ))}
+              {children.map((child) => (
+                <button
+                  key={child.id}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelect(child.id);
+                  }}
+                  className={`w-full text-left px-4 py-2 pl-8 text-sm transition-colors hover:bg-gold-50 ${
+                    value === child.id ? 'bg-gold-100 text-maroon-800 font-medium' : 'text-gray-700'
+                  }`}
+                >
+                  {child.name}
+                </button>
+              ))}
 
-            {allowCustom && onAddCustom && children.length > 0 && (
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onAddCustom(parent.id);
-                  setIsOpen(false);
-                }}
-                className="w-full text-left px-4 py-1.5 pl-8 text-xs text-maroon-500 hover:bg-maroon-50 flex items-center gap-1"
-              >
-                <HiOutlinePlus className="w-3 h-3" />
-                Add custom under {parent.name}
-              </button>
-            )}
+              {allowCustom && onAddCustom && children.length > 0 && (
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onAddCustom(parent.id);
+                    setIsOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-1.5 pl-8 text-xs text-maroon-500 hover:bg-maroon-50 flex items-center gap-1"
+                >
+                  <HiOutlinePlus className="w-3 h-3" />
+                  Add custom under {parent.name}
+                </button>
+              )}
+            </div>
+          ))
+        )}
+
+        {allowCustom && onAddCustom && (
+          <div className="border-t border-gray-100">
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onAddCustom(null);
+                setIsOpen(false);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-maroon-600 hover:bg-maroon-50 flex items-center gap-2 font-medium"
+            >
+              <HiOutlinePlus className="w-4 h-4" />
+              Add new custom category
+            </button>
           </div>
-        ))
-      )}
-
-      {allowCustom && onAddCustom && (
-        <div className="border-t border-gray-100">
-          <button
-            type="button"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              onAddCustom(null);
-              setIsOpen(false);
-            }}
-            className="w-full text-left px-4 py-2 text-sm text-maroon-600 hover:bg-maroon-50 flex items-center gap-2 font-medium"
-          >
-            <HiOutlinePlus className="w-4 h-4" />
-            Add new custom category
-          </button>
-        </div>
-      )}
-    </div>
-  ) : null;
+        )}
+      </div>
+    ) : null;
 
   return (
     <>

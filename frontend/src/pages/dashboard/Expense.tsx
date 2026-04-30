@@ -102,9 +102,7 @@ export default function Expense() {
       const sideMeta = getSideMeta(expense);
       const categorySummary = Array.from(
         new Set(
-          expense.items.map(
-            (item) => categoryNameById.get(item.category_id) ?? 'Uncategorized',
-          ),
+          expense.items.map((item) => categoryNameById.get(item.category_id) ?? 'Uncategorized'),
         ),
       ).join(', ');
 
@@ -144,7 +142,10 @@ export default function Expense() {
         allocated: parseFloat(category.allocated_amount || 0),
       }))
       .filter((category: { committed: number }) => category.committed > 0)
-      .sort((left: { committed: number }, right: { committed: number }) => right.committed - left.committed);
+      .sort(
+        (left: { committed: number }, right: { committed: number }) =>
+          right.committed - left.committed,
+      );
   }, [expenseOverview, expenses]);
 
   const sideWiseExpenses = useMemo(() => {
@@ -218,9 +219,7 @@ export default function Expense() {
       setActiveTab('expenses');
     } catch (error: any) {
       const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
-        'Failed to add expense.';
+        error?.response?.data?.message || error?.response?.data?.error || 'Failed to add expense.';
       toast.error(message);
     }
   };
@@ -348,10 +347,7 @@ export default function Expense() {
         )}
 
         {activeTab === 'sidewise' && (
-          <ExpenseSideWiseTab
-            sideWiseExpenses={sideWiseExpenses}
-            formatCurrency={formatCurrency}
-          />
+          <ExpenseSideWiseTab sideWiseExpenses={sideWiseExpenses} formatCurrency={formatCurrency} />
         )}
 
         {activeTab === 'categories' && (

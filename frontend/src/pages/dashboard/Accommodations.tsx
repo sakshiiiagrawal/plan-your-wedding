@@ -579,8 +579,8 @@ export default function Accommodations() {
               No accommodation venues yet
             </h2>
             <p className="text-gray-500 text-sm max-w-sm">
-              Add a venue in the Venues page and enable &quot;Has Accommodation&quot; to start managing room
-              allocations here.
+              Add a venue in the Venues page and enable &quot;Has Accommodation&quot; to start
+              managing room allocations here.
             </p>
           </div>
           <button onClick={() => navigate('../venues')} className="btn-primary mt-2">

@@ -119,9 +119,7 @@ export default function DashboardLayout() {
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">
-                  {user?.name || 'User'}
-                </p>
+                <p className="text-sm font-medium text-gray-800 truncate">{user?.name || 'User'}</p>
                 <p className="text-xs text-gray-500 truncate">{user?.email}</p>
               </div>
             </div>

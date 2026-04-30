@@ -2,11 +2,7 @@ import { supabase } from '../config/database';
 import type { WebsiteContentRow } from '@wedding-planner/shared';
 
 export async function findOwnerBySlug(slug: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('users')
-    .select('id')
-    .eq('slug', slug)
-    .maybeSingle();
+  const { data } = await supabase.from('users').select('id').eq('slug', slug).maybeSingle();
   return data?.id ?? null;
 }
 

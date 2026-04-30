@@ -90,9 +90,7 @@ export default function Dashboard() {
 
   const hasRsvpData = rsvpRaw.some((d) => d.value > 0);
 
-  const rsvpChartData = hasRsvpData
-    ? rsvpRaw
-    : [{ name: 'Empty', value: 1, color: '#e5e7eb' }];
+  const rsvpChartData = hasRsvpData ? rsvpRaw : [{ name: 'Empty', value: 1, color: '#e5e7eb' }];
 
   const expenseData = expenseOverview || [];
   const events = summary?.events || [];
@@ -206,19 +204,18 @@ export default function Dashboard() {
             icon: HiOutlineClipboardList,
           },
           { label: 'View Events', path: `/${slug}/dashboard/events`, icon: HiOutlineCalendar },
-        ]
-          .map((action) => (
-            <Link
-              key={action.label}
-              to={action.path}
-              className="card-hover flex items-center gap-3 p-4"
-            >
-              <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center">
-                <action.icon className="w-5 h-5 text-gold-600" />
-              </div>
-              <span className="font-medium text-gray-700">{action.label}</span>
-            </Link>
-          ))}
+        ].map((action) => (
+          <Link
+            key={action.label}
+            to={action.path}
+            className="card-hover flex items-center gap-3 p-4"
+          >
+            <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center">
+              <action.icon className="w-5 h-5 text-gold-600" />
+            </div>
+            <span className="font-medium text-gray-700">{action.label}</span>
+          </Link>
+        ))}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">

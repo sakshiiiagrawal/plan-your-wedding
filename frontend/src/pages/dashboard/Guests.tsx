@@ -308,10 +308,7 @@ export default function Guests() {
             <HiOutlineUpload className="w-4 h-4" />
             Import
           </button>
-          <button
-            onClick={() => addPendingRow()}
-            className="btn-primary flex items-center gap-2"
-          >
+          <button onClick={() => addPendingRow()} className="btn-primary flex items-center gap-2">
             <HiOutlinePlus className="w-4 h-4" />
             Add Guest
           </button>
@@ -487,9 +484,7 @@ export default function Guests() {
                       <input
                         type="text"
                         value={row.first_name}
-                        onChange={(e) =>
-                          updatePendingRow(row._key, { first_name: e.target.value })
-                        }
+                        onChange={(e) => updatePendingRow(row._key, { first_name: e.target.value })}
                         className="input text-sm py-1.5 min-w-0 w-28"
                         placeholder="First name *"
                       />
@@ -612,7 +607,9 @@ export default function Guests() {
                           className="text-sm py-1.5 px-4 flex items-center gap-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50"
                         >
                           <HiOutlineTrash className="w-4 h-4" />
-                          {isDeletingAll ? 'Deleting...' : `Delete ${pendingDeletes.size} Guest${pendingDeletes.size > 1 ? 's' : ''}`}
+                          {isDeletingAll
+                            ? 'Deleting...'
+                            : `Delete ${pendingDeletes.size} Guest${pendingDeletes.size > 1 ? 's' : ''}`}
                         </button>
                       </div>
                     </div>

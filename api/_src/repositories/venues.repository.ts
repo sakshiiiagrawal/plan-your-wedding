@@ -1,5 +1,12 @@
 import { supabase } from '../config/database';
-import type { VenueInsert, VenueRow, RoomInsert, RoomRow, RoomAllocationInsert, RoomAllocationRow } from '@wedding-planner/shared';
+import type {
+  VenueInsert,
+  VenueRow,
+  RoomInsert,
+  RoomRow,
+  RoomAllocationInsert,
+  RoomAllocationRow,
+} from '@wedding-planner/shared';
 
 // ---------------------------------------------------------------------------
 // Venues
@@ -140,7 +147,9 @@ export async function insertRoom(payload: RoomInsert): Promise<RoomRow> {
 
 export async function updateRoom(
   id: string,
-  payload: Partial<Pick<RoomInsert, 'room_number' | 'capacity' | 'room_type' | 'rate_per_night' | 'notes'>>,
+  payload: Partial<
+    Pick<RoomInsert, 'room_number' | 'capacity' | 'room_type' | 'rate_per_night' | 'notes'>
+  >,
 ): Promise<RoomRow> {
   const { data, error } = await supabase
     .from('rooms')
@@ -226,20 +235,13 @@ export async function findAllocationForRoom(
 }
 
 export async function findAllocationsByRoom(roomId: string): Promise<RoomAllocationRow[]> {
-  const { data, error } = await supabase
-    .from('room_allocations')
-    .select('*')
-    .eq('room_id', roomId);
+  const { data, error } = await supabase.from('room_allocations').select('*').eq('room_id', roomId);
   if (error) throw error;
   return (data ?? []) as RoomAllocationRow[];
 }
 
 export async function findAllocationById(id: string): Promise<RoomAllocationRow | null> {
-  const { data, error } = await supabase
-    .from('room_allocations')
-    .select('*')
-    .eq('id', id)
-    .limit(1);
+  const { data, error } = await supabase.from('room_allocations').select('*').eq('id', id).limit(1);
   if (error) throw error;
   return ((data ?? [])[0] as RoomAllocationRow) ?? null;
 }
@@ -315,9 +317,7 @@ export async function findUnassignedGuests(ownerId: string) {
   ]);
   if (guestError) throw guestError;
   // Flatten all guest_ids arrays
-  const allocatedIds = new Set(
-    (allocations ?? []).flatMap((a) => (a.guest_ids as string[]) ?? []),
-  );
+  const allocatedIds = new Set((allocations ?? []).flatMap((a) => (a.guest_ids as string[]) ?? []));
   return (allGuests ?? []).filter((g) => !allocatedIds.has(g.id));
 }
 

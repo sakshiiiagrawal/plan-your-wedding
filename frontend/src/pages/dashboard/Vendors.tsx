@@ -58,8 +58,10 @@ function getFirstFinanceItem(vendor: VendorWithFinance) {
 }
 
 function getVendorCategoryLabel(vendor: VendorWithFinance) {
-  return (vendor as VendorWithFinance & { expense_categories?: { name?: string } }).expense_categories
-    ?.name ?? null;
+  return (
+    (vendor as VendorWithFinance & { expense_categories?: { name?: string } }).expense_categories
+      ?.name ?? null
+  );
 }
 
 function getVendorEvents(vendor: VendorWithFinance): string[] {
@@ -112,8 +114,13 @@ export default function Vendors() {
     if (selectedCategory === 'all') return vendors;
     const parent = categoryTree.find((entry) => entry.id === selectedCategory);
     if (!parent) return vendors;
-    const validIds = new Set<string>([parent.id, ...(parent.children ?? []).map((child) => child.id)]);
-    return vendors.filter((vendor) => (vendor.category_id ? validIds.has(vendor.category_id) : false));
+    const validIds = new Set<string>([
+      parent.id,
+      ...(parent.children ?? []).map((child) => child.id),
+    ]);
+    return vendors.filter((vendor) =>
+      vendor.category_id ? validIds.has(vendor.category_id) : false,
+    );
   }, [categoryTree, selectedCategory, vendors]);
 
   const resetForm = () => {
@@ -168,9 +175,7 @@ export default function Vendors() {
       resetForm();
     } catch (error: any) {
       const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
-        'Failed to save vendor.';
+        error?.response?.data?.message || error?.response?.data?.error || 'Failed to save vendor.';
       toast.error(message);
     }
   };
@@ -253,7 +258,9 @@ export default function Vendors() {
                 <div className="flex justify-between items-start mb-3 gap-3">
                   <div className="min-w-0">
                     <h3 className="font-semibold text-maroon-800">{vendor.name}</h3>
-                    <p className="text-sm text-gold-600">{getVendorCategoryLabel(vendor) ?? 'Vendor'}</p>
+                    <p className="text-sm text-gold-600">
+                      {getVendorCategoryLabel(vendor) ?? 'Vendor'}
+                    </p>
                   </div>
                   {vendor.finance_summary && (
                     <span className="badge bg-gray-100 text-gray-700 capitalize">
@@ -299,7 +306,9 @@ export default function Vendors() {
                               {formatCurrency(payment.amount)}
                             </span>
                           </div>
-                          <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${badge.cls}`}>
+                          <span
+                            className={`text-xs font-medium px-1.5 py-0.5 rounded ${badge.cls}`}
+                          >
                             {badge.label}
                           </span>
                         </div>
@@ -327,9 +336,14 @@ export default function Vendors() {
                   {postedPayments.length > 0 ? (
                     <div className="space-y-1 pt-1 border-t border-gray-200">
                       {postedPayments.slice(0, 3).map((payment) => (
-                        <div key={payment.id} className="flex justify-between text-xs text-gray-600">
+                        <div
+                          key={payment.id}
+                          className="flex justify-between text-xs text-gray-600"
+                        >
                           <span>
-                            {new Date(payment.paid_date ?? payment.created_at).toLocaleDateString('en-IN')}
+                            {new Date(payment.paid_date ?? payment.created_at).toLocaleDateString(
+                              'en-IN',
+                            )}
                           </span>
                           <span className="font-medium text-green-700">
                             {formatCurrency(payment.amount)}
@@ -359,7 +373,10 @@ export default function Vendors() {
                 {events.length > 0 && (
                   <div className="mt-4 flex flex-wrap gap-2">
                     {events.map((event) => (
-                      <span key={event} className="text-xs bg-gold-100 text-gold-700 px-2 py-1 rounded">
+                      <span
+                        key={event}
+                        className="text-xs bg-gold-100 text-gold-700 px-2 py-1 rounded"
+                      >
                         {event}
                       </span>
                     ))}
@@ -417,7 +434,9 @@ export default function Vendors() {
                   <input
                     type="text"
                     value={formData.name}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
+                    onChange={(event) =>
+                      setFormData((prev) => ({ ...prev, name: event.target.value }))
+                    }
                     className="input"
                     placeholder="Vendor name"
                     required
@@ -454,7 +473,9 @@ export default function Vendors() {
                     <input
                       type="tel"
                       value={formData.phone}
-                      onChange={(event) => setFormData((prev) => ({ ...prev, phone: event.target.value }))}
+                      onChange={(event) =>
+                        setFormData((prev) => ({ ...prev, phone: event.target.value }))
+                      }
                       className="input"
                       placeholder="Phone number"
                     />
@@ -464,7 +485,9 @@ export default function Vendors() {
                     <input
                       type="email"
                       value={formData.email}
-                      onChange={(event) => setFormData((prev) => ({ ...prev, email: event.target.value }))}
+                      onChange={(event) =>
+                        setFormData((prev) => ({ ...prev, email: event.target.value }))
+                      }
                       className="input"
                       placeholder="Email address"
                     />

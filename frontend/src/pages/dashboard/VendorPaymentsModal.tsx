@@ -59,9 +59,7 @@ interface PaymentFormState {
   extra_bride_share_percentage: number;
 }
 
-function getDefaultSide(
-  source: SourcePaymentModalProps['source'],
-): 'bride' | 'groom' | 'shared' {
+function getDefaultSide(source: SourcePaymentModalProps['source']): 'bride' | 'groom' | 'shared' {
   return source.finance?.items?.[0]?.side ?? 'shared';
 }
 
@@ -132,9 +130,7 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
                   amount: excessAmount,
                   side: formData.extra_side,
                   bride_share_percentage:
-                    formData.extra_side === 'shared'
-                      ? formData.extra_bride_share_percentage
-                      : null,
+                    formData.extra_side === 'shared' ? formData.extra_bride_share_percentage : null,
                 },
               ]
             : undefined,
@@ -144,9 +140,7 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
       onClose();
     } catch (error: any) {
       const message =
-        error?.response?.data?.error ||
-        error?.response?.data?.message ||
-        'Failed to save payment.';
+        error?.response?.data?.error || error?.response?.data?.message || 'Failed to save payment.';
       toast.error(message);
     }
   };
@@ -212,7 +206,11 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
                           <div className="flex flex-wrap items-center gap-2">
                             <span
                               className={`font-semibold ${
-                                isInflow ? 'text-sky-700' : payment.status === 'posted' ? 'text-green-700' : 'text-maroon-800'
+                                isInflow
+                                  ? 'text-sky-700'
+                                  : payment.status === 'posted'
+                                    ? 'text-green-700'
+                                    : 'text-maroon-800'
                               }`}
                             >
                               {formatCurrency(payment.amount)}
@@ -350,9 +348,7 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
                     <label className="label">Extra Amount Category</label>
                     <CategoryCombobox
                       value={formData.extra_category_id}
-                      onChange={(id) =>
-                        setFormData((prev) => ({ ...prev, extra_category_id: id }))
-                      }
+                      onChange={(id) => setFormData((prev) => ({ ...prev, extra_category_id: id }))}
                       level="subcategory"
                       placeholder="Select category"
                     />

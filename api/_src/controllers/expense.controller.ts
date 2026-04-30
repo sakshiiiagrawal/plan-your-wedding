@@ -265,7 +265,9 @@ export const createExpensePayment = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.status(201).json(await service.createExpensePayment(req.params.id, getWeddingOwnerId(req), req.body));
+    res
+      .status(201)
+      .json(await service.createExpensePayment(req.params.id, getWeddingOwnerId(req), req.body));
   } catch (e) {
     next(e);
   }
@@ -277,7 +279,9 @@ export const updateExpensePayment = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.json(await service.updateExpensePayment(req.params.paymentId, getWeddingOwnerId(req), req.body));
+    res.json(
+      await service.updateExpensePayment(req.params.paymentId, getWeddingOwnerId(req), req.body),
+    );
   } catch (e) {
     next(e);
   }

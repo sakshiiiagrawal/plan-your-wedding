@@ -271,7 +271,10 @@ export const importAllVenuesAllocations = async (
       return;
     }
 
-    const result = await service.importAllVenuesAllocations(req.file.buffer, getWeddingOwnerId(req));
+    const result = await service.importAllVenuesAllocations(
+      req.file.buffer,
+      getWeddingOwnerId(req),
+    );
 
     if ('error' in result && !('count' in result)) {
       res.status(400).json(result);

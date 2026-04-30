@@ -25,8 +25,16 @@ export const createVenueSchema = z.object({
   side: z.enum(['bride', 'groom', 'shared', 'mutual']).optional().nullable(),
   bride_share_percentage: z.coerce.number().min(0).max(100).optional().nullable(),
   has_accommodation: z.boolean().optional(),
-  default_check_in_date: z.string().optional().nullable().transform((v) => v || null),
-  default_check_out_date: z.string().optional().nullable().transform((v) => v || null),
+  default_check_in_date: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => v || null),
+  default_check_out_date: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => v || null),
   notes: z.string().optional().nullable(),
   rooms: z.array(roomInputSchema).optional(),
   finance: z

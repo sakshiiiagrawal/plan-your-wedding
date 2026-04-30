@@ -72,8 +72,7 @@ export default function EditExpenseModal({
   }, [expense]);
 
   const totalCommitted = useMemo(
-    () =>
-      formData?.items.reduce((sum, item) => sum + Number(item.amount || 0), 0) ?? 0,
+    () => formData?.items.reduce((sum, item) => sum + Number(item.amount || 0), 0) ?? 0,
     [formData],
   );
 
@@ -84,9 +83,7 @@ export default function EditExpenseModal({
       prev
         ? {
             ...prev,
-            items: prev.items.map((item) =>
-              item.local_id === id ? { ...item, ...patch } : item,
-            ),
+            items: prev.items.map((item) => (item.local_id === id ? { ...item, ...patch } : item)),
           }
         : prev,
     );
@@ -204,7 +201,10 @@ export default function EditExpenseModal({
 
                 <div className="space-y-4">
                   {formData.items.map((item, index) => (
-                    <div key={item.local_id} className="rounded-xl border border-gold-200 p-4 space-y-4">
+                    <div
+                      key={item.local_id}
+                      className="rounded-xl border border-gold-200 p-4 space-y-4"
+                    >
                       <div className="flex items-center justify-between">
                         <h4 className="font-medium text-maroon-800">Item {index + 1}</h4>
                         <button
@@ -325,7 +325,9 @@ export default function EditExpenseModal({
                 Cancel
               </button>
               <button
-                onClick={(event) => void handleSubmit(event as unknown as React.FormEvent<HTMLFormElement>)}
+                onClick={(event) =>
+                  void handleSubmit(event as unknown as React.FormEvent<HTMLFormElement>)
+                }
                 disabled={isPending}
                 className="btn-primary flex-1 disabled:opacity-50"
               >

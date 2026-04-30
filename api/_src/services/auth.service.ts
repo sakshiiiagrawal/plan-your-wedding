@@ -104,4 +104,3 @@ export async function createUser(input: RegisterInput): Promise<UserRow> {
 
   return newUser;
 }
-
