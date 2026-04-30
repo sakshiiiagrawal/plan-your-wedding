@@ -346,6 +346,7 @@ export const useUpdateEvent = () => {
       api.put(`/events/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -384,6 +385,7 @@ export const useCreateVenue = () => {
     mutationFn: (venueData: any) => api.post('/venues', venueData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
       queryClient.invalidateQueries({ queryKey: ['expense'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
@@ -397,6 +399,7 @@ export const useUpdateVenue = () => {
       api.put(`/venues/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
       queryClient.invalidateQueries({ queryKey: ['expense'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
@@ -409,6 +412,7 @@ export const useDeleteVenue = () => {
     mutationFn: (id: string) => api.delete(`/venues/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
       queryClient.invalidateQueries({ queryKey: ['expense'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
@@ -508,6 +512,16 @@ export const useUpdateRoom = () => {
   });
 };
 
+export const useDeleteRoom = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/venues/rooms/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+    },
+  });
+};
+
 export const useCreateAllocation = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -515,6 +529,7 @@ export const useCreateAllocation = () => {
       api.post('/venues/allocations', allocationData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
     },
   });
 };
@@ -526,6 +541,7 @@ export const useUpdateAllocation = () => {
       api.put(`/venues/allocations/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
     },
   });
 };
@@ -536,6 +552,7 @@ export const useDeleteAllocation = () => {
     mutationFn: (id: string) => api.delete(`/venues/allocations/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
     },
   });
 };
@@ -611,10 +628,47 @@ export const useDeleteVendorPayment = () => {
 // VENDORS HOOKS
 // =====================================================
 
+export type VendorPaymentFilter = 'quoted' | 'deposit' | 'confirmed';
+export type VendorLogisticsFilter = 'food' | 'accommodation' | 'team';
+
+export interface VendorsListParams {
+  category_ids?: string[];
+  payment_states?: VendorPaymentFilter[];
+  logistics?: VendorLogisticsFilter[];
+  search?: string;
+  page?: number;
+  per_page?: number;
+}
+
+export interface VendorsListResponse {
+  items: VendorWithFinance[];
+  page: number;
+  per_page: number;
+  total_items: number;
+  total_pages: number;
+}
+
 export const useVendors = () =>
   useQuery<VendorWithFinance[]>({
     queryKey: ['vendors'],
     queryFn: () => api.get('/vendors').then((res) => res.data),
+  });
+
+export const useVendorsList = (params: VendorsListParams) =>
+  useQuery<VendorsListResponse>({
+    queryKey: ['vendors', 'list', params],
+    queryFn: () =>
+      api
+        .get('/vendors', {
+          params: {
+            ...params,
+            category_ids: params.category_ids?.join(','),
+            payment_states: params.payment_states?.join(','),
+            logistics: params.logistics?.join(','),
+          },
+        })
+        .then((res) => res.data),
+    placeholderData: (previousData) => previousData,
   });
 
 export const useVendor = (id?: string | null) =>
@@ -852,13 +906,58 @@ export const useSourcePayments = (
     enabled: !!sourceId,
   });
 
+const getSourceListQueryKey = (sourceType: 'vendor' | 'venue') =>
+  [sourceType === 'vendor' ? 'vendors' : 'venues'] as const;
+
+const syncSourceFinanceCache = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  sourceType: 'vendor' | 'venue',
+  sourceId: string,
+  finance: ExpenseWithDetails,
+) => {
+  queryClient.setQueryData([sourceType, sourceId, 'payments'], finance.payments ?? []);
+
+  const listKey = getSourceListQueryKey(sourceType);
+  queryClient.setQueryData(listKey, (current: VendorWithFinance[] | VenueWithFinance[] | undefined) => {
+    if (!Array.isArray(current)) return current;
+    return current.map((entry) =>
+      entry.id === sourceId
+        ? {
+            ...entry,
+            finance,
+            finance_summary: finance.summary,
+          }
+        : entry,
+    );
+  });
+
+  queryClient.setQueryData(
+    [listKey[0], sourceId],
+    (current: VendorWithFinance | VenueWithFinance | undefined) => {
+      if (!current) return current;
+      return {
+        ...current,
+        finance,
+        finance_summary: finance.summary,
+      };
+    },
+  );
+};
+
 export const useCreateSourcePayment = (sourceType: 'vendor' | 'venue') => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ sourceId, ...data }: { sourceId: string } & Record<string, any>) =>
       api.post(`/${sourceType}s/${sourceId}/payments`, data).then((res) => res.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [sourceType === 'vendor' ? 'vendors' : 'venues'] });
+    onSuccess: (data, variables) => {
+      if (variables?.sourceId && data?.summary) {
+        syncSourceFinanceCache(queryClient, sourceType, variables.sourceId, data as ExpenseWithDetails);
+      }
+      if (variables?.sourceId) {
+        queryClient.invalidateQueries({ queryKey: [sourceType, variables.sourceId, 'payments'] });
+      }
+      queryClient.invalidateQueries({ queryKey: getSourceListQueryKey(sourceType) });
+      if (sourceType === 'venue') queryClient.invalidateQueries({ queryKey: ['accommodations'] });
       queryClient.invalidateQueries({ queryKey: ['expense'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
@@ -870,8 +969,30 @@ export const useDeleteSourcePayment = (sourceType: 'vendor' | 'venue') => {
   return useMutation({
     mutationFn: ({ sourceId, paymentId }: { sourceId: string; paymentId: string }) =>
       api.delete(`/${sourceType}s/${sourceId}/payments/${paymentId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [sourceType === 'vendor' ? 'vendors' : 'venues'] });
+    onMutate: async ({ sourceId, paymentId }) => {
+      await queryClient.cancelQueries({ queryKey: [sourceType, sourceId, 'payments'] });
+      const previousPayments = queryClient.getQueryData<PaymentRow[]>([
+        sourceType,
+        sourceId,
+        'payments',
+      ]);
+      queryClient.setQueryData<PaymentRow[]>(
+        [sourceType, sourceId, 'payments'],
+        (current = []) => current.filter((payment) => payment.id !== paymentId),
+      );
+      return { previousPayments, sourceId };
+    },
+    onError: (_error, _variables, context) => {
+      if (!context?.sourceId) return;
+      queryClient.setQueryData(
+        [sourceType, context.sourceId, 'payments'],
+        context.previousPayments,
+      );
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [sourceType, variables.sourceId, 'payments'] });
+      queryClient.invalidateQueries({ queryKey: getSourceListQueryKey(sourceType) });
+      if (sourceType === 'venue') queryClient.invalidateQueries({ queryKey: ['accommodations'] });
       queryClient.invalidateQueries({ queryKey: ['expense'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },

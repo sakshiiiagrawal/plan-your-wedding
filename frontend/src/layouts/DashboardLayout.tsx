@@ -90,7 +90,7 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'var(--bg-page)' }}>
+    <div className="flex" style={{ background: 'var(--bg-page)', height: '100vh', overflow: 'hidden' }}>
       {/* Backdrop */}
       {sidebarOpen && (
         <div
@@ -110,6 +110,8 @@ export default function DashboardLayout() {
           flexShrink: 0,
           background: 'var(--bg-panel)',
           borderRight: '1px solid var(--line-soft)',
+          height: '100vh',
+          overflowY: 'hidden',
         }}
       >
         {/* Brand */}
@@ -218,7 +220,7 @@ export default function DashboardLayout() {
       </aside>
 
       {/* ── Main ───────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
         {/* Topbar */}
         <header

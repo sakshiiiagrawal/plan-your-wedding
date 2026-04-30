@@ -3,6 +3,9 @@ import { HiOutlinePlus, HiOutlineTrash, HiOutlineX } from 'react-icons/hi';
 import Portal from '../../../components/Portal';
 import CategoryCombobox from '../../../components/CategoryCombobox';
 import CustomCategoryModal from '../../../components/CustomCategoryModal';
+import DatePicker from '../../../components/ui/DatePicker';
+import SplitShare from '../../../components/ui/SplitShare';
+import useUnsavedChangesPrompt from '../../../hooks/useUnsavedChangesPrompt';
 
 interface AddExpenseModalProps {
   show: boolean;
@@ -30,6 +33,7 @@ interface FormData {
   payment_date: string;
   payment_method: string;
   paid_by_side: 'bride' | 'groom' | 'shared';
+  paid_bride_share_percentage: number;
   payment_notes: string;
 }
 
@@ -54,6 +58,7 @@ const INITIAL_FORM: FormData = {
   payment_date: TODAY,
   payment_method: 'cash',
   paid_by_side: 'shared',
+  paid_bride_share_percentage: 50,
   payment_notes: '',
 };
 
@@ -72,12 +77,25 @@ export default function AddExpenseModal({
     [formData.items],
   );
   const paymentAmount = Number(formData.payment_amount || 0);
-  const paymentExceedsTotal = formData.record_payment_now && paymentAmount > totalCommitted;
+  const paymentDirection = paymentAmount < 0 ? 'inflow' : 'outflow';
+  const paymentMagnitude = Math.abs(paymentAmount);
+  const isPaymentReversal = paymentDirection === 'inflow';
+  const paymentExceedsTotal =
+    formData.record_payment_now && !isPaymentReversal && paymentMagnitude > totalCommitted;
 
   const handleClose = () => {
     setFormData(INITIAL_FORM);
     onClose();
   };
+  const isDirty = JSON.stringify(formData) !== JSON.stringify(INITIAL_FORM);
+  const { attemptClose, dialog: unsavedDialog } = useUnsavedChangesPrompt({
+    isDirty,
+    onDiscard: handleClose,
+    onSave: () => {
+      (document.getElementById('add-expense-form') as HTMLFormElement | null)?.requestSubmit();
+    },
+    isSaving: isPending,
+  });
 
   const updateItem = (id: string, patch: Partial<ExpenseItemForm>) => {
     setFormData((prev) => ({
@@ -111,13 +129,17 @@ export default function AddExpenseModal({
       payments: formData.record_payment_now
         ? [
             {
-              amount: paymentAmount,
-              direction: 'outflow',
+              amount: paymentMagnitude,
+              direction: paymentDirection,
               status: formData.payment_date > TODAY ? 'scheduled' : 'posted',
               due_date: formData.payment_date,
               paid_date: formData.payment_date > TODAY ? null : formData.payment_date,
               payment_method: formData.payment_date > TODAY ? null : formData.payment_method,
               paid_by_side: formData.paid_by_side,
+              paid_bride_share_percentage:
+                formData.paid_by_side === 'shared'
+                  ? formData.paid_bride_share_percentage
+                  : null,
               notes: formData.payment_notes || null,
             },
           ]
@@ -132,19 +154,19 @@ export default function AddExpenseModal({
   return (
     <>
       <Portal>
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
-          <div style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 768, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={attemptClose}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 768, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
               <div>
                 <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Expenses</div>
                 <h2 className="display" style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}>Add Expense</h2>
               </div>
-              <button onClick={handleClose} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
+              <button onClick={attemptClose} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
                 <HiOutlineX style={{ width: 18, height: 18 }} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <form id="add-expense-form" onSubmit={handleSubmit} className="p-6 space-y-6">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="label">Expense Title *</label>
@@ -161,14 +183,13 @@ export default function AddExpenseModal({
                 </div>
                 <div>
                   <label className="label">Expense Date *</label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={formData.expense_date}
-                    onChange={(event) =>
-                      setFormData((prev) => ({ ...prev, expense_date: event.target.value }))
+                    onChange={(v) =>
+                      setFormData((prev) => ({ ...prev, expense_date: v }))
                     }
-                    className="input"
                     required
+                    placeholder="Expense date"
                   />
                 </div>
               </div>
@@ -290,23 +311,11 @@ export default function AddExpenseModal({
                       </div>
 
                       {item.side === 'shared' && (
-                        <div>
-                          <label className="label">
-                            Bride Share Percentage ({item.bride_share_percentage}%)
-                          </label>
-                          <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={item.bride_share_percentage}
-                            onChange={(event) =>
-                              updateItem(item.id, {
-                                bride_share_percentage: Number(event.target.value),
-                              })
-                            }
-                            className="w-full"
-                          />
-                        </div>
+                        <SplitShare
+                          total={Number(item.amount) || 0}
+                          bridePercentage={item.bride_share_percentage}
+                          onChange={(pct) => updateItem(item.id, { bride_share_percentage: pct })}
+                        />
                       )}
                     </div>
                   ))}
@@ -341,7 +350,6 @@ export default function AddExpenseModal({
                         <label className="label">Payment Amount *</label>
                         <input
                           type="number"
-                          min="0"
                           step="0.01"
                           value={formData.payment_amount}
                           onChange={(event) =>
@@ -351,7 +359,7 @@ export default function AddExpenseModal({
                             }))
                           }
                           className="input"
-                          placeholder="0"
+                          placeholder="Enter amount"
                           required
                         />
                       </div>
@@ -359,17 +367,16 @@ export default function AddExpenseModal({
                         <label className="label">
                           {formData.payment_date > TODAY ? 'Due Date' : 'Payment Date'}
                         </label>
-                        <input
-                          type="date"
+                        <DatePicker
                           value={formData.payment_date}
-                          onChange={(event) =>
+                          onChange={(v) =>
                             setFormData((prev) => ({
                               ...prev,
-                              payment_date: event.target.value,
+                              payment_date: v,
                             }))
                           }
-                          className="input"
                           required
+                          placeholder={formData.payment_date > TODAY ? 'Due date' : 'Payment date'}
                         />
                       </div>
                     </div>
@@ -414,6 +421,25 @@ export default function AddExpenseModal({
                       </div>
                     </div>
 
+                    {formData.paid_by_side === 'shared' && (
+                      <SplitShare
+                        total={paymentMagnitude}
+                        bridePercentage={formData.paid_bride_share_percentage}
+                        onChange={(pct) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            paid_bride_share_percentage: pct,
+                          }))
+                        }
+                      />
+                    )}
+
+                    {isPaymentReversal && (
+                      <div style={{ border: '1px solid rgba(3,105,161,0.22)', background: 'rgba(3,105,161,0.06)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#0c4a6e' }}>
+                        Negative amounts are recorded as payment reversals and reduce the paid total.
+                      </div>
+                    )}
+
                     <div>
                       <label className="label">Payment Notes</label>
                       <textarea
@@ -440,7 +466,7 @@ export default function AddExpenseModal({
               </div>
 
               <div style={{ display: 'flex', gap: 10, paddingTop: 8, borderTop: '1px solid var(--line-soft)', marginTop: 8 }}>
-                <button type="button" onClick={handleClose} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
+                <button type="button" onClick={attemptClose} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
                 <button type="submit" disabled={isPending || paymentExceedsTotal} className="btn-primary" style={{ flex: 1, opacity: isPending || paymentExceedsTotal ? 0.5 : 1 }}>
                   {isPending ? 'Saving…' : 'Add Expense'}
                 </button>
@@ -449,6 +475,7 @@ export default function AddExpenseModal({
           </div>
         </div>
       </Portal>
+      {unsavedDialog}
 
       <CustomCategoryModal
         isOpen={showCustomCategoryModal}

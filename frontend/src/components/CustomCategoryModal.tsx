@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { HiOutlineX } from 'react-icons/hi';
 import { useCreateCustomCategory, useCategoryTree } from '../hooks/useApi';
 import toast from 'react-hot-toast';
 import Portal from './Portal';
+import useUnsavedChangesPrompt from '../hooks/useUnsavedChangesPrompt';
 
 interface CustomCategoryModalProps {
   isOpen: boolean;
@@ -17,13 +18,32 @@ export default function CustomCategoryModal({
 }: CustomCategoryModalProps) {
   const { data: categoryTree = [] } = useCategoryTree();
   const createMutation = useCreateCustomCategory();
-
-  const [formData, setFormData] = useState({
+  const initialFormData = {
     name: '',
     parent_category_id: defaultParentId ?? '',
     allocated_amount: '',
     description: '',
+  };
+  const [formData, setFormData] = useState(initialFormData);
+  const handleDiscard = () => {
+    setFormData(initialFormData);
+    onClose();
+  };
+  const isDirty = JSON.stringify(formData) !== JSON.stringify(initialFormData);
+  const { attemptClose, dialog: unsavedDialog } = useUnsavedChangesPrompt({
+    isDirty,
+    onDiscard: handleDiscard,
+    onSave: () => {
+      (document.getElementById('custom-category-form') as HTMLFormElement | null)?.requestSubmit();
+    },
+    isSaving: createMutation.isPending,
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(initialFormData);
+    }
+  }, [defaultParentId, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +65,7 @@ export default function CustomCategoryModal({
         description: '',
       });
 
-      onClose();
+      handleDiscard();
     } catch (error) {
       const err = error as { response?: { data?: { error?: string } } };
       const errorMessage = err?.response?.data?.error || 'Failed to create category';
@@ -57,8 +77,8 @@ export default function CustomCategoryModal({
 
   return (
     <Portal>
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 16 }}>
-        <div style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 16 }} onClick={attemptClose}>
+        <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
             <div>
               <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Categories</div>
@@ -66,7 +86,7 @@ export default function CustomCategoryModal({
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={attemptClose}
               style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
             >
               <HiOutlineX style={{ width: 16, height: 16 }} />
@@ -135,7 +155,7 @@ export default function CustomCategoryModal({
           <div style={{ display: 'flex', gap: 10, padding: '16px 24px', borderTop: '1px solid var(--line-soft)' }}>
             <button
               type="button"
-              onClick={onClose}
+              onClick={attemptClose}
               className="btn-outline"
               style={{ flex: 1 }}
               disabled={createMutation.isPending}
@@ -154,6 +174,7 @@ export default function CustomCategoryModal({
           </div>
         </div>
       </div>
+      {unsavedDialog}
     </Portal>
   );
 }

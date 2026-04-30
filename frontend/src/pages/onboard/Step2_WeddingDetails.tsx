@@ -1,7 +1,8 @@
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axios';
+import DatePicker from '../../components/ui/DatePicker';
 
 interface SlugCheck {
   exists: boolean;
@@ -90,7 +91,13 @@ export default function Step2_WeddingDetails({ data, onNext, onBack }: Step2Prop
           <label className="label">
             Wedding Date <span className="text-gray-400 font-normal">(optional)</span>
           </label>
-          <input type="date" {...register('weddingDate')} className="input" />
+          <Controller
+            control={control}
+            name="weddingDate"
+            render={({ field }) => (
+              <DatePicker value={field.value || ''} onChange={field.onChange} placeholder="Pick your wedding date" />
+            )}
+          />
         </div>
 
         <div>

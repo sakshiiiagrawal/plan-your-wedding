@@ -1,6 +1,6 @@
 export const VENDOR_QUERY_KEYS = {
   all: ['vendors'] as const,
-  list: (category?: string) => ['vendors', { category }] as const,
+  list: (params?: Record<string, unknown>) => ['vendors', 'list', params ?? {}] as const,
   detail: (id: string) => ['vendors', id] as const,
   categories: ['vendors', 'categories'] as const,
   payments: (vendorId: string) => ['vendors', vendorId, 'payments'] as const,
@@ -8,6 +8,7 @@ export const VENDOR_QUERY_KEYS = {
 
 export {
   useVendors,
+  useVendorsList,
   useVendor,
   useVendorCategories,
   useVendorPayments,

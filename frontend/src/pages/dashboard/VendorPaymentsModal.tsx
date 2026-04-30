@@ -3,6 +3,9 @@ import { HiOutlineX, HiOutlineTrash } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import Portal from '../../components/Portal';
 import CategoryCombobox from '../../components/CategoryCombobox';
+import DatePicker from '../../components/ui/DatePicker';
+import SplitShare from '../../components/ui/SplitShare';
+import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import {
   useCreateSourcePayment,
   useDeleteSourcePayment,
@@ -25,6 +28,9 @@ const formatCurrency = (amount: number) =>
     currency: 'INR',
     maximumFractionDigits: 0,
   }).format(amount);
+
+const formatPaymentAmount = (amount: number, direction: 'outflow' | 'inflow') =>
+  `${direction === 'inflow' ? '-' : ''}${formatCurrency(amount)}`;
 
 interface SourcePaymentModalProps {
   source: {
@@ -52,6 +58,7 @@ interface PaymentFormState {
   payment_date: string;
   payment_method: string;
   paid_by_side: 'bride' | 'groom' | 'shared';
+  paid_bride_share_percentage: number;
   notes: string;
   extra_category_id: string | null;
   extra_description: string;
@@ -59,35 +66,55 @@ interface PaymentFormState {
   extra_bride_share_percentage: number;
 }
 
-function getDefaultSide(
-  source: SourcePaymentModalProps['source'],
-): 'bride' | 'groom' | 'shared' {
-  return source.finance?.items?.[0]?.side ?? 'shared';
+function getDefaultPaymentSplit(source: SourcePaymentModalProps['source']) {
+  const firstItem = source.finance?.items?.[0];
+  return {
+    side: firstItem?.side ?? 'shared',
+    bridePercentage: firstItem?.bride_share_percentage ?? 50,
+  };
 }
 
-export default function VendorPaymentsModal({ source, onClose }: SourcePaymentModalProps) {
-  const defaultSide = useMemo(() => getDefaultSide(source), [source]);
-  const [formData, setFormData] = useState<PaymentFormState>({
+function getPaymentFormState(source: SourcePaymentModalProps['source']): PaymentFormState {
+  const defaultPaymentSplit = getDefaultPaymentSplit(source);
+  return {
     amount: '',
     payment_date: TODAY,
     payment_method: 'cash',
-    paid_by_side: defaultSide,
+    paid_by_side: defaultPaymentSplit.side,
+    paid_bride_share_percentage: defaultPaymentSplit.bridePercentage,
     notes: '',
     extra_category_id: null,
     extra_description: 'Tip',
-    extra_side: defaultSide,
+    extra_side: defaultPaymentSplit.side,
     extra_bride_share_percentage: 50,
-  });
+  };
+}
+
+export default function VendorPaymentsModal({ source, onClose }: SourcePaymentModalProps) {
+  const initialFormData = useMemo(() => getPaymentFormState(source), [source]);
+  const [formData, setFormData] = useState<PaymentFormState>(initialFormData);
 
   const { data: payments = [] } = useSourcePayments(source.type, source.id);
   const createPayment = useCreateSourcePayment(source.type);
   const deletePayment = useDeleteSourcePayment(source.type);
+  const isDirty = JSON.stringify(formData) !== JSON.stringify(initialFormData);
+  const { attemptClose, dialog: unsavedDialog } = useUnsavedChangesPrompt({
+    isDirty,
+    onDiscard: onClose,
+    onSave: handleSave,
+    isSaving: createPayment.isPending,
+  });
 
   const committed = source.finance_summary?.committed_amount ?? 0;
   const paid = source.finance_summary?.paid_amount ?? 0;
   const outstanding = source.finance_summary?.outstanding_amount ?? 0;
   const enteredAmount = Number(formData.amount || 0);
-  const excessAmount = Math.max(0, Number((enteredAmount - outstanding).toFixed(2)));
+  const paymentDirection = enteredAmount < 0 ? 'inflow' : 'outflow';
+  const paymentMagnitude = Math.abs(enteredAmount);
+  const isReversal = paymentDirection === 'inflow';
+  const excessAmount = isReversal
+    ? 0
+    : Math.max(0, Number((paymentMagnitude - outstanding).toFixed(2)));
   const isScheduled = formData.payment_date > TODAY;
 
   const sortedPayments = [...payments].sort((left, right) => {
@@ -102,7 +129,7 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
       return;
     }
 
-    if (!enteredAmount || enteredAmount <= 0) {
+    if (!enteredAmount) {
       toast.error('Enter a valid amount.');
       return;
     }
@@ -115,13 +142,15 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
     try {
       await createPayment.mutateAsync({
         sourceId: source.id,
-        amount: enteredAmount,
-        direction: 'outflow',
+        amount: paymentMagnitude,
+        direction: paymentDirection,
         status: isScheduled ? 'scheduled' : 'posted',
         due_date: formData.payment_date,
         paid_date: isScheduled ? null : formData.payment_date,
         payment_method: isScheduled ? null : formData.payment_method,
         paid_by_side: formData.paid_by_side,
+        paid_bride_share_percentage:
+          formData.paid_by_side === 'shared' ? formData.paid_bride_share_percentage : null,
         notes: formData.notes || null,
         new_items:
           excessAmount > 0 && formData.extra_category_id
@@ -140,7 +169,15 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
             : undefined,
       });
 
-      toast.success(isScheduled ? 'Planned payment saved.' : 'Payment recorded.');
+      toast.success(
+        isScheduled
+          ? isReversal
+            ? 'Planned reversal saved.'
+            : 'Planned payment saved.'
+          : isReversal
+            ? 'Reversal recorded.'
+            : 'Payment recorded.',
+      );
       onClose();
     } catch (error: any) {
       const message =
@@ -166,8 +203,8 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
 
   return (
     <Portal>
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
-        <div style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 672, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={attemptClose}>
+        <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 672, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
             <div>
@@ -179,7 +216,7 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
                 <span style={{ color: 'var(--warn)' }}>Outstanding: <strong>{formatCurrency(outstanding)}</strong></span>
               </div>
             </div>
-            <button onClick={onClose} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
+            <button onClick={attemptClose} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
               <HiOutlineX style={{ width: 18, height: 18 }} />
             </button>
           </div>
@@ -215,7 +252,7 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
                           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
                             <span style={{ fontWeight: 600, fontSize: 14, color: amtColor }}>
-                              {formatCurrency(payment.amount)}
+                              {formatPaymentAmount(payment.amount, payment.direction)}
                             </span>
                             <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: 'var(--bg-raised)', color: 'var(--ink-low)', textTransform: 'capitalize' }}>
                               {payment.status.replaceAll('_', ' ')}
@@ -223,7 +260,17 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
                             <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: 'var(--bg-raised)', color: 'var(--ink-low)', textTransform: 'capitalize' }}>
                               {payment.direction}
                             </span>
+                            {payment.paid_by_side && (
+                              <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: 'var(--bg-raised)', color: 'var(--ink-low)', textTransform: 'capitalize' }}>
+                                {payment.paid_by_side}
+                              </span>
+                            )}
                           </div>
+                          {payment.paid_by_side === 'shared' && payment.paid_bride_share_percentage != null && (
+                            <div style={{ fontSize: 11, color: 'var(--ink-low)', lineHeight: 1.35 }}>
+                              Bride {payment.paid_bride_share_percentage}% · Groom {100 - payment.paid_bride_share_percentage}%
+                            </div>
+                          )}
                           <div className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>
                             {new Date(dateLabel).toLocaleDateString('en-IN')}
                             {payment.payment_method && ` · ${PAYMENT_METHOD_LABELS[payment.payment_method] ?? payment.payment_method}`}
@@ -255,11 +302,11 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label className="label">Amount</label>
-                  <input type="number" min="0" step="0.01" value={formData.amount} onChange={(e) => setFormData((p) => ({ ...p, amount: e.target.value }))} className="input" placeholder="0" />
+                  <input type="number" step="0.01" value={formData.amount} onChange={(e) => setFormData((p) => ({ ...p, amount: e.target.value }))} className="input" placeholder="Enter amount" />
                 </div>
                 <div>
                   <label className="label">{isScheduled ? 'Due Date' : 'Payment Date'}</label>
-                  <input type="date" value={formData.payment_date} onChange={(e) => setFormData((p) => ({ ...p, payment_date: e.target.value }))} className="input" />
+                  <DatePicker value={formData.payment_date} onChange={(v) => setFormData((p) => ({ ...p, payment_date: v }))} placeholder={isScheduled ? 'Due date' : 'Payment date'} />
                 </div>
               </div>
 
@@ -280,6 +327,14 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
                 </div>
               </div>
 
+              {formData.paid_by_side === 'shared' && (
+                <SplitShare
+                  total={paymentMagnitude}
+                  bridePercentage={formData.paid_bride_share_percentage}
+                  onChange={(pct) => setFormData((p) => ({ ...p, paid_bride_share_percentage: pct }))}
+                />
+              )}
+
               <div>
                 <label className="label">Notes</label>
                 <textarea value={formData.notes} onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))} className="input" style={{ minHeight: 72 }} placeholder={isScheduled ? 'Optional reminder note' : 'Optional reference, cheque number, or note'} />
@@ -288,6 +343,12 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
               {isScheduled && (
                 <div style={{ border: '1px solid rgba(217,119,6,0.25)', background: 'rgba(217,119,6,0.06)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--warn)' }}>
                   This will be saved as a scheduled payment reminder.
+                </div>
+              )}
+
+              {isReversal && (
+                <div style={{ border: '1px solid rgba(3,105,161,0.22)', background: 'rgba(3,105,161,0.06)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#0c4a6e' }}>
+                  Negative amounts are recorded as payment reversals and reduce the paid total.
                 </div>
               )}
 
@@ -318,10 +379,11 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
                   </div>
 
                   {formData.extra_side === 'shared' && (
-                    <div>
-                      <label className="label">Bride Share Percentage ({formData.extra_bride_share_percentage}%)</label>
-                      <input type="range" min="0" max="100" value={formData.extra_bride_share_percentage} onChange={(e) => setFormData((p) => ({ ...p, extra_bride_share_percentage: Number(e.target.value) }))} style={{ width: '100%', accentColor: 'var(--gold)' }} />
-                    </div>
+                    <SplitShare
+                      total={excessAmount}
+                      bridePercentage={formData.extra_bride_share_percentage}
+                      onChange={(pct) => setFormData((p) => ({ ...p, extra_bride_share_percentage: pct }))}
+                    />
                   )}
                 </div>
               )}
@@ -329,7 +391,7 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
           </div>
 
           <div style={{ display: 'flex', gap: 10, padding: '16px 24px', borderTop: '1px solid var(--line-soft)' }}>
-            <button type="button" onClick={onClose} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
+            <button type="button" onClick={attemptClose} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
             <button type="button" onClick={handleSave} disabled={createPayment.isPending} className="btn-primary" style={{ flex: 1, opacity: createPayment.isPending ? 0.5 : 1 }}>
               {createPayment.isPending ? 'Saving…' : isScheduled ? 'Save Planned Payment' : 'Record Payment'}
             </button>
@@ -337,5 +399,6 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
         </div>
       </div>
     </Portal>
+    {unsavedDialog}
   );
 }

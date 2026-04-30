@@ -150,9 +150,8 @@ export default function Expense() {
 
   const sideWiseExpenses = useMemo(() => {
     const initial = {
-      bride: { items: [] as any[], total: 0 },
-      groom: { items: [] as any[], total: 0 },
-      shared: { items: [] as any[], total: 0 },
+      bride: { items: [] as any[], total: 0, directCount: 0, sharedCount: 0, directTotal: 0, sharedTotal: 0 },
+      groom: { items: [] as any[], total: 0, directCount: 0, sharedCount: 0, directTotal: 0, sharedTotal: 0 },
     };
 
     for (const expense of expenses) {
@@ -165,17 +164,50 @@ export default function Expense() {
           expense_date: expense.expense_date,
           expense_title: expense.description,
           bride_share_percentage: item.bride_share_percentage,
+          is_shared: item.side === 'shared',
         };
 
         if (item.side === 'bride') {
           initial.bride.items.push(mapped);
           initial.bride.total += item.amount;
+          initial.bride.directTotal += item.amount;
+          initial.bride.directCount += 1;
         } else if (item.side === 'groom') {
           initial.groom.items.push(mapped);
           initial.groom.total += item.amount;
+          initial.groom.directTotal += item.amount;
+          initial.groom.directCount += 1;
         } else {
-          initial.shared.items.push(mapped);
-          initial.shared.total += item.amount;
+          const brideSharePercentage = item.bride_share_percentage ?? 50;
+          const groomSharePercentage = 100 - brideSharePercentage;
+          const brideAmount = item.amount * (brideSharePercentage / 100);
+          const groomAmount = item.amount * (groomSharePercentage / 100);
+
+          initial.bride.items.push({
+            ...mapped,
+            id: `${item.id}-bride`,
+            amount: brideAmount,
+            shared_share_percentage: brideSharePercentage,
+            shared_total_amount: item.amount,
+            bride_share_amount: brideAmount,
+            groom_share_amount: groomAmount,
+          });
+          initial.bride.total += brideAmount;
+          initial.bride.sharedTotal += brideAmount;
+          initial.bride.sharedCount += 1;
+
+          initial.groom.items.push({
+            ...mapped,
+            id: `${item.id}-groom`,
+            amount: groomAmount,
+            shared_share_percentage: groomSharePercentage,
+            shared_total_amount: item.amount,
+            bride_share_amount: brideAmount,
+            groom_share_amount: groomAmount,
+          });
+          initial.groom.total += groomAmount;
+          initial.groom.sharedTotal += groomAmount;
+          initial.groom.sharedCount += 1;
         }
       }
     }

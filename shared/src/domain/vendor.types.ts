@@ -10,6 +10,9 @@ export interface VendorRow {
   email: string | null;
   is_confirmed: boolean;
   notes: string | null;
+  needs_food: boolean;
+  needs_accommodation: boolean;
+  team_size: number;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -25,6 +28,9 @@ export interface VendorInsert {
   email?: string | null;
   is_confirmed?: boolean;
   notes?: string | null;
+  needs_food?: boolean;
+  needs_accommodation?: boolean;
+  team_size?: number;
   created_by?: string | null;
   updated_by?: string | null;
 }

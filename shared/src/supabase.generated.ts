@@ -11,6 +11,7 @@ export type DbGuestSide = 'bride' | 'groom' | 'mutual';
 export type DbRsvpStatus = 'pending' | 'confirmed' | 'declined' | 'tentative';
 export type DbMealPreference = 'vegetarian' | 'jain' | 'vegan' | 'non_vegetarian';
 export type DbAgeGroup = 'child' | 'adult' | 'senior';
+export type DbGuestType = 'guest' | 'vendor_team';
 export type DbPaymentMethod = 'cash' | 'bank_transfer' | 'upi' | 'cheque' | 'credit_card';
 export type DbTaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type DbTaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
@@ -90,7 +91,9 @@ export interface Database {
           venue_type: string | null;
           address: string;
           city: string;
-          google_maps_link: string | null;
+          place_id: string | null;
+          latitude: number | null;
+          longitude: number | null;
           contact_person: string | null;
           contact_phone: string | null;
           capacity: number | null;
@@ -109,7 +112,9 @@ export interface Database {
           venue_type?: string | null;
           address: string;
           city: string;
-          google_maps_link?: string | null;
+          place_id?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
           contact_person?: string | null;
           contact_phone?: string | null;
           capacity?: number | null;
@@ -128,7 +133,9 @@ export interface Database {
           venue_type?: string | null;
           address?: string;
           city?: string;
-          google_maps_link?: string | null;
+          place_id?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
           contact_person?: string | null;
           contact_phone?: string | null;
           capacity?: number | null;
@@ -292,6 +299,8 @@ export interface Database {
           user_id: string;
           created_by: string | null;
           updated_by: string | null;
+          guest_type: DbGuestType;
+          vendor_id: string | null;
         };
         Insert: {
           id?: string;
@@ -318,6 +327,8 @@ export interface Database {
           user_id: string;
           created_by?: string | null;
           updated_by?: string | null;
+          guest_type?: DbGuestType;
+          vendor_id?: string | null;
         };
         Update: {
           id?: string;
@@ -344,6 +355,8 @@ export interface Database {
           user_id?: string;
           created_by?: string | null;
           updated_by?: string | null;
+          guest_type?: DbGuestType;
+          vendor_id?: string | null;
         };
         Relationships: [
           {
@@ -426,6 +439,9 @@ export interface Database {
           room_type: DbRoomType;
           capacity: number;
           rate_per_night: number | null;
+          includes_breakfast: boolean;
+          check_in_date: string | null;
+          check_out_date: string | null;
           notes: string | null;
           created_at: string;
         };
@@ -436,6 +452,9 @@ export interface Database {
           room_type: DbRoomType;
           capacity?: number;
           rate_per_night?: number | null;
+          includes_breakfast?: boolean;
+          check_in_date?: string | null;
+          check_out_date?: string | null;
           notes?: string | null;
           created_at?: string;
         };
@@ -446,6 +465,9 @@ export interface Database {
           room_type?: DbRoomType;
           capacity?: number;
           rate_per_night?: number | null;
+          includes_breakfast?: boolean;
+          check_in_date?: string | null;
+          check_out_date?: string | null;
           notes?: string | null;
           created_at?: string;
         };

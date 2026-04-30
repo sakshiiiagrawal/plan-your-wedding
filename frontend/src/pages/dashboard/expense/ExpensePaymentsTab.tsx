@@ -4,6 +4,14 @@ interface ExpensePaymentsTabProps {
   formatCurrency: (amount: number) => string;
 }
 
+function formatPaymentAmount(
+  amount: number,
+  direction: 'outflow' | 'inflow',
+  formatCurrency: (amount: number) => string,
+) {
+  return `${direction === 'inflow' ? '-' : ''}${formatCurrency(amount)}`;
+}
+
 function plannedBadge(paymentDate: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -43,7 +51,10 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
     (sum, payment) => sum + (payment.direction === 'inflow' ? -payment.amount : payment.amount),
     0,
   );
-  const plannedTotal = scheduledPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const plannedTotal = scheduledPayments.reduce(
+    (sum, payment) => sum + (payment.direction === 'inflow' ? -payment.amount : payment.amount),
+    0,
+  );
 
   return (
     <div className="space-y-6">
@@ -80,6 +91,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   <th className="text-left p-4">Expense</th>
                   <th className="text-left p-4">Source</th>
                   <th className="text-right p-4">Amount</th>
+                  <th className="text-left p-4">Paid By</th>
                   <th className="text-left p-4">Due Date</th>
                   <th className="text-left p-4">Status</th>
                 </tr>
@@ -96,7 +108,12 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                       <td className="p-4 font-medium">{payment.expense.description}</td>
                       <td className="p-4 text-gray-500 capitalize">{payment.expense.source_type}</td>
                       <td className="p-4 text-right font-medium" style={{ color: 'var(--gold-deep)' }}>
-                        {formatCurrency(payment.amount)}
+                        {formatPaymentAmount(payment.amount, payment.direction, formatCurrency)}
+                      </td>
+                      <td className="p-4 text-gray-600 capitalize">
+                        {payment.paid_by_side === 'shared' && payment.paid_bride_share_percentage != null
+                          ? `Bride ${payment.paid_bride_share_percentage}% · Groom ${100 - payment.paid_bride_share_percentage}%`
+                          : payment.paid_by_side || '—'}
                       </td>
                       <td className="p-4 text-gray-600">
                         {new Date(payment.due_date ?? payment.created_at).toLocaleDateString('en-IN')}
@@ -124,6 +141,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   <th className="text-left p-4">Expense</th>
                   <th className="text-left p-4">Source</th>
                   <th className="text-right p-4">Amount</th>
+                  <th className="text-left p-4">Paid By</th>
                   <th className="text-left p-4">Date</th>
                   <th className="text-left p-4">Method</th>
                   <th className="text-left p-4 hidden md:table-cell">Reference</th>
@@ -145,7 +163,12 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                           payment.direction === 'inflow' ? 'text-sky-700' : 'text-green-700'
                         }`}
                       >
-                        {formatCurrency(payment.amount)}
+                        {formatPaymentAmount(payment.amount, payment.direction, formatCurrency)}
+                      </td>
+                      <td className="p-4 text-gray-600 capitalize">
+                        {payment.paid_by_side === 'shared' && payment.paid_bride_share_percentage != null
+                          ? `Bride ${payment.paid_bride_share_percentage}% · Groom ${100 - payment.paid_bride_share_percentage}%`
+                          : payment.paid_by_side || '—'}
                       </td>
                       <td className="p-4 text-gray-600">
                         {new Date(payment.paid_date ?? payment.created_at).toLocaleDateString('en-IN')}

@@ -31,6 +31,8 @@ import {
   HiOutlineViewGrid,
 } from 'react-icons/hi';
 import { SectionHeader, KPICard, SegmentedControl } from '../../components/ui';
+import DatePicker from '../../components/ui/DatePicker';
+import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 
 interface TaskFormData {
   title: string;
@@ -51,6 +53,19 @@ const DEFAULT_FORM: TaskFormData = {
   assigned_to: '',
   event_id: null,
 };
+
+function getTaskFormState(task?: any): TaskFormData {
+  if (!task) return DEFAULT_FORM;
+  return {
+    title: task.title || '',
+    description: task.description || '',
+    due_date: task.due_date || '',
+    priority: task.priority || 'medium',
+    status: task.status || 'pending',
+    assigned_to: task.assigned_to || '',
+    event_id: task.event_id || null,
+  };
+}
 
 const PRIORITY_COLOR: Record<string, string> = {
   urgent: '#dc2626',
@@ -268,6 +283,20 @@ export default function Tasks() {
   const updateMutation = useUpdateTask();
   const updateStatusMutation = useUpdateTaskStatus();
   const deleteMutation = useDeleteTask();
+  const isTaskFormDirty =
+    JSON.stringify(formData) !== JSON.stringify(getTaskFormState(editingTask));
+  const { attemptClose: attemptCloseTaskModal, dialog: taskUnsavedDialog } =
+    useUnsavedChangesPrompt({
+      isDirty: isTaskFormDirty,
+      onDiscard: () => {
+        setShowAddModal(false);
+        resetForm();
+      },
+      onSave: () => {
+        (document.getElementById('task-form') as HTMLFormElement | null)?.requestSubmit();
+      },
+      isSaving: createMutation.isPending || updateMutation.isPending,
+    });
 
   const resetForm = () => {
     setFormData(DEFAULT_FORM);
@@ -276,15 +305,7 @@ export default function Tasks() {
 
   const handleEdit = (task: any) => {
     setEditingTask(task);
-    setFormData({
-      title: task.title || '',
-      description: task.description || '',
-      due_date: task.due_date || '',
-      priority: task.priority || 'medium',
-      status: task.status || 'pending',
-      assigned_to: task.assigned_to || '',
-      event_id: task.event_id || null,
-    });
+    setFormData(getTaskFormState(task));
     setShowAddModal(true);
   };
 
@@ -558,19 +579,19 @@ export default function Tasks() {
       {/* Add / Edit modal */}
       {showAddModal && (
         <Portal>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
-            <div style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={attemptCloseTaskModal}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
                 <div>
                   <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Checklist</div>
                   <h2 className="display" style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}>{editingTask ? 'Edit task' : 'New task'}</h2>
                 </div>
-                <button onClick={() => { setShowAddModal(false); resetForm(); }} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
+                <button onClick={attemptCloseTaskModal} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
                   <HiOutlineX style={{ width: 16, height: 16 }} />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <form id="task-form" onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
                   <label className="label">Title *</label>
                   <input type="text" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="input" placeholder="Task title" required />
@@ -584,7 +605,7 @@ export default function Tasks() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="label">Due Date</label>
-                    <input type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} className="input" />
+                    <DatePicker value={formData.due_date} onChange={(v) => setFormData({ ...formData, due_date: v })} placeholder="Pick a due date" />
                   </div>
                   <div>
                     <label className="label">Assigned To</label>
@@ -613,7 +634,7 @@ export default function Tasks() {
                 </div>
 
                 <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
-                  <button type="button" onClick={() => { setShowAddModal(false); resetForm(); }} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
+                  <button type="button" onClick={attemptCloseTaskModal} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
                   <button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="btn-primary" style={{ flex: 1, opacity: createMutation.isPending || updateMutation.isPending ? 0.5 : 1 }}>
                     {createMutation.isPending || updateMutation.isPending ? 'Saving…' : editingTask ? 'Update task' : 'Create task'}
                   </button>
@@ -623,12 +644,13 @@ export default function Tasks() {
           </div>
         </Portal>
       )}
+      {taskUnsavedDialog}
 
       {/* Delete confirm */}
       {deleteConfirm && (
         <Portal>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
-            <div style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', padding: 28, maxWidth: 380, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={() => setDeleteConfirm(null)}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', padding: 28, maxWidth: 380, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
               <h3 className="display" style={{ margin: '0 0 8px', fontSize: 20, color: 'var(--ink-high)' }}>Delete task?</h3>
               <p style={{ fontSize: 13, color: 'var(--ink-low)', marginBottom: 24 }}>This action cannot be undone.</p>
               <div style={{ display: 'flex', gap: 10 }}>

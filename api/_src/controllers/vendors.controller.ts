@@ -7,8 +7,57 @@ type IdEventParam = { id: string; eventId: string };
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const category = typeof req.query['category'] === 'string' ? req.query['category'] : undefined;
-    res.json(await service.listVendors(getWeddingOwnerId(req), category));
+    const parseStringList = (value: unknown): string[] => {
+      if (typeof value === 'string') {
+        return value
+          .split(',')
+          .map((entry) => entry.trim())
+          .filter(Boolean);
+      }
+      if (Array.isArray(value)) {
+        return value
+          .flatMap((entry) =>
+            typeof entry === 'string'
+              ? entry
+                  .split(',')
+                  .map((chunk) => chunk.trim())
+                  .filter(Boolean)
+              : [],
+          )
+          .filter(Boolean);
+      }
+      return [];
+    };
+
+    const parsePositiveInt = (value: unknown): number | undefined => {
+      if (typeof value !== 'string' || value.trim() === '') return undefined;
+      const parsed = Number.parseInt(value, 10);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+    };
+
+    const legacyCategory = typeof req.query['category'] === 'string' ? req.query['category'] : undefined;
+    const categoryIds = [
+      ...parseStringList(req.query['category_ids']),
+      ...(legacyCategory ? [legacyCategory] : []),
+    ];
+
+    const options: service.VendorListOptions = {
+      category_ids: categoryIds,
+      payment_states: parseStringList(req.query['payment_states']) as Array<
+        'quoted' | 'deposit' | 'confirmed'
+      >,
+      logistics: parseStringList(req.query['logistics']) as Array<
+        'food' | 'accommodation' | 'team'
+      >,
+    };
+    const search = typeof req.query['search'] === 'string' ? req.query['search'] : undefined;
+    const page = parsePositiveInt(req.query['page']);
+    const perPage = parsePositiveInt(req.query['per_page']);
+    if (search !== undefined) options.search = search;
+    if (page !== undefined) options.page = page;
+    if (perPage !== undefined) options.per_page = perPage;
+
+    res.json(await service.listVendors(getWeddingOwnerId(req), options));
   } catch (e) {
     next(e);
   }

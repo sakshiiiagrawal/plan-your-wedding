@@ -27,6 +27,9 @@ import {
   HiOutlineChevronRight,
 } from 'react-icons/hi';
 import { SectionHeader, Ornament } from '../../components/ui';
+import DatePicker from '../../components/ui/DatePicker';
+import TimePicker from '../../components/ui/TimePicker';
+import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 
 // ── PAN India wedding event types ──────────────────────────────────────────
 const EVENT_TYPES = [
@@ -120,7 +123,6 @@ function EventTypeCombobox({ value, isOther, onSelect }: EventTypeComboboxProps)
     ? EVENT_TYPES.filter(
         (t) =>
           t.label.toLowerCase().includes(q) ||
-          t.group.toLowerCase().includes(q) ||
           t.value.toLowerCase().includes(q),
       )
     : EVENT_TYPES;
@@ -262,9 +264,31 @@ const DEFAULT_FORM: EventFormData = {
   color_palette: { primary: '#8B0000' },
 };
 
+function getEventFormState(event?: any): EventFormData {
+  if (!event) return DEFAULT_FORM;
+  const colorPalette =
+    typeof event.color_palette === 'string'
+      ? JSON.parse(event.color_palette)
+      : event.color_palette || {};
+
+  return {
+    name: event.name || '',
+    event_type: event.event_type || '',
+    event_date: event.event_date || '',
+    start_time: event.start_time || '',
+    end_time: event.end_time || '',
+    venue_id: event.venue_id || null,
+    theme: event.theme || '',
+    description: event.description || '',
+    dress_code: event.dress_code || '',
+    estimated_guests: event.estimated_guests || 0,
+    color_palette: colorPalette,
+  };
+}
+
 export default function Events() {
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<'timeline' | 'cards'>('timeline');
+  const [viewMode, setViewMode] = useState<'timeline' | 'cards'>('cards');
   const [detailEvent, setDetailEvent] = useState<any>(null);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -278,6 +302,20 @@ export default function Events() {
   const createMutation = useCreateEvent();
   const updateMutation = useUpdateEvent();
   const deleteMutation = useDeleteEvent();
+  const isEventFormDirty =
+    JSON.stringify(formData) !== JSON.stringify(getEventFormState(editingEvent));
+  const { attemptClose: attemptCloseEventModal, dialog: eventUnsavedDialog } =
+    useUnsavedChangesPrompt({
+      isDirty: isEventFormDirty,
+      onDiscard: () => {
+        setShowEventModal(false);
+        resetForm();
+      },
+      onSave: () => {
+        (document.getElementById('event-form') as HTMLFormElement | null)?.requestSubmit();
+      },
+      isSaving: createMutation.isPending || updateMutation.isPending,
+    });
 
   const resetForm = () => {
     setFormData(DEFAULT_FORM);
@@ -287,25 +325,9 @@ export default function Events() {
 
   const handleEdit = (event: any) => {
     setEditingEvent(event);
-    const colorPalette =
-      typeof event.color_palette === 'string'
-        ? JSON.parse(event.color_palette)
-        : event.color_palette || {};
     const isCustom = event.event_type && !KNOWN_TYPE_VALUES.has(event.event_type);
     setIsOtherType(isCustom);
-    setFormData({
-      name: event.name || '',
-      event_type: event.event_type || '',
-      event_date: event.event_date || '',
-      start_time: event.start_time || '',
-      end_time: event.end_time || '',
-      venue_id: event.venue_id || null,
-      theme: event.theme || '',
-      description: event.description || '',
-      dress_code: event.dress_code || '',
-      estimated_guests: event.estimated_guests || 0,
-      color_palette: colorPalette,
-    });
+    setFormData(getEventFormState(event));
     setShowEventModal(true);
   };
 
@@ -471,51 +493,108 @@ export default function Events() {
         </div>
       )}
 
-      {/* ── Cards View ── */}
-      {viewMode === 'cards' && (
-        <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
-          {events.length === 0 && (
-            <div className="card" style={{ gridColumn: '1 / -1', padding: '48px 0', textAlign: 'center', color: 'var(--ink-dim)', fontSize: 13 }}>No events yet.</div>
-          )}
-          {events.map((event, index) => {
-            const colorPalette = typeof event.color_palette === 'string' ? JSON.parse(event.color_palette) : event.color_palette || {};
-            const eventColor = (colorPalette as any).primary || EVENT_COLORS_LIST[index % EVENT_COLORS_LIST.length];
-            const startTime = formatTime(event.start_time);
-            return (
-              <div
-                key={event.id}
-                onClick={() => setDetailEvent(event)}
-                className="card"
-                style={{ padding: 0, overflow: 'hidden', cursor: 'pointer', transition: 'box-shadow 150ms' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 24px rgba(0,0,0,0.12)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = ''; }}
-              >
-                <div style={{ height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, background: `linear-gradient(135deg, ${eventColor}44, ${eventColor}11)` }}>
-                  {EVENT_ICONS[event.event_type as keyof typeof EVENT_ICONS] || '🎊'}
-                </div>
-                <div style={{ padding: 16 }}>
-                  <div className="mono" style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4, color: eventColor }}>
-                    {new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}
-                    {startTime ? ` · ${startTime}` : ''}
-                  </div>
-                  <div className="display" style={{ fontSize: 17, color: 'var(--ink-high)' }}>{event.name}</div>
-                  {(event as any).venues?.name && (
-                    <div style={{ fontSize: 11, color: 'var(--ink-dim)', marginTop: 4 }}>{(event as any).venues.name}</div>
-                  )}
-                  <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-                    {event.estimated_guests ? (
-                      <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 100, background: 'var(--bg-raised)', color: 'var(--ink-low)', border: '1px solid var(--line)' }}>{event.estimated_guests} guests</span>
-                    ) : null}
-                    {event.dress_code && (
-                      <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 100, border: `1px solid ${eventColor}55`, background: `${eventColor}11`, color: eventColor }}>{event.dress_code}</span>
-                    )}
-                  </div>
-                </div>
+      {/* ── Cards Timeline View (zigzag with curvy connectors) ── */}
+      {viewMode === 'cards' && (() => {
+        if (events.length === 0) {
+          return (
+            <div className="card" style={{ padding: '48px 0', textAlign: 'center', color: 'var(--ink-dim)', fontSize: 13 }}>No events yet — add your first event.</div>
+          );
+        }
+        const CARD_W = 340;
+        const CARD_H = 180;
+        const GAP_Y = 80;
+        const OFFSET_X = 260;
+        const PAD_X = 24;
+        const PAD_Y = 24;
+        const stepY = CARD_H + GAP_Y;
+        const contentW = PAD_X * 2 + CARD_W + OFFSET_X;
+        const contentH = PAD_Y * 2 + events.length * CARD_H + (events.length - 1) * GAP_Y;
+        // Viewport shows ~2 cards at a time
+        const viewportH = PAD_Y * 2 + 2 * CARD_H + GAP_Y;
+        const anchors = events.map((_, i) => {
+          const x = PAD_X + (i % 2 === 0 ? 0 : OFFSET_X);
+          const y = PAD_Y + i * stepY;
+          return { x, y, midX: x + CARD_W / 2, topY: y, bottomY: y + CARD_H };
+        });
+        return (
+          <div style={{ padding: 0 }}>
+            <div style={{ overflowY: 'auto', overflowX: 'hidden', maxHeight: viewportH }}>
+              <div style={{ position: 'relative', width: contentW, height: contentH, margin: '0 auto' }}>
+                {/* Curvy connectors */}
+                <svg width={contentW} height={contentH} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                  <defs>
+                    <linearGradient id="tl-line" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.55" />
+                      <stop offset="100%" stopColor="var(--gold)" stopOpacity="0.3" />
+                    </linearGradient>
+                  </defs>
+                  {anchors.slice(0, -1).map((a, i) => {
+                    const b = anchors[i + 1]!;
+                    const x1 = a.midX;
+                    const y1 = a.bottomY;
+                    const x2 = b.midX;
+                    const y2 = b.topY;
+                    const cy = (y1 + y2) / 2;
+                    const d = `M ${x1} ${y1} C ${x1} ${cy}, ${x2} ${cy}, ${x2} ${y2}`;
+                    return (
+                      <g key={i}>
+                        <path d={d} fill="none" stroke="url(#tl-line)" strokeWidth={1.5} strokeDasharray="4 5" />
+                        <circle cx={x1} cy={y1} r={3} fill="var(--gold)" opacity={0.75} />
+                        <circle cx={x2} cy={y2} r={3} fill="var(--gold)" opacity={0.75} />
+                      </g>
+                    );
+                  })}
+                </svg>
+                {/* Cards */}
+                {events.map((event, index) => {
+                  const colorPalette = typeof event.color_palette === 'string' ? JSON.parse(event.color_palette) : event.color_palette || {};
+                  const eventColor = (colorPalette as any).primary || EVENT_COLORS_LIST[index % EVENT_COLORS_LIST.length];
+                  const startTime = formatTime(event.start_time);
+                  const a = anchors[index]!;
+                  return (
+                    <div
+                      key={event.id}
+                      onClick={() => setDetailEvent(event)}
+                      className="card"
+                      style={{
+                        position: 'absolute', left: a.x, top: a.y,
+                        width: CARD_W, height: CARD_H,
+                        padding: 0, overflow: 'hidden', cursor: 'pointer',
+                        transition: 'transform 150ms, box-shadow 150ms',
+                        display: 'flex', flexDirection: 'column',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = ''; (e.currentTarget as HTMLElement).style.transform = ''; }}
+                    >
+                      <div style={{ height: 68, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, background: `linear-gradient(135deg, ${eventColor}44, ${eventColor}11)`, flexShrink: 0 }}>
+                        {EVENT_ICONS[event.event_type as keyof typeof EVENT_ICONS] || '🎊'}
+                      </div>
+                      <div style={{ padding: '10px 14px 12px', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                        <div className="mono" style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 3, color: eventColor }}>
+                          {new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}
+                          {startTime ? ` · ${startTime}` : ''}
+                        </div>
+                        <div className="display" style={{ fontSize: 15, color: 'var(--ink-high)', lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.name}</div>
+                        {(event as any).venues?.name && (
+                          <div style={{ fontSize: 11, color: 'var(--ink-dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(event as any).venues.name}</div>
+                        )}
+                        <div style={{ display: 'flex', gap: 5, marginTop: 'auto', flexWrap: 'wrap' }}>
+                          {event.estimated_guests ? (
+                            <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: 'var(--bg-raised)', color: 'var(--ink-low)', border: '1px solid var(--line)' }}>{event.estimated_guests} guests</span>
+                          ) : null}
+                          {event.dress_code && (
+                            <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, border: `1px solid ${eventColor}55`, background: `${eventColor}11`, color: eventColor, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>{event.dress_code}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
-      )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Event Detail Modal ── */}
       {detailEvent && (() => {
@@ -588,19 +667,19 @@ export default function Events() {
       {/* Add / Edit modal */}
       {showEventModal && (
         <Portal>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
-            <div style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 600, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={attemptCloseEventModal}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 600, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
                 <div>
                   <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Festivities</div>
                   <h2 className="display" style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}>{editingEvent ? 'Edit event' : 'Add event'}</h2>
                 </div>
-                <button onClick={() => { setShowEventModal(false); resetForm(); }} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
+                <button onClick={attemptCloseEventModal} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
                   <HiOutlineX style={{ width: 16, height: 16 }} />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <form id="event-form" onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
                   <label className="label">Event Name *</label>
                   <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input" placeholder="e.g., Mehendi Night, Ring Ceremony" required />
@@ -616,7 +695,7 @@ export default function Events() {
                   </div>
                   <div>
                     <label className="label">Event Date *</label>
-                    <input type="date" value={formData.event_date} onChange={(e) => setFormData({ ...formData, event_date: e.target.value })} className="input" required />
+                    <DatePicker value={formData.event_date} onChange={(v) => setFormData({ ...formData, event_date: v })} placeholder="Select event date" required />
                   </div>
                 </div>
 
@@ -630,14 +709,14 @@ export default function Events() {
                   </div>
                   <div>
                     <label className="label">Start Time *</label>
-                    <input type="time" value={formData.start_time} onChange={(e) => setFormData({ ...formData, start_time: e.target.value })} className="input" required />
+                    <TimePicker value={formData.start_time} onChange={(v) => setFormData({ ...formData, start_time: v })} placeholder="Start time" required />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="label">End Time</label>
-                    <input type="time" value={formData.end_time} onChange={(e) => setFormData({ ...formData, end_time: e.target.value })} className="input" />
+                    <TimePicker value={formData.end_time} onChange={(v) => setFormData({ ...formData, end_time: v })} placeholder="End time" />
                   </div>
                   <div>
                     <label className="label">Estimated Guests</label>
@@ -667,7 +746,7 @@ export default function Events() {
                 </div>
 
                 <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
-                  <button type="button" onClick={() => { setShowEventModal(false); resetForm(); }} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
+                  <button type="button" onClick={attemptCloseEventModal} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
                   <button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="btn-primary" style={{ flex: 1, opacity: createMutation.isPending || updateMutation.isPending ? 0.5 : 1 }}>
                     {createMutation.isPending || updateMutation.isPending ? 'Saving…' : editingEvent ? 'Update event' : 'Create event'}
                   </button>
@@ -677,11 +756,12 @@ export default function Events() {
           </div>
         </Portal>
       )}
+      {eventUnsavedDialog}
 
       {deleteConfirm && (
         <Portal>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
-            <div style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', padding: 28, maxWidth: 380, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={() => setDeleteConfirm(null)}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', padding: 28, maxWidth: 380, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
               <h3 className="display" style={{ margin: '0 0 8px', fontSize: 20, color: 'var(--ink-high)' }}>Delete event?</h3>
               <p style={{ fontSize: 13, color: 'var(--ink-low)', marginBottom: 24 }}>This action cannot be undone.</p>
               <div style={{ display: 'flex', gap: 10 }}>

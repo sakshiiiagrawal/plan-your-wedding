@@ -25,6 +25,7 @@ import {
   HiOutlinePhone,
 } from 'react-icons/hi';
 import { SectionHeader, SegmentedControl, KPICard, Pill, DrawerPanel } from '../../components/ui';
+import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 
 interface GuestFormData {
   first_name: string;
@@ -59,6 +60,24 @@ const DEFAULT_FORM: GuestFormData = {
   is_vip: false,
   notes: '',
 };
+
+function getGuestFormState(guest?: any): GuestFormData {
+  if (!guest) return DEFAULT_FORM;
+  return {
+    first_name: guest.first_name || '',
+    last_name: guest.last_name || '',
+    phone: guest.phone || '',
+    email: guest.email || '',
+    side: guest.side || 'bride',
+    relationship: guest.relationship || '',
+    meal_preference: guest.meal_preference || 'vegetarian',
+    dietary_restrictions: guest.dietary_restrictions || '',
+    needs_accommodation: guest.needs_accommodation || false,
+    needs_pickup: guest.needs_pickup || false,
+    is_vip: guest.is_vip || false,
+    notes: guest.notes || '',
+  };
+}
 
 // ── Guest detail drawer (fetches fresh data + events) ────────────────────────
 
@@ -253,6 +272,7 @@ export default function Guests() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sideFilter, setSideFilter] = useState('all');
   const [rsvpFilter, setRsvpFilter] = useState('all');
+  const [showVendorTeams, setShowVendorTeams] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState<GuestFormData>(DEFAULT_FORM);
   const [editingGuest, setEditingGuest] = useState<any>(null);
@@ -272,6 +292,20 @@ export default function Guests() {
   const bulkCreateMutation = useBulkCreateGuests();
   const updateMutation = useUpdateGuest();
   const bulkDeleteMutation = useBulkDeleteGuests();
+  const isGuestFormDirty =
+    JSON.stringify(formData) !== JSON.stringify(getGuestFormState(editingGuest));
+  const { attemptClose: attemptCloseGuestModal, dialog: guestUnsavedDialog } =
+    useUnsavedChangesPrompt({
+      isDirty: isGuestFormDirty,
+      onDiscard: () => {
+        setShowEditModal(false);
+        resetForm();
+      },
+      onSave: () => {
+        (document.getElementById('edit-guest-form') as HTMLFormElement | null)?.requestSubmit();
+      },
+      isSaving: updateMutation.isPending,
+    });
 
   const resetForm = () => {
     setFormData(DEFAULT_FORM);
@@ -280,20 +314,7 @@ export default function Guests() {
 
   const handleEdit = (guest: any) => {
     setEditingGuest(guest);
-    setFormData({
-      first_name: guest.first_name || '',
-      last_name: guest.last_name || '',
-      phone: guest.phone || '',
-      email: guest.email || '',
-      side: guest.side || 'bride',
-      relationship: guest.relationship || '',
-      meal_preference: guest.meal_preference || 'vegetarian',
-      dietary_restrictions: guest.dietary_restrictions || '',
-      needs_accommodation: guest.needs_accommodation || false,
-      needs_pickup: guest.needs_pickup || false,
-      is_vip: guest.is_vip || false,
-      notes: guest.notes || '',
-    });
+    setFormData(getGuestFormState(guest));
     setShowEditModal(true);
   };
 
@@ -461,6 +482,8 @@ export default function Guests() {
 
   const filteredGuests = useMemo(() => {
     return guests.filter((guest: any) => {
+      if (!showVendorTeams && guest.guest_type === 'vendor_team') return false;
+
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         const fullName = `${guest.first_name} ${guest.last_name}`.toLowerCase();
@@ -479,7 +502,7 @@ export default function Guests() {
 
       return true;
     });
-  }, [guests, searchTerm, rsvpFilter]);
+  }, [guests, searchTerm, rsvpFilter, showVendorTeams]);
 
   if (guestsLoading) {
     return (
@@ -561,6 +584,20 @@ export default function Guests() {
           value={sideFilter}
           onChange={setSideFilter}
         />
+        <label
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, fontSize: 12,
+            color: 'var(--ink-mid)', cursor: 'pointer', padding: '0 8px',
+          }}
+          title="Vendor teams are stored as guests so they appear in accommodation and meal counts."
+        >
+          <input
+            type="checkbox"
+            checked={showVendorTeams}
+            onChange={(e) => setShowVendorTeams(e.target.checked)}
+          />
+          Show vendor teams
+        </label>
       </div>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -829,15 +866,15 @@ export default function Guests() {
 
       {showEditModal && (
         <Portal>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
-            <div style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={attemptCloseGuestModal}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
                 <div>
                   <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Guest Details</div>
                   <h2 className="display" style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}>{editingGuest ? 'Edit guest' : 'Add a guest'}</h2>
                 </div>
                 <button
-                  onClick={() => { setShowEditModal(false); resetForm(); }}
+                  onClick={attemptCloseGuestModal}
                   style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
                 >
                   <HiOutlineX style={{ width: 16, height: 16 }} />
@@ -922,7 +959,7 @@ export default function Guests() {
               </form>
 
               <div style={{ display: 'flex', gap: 10, padding: '16px 24px', borderTop: '1px solid var(--line-soft)' }}>
-                <button type="button" onClick={() => { setShowEditModal(false); resetForm(); }} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
+                <button type="button" onClick={attemptCloseGuestModal} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
                 <button type="submit" form="edit-guest-form" disabled={updateMutation.isPending} className="btn-primary" style={{ flex: 1, opacity: updateMutation.isPending ? 0.5 : 1 }}>
                   {updateMutation.isPending ? 'Saving…' : 'Update Guest'}
                 </button>
@@ -931,11 +968,12 @@ export default function Guests() {
           </div>
         </Portal>
       )}
+      {guestUnsavedDialog}
 
       {showImportModal && (
         <Portal>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
-            <div style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 560, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={() => setShowImportModal(false)}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 560, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
                 <div>
                   <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Excel Import</div>

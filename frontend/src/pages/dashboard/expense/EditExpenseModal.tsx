@@ -3,6 +3,9 @@ import { HiOutlinePlus, HiOutlineTrash, HiOutlineX } from 'react-icons/hi';
 import Portal from '../../../components/Portal';
 import CategoryCombobox from '../../../components/CategoryCombobox';
 import CustomCategoryModal from '../../../components/CustomCategoryModal';
+import DatePicker from '../../../components/ui/DatePicker';
+import SplitShare from '../../../components/ui/SplitShare';
+import useUnsavedChangesPrompt from '../../../hooks/useUnsavedChangesPrompt';
 import type { ExpenseWithDetails } from '@wedding-planner/shared';
 
 export type ExpenseRow = ExpenseWithDetails;
@@ -40,6 +43,27 @@ const createItem = (): ExpenseItemForm => ({
   bride_share_percentage: 50,
 });
 
+function getExpenseFormState(expense: ExpenseRow | null): FormData | null {
+  if (!expense) return null;
+  return {
+    description: expense.description,
+    expense_date: expense.expense_date,
+    notes: expense.notes ?? '',
+    items:
+      expense.items.length > 0
+        ? expense.items.map((item) => ({
+            id: item.id,
+            local_id: item.id,
+            description: item.description,
+            amount: String(item.amount),
+            category_id: item.category_id,
+            side: item.side,
+            bride_share_percentage: item.bride_share_percentage ?? 50,
+          }))
+        : [createItem()],
+  };
+}
+
 export default function EditExpenseModal({
   expense,
   onClose,
@@ -52,23 +76,7 @@ export default function EditExpenseModal({
 
   useEffect(() => {
     if (!expense) return;
-    setFormData({
-      description: expense.description,
-      expense_date: expense.expense_date,
-      notes: expense.notes ?? '',
-      items:
-        expense.items.length > 0
-          ? expense.items.map((item) => ({
-              id: item.id,
-              local_id: item.id,
-              description: item.description,
-              amount: String(item.amount),
-              category_id: item.category_id,
-              side: item.side,
-              bride_share_percentage: item.bride_share_percentage ?? 50,
-            }))
-          : [createItem()],
-    });
+    setFormData(getExpenseFormState(expense));
   }, [expense]);
 
   const totalCommitted = useMemo(
@@ -76,6 +84,16 @@ export default function EditExpenseModal({
       formData?.items.reduce((sum, item) => sum + Number(item.amount || 0), 0) ?? 0,
     [formData],
   );
+  const isDirty =
+    JSON.stringify(formData) !== JSON.stringify(getExpenseFormState(expense));
+  const { attemptClose, dialog: unsavedDialog } = useUnsavedChangesPrompt({
+    isDirty,
+    onDiscard: onClose,
+    onSave: () => {
+      (document.getElementById('edit-expense-form') as HTMLFormElement | null)?.requestSubmit();
+    },
+    isSaving: isPending,
+  });
 
   if (!expense || !formData) return null;
 
@@ -127,14 +145,14 @@ export default function EditExpenseModal({
   return (
     <>
       <Portal>
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
-          <div style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 768, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={attemptClose}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 768, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
               <div>
                 <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Expenses</div>
                 <h2 className="display" style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}>Edit Expense</h2>
               </div>
-              <button onClick={onClose} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
+              <button onClick={attemptClose} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
                 <HiOutlineX style={{ width: 18, height: 18 }} />
               </button>
             </div>
@@ -157,16 +175,15 @@ export default function EditExpenseModal({
                 </div>
                 <div>
                   <label className="label">Expense Date *</label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={formData.expense_date}
-                    onChange={(event) =>
+                    onChange={(v) =>
                       setFormData((prev) =>
-                        prev ? { ...prev, expense_date: event.target.value } : prev,
+                        prev ? { ...prev, expense_date: v } : prev,
                       )
                     }
-                    className="input"
                     required
+                    placeholder="Expense date"
                   />
                 </div>
               </div>
@@ -290,23 +307,11 @@ export default function EditExpenseModal({
                       </div>
 
                       {item.side === 'shared' && (
-                        <div>
-                          <label className="label">
-                            Bride Share Percentage ({item.bride_share_percentage}%)
-                          </label>
-                          <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={item.bride_share_percentage}
-                            onChange={(event) =>
-                              updateItem(item.local_id, {
-                                bride_share_percentage: Number(event.target.value),
-                              })
-                            }
-                            className="w-full"
-                          />
-                        </div>
+                        <SplitShare
+                          total={Number(item.amount) || 0}
+                          bridePercentage={item.bride_share_percentage}
+                          onChange={(pct) => updateItem(item.local_id, { bride_share_percentage: pct })}
+                        />
                       )}
                     </div>
                   ))}
@@ -320,7 +325,7 @@ export default function EditExpenseModal({
             </form>
 
             <div style={{ display: 'flex', gap: 10, padding: '16px 24px', borderTop: '1px solid var(--line-soft)' }}>
-              <button type="button" onClick={onClose} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
+              <button type="button" onClick={attemptClose} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
               <button
                 type="submit"
                 form="edit-expense-form"
@@ -334,6 +339,8 @@ export default function EditExpenseModal({
           </div>
         </div>
       </Portal>
+
+      {unsavedDialog}
 
       <CustomCategoryModal
         isOpen={showCustomCategoryModal}
