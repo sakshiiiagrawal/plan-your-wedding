@@ -75,7 +75,7 @@ export default function TimePicker({
       const h12 = parsed.h % 12 === 0 ? 12 : parsed.h % 12;
       setDraft({ h12, m: parsed.m, period });
     }
-  }, [value]);
+  }, [parsed]);
 
   const hours = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), []);
   const minutes = useMemo(

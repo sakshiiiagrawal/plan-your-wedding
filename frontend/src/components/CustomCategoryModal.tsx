@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { HiOutlineX } from 'react-icons/hi';
 import { useCreateCustomCategory, useCategoryTree } from '../hooks/useApi';
 import toast from 'react-hot-toast';
@@ -18,12 +18,15 @@ export default function CustomCategoryModal({
 }: CustomCategoryModalProps) {
   const { data: categoryTree = [] } = useCategoryTree();
   const createMutation = useCreateCustomCategory();
-  const initialFormData = {
-    name: '',
-    parent_category_id: defaultParentId ?? '',
-    allocated_amount: '',
-    description: '',
-  };
+  const initialFormData = useMemo(
+    () => ({
+      name: '',
+      parent_category_id: defaultParentId ?? '',
+      allocated_amount: '',
+      description: '',
+    }),
+    [defaultParentId],
+  );
   const [formData, setFormData] = useState(initialFormData);
   const handleDiscard = () => {
     setFormData(initialFormData);
@@ -43,7 +46,7 @@ export default function CustomCategoryModal({
     if (isOpen) {
       setFormData(initialFormData);
     }
-  }, [defaultParentId, isOpen]);
+  }, [initialFormData, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -46,6 +46,16 @@ const SECTIONS = [
   { id: 'gallery', name: 'Gallery' },
 ];
 
+interface HeroContentSettings {
+  bride_name?: string;
+  groom_name?: string;
+  wedding_date?: string;
+  tagline?: string;
+  theme?: string;
+  sections?: Record<string, boolean>;
+  [key: string]: unknown;
+}
+
 function Toggle({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
   return (
     <button
@@ -90,7 +100,7 @@ function PreviewPane({
   heroTagline: string;
   theme: string;
   sections: { id: string; name: string; enabled: boolean }[];
-  heroContent: any;
+  heroContent: HeroContentSettings | null | undefined;
 }) {
   const themeObj = (THEMES.find((t) => t.id === theme) ?? THEMES[0])!;
   const enabledSections = sections.filter((s) => s.enabled);
@@ -262,7 +272,9 @@ function PreviewPane({
 
 export default function Website() {
   const { slug } = useParams<{ slug: string }>();
-  const { data: heroContent } = useHeroContent(undefined);
+  const { data: heroContent } = useHeroContent(undefined) as {
+    data: HeroContentSettings | null | undefined;
+  };
   const updateContent = useUpdateWebsiteContent();
 
   const [theme, setTheme] = useState('royal');
@@ -275,11 +287,11 @@ export default function Website() {
     if (heroContent?.tagline) {
       setHeroTagline(heroContent.tagline);
     }
-    if ((heroContent as any)?.theme) {
-      setTheme((heroContent as any).theme);
+    if (heroContent?.theme) {
+      setTheme(heroContent.theme);
     }
-    if ((heroContent as any)?.sections) {
-      const savedSections: Record<string, boolean> = (heroContent as any).sections;
+    if (heroContent?.sections) {
+      const savedSections = heroContent.sections;
       setSections(SECTIONS.map((s) => ({ ...s, enabled: savedSections[s.id] ?? true })));
     }
   }, [heroContent]);

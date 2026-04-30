@@ -54,9 +54,10 @@ export default function EditVendorModal({
     }
   }, [vendor]);
 
-  const isDirty = formData && vendor
-    ? JSON.stringify(formData) !== JSON.stringify(getEditVendorFormState(vendor))
-    : false;
+  const isDirty =
+    formData && vendor
+      ? JSON.stringify(formData) !== JSON.stringify(getEditVendorFormState(vendor))
+      : false;
   const { attemptClose, dialog: unsavedDialog } = useUnsavedChangesPrompt({
     isDirty,
     onDiscard: onClose,

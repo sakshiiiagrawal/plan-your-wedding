@@ -1360,16 +1360,16 @@ export default function Guests() {
                         guests
                       </>,
                       <>
-                        <strong>Required fields:</strong> First Name and Side (must be &quot;Bride&quot; or
-                        &quot;Groom&quot;)
+                        <strong>Required fields:</strong> First Name and Side (must be
+                        &quot;Bride&quot; or &quot;Groom&quot;)
                       </>,
                       <>
                         <strong>Optional:</strong> Last Name, Phone, Relationship, Meal Preference,
                         Accommodation, Pickup
                       </>,
                       <>
-                        <strong>Boolean values:</strong> use &quot;Yes&quot; or &quot;No&quot; for Accommodation and
-                        Pickup columns
+                        <strong>Boolean values:</strong> use &quot;Yes&quot; or &quot;No&quot; for
+                        Accommodation and Pickup columns
                       </>,
                     ].map((item, i) => (
                       <li

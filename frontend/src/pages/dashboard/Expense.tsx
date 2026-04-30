@@ -27,6 +27,35 @@ interface Tab {
   label: string;
 }
 
+interface ApiError {
+  response?: { data?: { message?: string; error?: string } };
+}
+
+interface ExpenseOverviewCategory {
+  id: string;
+  name: string;
+  committed?: number | string;
+  spent?: number | string;
+  paid?: number | string;
+  outstanding?: number | string;
+  allocated_amount?: number | string;
+}
+
+interface SideWiseExpenseItem {
+  id: string;
+  description: string;
+  category_name: string;
+  amount: number;
+  expense_date: string;
+  expense_title: string;
+  bride_share_percentage: number | null;
+  is_shared: boolean;
+  shared_share_percentage?: number;
+  shared_total_amount?: number;
+  bride_share_amount?: number;
+  groom_share_amount?: number;
+}
+
 const TABS: Tab[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'expenses', label: 'Expenses' },
@@ -133,14 +162,14 @@ export default function Expense() {
     }
 
     return (expenseOverview ?? [])
-      .map((category: any) => ({
+      .map((category: ExpenseOverviewCategory) => ({
         id: category.id,
         name: category.name,
-        committed: parseFloat(category.committed || category.spent || 0),
-        paid: parseFloat(category.paid || 0),
-        outstanding: parseFloat(category.outstanding || 0),
+        committed: Number(category.committed ?? category.spent ?? 0),
+        paid: Number(category.paid ?? 0),
+        outstanding: Number(category.outstanding ?? 0),
         count: countByCategory.get(category.id) ?? 0,
-        allocated: parseFloat(category.allocated_amount || 0),
+        allocated: Number(category.allocated_amount ?? 0),
       }))
       .filter((category: { committed: number }) => category.committed > 0)
       .sort(
@@ -152,7 +181,7 @@ export default function Expense() {
   const sideWiseExpenses = useMemo(() => {
     const initial = {
       bride: {
-        items: [] as any[],
+        items: [] as SideWiseExpenseItem[],
         total: 0,
         directCount: 0,
         sharedCount: 0,
@@ -160,7 +189,7 @@ export default function Expense() {
         sharedTotal: 0,
       },
       groom: {
-        items: [] as any[],
+        items: [] as SideWiseExpenseItem[],
         total: 0,
         directCount: 0,
         sharedCount: 0,
@@ -235,10 +264,11 @@ export default function Expense() {
       await updateExpenseMutation.mutateAsync({ id, ...payload });
       toast.success('Expense updated.');
       setEditingExpense(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
+        apiError.response?.data?.message ||
+        apiError.response?.data?.error ||
         'Failed to update expense.';
       toast.error(message);
     }
@@ -249,10 +279,11 @@ export default function Expense() {
     try {
       await deleteExpenseMutation.mutateAsync(id);
       toast.success('Expense deleted.');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
+        apiError.response?.data?.message ||
+        apiError.response?.data?.error ||
         'Failed to delete expense.';
       toast.error(message);
     }
@@ -264,9 +295,12 @@ export default function Expense() {
       toast.success('Expense added successfully.');
       setShowExpenseModal(false);
       setActiveTab('expenses');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       const message =
-        error?.response?.data?.message || error?.response?.data?.error || 'Failed to add expense.';
+        apiError.response?.data?.message ||
+        apiError.response?.data?.error ||
+        'Failed to add expense.';
       toast.error(message);
     }
   };

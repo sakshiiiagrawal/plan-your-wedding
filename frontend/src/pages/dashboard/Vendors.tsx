@@ -62,6 +62,10 @@ interface PaymentFormState {
   extra_bride_share_percentage: number;
 }
 
+interface ApiError {
+  response?: { data?: { message?: string; error?: string } };
+}
+
 const parseTeamSize = (raw: string): number => {
   const n = Number.parseInt(raw, 10);
   if (!Number.isFinite(n) || n < 1) return 1;
@@ -288,7 +292,7 @@ export default function Vendors() {
     page,
     per_page: perPage,
   });
-  const vendors = vendorsResponse?.items ?? [];
+  const vendors = useMemo(() => vendorsResponse?.items ?? [], [vendorsResponse?.items]);
   const totalVendors = vendorsResponse?.total_items ?? 0;
   const totalPages = vendorsResponse?.total_pages ?? 1;
   const activePage = vendorsResponse?.page ?? page;
@@ -549,9 +553,12 @@ export default function Vendors() {
       }
 
       closeVendorModal();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       const message =
-        error?.response?.data?.message || error?.response?.data?.error || 'Failed to save vendor.';
+        apiError.response?.data?.message ||
+        apiError.response?.data?.error ||
+        'Failed to save vendor.';
       toast.error(message);
     }
   };
@@ -609,9 +616,12 @@ export default function Vendors() {
             : 'Payment recorded.',
       );
       setPaymentForm(getVendorPaymentFormState(editingVendor));
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       const message =
-        error?.response?.data?.error || error?.response?.data?.message || 'Failed to save payment.';
+        apiError.response?.data?.error ||
+        apiError.response?.data?.message ||
+        'Failed to save payment.';
       toast.error(message);
     }
   };
@@ -621,10 +631,11 @@ export default function Vendors() {
     try {
       await deleteVendorPayment.mutateAsync({ sourceId: editingVendor.id, paymentId });
       toast.success('Scheduled payment deleted.');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       const message =
-        error?.response?.data?.error ||
-        error?.response?.data?.message ||
+        apiError.response?.data?.error ||
+        apiError.response?.data?.message ||
         'Failed to delete payment.';
       toast.error(message);
     }
@@ -635,10 +646,11 @@ export default function Vendors() {
       await deleteMutation.mutateAsync(id);
       toast.success('Vendor deleted successfully.');
       setDeleteConfirm(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
+        apiError.response?.data?.message ||
+        apiError.response?.data?.error ||
         'Failed to delete vendor.';
       toast.error(message);
     }

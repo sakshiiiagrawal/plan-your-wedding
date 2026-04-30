@@ -66,6 +66,10 @@ interface PaymentFormState {
   extra_bride_share_percentage: number;
 }
 
+interface ApiError {
+  response?: { data?: { error?: string; message?: string } };
+}
+
 function getDefaultPaymentSplit(source: SourcePaymentModalProps['source']) {
   const firstItem = source.finance?.items?.[0];
   return {
@@ -170,9 +174,12 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
             : 'Payment recorded.',
       );
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       const message =
-        error?.response?.data?.error || error?.response?.data?.message || 'Failed to save payment.';
+        apiError.response?.data?.error ||
+        apiError.response?.data?.message ||
+        'Failed to save payment.';
       toast.error(message);
     }
   };
@@ -181,10 +188,11 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
     try {
       await deletePayment.mutateAsync({ sourceId: source.id, paymentId });
       toast.success('Scheduled payment deleted.');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       const message =
-        error?.response?.data?.error ||
-        error?.response?.data?.message ||
+        apiError.response?.data?.error ||
+        apiError.response?.data?.message ||
         'Failed to delete payment.';
       toast.error(message);
     }
