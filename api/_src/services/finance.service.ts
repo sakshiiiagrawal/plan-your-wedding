@@ -62,8 +62,24 @@ function toNullableNumber(value: unknown): number | null {
   return value == null ? null : Number(value);
 }
 
-function normalizeDate(value: string | null | undefined, fallback?: string): string {
-  if (value && value.trim() !== '') return value;
+function toDateString(value: unknown): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) {
+    // Pad to YYYY-MM-DD in UTC so node-pg's locally-parsed midnight Date round-trips cleanly.
+    const y = value.getUTCFullYear();
+    const m = String(value.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(value.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const str = String(value);
+  // Strip any trailing time component so DATE columns receive a clean YYYY-MM-DD.
+  const match = str.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1]! : str;
+}
+
+function normalizeDate(value: string | Date | null | undefined, fallback?: string): string {
+  const normalized = toDateString(value ?? null);
+  if (normalized && normalized.trim() !== '') return normalized;
   if (fallback) return fallback;
   return new Date().toISOString().slice(0, 10);
 }
@@ -94,7 +110,7 @@ function mapExpenseRow(row: DbRow): ExpenseRow {
     source_type: row['source_type'] as SourceType,
     source_id: row['source_id'] ? String(row['source_id']) : null,
     description: String(row['description']),
-    expense_date: String(row['expense_date']),
+    expense_date: toDateString(row['expense_date']) ?? '',
     notes: row['notes'] ? String(row['notes']) : null,
     status: row['status'] as HeaderStatus,
     created_at: String(row['created_at']),
@@ -125,10 +141,11 @@ function mapPaymentRow(row: DbRow): PaymentRow {
     amount: toNumber(row['amount']),
     direction: row['direction'] as PaymentDirection,
     status: row['status'] as PaymentStatus,
-    due_date: row['due_date'] ? String(row['due_date']) : null,
-    paid_date: row['paid_date'] ? String(row['paid_date']) : null,
+    due_date: toDateString(row['due_date']),
+    paid_date: toDateString(row['paid_date']),
     payment_method: (row['payment_method'] as PaymentMethod | null) ?? null,
     paid_by_side: (row['paid_by_side'] as PaymentRow['paid_by_side']) ?? null,
+    paid_bride_share_percentage: toNullableNumber(row['paid_bride_share_percentage']),
     transaction_reference: row['transaction_reference']
       ? String(row['transaction_reference'])
       : null,
@@ -476,29 +493,49 @@ function requireItems(items: ExpenseItemInput[] | undefined): ExpenseItemInput[]
 }
 
 function normalizePaymentStatus(input: PaymentMutationInput): PaymentMutationInput {
-  const status = input.status;
+  const amount = normalizeMoney(input.amount);
+  if (amount === 0) {
+    throw new BadRequestError('Payment amount must be non-zero.');
+  }
+
+  const normalizedInput: PaymentMutationInput = {
+    ...input,
+    amount: Math.abs(amount),
+    direction: amount < 0 ? 'inflow' : (input.direction ?? 'outflow'),
+  };
+
+  const status = normalizedInput.status;
   if (status === 'scheduled') {
     return {
-      ...input,
-      due_date: normalizeDate(input.due_date),
+      ...normalizedInput,
+      due_date: normalizeDate(normalizedInput.due_date),
       paid_date: null,
       payment_method: null,
     };
   }
   if (status === 'cancelled') {
     return {
-      ...input,
-      due_date: normalizeDate(input.due_date),
+      ...normalizedInput,
+      due_date: normalizeDate(normalizedInput.due_date),
       paid_date: null,
       payment_method: null,
     };
   }
   return {
+    ...normalizedInput,
+    paid_date: normalizeDate(normalizedInput.paid_date),
+    due_date: normalizedInput.due_date ?? null,
+    payment_method: normalizedInput.payment_method ?? null,
+  };
+}
+
+function ensureSharedPaidByPercentage(input: PaymentMutationInput): PaymentMutationInput {
+  if (input.paid_by_side !== 'shared') {
+    return { ...input, paid_bride_share_percentage: null };
+  }
+  return {
     ...input,
-    paid_date: normalizeDate(input.paid_date),
-    due_date: input.due_date ?? null,
-    payment_method: input.payment_method ?? null,
-    amount: normalizeMoney(input.amount),
+    paid_bride_share_percentage: input.paid_bride_share_percentage ?? 50,
   };
 }
 
@@ -845,7 +882,7 @@ export async function createPaymentRecordTx(
   payload: PaymentMutationInput,
   currentPayment: PaymentRow | null = null,
 ): Promise<PaymentRow> {
-  const normalized = normalizePaymentStatus(payload);
+  const normalized = ensureSharedPaidByPercentage(normalizePaymentStatus(payload));
   const header = await lockExpenseHeader(client, ownerId, expenseId);
   const items = await lockExpenseItems(client, expenseId);
   if (items.length === 0) {
@@ -951,9 +988,10 @@ export async function createPaymentRecordTx(
           paid_date = $6,
           payment_method = $7,
           paid_by_side = $8,
-          transaction_reference = $9,
-          notes = $10,
-          reverses_payment_id = $11
+          paid_bride_share_percentage = $9,
+          transaction_reference = $10,
+          notes = $11,
+          reverses_payment_id = $12
         WHERE id = $1
         RETURNING *
       `,
@@ -966,6 +1004,7 @@ export async function createPaymentRecordTx(
         normalized.paid_date ?? null,
         normalized.payment_method ?? null,
         normalized.paid_by_side ?? null,
+        normalized.paid_bride_share_percentage ?? null,
         normalized.transaction_reference ?? null,
         normalized.notes ?? null,
         normalized.reverses_payment_id ?? null,
@@ -994,11 +1033,12 @@ export async function createPaymentRecordTx(
           paid_date,
           payment_method,
           paid_by_side,
+          paid_bride_share_percentage,
           transaction_reference,
           notes,
           reverses_payment_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING *
       `,
       [
@@ -1010,6 +1050,7 @@ export async function createPaymentRecordTx(
         normalized.paid_date ?? null,
         normalized.payment_method ?? null,
         normalized.paid_by_side ?? null,
+        normalized.paid_bride_share_percentage ?? null,
         normalized.transaction_reference ?? null,
         normalized.notes ?? null,
         normalized.reverses_payment_id ?? null,

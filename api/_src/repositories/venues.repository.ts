@@ -140,7 +140,7 @@ export async function insertRoom(payload: RoomInsert): Promise<RoomRow> {
 
 export async function updateRoom(
   id: string,
-  payload: Partial<Pick<RoomInsert, 'room_number' | 'capacity' | 'room_type' | 'rate_per_night' | 'notes'>>,
+  payload: Partial<Pick<RoomInsert, 'room_number' | 'capacity' | 'room_type' | 'rate_per_night' | 'includes_breakfast' | 'check_in_date' | 'check_out_date' | 'notes'>>,
 ): Promise<RoomRow> {
   const { data, error } = await supabase
     .from('rooms')
@@ -156,6 +156,11 @@ export async function insertRoomsBulk(payloads: RoomInsert[]): Promise<RoomRow[]
   const { data, error } = await supabase.from('rooms').insert(payloads).select();
   if (error) throw error;
   return (data ?? []) as RoomRow[];
+}
+
+export async function deleteRoom(id: string): Promise<void> {
+  const { error } = await supabase.from('rooms').delete().eq('id', id);
+  if (error) throw error;
 }
 
 // ---------------------------------------------------------------------------

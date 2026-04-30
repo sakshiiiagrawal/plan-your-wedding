@@ -18,6 +18,7 @@ export type {
   DbTaskStatus,
   DbRoomType,
   DbVendorCategory,
+  DbGuestType,
 } from './supabase.generated';
 
 // ---------------------------------------------------------------------------

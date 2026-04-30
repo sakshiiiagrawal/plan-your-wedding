@@ -28,6 +28,9 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Portal from '../../components/Portal';
+import DatePicker from '../../components/ui/DatePicker';
+import DateRangePicker from '../../components/ui/DateRangePicker';
+import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 
 const PRESET_ROOM_TYPES: { label: string; capacity: number; prefix: string }[] = [
   { label: 'Standard Room', capacity: 2, prefix: 'STD' },
@@ -139,7 +142,14 @@ export default function Accommodations() {
   const [importResults, setImportResults] = useState<ImportResults | null>(null);
   const [addingRoomsToHotelId, setAddingRoomsToHotelId] = useState<string | null>(null);
   const [roomCategories, setRoomCategories] = useState<RoomCategoryEntry[]>([]);
+  const [initialRoomCategories, setInitialRoomCategories] = useState<RoomCategoryEntry[]>([]);
   const [allocationFormData, setAllocationFormData] = useState<AllocationFormData>({
+    room_id: null,
+    guest_ids: [],
+    check_in_date: '',
+    check_out_date: '',
+  });
+  const [initialAllocationFormData, setInitialAllocationFormData] = useState<AllocationFormData>({
     room_id: null,
     guest_ids: [],
     check_in_date: '',
@@ -165,6 +175,7 @@ export default function Accommodations() {
   });
   const [guestPanelSearch, setGuestPanelSearch] = useState('');
   const [noRoomNeededCollapsed, setNoRoomNeededCollapsed] = useState(true);
+  const [collapsedHotelIds, setCollapsedHotelIds] = useState<Set<string>>(() => new Set());
   const [editingHotelId, setEditingHotelId] = useState<string | null>(null);
   const [draggingGuestId, setDraggingGuestId] = useState<string | null>(null);
   const [dropTargetRoomId, setDropTargetRoomId] = useState<string | null>(null);
@@ -176,6 +187,7 @@ export default function Accommodations() {
 
   const resetRoomForm = () => {
     setRoomCategories([]);
+    setInitialRoomCategories([]);
     setAddingRoomsToHotelId(null);
   };
 
@@ -219,7 +231,46 @@ export default function Accommodations() {
     setGuestSearchQuery('');
     setEditAllocation(null);
     setRoomCapacity(0);
+    setInitialAllocationFormData({
+      room_id: null,
+      guest_ids: [],
+      check_in_date: '',
+      check_out_date: '',
+    });
   };
+  const isRoomFormDirty =
+    JSON.stringify(roomCategories) !== JSON.stringify(initialRoomCategories);
+  const { attemptClose: attemptCloseRoomModal, dialog: roomUnsavedDialog } =
+    useUnsavedChangesPrompt({
+      isDirty: isRoomFormDirty,
+      onDiscard: () => {
+        setShowRoomModal(false);
+        resetRoomForm();
+      },
+      onSave: () => {
+        (document.getElementById('room-form') as HTMLFormElement | null)?.requestSubmit();
+      },
+      isSaving: updateHotelMutation.isPending,
+    });
+  const isAllocationFormDirty =
+    JSON.stringify(allocationFormData) !== JSON.stringify(initialAllocationFormData);
+  const {
+    attemptClose: attemptCloseAllocationModal,
+    dialog: allocationUnsavedDialog,
+  } = useUnsavedChangesPrompt({
+    isDirty: isAllocationFormDirty,
+    onDiscard: () => {
+      setShowAllocationModal(false);
+      resetAllocationForm();
+    },
+    onSave: () => {
+      (document.getElementById('allocation-form') as HTMLFormElement | null)?.requestSubmit();
+    },
+    isSaving:
+      createAllocationMutation.isPending ||
+      updateAllocationMutation.isPending ||
+      deleteAllocationMutation.isPending,
+  });
 
   const handleRoomSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -701,21 +752,46 @@ export default function Accommodations() {
               };
 
               const isEditingDates = editingHotelId === hotel.id;
+              const isHotelCollapsed = collapsedHotelIds.has(hotel.id);
+
+              const toggleHotelCollapsed = () => {
+                setCollapsedHotelIds((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(hotel.id)) next.delete(hotel.id);
+                  else next.add(hotel.id);
+                  return next;
+                });
+              };
 
               return (
                 <div key={hotel.id} className="card space-y-4">
                   {/* Venue header */}
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <HiOutlineOfficeBuilding className="w-5 h-5 text-gold-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-maroon-800">{hotel.name}</h3>
-                        {hotel.city && <p className="text-xs text-gray-500">{hotel.city}</p>}
+                    <div className="flex items-start gap-2 min-w-0 flex-1">
+                      <button
+                        type="button"
+                        onClick={toggleHotelCollapsed}
+                        className="mt-0.5 p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 flex-shrink-0"
+                        aria-expanded={!isHotelCollapsed}
+                        title={isHotelCollapsed ? 'Expand' : 'Collapse'}
+                      >
+                        {isHotelCollapsed ? (
+                          <HiOutlineChevronDown className="w-5 h-5" />
+                        ) : (
+                          <HiOutlineChevronUp className="w-5 h-5" />
+                        )}
+                      </button>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <HiOutlineOfficeBuilding className="w-5 h-5 text-gold-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-maroon-800">{hotel.name}</h3>
+                          {hotel.city && <p className="text-xs text-gray-500">{hotel.city}</p>}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 flex-wrap sm:justify-end">
                       <span className="text-sm text-gray-500">
                         {hotel.rooms?.length || 0} rooms · {hotel.guestsAllocated}/
                         {hotel.totalCapacity} guests
@@ -723,7 +799,9 @@ export default function Accommodations() {
                       <button
                         onClick={() => {
                           setAddingRoomsToHotelId(hotel.id);
-                          setRoomCategories([{ ...DEFAULT_CATEGORY }]);
+                          const nextRoomCategories = [{ ...DEFAULT_CATEGORY }];
+                          setRoomCategories(nextRoomCategories);
+                          setInitialRoomCategories(nextRoomCategories);
                           setShowRoomModal(true);
                         }}
                         className="btn-outline text-sm flex items-center gap-1.5"
@@ -734,36 +812,24 @@ export default function Accommodations() {
                     </div>
                   </div>
 
+                  {!isHotelCollapsed && (
+                    <>
                   {/* Default dates row */}
                   {isEditingDates ? (
                     <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">Check-in:</span>
-                        <input
-                          type="date"
-                          value={editHotelDateValues.default_check_in_date}
-                          onChange={(e) =>
+                      <div className="w-[360px]">
+                        <DateRangePicker
+                          startValue={editHotelDateValues.default_check_in_date}
+                          endValue={editHotelDateValues.default_check_out_date}
+                          onChange={({ start, end }) =>
                             setEditHotelDateValues({
-                              ...editHotelDateValues,
-                              default_check_in_date: e.target.value,
+                              default_check_in_date: start,
+                              default_check_out_date: end,
                             })
                           }
-                          className="input py-0.5 px-2 text-xs"
-                          autoFocus
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">Check-out:</span>
-                        <input
-                          type="date"
-                          value={editHotelDateValues.default_check_out_date}
-                          onChange={(e) =>
-                            setEditHotelDateValues({
-                              ...editHotelDateValues,
-                              default_check_out_date: e.target.value,
-                            })
-                          }
-                          className="input py-0.5 px-2 text-xs"
+                          size="sm"
+                          startLabel="Check-in"
+                          endLabel="Check-out"
                         />
                       </div>
                       <button
@@ -805,6 +871,11 @@ export default function Accommodations() {
                             default_check_out_date: hotel.default_check_out_date ?? '',
                           });
                           setEditingHotelId(hotel.id);
+                          setCollapsedHotelIds((prev) => {
+                            const next = new Set(prev);
+                            next.delete(hotel.id);
+                            return next;
+                          });
                         }}
                         className="opacity-0 group-hover/dates:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
                         title="Edit default dates"
@@ -1014,20 +1085,24 @@ export default function Accommodations() {
                                             side: g.side,
                                           })),
                                         });
-                                        setAllocationFormData({
+                                        const nextAllocationFormData = {
                                           room_id: room.id,
                                           guest_ids: existingAlloc.guest_ids ?? [],
                                           check_in_date: existingAlloc.check_in_date ?? '',
                                           check_out_date: existingAlloc.check_out_date ?? '',
-                                        });
+                                        };
+                                        setAllocationFormData(nextAllocationFormData);
+                                        setInitialAllocationFormData(nextAllocationFormData);
                                       } else {
                                         setEditAllocation(null);
-                                        setAllocationFormData({
+                                        const nextAllocationFormData = {
                                           room_id: room.id,
                                           guest_ids: [],
                                           check_in_date: hotel.default_check_in_date ?? '',
                                           check_out_date: hotel.default_check_out_date ?? '',
-                                        });
+                                        };
+                                        setAllocationFormData(nextAllocationFormData);
+                                        setInitialAllocationFormData(nextAllocationFormData);
                                       }
                                       setGuestSearchQuery('');
                                       setShowAllocationModal(true);
@@ -1054,6 +1129,8 @@ export default function Accommodations() {
                       </div>
                     )}
                   </div>
+                    </>
+                  )}
                 </div>
               );
             })}
@@ -1077,25 +1154,22 @@ export default function Accommodations() {
 
           return (
             <Portal>
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={attemptCloseRoomModal}>
+                <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-between p-6 border-b border-gold-200">
                     <div>
                       <h2 className="text-xl font-display font-bold text-maroon-800">Add Rooms</h2>
                       {hotel && <p className="text-sm text-gray-500 mt-0.5">{hotel.name}</p>}
                     </div>
                     <button
-                      onClick={() => {
-                        setShowRoomModal(false);
-                        resetRoomForm();
-                      }}
+                      onClick={attemptCloseRoomModal}
                       className="p-2 hover:bg-gray-100 rounded-lg"
                     >
                       <HiOutlineX className="w-5 h-5" />
                     </button>
                   </div>
 
-                  <form onSubmit={handleRoomSubmit} className="p-6 space-y-4">
+                  <form id="room-form" onSubmit={handleRoomSubmit} className="p-6 space-y-4">
                     <div className="border border-gold-200 rounded-xl p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
@@ -1265,10 +1339,7 @@ export default function Accommodations() {
                     <div className="flex gap-3 pt-2">
                       <button
                         type="button"
-                        onClick={() => {
-                          setShowRoomModal(false);
-                          resetRoomForm();
-                        }}
+                        onClick={attemptCloseRoomModal}
                         className="btn-outline flex-1"
                       >
                         Cancel
@@ -1337,8 +1408,8 @@ export default function Accommodations() {
 
           return (
             <Portal>
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl w-full max-w-2xl flex flex-col max-h-[92vh]">
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={attemptCloseAllocationModal}>
+                <div className="bg-white rounded-2xl w-full max-w-2xl flex flex-col max-h-[92vh]" onClick={(e) => e.stopPropagation()}>
                   {/* Header */}
                   <div className="flex items-center justify-between p-6 border-b border-gold-200 flex-shrink-0">
                     <div>
@@ -1366,17 +1437,14 @@ export default function Accommodations() {
                       )}
                     </div>
                     <button
-                      onClick={() => {
-                        setShowAllocationModal(false);
-                        resetAllocationForm();
-                      }}
+                      onClick={attemptCloseAllocationModal}
                       className="p-2 hover:bg-gray-100 rounded-lg"
                     >
                       <HiOutlineX className="w-5 h-5" />
                     </button>
                   </div>
 
-                  <form onSubmit={handleAllocationSubmit} className="flex flex-col flex-1 min-h-0">
+                  <form id="allocation-form" onSubmit={handleAllocationSubmit} className="flex flex-col flex-1 min-h-0">
                     <div className="flex-1 overflow-y-auto p-6 space-y-5">
                       {/* Guest selector */}
                       <div>
@@ -1570,37 +1638,22 @@ export default function Accommodations() {
 
                       {/* Dates */}
                       {modalGuests.length > 0 && (
-                        <div className="grid sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="label">Check-in Date *</label>
-                            <input
-                              type="date"
-                              value={allocationFormData.check_in_date}
-                              onChange={(e) =>
-                                setAllocationFormData({
-                                  ...allocationFormData,
-                                  check_in_date: e.target.value,
-                                })
-                              }
-                              className="input"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="label">Check-out Date *</label>
-                            <input
-                              type="date"
-                              value={allocationFormData.check_out_date}
-                              onChange={(e) =>
-                                setAllocationFormData({
-                                  ...allocationFormData,
-                                  check_out_date: e.target.value,
-                                })
-                              }
-                              className="input"
-                              required
-                            />
-                          </div>
+                        <div>
+                          <label className="label">Check-in & Check-out Dates *</label>
+                          <DateRangePicker
+                            startValue={allocationFormData.check_in_date}
+                            endValue={allocationFormData.check_out_date}
+                            onChange={({ start, end }) =>
+                              setAllocationFormData({
+                                ...allocationFormData,
+                                check_in_date: start,
+                                check_out_date: end,
+                              })
+                            }
+                            required
+                            startLabel="Check-in"
+                            endLabel="Check-out"
+                          />
                         </div>
                       )}
                     </div>
@@ -1610,11 +1663,10 @@ export default function Accommodations() {
                       {modalGuests.length === 0 ? (
                         <button
                           type="button"
-                          onClick={() => {
-                            setShowAllocationModal(false);
-                            resetAllocationForm();
-                            navigate('../guests');
-                          }}
+                            onClick={() => {
+                              attemptCloseAllocationModal();
+                              navigate('../guests');
+                            }}
                           className="btn-primary flex-1"
                         >
                           Add Guests
@@ -1623,10 +1675,7 @@ export default function Accommodations() {
                         <>
                           <button
                             type="button"
-                            onClick={() => {
-                              setShowAllocationModal(false);
-                              resetAllocationForm();
-                            }}
+                            onClick={attemptCloseAllocationModal}
                             className="btn-outline flex-1"
                           >
                             Cancel
@@ -1666,10 +1715,12 @@ export default function Accommodations() {
         })()}
 
       {/* Import Modal */}
+      {roomUnsavedDialog}
+      {allocationUnsavedDialog}
       {showImportModal && (
         <Portal>
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-2xl">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowImportModal(false)}>
+            <div className="bg-white rounded-2xl w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between p-6 border-b border-gold-200">
                 <h2 className="text-xl font-display font-bold text-maroon-800">
                   Import Room Allocations from Excel
@@ -1747,8 +1798,11 @@ export default function Accommodations() {
       {/* Import Results Modal */}
       {showImportResultsModal && importResults && (
         <Portal>
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => {
+            setShowImportResultsModal(false);
+            setImportResults(null);
+          }}>
+            <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between p-6 border-b border-gold-200">
                 <h2 className="text-xl font-display font-bold text-maroon-800">Import Results</h2>
                 <button

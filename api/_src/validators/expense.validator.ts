@@ -43,13 +43,16 @@ export const paymentAllocationSchema = z.object({
 
 export const financePaymentSchema = z.object({
   id: z.string().uuid().optional(),
-  amount: z.coerce.number().positive(),
+  amount: z.coerce.number().refine((value) => value !== 0, {
+    message: 'Payment amount must be non-zero.',
+  }),
   direction: z.enum(['outflow', 'inflow']).optional(),
   status: z.enum(['scheduled', 'posted', 'cancelled', 'entered_in_error']),
   due_date: z.string().optional().nullable(),
   paid_date: z.string().optional().nullable(),
   payment_method: paymentMethodEnum.optional().nullable(),
   paid_by_side: z.enum(['bride', 'groom', 'shared']).optional().nullable(),
+  paid_bride_share_percentage: z.coerce.number().min(0).max(100).optional().nullable(),
   transaction_reference: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   reverses_payment_id: z.string().uuid().optional().nullable(),

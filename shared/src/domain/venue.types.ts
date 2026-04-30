@@ -8,7 +8,9 @@ export interface VenueRow {
   venue_type: string | null;
   address: string | null;
   city: string | null;
-  google_maps_link: string | null;
+  place_id: string | null;
+  latitude: number | null;
+  longitude: number | null;
   contact_person: string | null;
   contact_phone: string | null;
   capacity: number | null;
@@ -26,7 +28,9 @@ export interface VenueInsert {
   venue_type?: string | null;
   address?: string | null;
   city?: string | null;
-  google_maps_link?: string | null;
+  place_id?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   contact_person?: string | null;
   contact_phone?: string | null;
   capacity?: number | null;

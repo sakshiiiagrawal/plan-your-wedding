@@ -136,6 +136,7 @@ export default function Expense() {
 
     return (expenseOverview ?? [])
       .map((category: any) => ({
+        id: category.id,
         name: category.name,
         committed: parseFloat(category.committed || category.spent || 0),
         paid: parseFloat(category.paid || 0),
@@ -149,9 +150,8 @@ export default function Expense() {
 
   const sideWiseExpenses = useMemo(() => {
     const initial = {
-      bride: { items: [] as any[], total: 0 },
-      groom: { items: [] as any[], total: 0 },
-      shared: { items: [] as any[], total: 0 },
+      bride: { items: [] as any[], total: 0, directCount: 0, sharedCount: 0, directTotal: 0, sharedTotal: 0 },
+      groom: { items: [] as any[], total: 0, directCount: 0, sharedCount: 0, directTotal: 0, sharedTotal: 0 },
     };
 
     for (const expense of expenses) {
@@ -164,17 +164,50 @@ export default function Expense() {
           expense_date: expense.expense_date,
           expense_title: expense.description,
           bride_share_percentage: item.bride_share_percentage,
+          is_shared: item.side === 'shared',
         };
 
         if (item.side === 'bride') {
           initial.bride.items.push(mapped);
           initial.bride.total += item.amount;
+          initial.bride.directTotal += item.amount;
+          initial.bride.directCount += 1;
         } else if (item.side === 'groom') {
           initial.groom.items.push(mapped);
           initial.groom.total += item.amount;
+          initial.groom.directTotal += item.amount;
+          initial.groom.directCount += 1;
         } else {
-          initial.shared.items.push(mapped);
-          initial.shared.total += item.amount;
+          const brideSharePercentage = item.bride_share_percentage ?? 50;
+          const groomSharePercentage = 100 - brideSharePercentage;
+          const brideAmount = item.amount * (brideSharePercentage / 100);
+          const groomAmount = item.amount * (groomSharePercentage / 100);
+
+          initial.bride.items.push({
+            ...mapped,
+            id: `${item.id}-bride`,
+            amount: brideAmount,
+            shared_share_percentage: brideSharePercentage,
+            shared_total_amount: item.amount,
+            bride_share_amount: brideAmount,
+            groom_share_amount: groomAmount,
+          });
+          initial.bride.total += brideAmount;
+          initial.bride.sharedTotal += brideAmount;
+          initial.bride.sharedCount += 1;
+
+          initial.groom.items.push({
+            ...mapped,
+            id: `${item.id}-groom`,
+            amount: groomAmount,
+            shared_share_percentage: groomSharePercentage,
+            shared_total_amount: item.amount,
+            bride_share_amount: brideAmount,
+            groom_share_amount: groomAmount,
+          });
+          initial.groom.total += groomAmount;
+          initial.groom.sharedTotal += groomAmount;
+          initial.groom.sharedCount += 1;
         }
       }
     }
@@ -291,7 +324,7 @@ export default function Expense() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card">
-          <div className="stat-value text-maroon-800">{formatCurrency(totalBudget)}</div>
+          <div className="stat-value" style={{ color: 'var(--gold-deep)' }}>{formatCurrency(totalBudget)}</div>
           <div className="stat-label">Budget</div>
         </div>
         <div className="stat-card">
@@ -317,11 +350,11 @@ export default function Expense() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-maroon-800 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              style={{
+                padding: '8px 16px', borderRadius: 8, fontWeight: 500, fontSize: 14, cursor: 'pointer', transition: 'all 150ms',
+                background: activeTab === tab.id ? 'var(--gold)' : 'var(--bg-raised)',
+                color: activeTab === tab.id ? 'white' : 'var(--ink-low)',
+              }}
             >
               {tab.label}
             </button>

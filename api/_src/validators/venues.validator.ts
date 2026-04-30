@@ -6,6 +6,9 @@ const roomInputSchema = z.object({
   room_type: z.string().min(1),
   capacity: z.coerce.number().int().nonnegative().optional(),
   rate_per_night: z.coerce.number().nonnegative().optional(),
+  includes_breakfast: z.boolean().optional(),
+  check_in_date: z.string().optional().nullable().transform((v) => v || null),
+  check_out_date: z.string().optional().nullable().transform((v) => v || null),
   notes: z.string().optional().nullable(),
 });
 
@@ -16,7 +19,9 @@ export const createVenueSchema = z.object({
   venue_type: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
-  google_maps_link: z.string().optional().nullable(),
+  place_id: z.string().optional().nullable(),
+  latitude: z.coerce.number().min(-90).max(90).optional().nullable(),
+  longitude: z.coerce.number().min(-180).max(180).optional().nullable(),
   contact_person: z.string().optional().nullable(),
   contact_phone: z.string().optional().nullable(),
   capacity: z.coerce.number().int().nonnegative().optional().nullable(),
@@ -46,6 +51,9 @@ export const addRoomSchema = z.object({
   room_type: z.string().min(1),
   capacity: z.coerce.number().int().nonnegative().optional(),
   rate_per_night: z.coerce.number().nonnegative().optional(),
+  includes_breakfast: z.boolean().optional(),
+  check_in_date: z.string().optional().nullable().transform((v) => v || null),
+  check_out_date: z.string().optional().nullable().transform((v) => v || null),
   notes: z.string().optional().nullable(),
 });
 
@@ -54,6 +62,9 @@ export const updateRoomSchema = z.object({
   room_type: z.string().min(1).optional(),
   capacity: z.coerce.number().int().nonnegative().optional(),
   rate_per_night: z.coerce.number().nonnegative().optional(),
+  includes_breakfast: z.boolean().optional(),
+  check_in_date: z.string().optional().nullable().transform((v) => v || null),
+  check_out_date: z.string().optional().nullable().transform((v) => v || null),
   notes: z.string().optional().nullable(),
 });
 

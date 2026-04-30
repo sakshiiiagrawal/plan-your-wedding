@@ -1,0 +1,1 @@
+ALTER TABLE rooms ADD COLUMN IF NOT EXISTS includes_breakfast BOOLEAN NOT NULL DEFAULT false;

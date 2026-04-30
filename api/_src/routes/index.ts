@@ -12,6 +12,7 @@ import dashboardRoutes from './dashboard.routes';
 import websiteContentRoutes from './website-content.routes';
 import { getPublicWebsiteContent } from '../controllers/website-content.controller';
 import weddingsRoutes from './weddings.routes';
+import geocodeRoutes from './geocode.routes';
 
 const router = Router();
 
@@ -29,6 +30,7 @@ router.get('/public/:slug/events', getPublicEvents);
 router.use('/auth', authRoutes);
 
 // Protected API routes
+router.use('/geocode', geocodeRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/events', eventsRoutes);
 router.use('/guests', guestsRoutes);

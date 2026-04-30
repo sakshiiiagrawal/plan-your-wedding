@@ -13,5 +13,7 @@ export const ROUTES = {
     vendors: (slug: string) => `/${slug}/dashboard/vendors`,
     expense: (slug: string) => `/${slug}/dashboard/expense`,
     tasks: (slug: string) => `/${slug}/dashboard/tasks`,
+    gallery: (slug: string) => `/${slug}/dashboard/gallery`,
+    website: (slug: string) => `/${slug}/dashboard/website`,
   },
 } as const;

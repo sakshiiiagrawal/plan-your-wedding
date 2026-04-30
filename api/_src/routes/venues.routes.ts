@@ -37,6 +37,7 @@ router.delete('/:id', ctrl.remove);
 router.get('/:id/rooms', ctrl.getRooms);
 router.post('/:id/rooms', validateBody(addRoomSchema), ctrl.addRoom);
 router.put('/rooms/:id', validateBody(updateRoomSchema), ctrl.updateRoom);
+router.delete('/rooms/:id', ctrl.deleteRoom);
 
 // Payments
 router.get('/:id/payments', ctrl.getPayments);

@@ -107,6 +107,19 @@ export const updateRoom = async (
   }
 };
 
+export const deleteRoom = async (
+  req: Request<IdParam>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    await service.deleteRoom(req.params.id);
+    res.status(204).send();
+  } catch (e) {
+    next(e);
+  }
+};
+
 // ---------------------------------------------------------------------------
 // Allocations
 // ---------------------------------------------------------------------------

@@ -33,3 +33,15 @@ export const getSummary = async (
     next(e);
   }
 };
+
+export const getRecentActivity = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res.json(await service.getRecentActivity(getWeddingOwnerId(req)));
+  } catch (e) {
+    next(e);
+  }
+};
