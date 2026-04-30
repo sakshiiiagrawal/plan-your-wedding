@@ -11,12 +11,23 @@ export type DbGuestSide = 'bride' | 'groom' | 'mutual';
 export type DbRsvpStatus = 'pending' | 'confirmed' | 'declined' | 'tentative';
 export type DbMealPreference = 'vegetarian' | 'jain' | 'vegan' | 'non_vegetarian';
 export type DbAgeGroup = 'child' | 'adult' | 'senior';
-export type DbGender = 'male' | 'female' | 'other';
-export type DbPaymentStatus = 'pending' | 'partial' | 'paid' | 'overdue' | 'cancelled';
 export type DbPaymentMethod = 'cash' | 'bank_transfer' | 'upi' | 'cheque' | 'credit_card';
 export type DbTaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type DbTaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
-export type DbRoomType = 'single' | 'double' | 'suite' | 'family' | 'dormitory';
+export type DbRoomType =
+  | 'Standard Room'
+  | 'Deluxe Room'
+  | 'Super Deluxe Room'
+  | 'Premium Room'
+  | 'Executive Room'
+  | 'Club Room'
+  | 'Junior Suite'
+  | 'Suite'
+  | 'Executive Suite'
+  | 'Luxury Suite'
+  | 'Presidential Suite'
+  | (string & {});
+
 export type DbVendorCategory =
   | 'caterer'
   | 'decorator'
@@ -49,126 +60,85 @@ export interface Database {
           email: string;
           password_hash: string;
           name: string;
-          role: 'admin' | 'family' | 'friends';
           slug: string | null;
           created_at: string;
-          created_by: string | null;
         };
         Insert: {
           id?: string;
           email: string;
           password_hash: string;
           name: string;
-          role: 'admin' | 'family' | 'friends';
           slug?: string | null;
           created_at?: string;
-          created_by?: string | null;
         };
         Update: {
           id?: string;
           email?: string;
           password_hash?: string;
           name?: string;
-          role?: 'admin' | 'family' | 'friends';
           slug?: string | null;
           created_at?: string;
-          created_by?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: 'users_created_by_fkey';
-            columns: ['created_by'];
-            isOneToOne: false;
-            referencedRelation: 'users';
-            referencedColumns: ['id'];
-          },
-        ];
+        Relationships: [];
       };
 
       venues: {
         Row: {
           id: string;
+          user_id: string;
           name: string;
           venue_type: string | null;
           address: string;
           city: string;
-          state: string | null;
-          pincode: string | null;
           google_maps_link: string | null;
-          latitude: number | null;
-          longitude: number | null;
           contact_person: string | null;
           contact_phone: string | null;
-          contact_email: string | null;
           capacity: number | null;
-          parking_capacity: number | null;
-          amenities: Json | null;
-          restrictions: string | null;
-          photos: string[] | null;
-          documents: string[] | null;
-          booking_amount: number | null;
           total_cost: number | null;
-          payment_status: DbPaymentStatus | null;
+          has_accommodation: boolean;
+          default_check_in_date: string | null;
+          default_check_out_date: string | null;
           notes: string | null;
           created_at: string;
           updated_at: string;
-          user_id: string;
         };
         Insert: {
           id?: string;
+          user_id: string;
           name: string;
           venue_type?: string | null;
           address: string;
           city: string;
-          state?: string | null;
-          pincode?: string | null;
           google_maps_link?: string | null;
-          latitude?: number | null;
-          longitude?: number | null;
           contact_person?: string | null;
           contact_phone?: string | null;
-          contact_email?: string | null;
           capacity?: number | null;
-          parking_capacity?: number | null;
-          amenities?: Json | null;
-          restrictions?: string | null;
-          photos?: string[] | null;
-          documents?: string[] | null;
-          booking_amount?: number | null;
           total_cost?: number | null;
-          payment_status?: DbPaymentStatus | null;
+          has_accommodation?: boolean;
+          default_check_in_date?: string | null;
+          default_check_out_date?: string | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
-          user_id: string;
         };
         Update: {
           id?: string;
+          user_id?: string;
           name?: string;
           venue_type?: string | null;
           address?: string;
           city?: string;
-          state?: string | null;
-          pincode?: string | null;
           google_maps_link?: string | null;
-          latitude?: number | null;
-          longitude?: number | null;
           contact_person?: string | null;
           contact_phone?: string | null;
-          contact_email?: string | null;
           capacity?: number | null;
-          parking_capacity?: number | null;
-          amenities?: Json | null;
-          restrictions?: string | null;
-          photos?: string[] | null;
-          documents?: string[] | null;
-          booking_amount?: number | null;
           total_cost?: number | null;
-          payment_status?: DbPaymentStatus | null;
+          has_accommodation?: boolean;
+          default_check_in_date?: string | null;
+          default_check_out_date?: string | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
-          user_id?: string;
         };
         Relationships: [
           {
@@ -194,8 +164,6 @@ export interface Database {
           dress_code: string | null;
           theme: string | null;
           color_palette: Json | null;
-          rituals: Json | null;
-          special_notes: string | null;
           estimated_guests: number | null;
           is_public: boolean;
           display_order: number;
@@ -215,8 +183,6 @@ export interface Database {
           dress_code?: string | null;
           theme?: string | null;
           color_palette?: Json | null;
-          rituals?: Json | null;
-          special_notes?: string | null;
           estimated_guests?: number | null;
           is_public?: boolean;
           display_order?: number;
@@ -236,8 +202,6 @@ export interface Database {
           dress_code?: string | null;
           theme?: string | null;
           color_palette?: Json | null;
-          rituals?: Json | null;
-          special_notes?: string | null;
           estimated_guests?: number | null;
           is_public?: boolean;
           display_order?: number;
@@ -314,23 +278,14 @@ export interface Database {
           relationship: string | null;
           is_vip: boolean;
           age_group: DbAgeGroup;
-          gender: DbGender | null;
           meal_preference: DbMealPreference;
           dietary_restrictions: string | null;
-          address: string | null;
-          city: string | null;
-          state: string | null;
-          country: string;
           needs_accommodation: boolean;
           needs_pickup: boolean;
-          pickup_location: string | null;
           arrival_date: string | null;
           arrival_time: string | null;
           departure_date: string | null;
           departure_time: string | null;
-          transport_mode: string | null;
-          transport_details: string | null;
-          special_requirements: string | null;
           notes: string | null;
           created_at: string;
           updated_at: string;
@@ -347,23 +302,14 @@ export interface Database {
           relationship?: string | null;
           is_vip?: boolean;
           age_group?: DbAgeGroup;
-          gender?: DbGender | null;
           meal_preference?: DbMealPreference;
           dietary_restrictions?: string | null;
-          address?: string | null;
-          city?: string | null;
-          state?: string | null;
-          country?: string;
           needs_accommodation?: boolean;
           needs_pickup?: boolean;
-          pickup_location?: string | null;
           arrival_date?: string | null;
           arrival_time?: string | null;
           departure_date?: string | null;
           departure_time?: string | null;
-          transport_mode?: string | null;
-          transport_details?: string | null;
-          special_requirements?: string | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -380,23 +326,14 @@ export interface Database {
           relationship?: string | null;
           is_vip?: boolean;
           age_group?: DbAgeGroup;
-          gender?: DbGender | null;
           meal_preference?: DbMealPreference;
           dietary_restrictions?: string | null;
-          address?: string | null;
-          city?: string | null;
-          state?: string | null;
-          country?: string;
           needs_accommodation?: boolean;
           needs_pickup?: boolean;
-          pickup_location?: string | null;
           arrival_date?: string | null;
           arrival_time?: string | null;
           departure_date?: string | null;
           departure_time?: string | null;
-          transport_mode?: string | null;
-          transport_details?: string | null;
-          special_requirements?: string | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -475,145 +412,43 @@ export interface Database {
         ];
       };
 
-      accommodations: {
-        Row: {
-          id: string;
-          name: string;
-          accommodation_type: string | null;
-          address: string | null;
-          city: string | null;
-          distance_from_venue: string | null;
-          google_maps_link: string | null;
-          contact_person: string | null;
-          contact_phone: string | null;
-          contact_email: string | null;
-          check_in_time: string | null;
-          check_out_time: string | null;
-          amenities: Json | null;
-          photos: string[] | null;
-          booking_reference: string | null;
-          total_rooms_booked: number | null;
-          booking_amount: number | null;
-          total_cost: number | null;
-          payment_status: DbPaymentStatus | null;
-          notes: string | null;
-          created_at: string;
-          updated_at: string;
-          user_id: string;
-        };
-        Insert: {
-          id?: string;
-          name: string;
-          accommodation_type?: string | null;
-          address?: string | null;
-          city?: string | null;
-          distance_from_venue?: string | null;
-          google_maps_link?: string | null;
-          contact_person?: string | null;
-          contact_phone?: string | null;
-          contact_email?: string | null;
-          check_in_time?: string | null;
-          check_out_time?: string | null;
-          amenities?: Json | null;
-          photos?: string[] | null;
-          booking_reference?: string | null;
-          total_rooms_booked?: number | null;
-          booking_amount?: number | null;
-          total_cost?: number | null;
-          payment_status?: DbPaymentStatus | null;
-          notes?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          user_id: string;
-        };
-        Update: {
-          id?: string;
-          name?: string;
-          accommodation_type?: string | null;
-          address?: string | null;
-          city?: string | null;
-          distance_from_venue?: string | null;
-          google_maps_link?: string | null;
-          contact_person?: string | null;
-          contact_phone?: string | null;
-          contact_email?: string | null;
-          check_in_time?: string | null;
-          check_out_time?: string | null;
-          amenities?: Json | null;
-          photos?: string[] | null;
-          booking_reference?: string | null;
-          total_rooms_booked?: number | null;
-          booking_amount?: number | null;
-          total_cost?: number | null;
-          payment_status?: DbPaymentStatus | null;
-          notes?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'accommodations_user_id_fkey';
-            columns: ['user_id'];
-            isOneToOne: false;
-            referencedRelation: 'users';
-            referencedColumns: ['id'];
-          },
-        ];
-      };
-
       rooms: {
         Row: {
           id: string;
-          accommodation_id: string;
+          venue_id: string;
           room_number: string;
           room_type: DbRoomType;
-          floor: string | null;
           capacity: number;
-          has_ac: boolean;
-          has_attached_bath: boolean;
           rate_per_night: number | null;
-          is_accessible: boolean;
-          amenities: Json | null;
           notes: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
-          accommodation_id: string;
+          venue_id: string;
           room_number: string;
           room_type: DbRoomType;
-          floor?: string | null;
           capacity?: number;
-          has_ac?: boolean;
-          has_attached_bath?: boolean;
           rate_per_night?: number | null;
-          is_accessible?: boolean;
-          amenities?: Json | null;
           notes?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
-          accommodation_id?: string;
+          venue_id?: string;
           room_number?: string;
           room_type?: DbRoomType;
-          floor?: string | null;
           capacity?: number;
-          has_ac?: boolean;
-          has_attached_bath?: boolean;
           rate_per_night?: number | null;
-          is_accessible?: boolean;
-          amenities?: Json | null;
           notes?: string | null;
           created_at?: string;
         };
         Relationships: [
           {
-            foreignKeyName: 'rooms_accommodation_id_fkey';
-            columns: ['accommodation_id'];
+            foreignKeyName: 'rooms_venue_id_fkey';
+            columns: ['venue_id'];
             isOneToOne: false;
-            referencedRelation: 'accommodations';
+            referencedRelation: 'venues';
             referencedColumns: ['id'];
           },
         ];
@@ -623,10 +458,9 @@ export interface Database {
         Row: {
           id: string;
           room_id: string;
-          guest_id: string;
+          guest_ids: string[];
           check_in_date: string;
           check_out_date: string;
-          is_primary_guest: boolean;
           notes: string | null;
           created_at: string;
           updated_at: string;
@@ -634,10 +468,9 @@ export interface Database {
         Insert: {
           id?: string;
           room_id: string;
-          guest_id: string;
+          guest_ids: string[];
           check_in_date: string;
           check_out_date: string;
-          is_primary_guest?: boolean;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -645,10 +478,9 @@ export interface Database {
         Update: {
           id?: string;
           room_id?: string;
-          guest_id?: string;
+          guest_ids?: string[];
           check_in_date?: string;
           check_out_date?: string;
-          is_primary_guest?: boolean;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -661,13 +493,6 @@ export interface Database {
             referencedRelation: 'rooms';
             referencedColumns: ['id'];
           },
-          {
-            foreignKeyName: 'room_allocations_guest_id_fkey';
-            columns: ['guest_id'];
-            isOneToOne: false;
-            referencedRelation: 'guests';
-            referencedColumns: ['id'];
-          },
         ];
       };
 
@@ -676,24 +501,13 @@ export interface Database {
           id: string;
           name: string;
           category: DbVendorCategory;
-          subcategory: string | null;
-          company_name: string | null;
           contact_person: string | null;
           phone: string | null;
-          alternate_phone: string | null;
           email: string | null;
-          website: string | null;
-          instagram_handle: string | null;
-          address: string | null;
-          city: string | null;
-          description: string | null;
-          services_offered: string[] | null;
-          portfolio_links: string[] | null;
-          photos: string[] | null;
-          rating: number | null;
+          total_cost: number | null;
+          side: DbGuestSide | null;
+          is_shared: boolean;
           is_confirmed: boolean;
-          contract_signed: boolean;
-          contract_document: string | null;
           notes: string | null;
           created_at: string;
           updated_at: string;
@@ -703,24 +517,13 @@ export interface Database {
           id?: string;
           name: string;
           category: DbVendorCategory;
-          subcategory?: string | null;
-          company_name?: string | null;
           contact_person?: string | null;
           phone?: string | null;
-          alternate_phone?: string | null;
           email?: string | null;
-          website?: string | null;
-          instagram_handle?: string | null;
-          address?: string | null;
-          city?: string | null;
-          description?: string | null;
-          services_offered?: string[] | null;
-          portfolio_links?: string[] | null;
-          photos?: string[] | null;
-          rating?: number | null;
+          total_cost?: number | null;
+          side?: DbGuestSide | null;
+          is_shared?: boolean;
           is_confirmed?: boolean;
-          contract_signed?: boolean;
-          contract_document?: string | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -730,24 +533,13 @@ export interface Database {
           id?: string;
           name?: string;
           category?: DbVendorCategory;
-          subcategory?: string | null;
-          company_name?: string | null;
           contact_person?: string | null;
           phone?: string | null;
-          alternate_phone?: string | null;
           email?: string | null;
-          website?: string | null;
-          instagram_handle?: string | null;
-          address?: string | null;
-          city?: string | null;
-          description?: string | null;
-          services_offered?: string[] | null;
-          portfolio_links?: string[] | null;
-          photos?: string[] | null;
-          rating?: number | null;
+          total_cost?: number | null;
+          side?: DbGuestSide | null;
+          is_shared?: boolean;
           is_confirmed?: boolean;
-          contract_signed?: boolean;
-          contract_document?: string | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -759,6 +551,55 @@ export interface Database {
             columns: ['user_id'];
             isOneToOne: false;
             referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+
+      vendor_event_assignments: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          event_id: string;
+          service_description: string | null;
+          arrival_time: string | null;
+          setup_requirements: string | null;
+          special_instructions: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          event_id: string;
+          service_description?: string | null;
+          arrival_time?: string | null;
+          setup_requirements?: string | null;
+          special_instructions?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          vendor_id?: string;
+          event_id?: string;
+          service_description?: string | null;
+          arrival_time?: string | null;
+          setup_requirements?: string | null;
+          special_instructions?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'vendor_event_assignments_vendor_id_fkey';
+            columns: ['vendor_id'];
+            isOneToOne: false;
+            referencedRelation: 'vendors';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'vendor_event_assignments_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
             referencedColumns: ['id'];
           },
         ];
@@ -903,61 +744,52 @@ export interface Database {
       payments: {
         Row: {
           id: string;
-          expense_id: string | null;
-          vendor_id: string | null;
-          accommodation_id: string | null;
+          user_id: string | null;
           venue_id: string | null;
+          vendor_id: string | null;
           amount: number;
           payment_date: string;
           payment_method: DbPaymentMethod;
+          side: DbGuestSide | null;
           transaction_reference: string | null;
-          paid_by: string | null;
-          received_by: string | null;
-          receipt_url: string | null;
-          status: DbPaymentStatus;
           notes: string | null;
+          is_planned: boolean;
           created_at: string;
         };
         Insert: {
           id?: string;
-          expense_id?: string | null;
-          vendor_id?: string | null;
-          accommodation_id?: string | null;
+          user_id?: string | null;
           venue_id?: string | null;
+          vendor_id?: string | null;
           amount: number;
           payment_date: string;
           payment_method: DbPaymentMethod;
+          side?: DbGuestSide | null;
           transaction_reference?: string | null;
-          paid_by?: string | null;
-          received_by?: string | null;
-          receipt_url?: string | null;
-          status?: DbPaymentStatus;
           notes?: string | null;
+          is_planned?: boolean;
           created_at?: string;
         };
         Update: {
           id?: string;
-          expense_id?: string | null;
-          vendor_id?: string | null;
-          accommodation_id?: string | null;
+          user_id?: string | null;
           venue_id?: string | null;
+          vendor_id?: string | null;
           amount?: number;
           payment_date?: string;
           payment_method?: DbPaymentMethod;
+          side?: DbGuestSide | null;
           transaction_reference?: string | null;
-          paid_by?: string | null;
-          received_by?: string | null;
-          receipt_url?: string | null;
-          status?: DbPaymentStatus;
           notes?: string | null;
+          is_planned?: boolean;
           created_at?: string;
         };
         Relationships: [
           {
-            foreignKeyName: 'payments_expense_id_fkey';
-            columns: ['expense_id'];
+            foreignKeyName: 'payments_user_id_fkey';
+            columns: ['user_id'];
             isOneToOne: false;
-            referencedRelation: 'expenses';
+            referencedRelation: 'users';
             referencedColumns: ['id'];
           },
           {
@@ -965,13 +797,6 @@ export interface Database {
             columns: ['vendor_id'];
             isOneToOne: false;
             referencedRelation: 'vendors';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'payments_accommodation_id_fkey';
-            columns: ['accommodation_id'];
-            isOneToOne: false;
-            referencedRelation: 'accommodations';
             referencedColumns: ['id'];
           },
           {
@@ -1034,17 +859,12 @@ export interface Database {
           id: string;
           title: string;
           description: string | null;
-          category: string | null;
           event_id: string | null;
           assigned_to: string | null;
-          assigned_side: DbGuestSide | null;
           priority: DbTaskPriority;
           status: DbTaskStatus;
           due_date: string | null;
           completed_at: string | null;
-          reminder_date: string | null;
-          parent_task_id: string | null;
-          display_order: number;
           notes: string | null;
           created_at: string;
           updated_at: string;
@@ -1054,17 +874,12 @@ export interface Database {
           id?: string;
           title: string;
           description?: string | null;
-          category?: string | null;
           event_id?: string | null;
           assigned_to?: string | null;
-          assigned_side?: DbGuestSide | null;
           priority?: DbTaskPriority;
           status?: DbTaskStatus;
           due_date?: string | null;
           completed_at?: string | null;
-          reminder_date?: string | null;
-          parent_task_id?: string | null;
-          display_order?: number;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -1074,17 +889,12 @@ export interface Database {
           id?: string;
           title?: string;
           description?: string | null;
-          category?: string | null;
           event_id?: string | null;
           assigned_to?: string | null;
-          assigned_side?: DbGuestSide | null;
           priority?: DbTaskPriority;
           status?: DbTaskStatus;
           due_date?: string | null;
           completed_at?: string | null;
-          reminder_date?: string | null;
-          parent_task_id?: string | null;
-          display_order?: number;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -1096,13 +906,6 @@ export interface Database {
             columns: ['event_id'];
             isOneToOne: false;
             referencedRelation: 'events';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'tasks_parent_task_id_fkey';
-            columns: ['parent_task_id'];
-            isOneToOne: false;
-            referencedRelation: 'tasks';
             referencedColumns: ['id'];
           },
           {
@@ -1171,8 +974,6 @@ export interface Database {
       rsvp_status: DbRsvpStatus;
       meal_preference: DbMealPreference;
       age_group: DbAgeGroup;
-      gender: DbGender;
-      payment_status: DbPaymentStatus;
       payment_method: DbPaymentMethod;
       task_priority: DbTaskPriority;
       task_status: DbTaskStatus;

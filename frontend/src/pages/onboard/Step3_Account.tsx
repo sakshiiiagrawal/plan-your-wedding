@@ -50,7 +50,7 @@ interface Step3Props {
   onBack: () => void;
 }
 
-export default function Step3_AdminAccount({ data, onNext, onBack }: Step3Props) {
+export default function Step3_Account({ data, onNext, onBack }: Step3Props) {
   const {
     register,
     handleSubmit,
@@ -70,8 +70,8 @@ export default function Step3_AdminAccount({ data, onNext, onBack }: Step3Props)
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -40 }}
     >
-      <h2 className="font-display text-2xl font-bold text-maroon-800 mb-1">Admin Account</h2>
-      <p className="text-gray-500 mb-6 text-sm">Create your secure admin login.</p>
+      <h2 className="font-display text-2xl font-bold text-maroon-800 mb-1">Your Account</h2>
+      <p className="text-gray-500 mb-6 text-sm">Create your secure login.</p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div>

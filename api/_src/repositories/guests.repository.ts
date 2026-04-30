@@ -14,13 +14,11 @@ import type { ParsedGuest } from '../excel/guests.excel';
 
 export interface GuestListItem extends GuestRow {
   guest_groups: { name: string } | null;
-  room_allocations: unknown[];
 }
 
 export interface GuestDetail extends GuestRow {
   guest_groups: GuestGroupRow | null;
   guest_event_rsvp: unknown[];
-  room_allocations: unknown[];
 }
 
 export interface GuestGroupWithCount extends GuestGroupRow {
@@ -43,7 +41,7 @@ export async function findAllByOwner(
 ): Promise<GuestListItem[]> {
   let query = supabase
     .from('guests')
-    .select('*, guest_groups!group_id(name), room_allocations(*, rooms(*, accommodations(name)))')
+    .select('*, guest_groups!group_id(name)')
     .eq('user_id', ownerId);
 
   if (filters.side && filters.side !== 'all') {
@@ -64,12 +62,24 @@ export async function findAllByOwner(
 }
 
 export async function findSummaryByOwner(ownerId: string) {
-  const [{ data: guests, error: guestError }, { data: rsvps }] = await Promise.all([
-    supabase.from('guests').select('id, side').eq('user_id', ownerId),
-    supabase.from('guest_event_rsvp').select('guest_id, event_id, rsvp_status, plus_ones'),
-  ]);
+  const { data: guests, error: guestError } = await supabase
+    .from('guests')
+    .select('id, side')
+    .eq('user_id', ownerId);
 
   if (guestError) throw guestError;
+
+  const guestIds = (guests ?? []).map((g) => g.id);
+
+  const { data: rsvps, error: rsvpError } =
+    guestIds.length > 0
+      ? await supabase
+          .from('guest_event_rsvp')
+          .select('guest_id, event_id, rsvp_status, plus_ones')
+          .in('guest_id', guestIds)
+      : { data: [], error: null };
+
+  if (rsvpError) throw rsvpError;
 
   return { guests: guests ?? [], rsvps: rsvps ?? [] };
 }
@@ -78,7 +88,7 @@ export async function findByIdAndOwner(id: string, ownerId: string): Promise<Gue
   const { data, error } = await supabase
     .from('guests')
     .select(
-      '*, guest_groups!group_id(*), guest_event_rsvp(*), room_allocations(*, rooms(*, accommodations(*)))',
+      '*, guest_groups!group_id(*), guest_event_rsvp(*)',
     )
     .eq('id', id)
     .eq('user_id', ownerId)
@@ -121,6 +131,15 @@ export async function updateGuest(
 
 export async function deleteGuest(id: string, ownerId: string): Promise<void> {
   const { error } = await supabase.from('guests').delete().eq('id', id).eq('user_id', ownerId);
+  if (error) throw error;
+}
+
+export async function deleteGuestsBulk(ids: string[], ownerId: string): Promise<void> {
+  const { error } = await supabase
+    .from('guests')
+    .delete()
+    .in('id', ids)
+    .eq('user_id', ownerId);
   if (error) throw error;
 }
 

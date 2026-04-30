@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import {
   useTasks,
   useTaskStats,
@@ -40,7 +39,6 @@ const DEFAULT_FORM: TaskFormData = {
 };
 
 export default function Tasks() {
-  const { canEdit } = useAuth();
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -138,15 +136,13 @@ export default function Tasks() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="page-title">Tasks & Checklist</h1>
-        {canEdit && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="btn-primary flex items-center gap-2 self-start sm:self-auto"
-          >
-            <HiOutlinePlus className="w-4 h-4" />
-            Add Task
-          </button>
-        )}
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="btn-primary flex items-center gap-2 self-start sm:self-auto"
+        >
+          <HiOutlinePlus className="w-4 h-4" />
+          Add Task
+        </button>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
@@ -206,12 +202,11 @@ export default function Tasks() {
           >
             <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
               <button
-                disabled={!canEdit}
-                onClick={() => canEdit && handleToggleStatus(task)}
+                onClick={() => handleToggleStatus(task)}
                 className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0 ${
                   task.status === 'completed'
                     ? 'bg-green-500 border-green-500'
-                    : `border-gray-300 ${canEdit ? 'hover:border-gold-500 cursor-pointer' : 'cursor-default'}`
+                    : 'border-gray-300 hover:border-gold-500 cursor-pointer'
                 }`}
               >
                 {task.status === 'completed' && <HiOutlineCheck className="w-4 h-4 text-white" />}
@@ -259,24 +254,22 @@ export default function Tasks() {
                 {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
               </span>
 
-              {canEdit && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleEdit(task)}
-                    className="p-2 hover:bg-gold-50 rounded-lg text-gold-600"
-                    title="Edit task"
-                  >
-                    <HiOutlinePencil className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setDeleteConfirm(task.id)}
-                    className="p-2 hover:bg-red-50 rounded-lg text-red-600"
-                    title="Delete task"
-                  >
-                    <HiOutlineTrash className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleEdit(task)}
+                  className="p-2 hover:bg-gold-50 rounded-lg text-gold-600"
+                  title="Edit task"
+                >
+                  <HiOutlinePencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setDeleteConfirm(task.id)}
+                  className="p-2 hover:bg-red-50 rounded-lg text-red-600"
+                  title="Delete task"
+                >
+                  <HiOutlineTrash className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -285,7 +278,7 @@ export default function Tasks() {
         )}
       </div>
 
-      {canEdit && showAddModal && (
+      {showAddModal && (
         <Portal>
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">

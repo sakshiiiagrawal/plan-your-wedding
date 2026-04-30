@@ -12,7 +12,6 @@ export {
   useAccommodations,
   useAccommodation,
   useAccommodationRooms,
-  useRoomAllocations,
   useAllocationMatrix,
   useUnassignedGuests,
   useCreateAccommodation,

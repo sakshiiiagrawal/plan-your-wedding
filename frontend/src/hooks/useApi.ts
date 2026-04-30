@@ -5,7 +5,11 @@ import type {
   HeroContent,
   GuestWithDetails,
   EventWithVenue,
-  VenueRow,
+  ExpenseBalanceSummary,
+  ExpenseWithDetails,
+  PaymentRow,
+  VendorWithFinance,
+  VenueWithFinance,
 } from '@wedding-planner/shared';
 
 // =====================================================
@@ -18,45 +22,6 @@ export const useSetupStatus = () =>
     queryFn: () => api.get('/setup-status').then((res) => res.data),
     staleTime: Infinity,
   });
-
-// =====================================================
-// USER MANAGEMENT HOOKS
-// =====================================================
-
-export interface TeamMember {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'family' | 'friends';
-  created_at: string;
-}
-
-export const useUsers = () =>
-  useQuery<TeamMember[]>({
-    queryKey: ['users'],
-    queryFn: () => api.get('/auth/users').then((res) => res.data),
-  });
-
-export const useCreateUser = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (userData: { name: string; email: string; password: string; role: string }) =>
-      api.post('/auth/create-user', userData).then((res) => res.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
-  });
-};
-
-export const useDeleteUser = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => api.delete(`/auth/users/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
-  });
-};
 
 // =====================================================
 // WEBSITE CONTENT HOOKS
@@ -134,7 +99,44 @@ export interface DashboardStats {
   guests: { total: number; bride: number; groom: number };
   rsvp: { confirmed: number; pending: number };
   tasks: { pending: number; completed: number };
-  expense: { total: number; spent: number };
+  expense: {
+    total: number;
+    committed: number;
+    paid: number;
+    outstanding: number;
+    remaining: number;
+  };
+}
+
+export interface FinanceTimelinePayment extends PaymentRow {
+  expense: {
+    id: string;
+    description: string;
+    source_type: 'manual' | 'vendor' | 'venue';
+    source_id: string | null;
+  };
+  expense_summary: ExpenseBalanceSummary | null;
+}
+
+export interface ExpenseOutstandingItem {
+  id: string;
+  name: string;
+  type: 'manual' | 'vendor' | 'venue';
+  totalCost: number;
+  paid: number;
+  outstanding: number;
+  expense_id: string;
+}
+
+export interface ExpenseAlerts {
+  overduePayments: FinanceTimelinePayment[];
+  overdueCount: number;
+  overdueTotal: number;
+  upcomingPayments: FinanceTimelinePayment[];
+  upcomingCount: number;
+  upcomingTotal: number;
+  overBudgetCategories: Array<{ id: string; name: string; overBy: number }>;
+  nearBudgetCategories: Array<{ id: string; name: string; percentage: number }>;
 }
 
 export const useDashboardStats = () =>
@@ -221,6 +223,18 @@ export const useCreateGuest = () => {
     mutationFn: (guestData: any) => api.post('/guests', guestData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+    },
+  });
+};
+
+export const useBulkCreateGuests = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (guests: any[]) => api.post('/guests/bulk', { guests }).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
     },
   });
 };
@@ -232,6 +246,7 @@ export const useUpdateGuest = () => {
       api.put(`/guests/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
     },
   });
 };
@@ -242,6 +257,18 @@ export const useDeleteGuest = () => {
     mutationFn: (id: string) => api.delete(`/guests/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+    },
+  });
+};
+
+export const useBulkDeleteGuests = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => api.delete('/guests/bulk', { data: { ids } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
     },
   });
 };
@@ -315,13 +342,13 @@ export const useDeleteEvent = () => {
 // =====================================================
 
 export const useVenues = () =>
-  useQuery<VenueRow[]>({
+  useQuery<VenueWithFinance[]>({
     queryKey: ['venues'],
     queryFn: () => api.get('/venues').then((res) => res.data),
   });
 
 export const useVenue = (id?: string | null) =>
-  useQuery<any>({
+  useQuery<VenueWithFinance>({
     queryKey: ['venues', id],
     queryFn: () => api.get(`/venues/${id}`).then((res) => res.data),
     enabled: !!id,
@@ -333,6 +360,8 @@ export const useCreateVenue = () => {
     mutationFn: (venueData: any) => api.post('/venues', venueData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -344,6 +373,8 @@ export const useUpdateVenue = () => {
       api.put(`/venues/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -354,58 +385,56 @@ export const useDeleteVenue = () => {
     mutationFn: (id: string) => api.delete(`/venues/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
 
 // =====================================================
-// ACCOMMODATIONS HOOKS
+// ACCOMMODATIONS HOOKS (backed by /venues/* endpoints)
 // =====================================================
 
 export const useAccommodations = () =>
   useQuery<any[]>({
     queryKey: ['accommodations'],
-    queryFn: () => api.get('/accommodations').then((res) => res.data),
+    queryFn: () => api.get('/venues').then((res) => res.data),
   });
 
 export const useAccommodation = (id?: string | null) =>
   useQuery<any>({
     queryKey: ['accommodations', id],
-    queryFn: () => api.get(`/accommodations/${id}`).then((res) => res.data),
+    queryFn: () => api.get(`/venues/${id}`).then((res) => res.data),
     enabled: !!id,
   });
 
-export const useAccommodationRooms = (accommodationId?: string | null) =>
+export const useAccommodationRooms = (venueId?: string | null) =>
   useQuery<any[]>({
-    queryKey: ['accommodations', accommodationId, 'rooms'],
-    queryFn: () => api.get(`/accommodations/${accommodationId}/rooms`).then((res) => res.data),
-    enabled: !!accommodationId,
-  });
-
-export const useRoomAllocations = () =>
-  useQuery<any[]>({
-    queryKey: ['accommodations', 'allocations'],
-    queryFn: () => api.get('/accommodations/allocations').then((res) => res.data),
+    queryKey: ['accommodations', venueId, 'rooms'],
+    queryFn: () => api.get(`/venues/${venueId}/rooms`).then((res) => res.data),
+    enabled: !!venueId,
   });
 
 export const useAllocationMatrix = () =>
   useQuery<any>({
     queryKey: ['accommodations', 'allocation-matrix'],
-    queryFn: () => api.get('/accommodations/allocations/matrix').then((res) => res.data),
+    queryFn: () => api.get('/venues/allocations/matrix').then((res) => res.data),
   });
 
 export const useUnassignedGuests = () =>
   useQuery<any[]>({
     queryKey: ['accommodations', 'unassigned-guests'],
-    queryFn: () => api.get('/accommodations/allocations/unassigned').then((res) => res.data),
+    queryFn: () => api.get('/venues/allocations/unassigned').then((res) => res.data),
   });
 
 export const useCreateAccommodation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => api.post('/accommodations', data).then((res) => res.data),
+    mutationFn: (data: any) =>
+      api.post('/venues', { ...data, has_accommodation: true }).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
     },
   });
 };
@@ -414,9 +443,10 @@ export const useUpdateAccommodation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Record<string, any>) =>
-      api.put(`/accommodations/${id}`, data).then((res) => res.data),
+      api.put(`/venues/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
     },
   });
 };
@@ -424,9 +454,10 @@ export const useUpdateAccommodation = () => {
 export const useDeleteAccommodation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.delete(`/accommodations/${id}`),
+    mutationFn: (id: string) => api.delete(`/venues/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
     },
   });
 };
@@ -435,7 +466,18 @@ export const useCreateRoom = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ accommodationId, ...data }: { accommodationId: string } & Record<string, any>) =>
-      api.post(`/accommodations/${accommodationId}/rooms`, data).then((res) => res.data),
+      api.post(`/venues/${accommodationId}/rooms`, data).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+    },
+  });
+};
+
+export const useUpdateRoom = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string } & Record<string, any>) =>
+      api.put(`/venues/rooms/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
     },
@@ -446,7 +488,7 @@ export const useCreateAllocation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (allocationData: any) =>
-      api.post('/accommodations/allocations', allocationData).then((res) => res.data),
+      api.post('/venues/allocations', allocationData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
     },
@@ -457,7 +499,7 @@ export const useUpdateAllocation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Record<string, any>) =>
-      api.put(`/accommodations/allocations/${id}`, data).then((res) => res.data),
+      api.put(`/venues/allocations/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
     },
@@ -467,9 +509,76 @@ export const useUpdateAllocation = () => {
 export const useDeleteAllocation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.delete(`/accommodations/allocations/${id}`),
+    mutationFn: (id: string) => api.delete(`/venues/allocations/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+    },
+  });
+};
+
+// =====================================================
+// VENUE PAYMENTS HOOKS
+// =====================================================
+
+export const useVenuePayments = (venueId?: string | null) =>
+  useQuery<PaymentRow[]>({
+    queryKey: ['venues', venueId, 'payments'],
+    queryFn: () => api.get(`/venues/${venueId}/payments`).then((res) => res.data),
+    enabled: !!venueId,
+  });
+
+export const useAddVenuePayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ venueId, ...data }: { venueId: string } & Record<string, any>) =>
+      api.post(`/venues/${venueId}/payments`, data).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+export const useDeleteVenuePayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ venueId, paymentId }: { venueId: string; paymentId: string }) =>
+      api.delete(`/venues/${venueId}/payments/${paymentId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+// =====================================================
+// VENDOR PAYMENT MUTATIONS (add/delete)
+// =====================================================
+
+export const useAddVendorPayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ vendorId, ...data }: { vendorId: string } & Record<string, any>) =>
+      api.post(`/vendors/${vendorId}/payments`, data).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+export const useDeleteVendorPayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ vendorId, paymentId }: { vendorId: string; paymentId: string }) =>
+      api.delete(`/vendors/${vendorId}/payments/${paymentId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -478,15 +587,14 @@ export const useDeleteAllocation = () => {
 // VENDORS HOOKS
 // =====================================================
 
-export const useVendors = (category?: string) =>
-  useQuery<any[]>({
-    queryKey: ['vendors', { category }],
-    queryFn: () =>
-      api.get('/vendors', { params: category ? { category } : {} }).then((res) => res.data),
+export const useVendors = () =>
+  useQuery<VendorWithFinance[]>({
+    queryKey: ['vendors'],
+    queryFn: () => api.get('/vendors').then((res) => res.data),
   });
 
 export const useVendor = (id?: string | null) =>
-  useQuery<any>({
+  useQuery<VendorWithFinance>({
     queryKey: ['vendors', id],
     queryFn: () => api.get(`/vendors/${id}`).then((res) => res.data),
     enabled: !!id,
@@ -499,7 +607,7 @@ export const useVendorCategories = () =>
   });
 
 export const useVendorPayments = (vendorId?: string | null) =>
-  useQuery<any[]>({
+  useQuery<PaymentRow[]>({
     queryKey: ['vendors', vendorId, 'payments'],
     queryFn: () => api.get(`/vendors/${vendorId}/payments`).then((res) => res.data),
     enabled: !!vendorId,
@@ -511,6 +619,8 @@ export const useCreateVendor = () => {
     mutationFn: (vendorData: any) => api.post('/vendors', vendorData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -522,6 +632,8 @@ export const useUpdateVendor = () => {
       api.put(`/vendors/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -532,6 +644,8 @@ export const useDeleteVendor = () => {
     mutationFn: (id: string) => api.delete(`/vendors/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -542,7 +656,14 @@ export const useDeleteVendor = () => {
 
 export interface ExpenseSummary {
   totalExpense: number;
+  brideContribution: number;
+  groomContribution: number;
+  totalCommitted: number;
   totalSpent: number;
+  totalPaid: number;
+  totalOutstanding: number;
+  remainingBudget: number;
+  remaining: number;
 }
 
 export const useExpenseSummary = () =>
@@ -588,7 +709,7 @@ export const useExpensesByCategoryTree = () =>
   });
 
 export const useExpenses = (filters: Record<string, string> = {}) =>
-  useQuery<any[]>({
+  useQuery<ExpenseWithDetails[]>({
     queryKey: ['expense', 'expenses', filters],
     queryFn: () => api.get('/expense/expenses', { params: filters }).then((res) => res.data),
   });
@@ -623,6 +744,9 @@ export const useCreateExpense = () => {
       api.post('/expense/expenses', expenseData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -634,6 +758,9 @@ export const useUpdateExpense = () => {
       api.put(`/expense/expenses/${id}`, data).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -644,6 +771,9 @@ export const useDeleteExpense = () => {
     mutationFn: (id: string) => api.delete(`/expense/expenses/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -655,6 +785,60 @@ export const useCreateCustomCategory = () => {
       api.post('/expense/categories/custom', categoryData).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expense', 'categories'] });
+    },
+  });
+};
+
+export const useExpensePayments = () =>
+  useQuery<FinanceTimelinePayment[]>({
+    queryKey: ['expense', 'payments'],
+    queryFn: () => api.get('/expense/payments').then((res) => res.data),
+  });
+
+export const useExpenseOutstanding = () =>
+  useQuery<{ items: ExpenseOutstandingItem[]; totalOutstanding: number }>({
+    queryKey: ['expense', 'outstanding'],
+    queryFn: () => api.get('/expense/outstanding').then((res) => res.data),
+  });
+
+export const useExpenseAlerts = () =>
+  useQuery<ExpenseAlerts>({
+    queryKey: ['expense', 'alerts'],
+    queryFn: () => api.get('/expense/alerts').then((res) => res.data),
+  });
+
+export const useSourcePayments = (
+  sourceType: 'vendor' | 'venue',
+  sourceId?: string | null,
+) =>
+  useQuery<PaymentRow[]>({
+    queryKey: [sourceType, sourceId, 'payments'],
+    queryFn: () => api.get(`/${sourceType}s/${sourceId}/payments`).then((res) => res.data),
+    enabled: !!sourceId,
+  });
+
+export const useCreateSourcePayment = (sourceType: 'vendor' | 'venue') => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sourceId, ...data }: { sourceId: string } & Record<string, any>) =>
+      api.post(`/${sourceType}s/${sourceId}/payments`, data).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [sourceType === 'vendor' ? 'vendors' : 'venues'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+export const useDeleteSourcePayment = (sourceType: 'vendor' | 'venue') => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sourceId, paymentId }: { sourceId: string; paymentId: string }) =>
+      api.delete(`/${sourceType}s/${sourceId}/payments/${paymentId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [sourceType === 'vendor' ? 'vendors' : 'venues'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };

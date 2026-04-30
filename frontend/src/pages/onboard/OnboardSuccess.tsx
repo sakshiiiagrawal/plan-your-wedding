@@ -40,8 +40,8 @@ export default function OnboardSuccess({ brideName, groomName, slug }: OnboardSu
         <button onClick={() => navigate(`/${slug}`)} className="btn-secondary px-8 py-3">
           View Wedding Website
         </button>
-        <button onClick={() => navigate(`/${slug}/admin`)} className="btn-primary px-8 py-3">
-          Go to Admin Portal →
+        <button onClick={() => navigate(`/${slug}/dashboard`)} className="btn-primary px-8 py-3">
+          Go to Planner →
         </button>
       </div>
     </motion.div>

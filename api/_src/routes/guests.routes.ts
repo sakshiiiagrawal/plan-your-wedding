@@ -5,6 +5,7 @@ import {
   createGuestSchema,
   updateGuestSchema,
   bulkCreateGuestsSchema,
+  bulkDeleteGuestsSchema,
   updateRsvpSchema,
   createGroupSchema,
 } from '../validators/guests.validator';
@@ -23,6 +24,7 @@ router.get('/:id', guestsController.getById);
 router.post('/', validateBody(createGuestSchema), guestsController.create);
 router.post('/bulk', validateBody(bulkCreateGuestsSchema), guestsController.bulkCreate);
 router.put('/:id', validateBody(updateGuestSchema), guestsController.update);
+router.delete('/bulk', validateBody(bulkDeleteGuestsSchema), guestsController.bulkRemove);
 router.delete('/:id', guestsController.remove);
 router.put('/:id/rsvp/:eventId', validateBody(updateRsvpSchema), guestsController.updateRsvp);
 

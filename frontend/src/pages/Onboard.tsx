@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 
 import Step1_Welcome from './onboard/Step1_Welcome';
 import Step2_WeddingDetails from './onboard/Step2_WeddingDetails';
-import Step3_AdminAccount from './onboard/Step3_AdminAccount';
 import Step4_Review from './onboard/Step4_Review';
 import OnboardSuccess from './onboard/OnboardSuccess';
+import Step3_Account from './onboard/Step3_Account';
 
 interface FormData {
   brideName: string;
@@ -21,8 +22,16 @@ interface FormData {
 }
 
 export default function Onboard() {
-  const { register } = useAuth();
+  const { register, isAuthenticated, slug, loading } = useAuth();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
+
+  useEffect(() => {
+    if (!loading && isAuthenticated && slug) {
+      navigate(`/${slug}/dashboard`, { replace: true });
+    }
+  }, [loading, isAuthenticated, slug, navigate]);
+  
   const [submitting, setSubmitting] = useState(false);
   const [successSlug, setSuccessSlug] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
@@ -113,7 +122,7 @@ export default function Onboard() {
                 onBack={() => setStep(1)}
               />
             ) : step === 3 ? (
-              <Step3_AdminAccount
+              <Step3_Account
                 key="step3"
                 data={{
                   name: formData.name,

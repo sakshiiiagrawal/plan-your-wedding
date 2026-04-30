@@ -25,12 +25,11 @@ export const verifyToken = async (
     const decoded = jwt.verify(token, env.JWT_SECRET) as {
       id: string;
       email: string;
-      role: string;
     };
 
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, email, name, role, created_by')
+      .select('id, email, name')
       .eq('id', decoded.id)
       .single();
 
@@ -51,12 +50,4 @@ export const verifyToken = async (
     }
     next(error);
   }
-};
-
-export const requireAdmin = (req: Request, res: Response, next: NextFunction): void => {
-  if (req.user?.role !== 'admin') {
-    res.status(403).json({ error: 'Admin access required' });
-    return;
-  }
-  next();
 };

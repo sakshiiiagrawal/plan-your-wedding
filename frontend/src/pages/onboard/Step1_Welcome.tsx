@@ -16,7 +16,7 @@ export default function Step1_Welcome({ onNext }: Step1Props) {
       <h2 className="font-script text-5xl text-maroon-800">Welcome!</h2>
       <p className="text-xl text-gray-600 font-display">Let&apos;s set up your wedding planner.</p>
       <p className="text-gray-500 max-w-sm mx-auto">
-        This quick wizard will help you personalise your wedding website, create your admin account,
+        This quick wizard will help you personalise your wedding website, create your account,
         and get everything ready for your big day.
       </p>
       <button onClick={onNext} className="btn-primary px-10 py-3 text-lg mt-4">

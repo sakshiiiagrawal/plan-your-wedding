@@ -14,9 +14,9 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
-export const getCategories = (_req: Request, res: Response, next: NextFunction): void => {
+export const getCategories = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    res.json(service.getCategories());
+    res.json(await service.getCategories(getWeddingOwnerId(req)));
   } catch (e) {
     next(e);
   }
@@ -98,7 +98,34 @@ export const getPayments = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.json(await service.getPayments(req.params.id));
+    res.json(await service.getPayments(req.params.id, getWeddingOwnerId(req)));
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const addPayment = async (
+  req: Request<IdParam>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res
+      .status(201)
+      .json(await service.addPayment(req.params.id, getWeddingOwnerId(req), req.body));
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const deletePayment = async (
+  req: Request<{ id: string; paymentId: string }>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    await service.deletePayment(req.params.paymentId, getWeddingOwnerId(req));
+    res.status(204).send();
   } catch (e) {
     next(e);
   }

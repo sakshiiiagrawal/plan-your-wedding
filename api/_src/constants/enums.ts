@@ -1,34 +1,4 @@
-export const VENDOR_CATEGORIES = [
-  'caterer',
-  'decorator',
-  'photographer',
-  'videographer',
-  'mehendi_artist',
-  'makeup_artist',
-  'dj',
-  'band',
-  'florist',
-  'pandit',
-  'tent_house',
-  'lighting',
-  'invitation',
-  'jeweller',
-  'choreographer',
-  'transportation',
-  'other',
-] as const;
-
-export const EXPENSE_CATEGORIES = [
-  'Venue',
-  'Catering',
-  'Photography & Videography',
-  'Decoration',
-  'Entertainment',
-  'Attire & Beauty',
-  'Invitations & Stationery',
-  'Transportation',
-  'Accommodation',
-  'Jewellery',
-  'Mehendi & Rituals',
-  'Miscellaneous',
-] as const;
+// Re-export from shared package — single source of truth.
+// Do not duplicate constant definitions here; edit shared/src/enums/ instead.
+export { EXPENSE_CATEGORIES, DEFAULT_CATEGORY_TREE } from '@wedding-planner/shared';
+export type { ExpenseCategoryName } from '@wedding-planner/shared';

@@ -13,8 +13,6 @@ export type {
   DbRsvpStatus,
   DbMealPreference,
   DbAgeGroup,
-  DbGender,
-  DbPaymentStatus,
   DbPaymentMethod,
   DbTaskPriority,
   DbTaskStatus,
@@ -26,8 +24,7 @@ export type {
 // Domain types
 // ---------------------------------------------------------------------------
 
-export type { UserRow, UserInsert, AuthenticatedUser, UserRole } from './domain/user.types';
-export { USER_ROLES } from './domain/user.types';
+export type { UserRow, UserInsert, AuthenticatedUser } from './domain/user.types';
 
 export type {
   GuestRow,
@@ -39,33 +36,46 @@ export type {
   GuestWithDetails,
 } from './domain/guest.types';
 
-export type { VenueRow, VenueInsert } from './domain/venue.types';
+export type {
+  VenueRow,
+  VenueInsert,
+  VenueWithFinance,
+  RoomRow,
+  RoomInsert,
+  RoomAllocationRow,
+  RoomAllocationInsert,
+  RoomWithAllocations,
+} from './domain/venue.types';
 
 export type { EventRow, EventInsert, EventWithVenue } from './domain/event.types';
 
-export type { VendorRow, VendorInsert } from './domain/vendor.types';
+export type { VendorRow, VendorInsert, VendorWithFinance } from './domain/vendor.types';
 
 export type {
   ExpenseCategoryRow,
   ExpenseCategoryInsert,
   ExpenseRow,
   ExpenseInsert,
+  ExpenseItemRow,
+  ExpenseItemInput,
   PaymentRow,
   PaymentInsert,
+  PaymentAllocationRow,
+  PaymentAllocationInput,
+  FinanceActivityRow,
+  ExpenseBalanceSummary,
   ExpenseSummaryRow,
   ExpenseSummaryInsert,
   ExpenseWithDetails,
+  FinanceSourceType,
+  FinanceHeaderStatus,
+  FinanceItemSide,
+  FinancePaymentDirection,
+  FinancePaymentStatus,
+  FinancePaidBySide,
+  FinanceActivityEntityType,
+  FinanceActivityActionType,
 } from './domain/expense.types';
-
-export type {
-  AccommodationRow,
-  AccommodationInsert,
-  RoomRow,
-  RoomInsert,
-  RoomAllocationRow,
-  RoomAllocationInsert,
-  RoomWithAllocations,
-} from './domain/accommodation.types';
 
 export type { TaskRow, TaskInsert } from './domain/task.types';
 
@@ -88,11 +98,29 @@ export {
 } from './enums/guest.enums';
 export type { GuestSide, RsvpStatus, MealPreference, AgeGroup, Gender } from './enums/guest.enums';
 
-export { PAYMENT_STATUSES, PAYMENT_METHODS, EXPENSE_CATEGORIES } from './enums/expense.enums';
-export type { PaymentStatus, PaymentMethod, ExpenseCategoryName } from './enums/expense.enums';
-
-export { VENDOR_CATEGORIES } from './enums/vendor.enums';
-export type { VendorCategory } from './enums/vendor.enums';
+export {
+  PAYMENT_STATUSES,
+  PAYMENT_METHODS,
+  FINANCE_SOURCE_TYPES,
+  FINANCE_HEADER_STATUSES,
+  FINANCE_ITEM_SIDES,
+  FINANCE_PAYMENT_DIRECTIONS,
+  FINANCE_PAYMENT_STATUSES,
+  FINANCE_PAID_BY_SIDES,
+  EXPENSE_CATEGORIES,
+  DEFAULT_CATEGORY_TREE,
+} from './enums/expense.enums';
+export type {
+  PaymentStatus,
+  PaymentMethod,
+  FinanceSourceType as EnumFinanceSourceType,
+  FinanceHeaderStatus as EnumFinanceHeaderStatus,
+  FinanceItemSide as EnumFinanceItemSide,
+  FinancePaymentDirection as EnumFinancePaymentDirection,
+  FinancePaymentStatus as EnumFinancePaymentStatus,
+  FinancePaidBySide as EnumFinancePaidBySide,
+  ExpenseCategoryName,
+} from './enums/expense.enums';
 
 export { TASK_PRIORITIES, TASK_STATUSES, ROOM_TYPES } from './enums/task.enums';
 export type { TaskPriority, TaskStatus, RoomType } from './enums/task.enums';

@@ -21,9 +21,14 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(email, password);
+      const { slug: returnedSlug } = await login(email, password);
       toast.success('Welcome to Wedding Planner!');
-      navigate(`/${slug}/admin`);
+      const targetSlug = slug || returnedSlug;
+      if (targetSlug) {
+        navigate(`/${targetSlug}/dashboard`);
+      } else {
+        navigate('/');
+      }
     } catch (error) {
       const err = error as { response?: { data?: { error?: string } } };
       toast.error(err?.response?.data?.error || 'Invalid credentials');
@@ -36,10 +41,19 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-maroon-800 via-maroon-700 to-gold-600 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="font-script text-5xl text-cream mb-2">
-            {brideName} & {groomName}
-          </h1>
-          <p className="text-gold-300">Wedding Planner Admin</p>
+          {slug ? (
+            <>
+              <h1 className="font-script text-5xl text-cream mb-2">
+                {brideName} & {groomName}
+              </h1>
+              <p className="text-gold-300">Wedding Planner</p>
+            </>
+          ) : (
+            <>
+              <h1 className="font-script text-5xl text-cream mb-2">Wedding Planner</h1>
+              <p className="text-gold-300">Sign in to your account</p>
+            </>
+          )}
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
@@ -83,9 +97,15 @@ export default function Login() {
         </div>
 
         <p className="mt-6 text-center text-cream/70 text-sm">
-          <a href={`/${slug}`} className="hover:text-gold-300">
-            ← Back to Wedding Website
-          </a>
+          {slug ? (
+            <a href={`/${slug}`} className="hover:text-gold-300">
+              ← Back to Wedding Website
+            </a>
+          ) : (
+            <a href="/" className="hover:text-gold-300">
+              ← Back to Home
+            </a>
+          )}
         </p>
       </div>
     </div>

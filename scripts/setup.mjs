@@ -120,7 +120,7 @@ async function main() {
   console.log('\nNext steps:');
   console.log('  1. npm run db:migrate   — apply schema to your database');
   console.log('  2. npm run dev          — start API (:3001) + frontend (:5173)');
-  console.log('  3. Open http://localhost:5173/onboard to create your admin account\n');
+  console.log('  3. Open http://localhost:5173/onboard to create your account\n');
 }
 
 main().catch((err) => {

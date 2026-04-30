@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { HiOutlineX } from 'react-icons/hi';
 import Portal from '../../../components/Portal';
+import CategoryCombobox from '../../../components/CategoryCombobox';
 
 export interface VendorRow {
   vendorId: string;
   description: string;
   amount: number;
   category: string | null;
+  category_id?: string | null;
   side: string | null;
   is_shared: boolean;
 }
@@ -20,29 +22,12 @@ interface EditVendorModalProps {
 
 interface FormData {
   name: string;
-  category: string;
+  category_id: string | null;
   total_cost: number | string;
   side: string;
   is_shared: boolean;
 }
 
-const VENDOR_CATEGORIES = [
-  'catering',
-  'photography',
-  'videography',
-  'decoration',
-  'music',
-  'venue',
-  'transport',
-  'attire',
-  'jewelry',
-  'makeup',
-  'invitation',
-  'cake',
-  'flowers',
-  'accommodation',
-  'other',
-];
 
 export default function EditVendorModal({
   vendor,
@@ -56,7 +41,7 @@ export default function EditVendorModal({
     if (vendor) {
       setFormData({
         name: vendor.description || '',
-        category: vendor.category?.replace(/ /g, '_') || 'other',
+        category_id: vendor.category_id ?? null,
         total_cost: vendor.amount || '',
         side: vendor.is_shared ? 'mutual' : vendor.side || 'mutual',
         is_shared: vendor.is_shared || false,
@@ -105,17 +90,12 @@ export default function EditVendorModal({
 
             <div>
               <label className="label">Category</label>
-              <select
-                value={formData.category}
-                onChange={(e) => set({ category: e.target.value })}
-                className="input"
-              >
-                {VENDOR_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c.replace(/_/g, ' ')}
-                  </option>
-                ))}
-              </select>
+              <CategoryCombobox
+                value={formData.category_id}
+                onChange={(id) => set({ category_id: id })}
+                level="subcategory"
+                placeholder="Search vendor categories…"
+              />
             </div>
 
             <div>

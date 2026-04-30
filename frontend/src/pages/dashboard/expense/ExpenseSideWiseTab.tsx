@@ -1,5 +1,14 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { HiOutlineUser, HiOutlineUsers } from 'react-icons/hi';
+
+interface SideItem {
+  id: string;
+  description: string;
+  category_name: string;
+  amount: number;
+  expense_date: string;
+  expense_title: string;
+  bride_share_percentage?: number | null;
+}
 
 interface SideCardProps {
   label: string;
@@ -34,9 +43,7 @@ function SideCard({
           >
             {label}
           </div>
-          <div className="text-sm text-gray-500">
-            {count} expense{count !== 1 ? 's' : ''}
-          </div>
+          <div className="text-sm text-gray-500">{count} line items</div>
         </div>
       </div>
       <div
@@ -49,7 +56,7 @@ function SideCard({
 }
 
 interface ExpenseListProps {
-  items: any[];
+  items: SideItem[];
   emptyText: string;
   headerBg: string;
   headerBorder: string;
@@ -77,41 +84,35 @@ function ExpenseList({
     <div className="card overflow-hidden p-0">
       <div className={`p-4 ${headerBg} border-b ${headerBorder}`}>
         <h3 className={`font-semibold ${headerColor}`}>
-          {isShared
-            ? 'Shared Expenses'
-            : `${headerColor.includes('pink') ? 'Bride' : 'Groom'} Side Expenses`}
+          {isShared ? 'Shared Items' : `${headerColor.includes('pink') ? 'Bride' : 'Groom'} Side`}
         </h3>
       </div>
       {items.length > 0 ? (
         <div className="divide-y divide-gray-100">
-          {items.map((e: any) => (
-            <div key={e.id} className="p-3 flex justify-between items-start">
+          {items.map((item) => (
+            <div key={item.id} className="p-3 flex justify-between items-start">
               <div>
-                <div className="font-medium text-sm text-gray-800">{e.description}</div>
-                <div className="text-xs text-gray-500 capitalize">
-                  {e.expense_categories?.name || 'Uncategorized'}
+                <div className="font-medium text-sm text-gray-800">{item.description}</div>
+                <div className="text-xs text-gray-500">{item.category_name}</div>
+                <div className="text-xs text-gray-400">
+                  {item.expense_title} · {new Date(item.expense_date).toLocaleDateString('en-IN')}
                 </div>
-                {isShared ? (
+                {isShared && (
                   <div className="text-xs text-gray-400">
-                    Split: {e.share_percentage || 50}% / {100 - (e.share_percentage || 50)}%
-                  </div>
-                ) : (
-                  <div className="text-xs text-gray-400">
-                    {e.expense_date ? new Date(e.expense_date).toLocaleDateString('en-IN') : '—'}
+                    Bride share: {item.bride_share_percentage ?? 50}% · Groom share:{' '}
+                    {100 - (item.bride_share_percentage ?? 50)}%
                   </div>
                 )}
               </div>
               <div className={`text-sm font-semibold ${amountColor} ml-2 shrink-0`}>
-                {formatCurrency(parseFloat(e.amount || 0))}
+                {formatCurrency(item.amount)}
               </div>
             </div>
           ))}
           <div className={`p-3 ${totalBg} flex justify-between font-bold ${totalColor}`}>
             <span>Total</span>
             <span>
-              {formatCurrency(
-                items.reduce((s: number, e: any) => s + parseFloat(e.amount || 0), 0),
-              )}
+              {formatCurrency(items.reduce((sum, item) => sum + item.amount, 0))}
             </span>
           </div>
         </div>
@@ -123,9 +124,9 @@ function ExpenseList({
 }
 
 interface SideWiseExpenses {
-  bride: { items: any[]; total: number };
-  groom: { items: any[]; total: number };
-  shared: { items: any[]; total: number };
+  bride: { items: SideItem[]; total: number };
+  groom: { items: SideItem[]; total: number };
+  shared: { items: SideItem[]; total: number };
 }
 
 interface ExpenseSideWiseTabProps {
@@ -175,7 +176,7 @@ export default function ExpenseSideWiseTab({
       <div className="grid lg:grid-cols-3 gap-6">
         <ExpenseList
           items={sideWiseExpenses.bride.items}
-          emptyText="No bride side expenses"
+          emptyText="No bride-side items"
           headerBg="bg-pink-50"
           headerBorder="border-pink-100"
           headerColor="text-pink-700"
@@ -187,7 +188,7 @@ export default function ExpenseSideWiseTab({
         />
         <ExpenseList
           items={sideWiseExpenses.groom.items}
-          emptyText="No groom side expenses"
+          emptyText="No groom-side items"
           headerBg="bg-blue-50"
           headerBorder="border-blue-100"
           headerColor="text-blue-700"
@@ -199,7 +200,7 @@ export default function ExpenseSideWiseTab({
         />
         <ExpenseList
           items={sideWiseExpenses.shared.items}
-          emptyText="No shared expenses"
+          emptyText="No shared items"
           headerBg="bg-yellow-50"
           headerBorder="border-yellow-100"
           headerColor="text-yellow-700"

@@ -238,3 +238,113 @@ export async function findVendorCostsForSideSummary(ownerId: string) {
   if (error) throw error;
   return data ?? [];
 }
+
+// ---------------------------------------------------------------------------
+// Payments (unified — vendor + venue)
+// ---------------------------------------------------------------------------
+
+export async function findPaymentsByOwner(ownerId: string) {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*, vendors(name, category), venues(name)')
+    .eq('user_id', ownerId)
+    .order('payment_date', { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function findActualPaymentsTotalByOwner(ownerId: string): Promise<number> {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('amount')
+    .eq('user_id', ownerId)
+    .eq('is_planned', false);
+  if (error) throw error;
+  return (data ?? []).reduce((s, p) => s + parseFloat(String(p.amount ?? 0)), 0);
+}
+
+export async function findVendorPaymentSumsForOutstanding(ownerId: string) {
+  // Returns per-vendor sum of actual (non-planned) payments
+  const { data, error } = await supabase
+    .from('payments')
+    .select('vendor_id, amount')
+    .eq('user_id', ownerId)
+    .eq('is_planned', false)
+    .not('vendor_id', 'is', null);
+  if (error) throw error;
+  const sums: Record<string, number> = {};
+  (data ?? []).forEach((p) => {
+    if (p.vendor_id)
+      sums[p.vendor_id] = (sums[p.vendor_id] ?? 0) + parseFloat(String(p.amount ?? 0));
+  });
+  return sums;
+}
+
+export async function findVenuePaymentSumsForOutstanding(ownerId: string) {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('venue_id, amount')
+    .eq('user_id', ownerId)
+    .eq('is_planned', false)
+    .not('venue_id', 'is', null);
+  if (error) throw error;
+  const sums: Record<string, number> = {};
+  (data ?? []).forEach((p) => {
+    if (p.venue_id) sums[p.venue_id] = (sums[p.venue_id] ?? 0) + parseFloat(String(p.amount ?? 0));
+  });
+  return sums;
+}
+
+export async function findVendorsForOutstanding(ownerId: string) {
+  const { data, error } = await supabase
+    .from('vendors')
+    .select('id, name, total_cost, side')
+    .eq('user_id', ownerId);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function findVenuesForOutstanding(ownerId: string) {
+  const { data, error } = await supabase
+    .from('venues')
+    .select('id, name, total_cost')
+    .eq('user_id', ownerId);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function findUpcomingPlannedPayments(ownerId: string, withinDays: number) {
+  const today = new Date();
+  const future = new Date(today);
+  future.setDate(today.getDate() + withinDays);
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*, vendors(name), venues(name)')
+    .eq('user_id', ownerId)
+    .eq('is_planned', true)
+    .gte('payment_date', today.toISOString().split('T')[0])
+    .lte('payment_date', future.toISOString().split('T')[0]);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function findOverduePlannedPayments(ownerId: string) {
+  const today = new Date().toISOString().split('T')[0];
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*, vendors(name), venues(name)')
+    .eq('user_id', ownerId)
+    .eq('is_planned', true)
+    .lt('payment_date', today);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function findExpensesAmountWithSharedByOwner(ownerId: string) {
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('amount, side, is_shared, share_percentage')
+    .eq('user_id', ownerId);
+  if (error) throw error;
+  return data ?? [];
+}

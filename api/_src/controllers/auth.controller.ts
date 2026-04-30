@@ -3,13 +3,13 @@ import * as authService from '../services/auth.service';
 
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = await authService.createAdminUser(req.body);
+    const user = await authService.createUser(req.body);
     const token = authService.signToken(user);
 
     res.status(201).json({
       token,
       slug: user.slug,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role, slug: user.slug },
+      user: { id: user.id, email: user.email, name: user.name, slug: user.slug },
     });
   } catch (error) {
     next(error);
@@ -38,18 +38,12 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       return;
     }
 
-    // Determine slug: admin uses own slug; family/friends use their creator's slug
-    let slug = user.slug;
-    if (user.role !== 'admin' && user.created_by) {
-      const adminUser = await authService.findAdminByCreatedBy(user.created_by);
-      slug = adminUser?.slug ?? null;
-    }
-
     const token = authService.signToken(user);
+    const slug = user.slug;
     res.json({
       token,
       slug,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role, slug },
+      user: { id: user.id, email: user.email, name: user.name, slug },
     });
   } catch (error) {
     next(error);

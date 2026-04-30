@@ -5,6 +5,7 @@ import {
   updateVendorSchema,
   assignToEventSchema,
 } from '../validators/vendors.validator';
+import { createPaymentSchema } from '../validators/venues.validator';
 import * as ctrl from '../controllers/vendors.controller';
 
 const router = Router();
@@ -18,5 +19,7 @@ router.delete('/:id', ctrl.remove);
 router.post('/:id/assign/:eventId', validateBody(assignToEventSchema), ctrl.assignToEvent);
 router.delete('/:id/assign/:eventId', ctrl.removeFromEvent);
 router.get('/:id/payments', ctrl.getPayments);
+router.post('/:id/payments', validateBody(createPaymentSchema), ctrl.addPayment);
+router.delete('/:id/payments/:paymentId', ctrl.deletePayment);
 
 export default router;

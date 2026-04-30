@@ -35,7 +35,7 @@ function getUserFriendlyMessage(err: SupabaseError): string | null {
     message.includes('invalid input syntax for enum')
   ) {
     if (message.includes('room_type')) {
-      return 'Invalid room type. Please select one of: Single, Double, Suite, Family, or Dormitory.';
+      return 'Invalid room type provided.';
     }
     if (message.includes('guest_side')) {
       return 'Invalid side. Please select either Bride, Groom, or Mutual.';
@@ -183,7 +183,7 @@ export default function errorMiddleware(
 
   // AppError (our own structured errors)
   if (err instanceof AppError) {
-    res.status(err.statusCode).json({ error: err.message });
+    res.status(err.statusCode).json({ error: err.message, code: err.code });
     return;
   }
 

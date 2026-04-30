@@ -30,9 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Initial open-source release
 - Multi-tenant architecture (slug-scoped wedding dashboards)
-- Role-based access control: `admin`, `family`, `friends`
 - Guest management with Excel import/export
 - Expense tracking with side-wise splits
 - Room allocation
 - Public wedding website with countdown timer
-- Onboarding wizard to create first admin account
+- Onboarding wizard to create first account

@@ -8,6 +8,5 @@ export function getAuthUser(req: Request): AuthenticatedUser {
 }
 
 export function getWeddingOwnerId(req: Request): string {
-  const user = getAuthUser(req);
-  return user.role === 'admin' ? user.id : (user.created_by ?? user.id);
+  return getAuthUser(req).id;
 }

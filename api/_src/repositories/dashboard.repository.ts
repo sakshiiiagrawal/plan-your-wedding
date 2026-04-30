@@ -15,8 +15,11 @@ export async function findGuestSides(ownerId: string) {
   return data ?? [];
 }
 
-export async function findRsvpStatuses() {
-  const { data } = await supabase.from('guest_event_rsvp').select('rsvp_status');
+export async function findRsvpStatuses(ownerId: string) {
+  const { data } = await supabase
+    .from('guest_event_rsvp')
+    .select('rsvp_status, guests!inner(user_id)')
+    .eq('guests.user_id', ownerId);
   return data ?? [];
 }
 

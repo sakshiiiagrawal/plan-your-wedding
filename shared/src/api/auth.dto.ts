@@ -1,5 +1,3 @@
-import type { UserRole } from '../domain/user.types';
-
 // ---------------------------------------------------------------------------
 // Auth DTOs — request/response shapes for /api/v1/auth/* endpoints
 // ---------------------------------------------------------------------------
@@ -46,7 +44,6 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  role: UserRole;
   slug: string | null;
   created_at: string;
 }

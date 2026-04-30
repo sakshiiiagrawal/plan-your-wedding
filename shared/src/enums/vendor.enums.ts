@@ -1,22 +1,4 @@
-// Vendor-domain enum constants and their derived union types.
-
-export const VENDOR_CATEGORIES = [
-  'caterer',
-  'decorator',
-  'photographer',
-  'videographer',
-  'mehendi_artist',
-  'makeup_artist',
-  'dj',
-  'band',
-  'florist',
-  'pandit',
-  'tent_house',
-  'lighting',
-  'invitation',
-  'jeweller',
-  'choreographer',
-  'transportation',
-  'other',
-] as const;
-export type VendorCategory = (typeof VENDOR_CATEGORIES)[number];
+// Vendor categories are now the same as expense categories.
+// Use EXPENSE_CATEGORIES and DEFAULT_CATEGORY_TREE from expense.enums instead.
+// This file is kept to avoid breaking any lingering imports during transition.
+export {};
