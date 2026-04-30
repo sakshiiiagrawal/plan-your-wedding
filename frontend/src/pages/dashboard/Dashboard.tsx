@@ -14,8 +14,6 @@ import {
 import {
   HiOutlineUserGroup,
   HiOutlineCurrencyRupee,
-  HiOutlineClipboardList,
-  HiOutlineBriefcase,
   HiOutlineBell,
   HiOutlineHome,
   HiOutlineGlobe,
@@ -588,7 +586,7 @@ export default function Dashboard() {
                 }}
               >
                 <div className="avatar" style={{ width: 28, height: 28, fontSize: 11 }}>
-                  {a.actor_name ? a.actor_name[0].toUpperCase() : '◆'}
+                  {a.actor_name?.[0]?.toUpperCase() ?? '◆'}
                 </div>
                 <div style={{ flex: 1, fontSize: 13 }}>
                   {a.actor_name && (

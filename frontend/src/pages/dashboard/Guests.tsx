@@ -24,7 +24,7 @@ import {
   HiOutlineSave,
   HiOutlinePhone,
 } from 'react-icons/hi';
-import { SectionHeader, SegmentedControl, KPICard, Pill, DrawerPanel } from '../../components/ui';
+import { SectionHeader, SegmentedControl, KPICard, DrawerPanel } from '../../components/ui';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 
 interface GuestFormData {
@@ -1360,15 +1360,15 @@ export default function Guests() {
                         guests
                       </>,
                       <>
-                        <strong>Required fields:</strong> First Name and Side (must be "Bride" or
-                        "Groom")
+                        <strong>Required fields:</strong> First Name and Side (must be &quot;Bride&quot; or
+                        &quot;Groom&quot;)
                       </>,
                       <>
                         <strong>Optional:</strong> Last Name, Phone, Relationship, Meal Preference,
                         Accommodation, Pickup
                       </>,
                       <>
-                        <strong>Boolean values:</strong> use "Yes" or "No" for Accommodation and
+                        <strong>Boolean values:</strong> use &quot;Yes&quot; or &quot;No&quot; for Accommodation and
                         Pickup columns
                       </>,
                     ].map((item, i) => (

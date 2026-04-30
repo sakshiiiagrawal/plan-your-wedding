@@ -28,7 +28,6 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Portal from '../../components/Portal';
-import DatePicker from '../../components/ui/DatePicker';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 

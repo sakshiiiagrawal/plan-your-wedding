@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   HiOutlineCurrencyRupee,
   HiOutlineInformationCircle,
-  HiOutlineMail,
   HiOutlinePencil,
   HiOutlinePhone,
   HiOutlineSelector,
@@ -285,7 +284,7 @@ export default function Vendors() {
     category_ids: categoryFilterIds,
     payment_states: paymentFilters,
     logistics: logisticsFilters,
-    search: searchQuery.trim() || undefined,
+    search: searchQuery.trim(),
     page,
     per_page: perPage,
   });

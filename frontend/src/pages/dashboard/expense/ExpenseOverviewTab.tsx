@@ -31,7 +31,6 @@ export default function ExpenseOverviewTab({
   });
   const totalCommitted = categoryData.reduce((s, c) => s + c.committed, 0);
   const totalAllocated = categoryData.reduce((s, c) => s + c.allocated, 0);
-  const hasBudgets = totalAllocated > 0;
   const visibleTotalAllocated = categoriesWithSpend.reduce(
     (sum, category) => sum + category.allocated,
     0,

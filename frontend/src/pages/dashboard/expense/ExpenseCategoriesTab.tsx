@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import { HiOutlinePencil, HiOutlineCheck, HiOutlineX } from 'react-icons/hi';
 import { useUpdateExpenseCategory } from '../../../hooks/useApi';

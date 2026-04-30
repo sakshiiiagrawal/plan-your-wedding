@@ -11,10 +11,7 @@ import {
 import toast from 'react-hot-toast';
 import Portal from '../../components/Portal';
 import {
-  HiOutlineCalendar,
   HiOutlineLocationMarker,
-  HiOutlineClock,
-  HiOutlineSparkles,
   HiOutlinePlus,
   HiOutlineX,
   HiOutlineTrash,
@@ -429,15 +426,6 @@ export default function Events() {
     } catch {
       toast.error('Failed to delete event');
     }
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
   };
 
   const formatTime = (time: string | null | undefined) => {

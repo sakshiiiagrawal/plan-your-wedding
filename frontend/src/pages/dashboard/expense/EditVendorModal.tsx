@@ -54,11 +54,9 @@ export default function EditVendorModal({
     }
   }, [vendor]);
 
-  if (!vendor || !formData) return null;
-
-  const set = (patch: Partial<FormData>) =>
-    setFormData((prev) => (prev ? { ...prev, ...patch } : null));
-  const isDirty = JSON.stringify(formData) !== JSON.stringify(getEditVendorFormState(vendor));
+  const isDirty = formData && vendor
+    ? JSON.stringify(formData) !== JSON.stringify(getEditVendorFormState(vendor))
+    : false;
   const { attemptClose, dialog: unsavedDialog } = useUnsavedChangesPrompt({
     isDirty,
     onDiscard: onClose,
@@ -67,6 +65,11 @@ export default function EditVendorModal({
     },
     isSaving: isPending,
   });
+
+  if (!vendor || !formData) return null;
+
+  const set = (patch: Partial<FormData>) =>
+    setFormData((prev) => (prev ? { ...prev, ...patch } : null));
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

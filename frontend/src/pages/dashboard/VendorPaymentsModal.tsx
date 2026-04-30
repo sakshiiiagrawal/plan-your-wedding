@@ -97,13 +97,6 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
   const { data: payments = [] } = useSourcePayments(source.type, source.id);
   const createPayment = useCreateSourcePayment(source.type);
   const deletePayment = useDeleteSourcePayment(source.type);
-  const isDirty = JSON.stringify(formData) !== JSON.stringify(initialFormData);
-  const { attemptClose, dialog: unsavedDialog } = useUnsavedChangesPrompt({
-    isDirty,
-    onDiscard: onClose,
-    onSave: handleSave,
-    isSaving: createPayment.isPending,
-  });
 
   const committed = source.finance_summary?.committed_amount ?? 0;
   const paid = source.finance_summary?.paid_amount ?? 0;
@@ -196,6 +189,14 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
       toast.error(message);
     }
   };
+
+  const isDirty = JSON.stringify(formData) !== JSON.stringify(initialFormData);
+  const { attemptClose, dialog: unsavedDialog } = useUnsavedChangesPrompt({
+    isDirty,
+    onDiscard: onClose,
+    onSave: handleSave,
+    isSaving: createPayment.isPending,
+  });
 
   return (
     <>

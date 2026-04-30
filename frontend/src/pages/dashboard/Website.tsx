@@ -447,7 +447,7 @@ export default function Website() {
               placeholder="A short tagline for your wedding site…"
             />
             <p style={{ fontSize: 10, color: 'var(--ink-dim)', marginTop: 6 }}>
-              Displays beneath the couple's names on the homepage.
+              Displays beneath the couple&apos;s names on the homepage.
             </p>
           </div>
 
