@@ -95,7 +95,11 @@ export default function Step2_WeddingDetails({ data, onNext, onBack }: Step2Prop
             control={control}
             name="weddingDate"
             render={({ field }) => (
-              <DatePicker value={field.value || ''} onChange={field.onChange} placeholder="Pick your wedding date" />
+              <DatePicker
+                value={field.value || ''}
+                onChange={field.onChange}
+                placeholder="Pick your wedding date"
+              />
             )}
           />
         </div>

@@ -60,7 +60,9 @@ export default function DashboardLayout() {
   const groomName = heroContent?.groom_name || 'Groom';
   const weddingDate = heroContent?.wedding_date
     ? new Date(heroContent.wedding_date).toLocaleDateString('en-US', {
-        month: 'short', day: 'numeric', year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
       })
     : '';
 
@@ -75,10 +77,15 @@ export default function DashboardLayout() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-page)' }}>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'var(--bg-page)' }}
+      >
         <div className="text-center">
-          <div className="w-14 h-14 border-4 rounded-full animate-spin mx-auto mb-4"
-            style={{ borderColor: 'var(--line-soft)', borderTopColor: 'var(--gold)' }} />
+          <div
+            className="w-14 h-14 border-4 rounded-full animate-spin mx-auto mb-4"
+            style={{ borderColor: 'var(--line-soft)', borderTopColor: 'var(--gold)' }}
+          />
           <p style={{ color: 'var(--ink-low)', fontSize: 13 }}>Loading…</p>
         </div>
       </div>
@@ -90,7 +97,10 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div className="flex" style={{ background: 'var(--bg-page)', height: '100vh', overflow: 'hidden' }}>
+    <div
+      className="flex"
+      style={{ background: 'var(--bg-page)', height: '100vh', overflow: 'hidden' }}
+    >
       {/* Backdrop */}
       {sidebarOpen && (
         <div
@@ -121,19 +131,32 @@ export default function DashboardLayout() {
             rotate={0}
             style={{ position: 'absolute', top: 10, right: 10, color: 'var(--gold)', opacity: 0.5 }}
           />
-          <div className="uppercase-eyebrow" style={{ marginBottom: 10 }}>The Wedding of</div>
+          <div className="uppercase-eyebrow" style={{ marginBottom: 10 }}>
+            The Wedding of
+          </div>
           <div
             className="display"
             style={{ fontSize: 26, lineHeight: 1.05, color: 'var(--ink-high)' }}
           >
             {brideName}
-            <div style={{ fontStyle: 'italic', color: 'var(--gold)', fontSize: 20, margin: '2px 0' }}>
+            <div
+              style={{ fontStyle: 'italic', color: 'var(--gold)', fontSize: 20, margin: '2px 0' }}
+            >
               &amp;
             </div>
             {groomName}
           </div>
           {weddingDate && (
-            <div className="mono" style={{ marginTop: 10, fontSize: 10, letterSpacing: '0.1em', color: 'var(--ink-dim)', textTransform: 'uppercase' }}>
+            <div
+              className="mono"
+              style={{
+                marginTop: 10,
+                fontSize: 10,
+                letterSpacing: '0.1em',
+                color: 'var(--ink-dim)',
+                textTransform: 'uppercase',
+              }}
+            >
               {weddingDate}
             </div>
           )}
@@ -151,7 +174,7 @@ export default function DashboardLayout() {
                 to={fullPath}
                 end={item.end ?? false}
                 onClick={() => setSidebarOpen(false)}
-                className={({ isActive }) => isActive ? 'nav-active' : 'nav-inactive'}
+                className={({ isActive }) => (isActive ? 'nav-active' : 'nav-inactive')}
                 style={({ isActive }) => ({
                   display: 'flex',
                   alignItems: 'center',
@@ -181,7 +204,15 @@ export default function DashboardLayout() {
 
         {/* Footer */}
         <div style={{ padding: '16px 20px' }}>
-          <div className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)', letterSpacing: '0.08em', marginBottom: 10 }}>
+          <div
+            className="mono"
+            style={{
+              fontSize: 11,
+              color: 'var(--ink-dim)',
+              letterSpacing: '0.08em',
+              marginBottom: 10,
+            }}
+          >
             {slug}.weds.app
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -193,10 +224,29 @@ export default function DashboardLayout() {
               {user?.name?.charAt(0) || 'U'}
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink-high)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <p
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: 'var(--ink-high)',
+                  margin: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {user?.name}
               </p>
-              <p style={{ fontSize: 10, color: 'var(--ink-dim)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <p
+                style={{
+                  fontSize: 10,
+                  color: 'var(--ink-dim)',
+                  margin: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {user?.email}
               </p>
             </div>
@@ -204,14 +254,19 @@ export default function DashboardLayout() {
           <button
             onClick={handleLogout}
             style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 8px', width: '100%',
-              borderRadius: 6, fontSize: 12,
-              color: 'var(--err)', background: 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 8px',
+              width: '100%',
+              borderRadius: 6,
+              fontSize: 12,
+              color: 'var(--err)',
+              background: 'transparent',
               transition: 'background 150ms',
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(220,38,38,0.07)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(220,38,38,0.07)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             <HiOutlineLogout style={{ width: 14, height: 14 }} />
             <span>Logout</span>
@@ -220,8 +275,16 @@ export default function DashboardLayout() {
       </aside>
 
       {/* ── Main ───────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh',
+          overflow: 'hidden',
+        }}
+      >
         {/* Topbar */}
         <header
           style={{
@@ -244,7 +307,12 @@ export default function DashboardLayout() {
             <button
               onClick={() => setSidebarOpen(true)}
               className="lg:hidden"
-              style={{ padding: 6, borderRadius: 6, color: 'var(--ink-mid)', background: 'transparent' }}
+              style={{
+                padding: 6,
+                borderRadius: 6,
+                color: 'var(--ink-mid)',
+                background: 'transparent',
+              }}
             >
               <HiOutlineMenu style={{ width: 20, height: 20 }} />
             </button>
@@ -264,9 +332,13 @@ export default function DashboardLayout() {
             <div className="hidden md:block" style={{ position: 'relative' }}>
               <HiOutlineSearch
                 style={{
-                  position: 'absolute', left: 10, top: '50%',
+                  position: 'absolute',
+                  left: 10,
+                  top: '50%',
                   transform: 'translateY(-50%)',
-                  width: 14, height: 14, color: 'var(--ink-dim)',
+                  width: 14,
+                  height: 14,
+                  color: 'var(--ink-dim)',
                   pointerEvents: 'none',
                 }}
               />
@@ -280,13 +352,18 @@ export default function DashboardLayout() {
             {/* Bell */}
             <button
               style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 32, height: 32, borderRadius: 8,
-                color: 'var(--ink-mid)', background: 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                color: 'var(--ink-mid)',
+                background: 'transparent',
                 transition: 'background 150ms',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-raised)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-raised)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
               <HiOutlineBell style={{ width: 17, height: 17 }} />
             </button>
@@ -295,8 +372,11 @@ export default function DashboardLayout() {
             <NavLink
               to={`/${slug}`}
               style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                fontSize: 12, fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                fontSize: 12,
+                fontWeight: 500,
                 color: 'var(--ink-mid)',
                 border: '1px solid var(--line)',
                 borderRadius: 8,
@@ -306,11 +386,11 @@ export default function DashboardLayout() {
                 whiteSpace: 'nowrap',
                 textDecoration: 'none',
               }}
-              onMouseEnter={e => {
+              onMouseEnter={(e) => {
                 (e.currentTarget as HTMLElement).style.background = 'var(--bg-raised)';
                 (e.currentTarget as HTMLElement).style.color = 'var(--ink-high)';
               }}
-              onMouseLeave={e => {
+              onMouseLeave={(e) => {
                 (e.currentTarget as HTMLElement).style.background = 'transparent';
                 (e.currentTarget as HTMLElement).style.color = 'var(--ink-mid)';
               }}

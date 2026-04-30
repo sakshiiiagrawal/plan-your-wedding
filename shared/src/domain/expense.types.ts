@@ -10,11 +10,7 @@ export type FinanceSourceType = 'manual' | 'vendor' | 'venue';
 export type FinanceHeaderStatus = 'active' | 'closed' | 'terminated';
 export type FinanceItemSide = 'bride' | 'groom' | 'shared';
 export type FinancePaymentDirection = 'outflow' | 'inflow';
-export type FinancePaymentStatus =
-  | 'scheduled'
-  | 'posted'
-  | 'cancelled'
-  | 'entered_in_error';
+export type FinancePaymentStatus = 'scheduled' | 'posted' | 'cancelled' | 'entered_in_error';
 export type FinancePaidBySide = 'bride' | 'groom' | 'shared';
 export type FinanceActivityEntityType =
   | 'expense'

@@ -95,12 +95,14 @@ function GuestDrawer({
   const { data: detail } = useGuest(guest.id);
   const { data: allEvents = [] } = useEvents();
 
-  const rsvps: any[] = detail?.rsvps ?? (guest.rsvps ?? []);
+  const rsvps: any[] = detail?.rsvps ?? guest.rsvps ?? [];
   const eventsMap = new Map((allEvents as any[]).map((e: any) => [e.id, e]));
 
   const rsvpColor = (status: string) => {
-    if (status === 'confirmed') return { color: 'var(--ok)', bg: 'rgba(22,163,74,0.08)', border: 'var(--ok)' };
-    if (status === 'declined') return { color: 'var(--err)', bg: 'rgba(220,38,38,0.07)', border: 'var(--err)' };
+    if (status === 'confirmed')
+      return { color: 'var(--ok)', bg: 'rgba(22,163,74,0.08)', border: 'var(--ok)' };
+    if (status === 'declined')
+      return { color: 'var(--err)', bg: 'rgba(220,38,38,0.07)', border: 'var(--err)' };
     return { color: 'var(--warn)', bg: 'rgba(217,119,6,0.08)', border: 'var(--warn)' };
   };
 
@@ -109,7 +111,16 @@ function GuestDrawer({
       <div style={{ padding: 24, position: 'relative' }}>
         <button
           onClick={onClose}
-          style={{ position: 'absolute', right: 16, top: 16, padding: '6px 10px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
+          style={{
+            position: 'absolute',
+            right: 16,
+            top: 16,
+            padding: '6px 10px',
+            borderRadius: 6,
+            color: 'var(--ink-dim)',
+            background: 'transparent',
+            cursor: 'pointer',
+          }}
         >
           <HiOutlineX style={{ width: 14, height: 14 }} />
         </button>
@@ -119,10 +130,13 @@ function GuestDrawer({
           <div
             className="avatar"
             style={{
-              width: 56, height: 56, fontSize: 20,
-              background: guest.side === 'bride'
-                ? 'linear-gradient(135deg, #be185d, #7c3aed)'
-                : 'linear-gradient(135deg, var(--gold-deep), var(--gold))',
+              width: 56,
+              height: 56,
+              fontSize: 20,
+              background:
+                guest.side === 'bride'
+                  ? 'linear-gradient(135deg, #be185d, #7c3aed)'
+                  : 'linear-gradient(135deg, var(--gold-deep), var(--gold))',
             }}
           >
             {(guest.first_name?.[0] || '?').toUpperCase()}
@@ -143,23 +157,30 @@ function GuestDrawer({
 
         {/* Overall RSVP status */}
         <div style={{ padding: '20px 0' }}>
-          <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>Overall RSVP</div>
+          <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>
+            Overall RSVP
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
-            {([
-              ['confirmed', 'Confirmed'],
-              ['pending', 'Pending'],
-              ['declined', 'Regret'],
-            ] as const).map(([v, l]) => {
+            {(
+              [
+                ['confirmed', 'Confirmed'],
+                ['pending', 'Pending'],
+                ['declined', 'Regret'],
+              ] as const
+            ).map(([v, l]) => {
               const isActive = guest.rsvp_status === v;
               const c = rsvpColor(v);
               return (
                 <div
                   key={v}
                   style={{
-                    padding: '10px 8px', borderRadius: 8, textAlign: 'center',
+                    padding: '10px 8px',
+                    borderRadius: 8,
+                    textAlign: 'center',
                     border: `1px solid ${isActive ? c.border : 'var(--line)'}`,
                     background: isActive ? c.bg : 'transparent',
-                    fontSize: 12, fontWeight: 500,
+                    fontSize: 12,
+                    fontWeight: 500,
                     color: isActive ? c.color : 'var(--ink-low)',
                   }}
                 >
@@ -174,9 +195,13 @@ function GuestDrawer({
 
         {/* Events attending */}
         <div style={{ padding: '20px 0' }}>
-          <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>Events attending</div>
+          <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>
+            Events attending
+          </div>
           {rsvps.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--ink-dim)', fontStyle: 'italic' }}>Not linked to any events yet</p>
+            <p style={{ fontSize: 12, color: 'var(--ink-dim)', fontStyle: 'italic' }}>
+              Not linked to any events yet
+            </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {rsvps.map((rsvp: any) => {
@@ -186,9 +211,13 @@ function GuestDrawer({
                   <div
                     key={rsvp.id}
                     style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '10px 12px', borderRadius: 8,
-                      background: 'var(--bg-raised)', border: '1px solid var(--line-soft)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      background: 'var(--bg-raised)',
+                      border: '1px solid var(--line-soft)',
                     }}
                   >
                     <div>
@@ -196,15 +225,30 @@ function GuestDrawer({
                         {event?.name ?? 'Unknown event'}
                       </div>
                       {event?.date && (
-                        <div className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)', marginTop: 2 }}>
-                          {new Date(event.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        <div
+                          className="mono"
+                          style={{ fontSize: 11, color: 'var(--ink-dim)', marginTop: 2 }}
+                        >
+                          {new Date(event.date).toLocaleDateString('en-US', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
                         </div>
                       )}
                     </div>
-                    <span style={{
-                      fontSize: 11, padding: '3px 8px', borderRadius: 100, fontWeight: 500, textTransform: 'capitalize',
-                      background: c.bg, color: c.color, border: `1px solid ${c.border}`,
-                    }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        padding: '3px 8px',
+                        borderRadius: 100,
+                        fontWeight: 500,
+                        textTransform: 'capitalize',
+                        background: c.bg,
+                        color: c.color,
+                        border: `1px solid ${c.border}`,
+                      }}
+                    >
                       {rsvp.rsvp_status}
                     </span>
                   </div>
@@ -217,7 +261,9 @@ function GuestDrawer({
         <hr className="hairline" />
 
         {/* Contact details */}
-        <div style={{ padding: '20px 0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div
+          style={{ padding: '20px 0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}
+        >
           {[
             { label: 'Phone', value: guest.phone || '—', mono: true },
             { label: 'Meal', value: guest.meal_preference?.replace('_', ' ') || '—' },
@@ -226,7 +272,12 @@ function GuestDrawer({
           ].map(({ label, value, mono }) => (
             <div key={label}>
               <div className="uppercase-eyebrow">{label}</div>
-              <div className={mono ? 'mono' : ''} style={{ fontSize: 13, marginTop: 4, color: 'var(--ink-mid)' }}>{value}</div>
+              <div
+                className={mono ? 'mono' : ''}
+                style={{ fontSize: 13, marginTop: 4, color: 'var(--ink-mid)' }}
+              >
+                {value}
+              </div>
             </div>
           ))}
         </div>
@@ -235,7 +286,9 @@ function GuestDrawer({
           <>
             <hr className="hairline" />
             <div style={{ padding: '20px 0' }}>
-              <div className="uppercase-eyebrow" style={{ marginBottom: 6 }}>Notes</div>
+              <div className="uppercase-eyebrow" style={{ marginBottom: 6 }}>
+                Notes
+              </div>
               <div style={{ fontSize: 13, color: 'var(--ink-mid)' }}>{guest.notes}</div>
             </div>
           </>
@@ -246,18 +299,40 @@ function GuestDrawer({
           <button
             onClick={() => onEdit(guest)}
             className="btn-secondary"
-            style={{ flex: 1, fontSize: 12, padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+            style={{
+              flex: 1,
+              fontSize: 12,
+              padding: '8px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+            }}
           >
             <HiOutlinePencil style={{ width: 13, height: 13 }} /> Edit
           </button>
           {guest.phone && (
-            <a href={`tel:${guest.phone}`} className="btn-secondary" style={{ padding: '8px 12px', display: 'flex', alignItems: 'center' }}>
+            <a
+              href={`tel:${guest.phone}`}
+              className="btn-secondary"
+              style={{ padding: '8px 12px', display: 'flex', alignItems: 'center' }}
+            >
               <HiOutlinePhone style={{ width: 13, height: 13 }} />
             </a>
           )}
           <button
             onClick={() => onDelete(guest)}
-            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)', background: 'transparent', color: 'var(--err)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--line)',
+              background: 'transparent',
+              color: 'var(--err)',
+              fontSize: 12,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+            }}
           >
             <HiOutlineTrash style={{ width: 13, height: 13 }} />
           </button>
@@ -507,7 +582,16 @@ export default function Guests() {
   if (guestsLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 256 }}>
-        <div style={{ width: 44, height: 44, borderRadius: '50%', border: '3px solid var(--line-soft)', borderTopColor: 'var(--gold)', animation: 'spin 0.8s linear infinite' }} />
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: '50%',
+            border: '3px solid var(--line-soft)',
+            borderTopColor: 'var(--gold)',
+            animation: 'spin 0.8s linear infinite',
+          }}
+        />
       </div>
     );
   }
@@ -547,13 +631,30 @@ export default function Guests() {
       {/* Stats row — 4 KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard eyebrow="Invited" value={totalGuests} hint="Total invites sent" />
-        <KPICard eyebrow="Confirmed" value={confirmed} hint={totalGuests > 0 ? `${Math.round(confirmed / totalGuests * 100)}% response rate` : ''} accent />
+        <KPICard
+          eyebrow="Confirmed"
+          value={confirmed}
+          hint={
+            totalGuests > 0 ? `${Math.round((confirmed / totalGuests) * 100)}% response rate` : ''
+          }
+          accent
+        />
         <KPICard eyebrow="Pending" value={pending} hint="Awaiting response" />
         <KPICard eyebrow="Regrets" value={declined} hint="Cannot attend" />
       </div>
 
       {/* Toolbar */}
-      <div className="card" style={{ padding: 12, marginBottom: 0, display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+      <div
+        className="card"
+        style={{
+          padding: 12,
+          marginBottom: 0,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 10,
+          alignItems: 'center',
+        }}
+      >
         <div className="relative flex-1 min-w-[200px] max-w-xs">
           <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -586,8 +687,13 @@ export default function Guests() {
         />
         <label
           style={{
-            display: 'flex', alignItems: 'center', gap: 6, fontSize: 12,
-            color: 'var(--ink-mid)', cursor: 'pointer', padding: '0 8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 12,
+            color: 'var(--ink-mid)',
+            cursor: 'pointer',
+            padding: '0 8px',
           }}
           title="Vendor teams are stored as guests so they appear in accommodation and meal counts."
         >
@@ -617,11 +723,17 @@ export default function Guests() {
               {filteredGuests.map((guest: any) => {
                 const isMarkedForDelete = pendingDeletes.has(guest.id);
                 const rsvpVariant =
-                  guest.rsvp_status === 'confirmed' ? 'ok' :
-                  guest.rsvp_status === 'declined' ? 'err' : 'warn';
+                  guest.rsvp_status === 'confirmed'
+                    ? 'ok'
+                    : guest.rsvp_status === 'declined'
+                      ? 'err'
+                      : 'warn';
                 const rsvpLabel =
-                  guest.rsvp_status === 'confirmed' ? 'Confirmed' :
-                  guest.rsvp_status === 'declined' ? 'Regret' : 'Pending';
+                  guest.rsvp_status === 'confirmed'
+                    ? 'Confirmed'
+                    : guest.rsvp_status === 'declined'
+                      ? 'Regret'
+                      : 'Pending';
                 return (
                   <tr
                     key={guest.id}
@@ -633,18 +745,25 @@ export default function Guests() {
                         <div
                           className="avatar"
                           style={{
-                            width: 28, height: 28, fontSize: 11,
-                            background: guest.side === 'bride'
-                              ? 'linear-gradient(135deg, #be185d, #7c3aed)'
-                              : 'linear-gradient(135deg, var(--gold-deep), var(--gold))',
+                            width: 28,
+                            height: 28,
+                            fontSize: 11,
+                            background:
+                              guest.side === 'bride'
+                                ? 'linear-gradient(135deg, #be185d, #7c3aed)'
+                                : 'linear-gradient(135deg, var(--gold-deep), var(--gold))',
                           }}
                         >
                           {(guest.first_name?.[0] || '?').toUpperCase()}
                         </div>
                         <div>
-                          <div>{guest.first_name} {guest.last_name}</div>
+                          <div>
+                            {guest.first_name} {guest.last_name}
+                          </div>
                           {guest.relationship && (
-                            <div className="ink-low" style={{ fontSize: 11 }}>{guest.relationship}</div>
+                            <div className="ink-low" style={{ fontSize: 11 }}>
+                              {guest.relationship}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -652,17 +771,26 @@ export default function Guests() {
                     <td>
                       <span className={`pill ${guest.side === 'bride' ? 'bride' : 'groom'}`}>
                         <span className="dot" />
-                        {guest.side === 'bride' ? 'Bride' : guest.side === 'groom' ? 'Groom' : 'Mutual'}
+                        {guest.side === 'bride'
+                          ? 'Bride'
+                          : guest.side === 'groom'
+                            ? 'Groom'
+                            : 'Mutual'}
                       </span>
                     </td>
                     <td className="mono hidden sm:table-cell" style={{ fontSize: 11 }}>
                       {guest.phone || <span className="ink-dim">—</span>}
                     </td>
                     <td className="hidden md:table-cell" style={{ textTransform: 'capitalize' }}>
-                      {guest.meal_preference?.replace('_', ' ') || <span className="ink-dim">—</span>}
+                      {guest.meal_preference?.replace('_', ' ') || (
+                        <span className="ink-dim">—</span>
+                      )}
                     </td>
                     <td>
-                      <span className={`pill ${rsvpVariant}`}><span className="dot" />{rsvpLabel}</span>
+                      <span className={`pill ${rsvpVariant}`}>
+                        <span className="dot" />
+                        {rsvpLabel}
+                      </span>
                     </td>
                     <td onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-1">
@@ -670,9 +798,22 @@ export default function Guests() {
                           <>
                             <button
                               onClick={() => handleEdit(guest)}
-                              style={{ padding: '5px 7px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--gold-glow)'; (e.currentTarget as HTMLElement).style.color = 'var(--gold-deep)'; }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)'; }}
+                              style={{
+                                padding: '5px 7px',
+                                borderRadius: 6,
+                                color: 'var(--ink-dim)',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                              }}
+                              onMouseEnter={(e) => {
+                                (e.currentTarget as HTMLElement).style.background =
+                                  'var(--gold-glow)';
+                                (e.currentTarget as HTMLElement).style.color = 'var(--gold-deep)';
+                              }}
+                              onMouseLeave={(e) => {
+                                (e.currentTarget as HTMLElement).style.background = 'transparent';
+                                (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)';
+                              }}
                               title="Edit guest"
                             >
                               <HiOutlinePencil className="w-4 h-4" />
@@ -715,9 +856,7 @@ export default function Guests() {
                       <input
                         type="text"
                         value={row.first_name}
-                        onChange={(e) =>
-                          updatePendingRow(row._key, { first_name: e.target.value })
-                        }
+                        onChange={(e) => updatePendingRow(row._key, { first_name: e.target.value })}
                         className="input text-sm py-1.5 min-w-0 w-28"
                         placeholder="First name *"
                       />
@@ -770,7 +909,12 @@ export default function Guests() {
                       onChange={(e) =>
                         updatePendingRow(row._key, { needs_accommodation: e.target.checked })
                       }
-                      style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--gold)' }}
+                      style={{
+                        width: 14,
+                        height: 14,
+                        cursor: 'pointer',
+                        accentColor: 'var(--gold)',
+                      }}
                     />
                   </td>
                   <td className="p-2">
@@ -791,7 +935,16 @@ export default function Guests() {
                     <div className="flex items-center justify-between gap-3">
                       <button
                         onClick={duplicateLastRow}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--gold-deep)', fontWeight: 500, background: 'transparent', cursor: 'pointer' }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontSize: 12,
+                          color: 'var(--gold-deep)',
+                          fontWeight: 500,
+                          background: 'transparent',
+                          cursor: 'pointer',
+                        }}
                         title="Add another row based on the last entry"
                       >
                         <HiOutlinePlus className="w-4 h-4" />
@@ -840,7 +993,9 @@ export default function Guests() {
                           className="text-sm py-1.5 px-4 flex items-center gap-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50"
                         >
                           <HiOutlineTrash className="w-4 h-4" />
-                          {isDeletingAll ? 'Deleting...' : `Delete ${pendingDeletes.size} Guest${pendingDeletes.size > 1 ? 's' : ''}`}
+                          {isDeletingAll
+                            ? 'Deleting...'
+                            : `Delete ${pendingDeletes.size} Guest${pendingDeletes.size > 1 ? 's' : ''}`}
                         </button>
                       </div>
                     </div>
@@ -858,70 +1013,166 @@ export default function Guests() {
           <GuestDrawer
             guest={selectedGuest}
             onClose={() => setSelectedGuest(null)}
-            onEdit={(g) => { setSelectedGuest(null); handleEdit(g); }}
-            onDelete={(g) => { markForDelete(g.id); setSelectedGuest(null); }}
+            onEdit={(g) => {
+              setSelectedGuest(null);
+              handleEdit(g);
+            }}
+            onDelete={(g) => {
+              markForDelete(g.id);
+              setSelectedGuest(null);
+            }}
           />
         )}
       </DrawerPanel>
 
       {showEditModal && (
         <Portal>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={attemptCloseGuestModal}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 50,
+              padding: 16,
+            }}
+            onClick={attemptCloseGuestModal}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'var(--bg-panel)',
+                borderRadius: 'var(--radius-lg)',
+                width: '100%',
+                maxWidth: 640,
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '20px 24px',
+                  borderBottom: '1px solid var(--line-soft)',
+                }}
+              >
                 <div>
-                  <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Guest Details</div>
-                  <h2 className="display" style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}>{editingGuest ? 'Edit guest' : 'Add a guest'}</h2>
+                  <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>
+                    Guest Details
+                  </div>
+                  <h2
+                    className="display"
+                    style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}
+                  >
+                    {editingGuest ? 'Edit guest' : 'Add a guest'}
+                  </h2>
                 </div>
                 <button
                   onClick={attemptCloseGuestModal}
-                  style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
+                  style={{
+                    padding: '6px 8px',
+                    borderRadius: 6,
+                    color: 'var(--ink-dim)',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                  }}
                 >
                   <HiOutlineX style={{ width: 16, height: 16 }} />
                 </button>
               </div>
 
-              <form id="edit-guest-form" onSubmit={handleEditSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <form
+                id="edit-guest-form"
+                onSubmit={handleEditSubmit}
+                style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}
+              >
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="label">First Name *</label>
-                    <input type="text" value={formData.first_name} onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} className="input" placeholder="First name" required />
+                    <input
+                      type="text"
+                      value={formData.first_name}
+                      onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                      className="input"
+                      placeholder="First name"
+                      required
+                    />
                   </div>
                   <div>
                     <label className="label">Last Name</label>
-                    <input type="text" value={formData.last_name} onChange={(e) => setFormData({ ...formData, last_name: e.target.value })} className="input" placeholder="Last name" />
+                    <input
+                      type="text"
+                      value={formData.last_name}
+                      onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                      className="input"
+                      placeholder="Last name"
+                    />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="label">Phone</label>
-                    <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="input" placeholder="Phone number" />
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="input"
+                      placeholder="Phone number"
+                    />
                   </div>
                   <div>
                     <label className="label">Email</label>
-                    <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="input" placeholder="Email address" />
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="input"
+                      placeholder="Email address"
+                    />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="label">Side *</label>
-                    <select value={formData.side} onChange={(e) => setFormData({ ...formData, side: e.target.value })} className="input" required>
+                    <select
+                      value={formData.side}
+                      onChange={(e) => setFormData({ ...formData, side: e.target.value })}
+                      className="input"
+                      required
+                    >
                       <option value="bride">Bride Side</option>
                       <option value="groom">Groom Side</option>
                     </select>
                   </div>
                   <div>
                     <label className="label">Relationship</label>
-                    <input type="text" value={formData.relationship} onChange={(e) => setFormData({ ...formData, relationship: e.target.value })} className="input" placeholder="e.g., Uncle, Cousin" />
+                    <input
+                      type="text"
+                      value={formData.relationship}
+                      onChange={(e) => setFormData({ ...formData, relationship: e.target.value })}
+                      className="input"
+                      placeholder="e.g., Uncle, Cousin"
+                    />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="label">Meal Preference</label>
-                    <select value={formData.meal_preference} onChange={(e) => setFormData({ ...formData, meal_preference: e.target.value })} className="input">
+                    <select
+                      value={formData.meal_preference}
+                      onChange={(e) =>
+                        setFormData({ ...formData, meal_preference: e.target.value })
+                      }
+                      className="input"
+                    >
                       <option value="vegetarian">Vegetarian</option>
                       <option value="jain">Jain</option>
                       <option value="vegan">Vegan</option>
@@ -930,7 +1181,15 @@ export default function Guests() {
                   </div>
                   <div>
                     <label className="label">Dietary Restrictions</label>
-                    <input type="text" value={formData.dietary_restrictions} onChange={(e) => setFormData({ ...formData, dietary_restrictions: e.target.value })} className="input" placeholder="e.g., No onion-garlic" />
+                    <input
+                      type="text"
+                      value={formData.dietary_restrictions}
+                      onChange={(e) =>
+                        setFormData({ ...formData, dietary_restrictions: e.target.value })
+                      }
+                      className="input"
+                      placeholder="e.g., No onion-garlic"
+                    />
                   </div>
                 </div>
 
@@ -940,12 +1199,27 @@ export default function Guests() {
                     { key: 'needs_pickup', label: 'Needs Pickup' },
                     { key: 'is_vip', label: 'VIP Guest' },
                   ].map(({ key, label }) => (
-                    <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-mid)', cursor: 'pointer' }}>
+                    <label
+                      key={key}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        fontSize: 13,
+                        color: 'var(--ink-mid)',
+                        cursor: 'pointer',
+                      }}
+                    >
                       <input
                         type="checkbox"
                         checked={formData[key as keyof GuestFormData] as boolean}
                         onChange={(e) => setFormData({ ...formData, [key]: e.target.checked })}
-                        style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--gold)' }}
+                        style={{
+                          width: 14,
+                          height: 14,
+                          cursor: 'pointer',
+                          accentColor: 'var(--gold)',
+                        }}
                       />
                       {label}
                     </label>
@@ -954,13 +1228,39 @@ export default function Guests() {
 
                 <div>
                   <label className="label">Notes</label>
-                  <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="input" rows={3} placeholder="Any special notes..." />
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="input"
+                    rows={3}
+                    placeholder="Any special notes..."
+                  />
                 </div>
               </form>
 
-              <div style={{ display: 'flex', gap: 10, padding: '16px 24px', borderTop: '1px solid var(--line-soft)' }}>
-                <button type="button" onClick={attemptCloseGuestModal} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
-                <button type="submit" form="edit-guest-form" disabled={updateMutation.isPending} className="btn-primary" style={{ flex: 1, opacity: updateMutation.isPending ? 0.5 : 1 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 10,
+                  padding: '16px 24px',
+                  borderTop: '1px solid var(--line-soft)',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={attemptCloseGuestModal}
+                  className="btn-outline"
+                  style={{ flex: 1 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  form="edit-guest-form"
+                  disabled={updateMutation.isPending}
+                  className="btn-primary"
+                  style={{ flex: 1, opacity: updateMutation.isPending ? 0.5 : 1 }}
+                >
                   {updateMutation.isPending ? 'Saving…' : 'Update Guest'}
                 </button>
               </div>
@@ -972,48 +1272,147 @@ export default function Guests() {
 
       {showImportModal && (
         <Portal>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={() => setShowImportModal(false)}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 560, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 50,
+              padding: 16,
+            }}
+            onClick={() => setShowImportModal(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'var(--bg-panel)',
+                borderRadius: 'var(--radius-lg)',
+                width: '100%',
+                maxWidth: 560,
+                boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '20px 24px',
+                  borderBottom: '1px solid var(--line-soft)',
+                }}
+              >
                 <div>
-                  <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Excel Import</div>
-                  <h2 className="display" style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}>Import guests</h2>
+                  <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>
+                    Excel Import
+                  </div>
+                  <h2
+                    className="display"
+                    style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}
+                  >
+                    Import guests
+                  </h2>
                 </div>
-                <button onClick={() => setShowImportModal(false)} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
+                <button
+                  onClick={() => setShowImportModal(false)}
+                  style={{
+                    padding: '6px 8px',
+                    borderRadius: 6,
+                    color: 'var(--ink-dim)',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                  }}
+                >
                   <HiOutlineX style={{ width: 16, height: 16 }} />
                 </button>
               </div>
 
               <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ background: 'var(--bg-raised)', border: '1px solid var(--line-soft)', borderRadius: 8, padding: 16 }}>
-                  <div className="uppercase-eyebrow" style={{ marginBottom: 10 }}>Instructions</div>
-                  <ol style={{ paddingLeft: 18, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div
+                  style={{
+                    background: 'var(--bg-raised)',
+                    border: '1px solid var(--line-soft)',
+                    borderRadius: 8,
+                    padding: 16,
+                  }}
+                >
+                  <div className="uppercase-eyebrow" style={{ marginBottom: 10 }}>
+                    Instructions
+                  </div>
+                  <ol
+                    style={{
+                      paddingLeft: 18,
+                      margin: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6,
+                    }}
+                  >
                     {[
-                      <><strong>Download the sample template</strong> — contains 3 example guests to show the format</>,
-                      <><strong>Edit the Excel file:</strong> replace sample data with your actual guests</>,
-                      <><strong>Required fields:</strong> First Name and Side (must be "Bride" or "Groom")</>,
-                      <><strong>Optional:</strong> Last Name, Phone, Relationship, Meal Preference, Accommodation, Pickup</>,
-                      <><strong>Boolean values:</strong> use "Yes" or "No" for Accommodation and Pickup columns</>,
+                      <>
+                        <strong>Download the sample template</strong> — contains 3 example guests to
+                        show the format
+                      </>,
+                      <>
+                        <strong>Edit the Excel file:</strong> replace sample data with your actual
+                        guests
+                      </>,
+                      <>
+                        <strong>Required fields:</strong> First Name and Side (must be "Bride" or
+                        "Groom")
+                      </>,
+                      <>
+                        <strong>Optional:</strong> Last Name, Phone, Relationship, Meal Preference,
+                        Accommodation, Pickup
+                      </>,
+                      <>
+                        <strong>Boolean values:</strong> use "Yes" or "No" for Accommodation and
+                        Pickup columns
+                      </>,
                     ].map((item, i) => (
-                      <li key={i} style={{ fontSize: 13, color: 'var(--ink-mid)', lineHeight: 1.5 }}>{item}</li>
+                      <li
+                        key={i}
+                        style={{ fontSize: 13, color: 'var(--ink-mid)', lineHeight: 1.5 }}
+                      >
+                        {item}
+                      </li>
                     ))}
                   </ol>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <button onClick={handleDownloadTemplate} className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                  <button
+                    onClick={handleDownloadTemplate}
+                    className="btn-outline"
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
+                  >
                     <HiOutlineDownload style={{ width: 15, height: 15 }} />
                     Download Sample Template
                   </button>
                 </div>
 
-                <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleImport} style={{ display: 'none' }} />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleImport}
+                  style={{ display: 'none' }}
+                />
 
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isImporting}
                   className="btn-primary"
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: isImporting ? 0.5 : 1 }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    opacity: isImporting ? 0.5 : 1,
+                  }}
                 >
                   <HiOutlineUpload style={{ width: 16, height: 16 }} />
                   {isImporting ? 'Importing…' : 'Import Data from Excel'}

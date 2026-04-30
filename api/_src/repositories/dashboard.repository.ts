@@ -76,7 +76,9 @@ export async function findRecentActivity(ownerId: string) {
   const [guests, vendors, tasksCompleted, payments] = await Promise.all([
     supabase
       .from('guests')
-      .select('id, first_name, last_name, side, created_at, created_by, users!guests_created_by_fkey(name)')
+      .select(
+        'id, first_name, last_name, side, created_at, created_by, users!guests_created_by_fkey(name)',
+      )
       .eq('user_id', ownerId)
       .order('created_at', { ascending: false })
       .limit(5),

@@ -75,16 +75,28 @@ const PRIORITY_COLOR: Record<string, string> = {
 };
 
 const PRIORITY_PILL_STYLE: Record<string, React.CSSProperties> = {
-  urgent: { background: 'rgba(220,38,38,0.08)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.2)' },
-  high:   { background: 'rgba(234,88,12,0.08)',  color: '#ea580c', border: '1px solid rgba(234,88,12,0.2)' },
-  medium: { background: 'var(--gold-glow)',       color: 'var(--gold-deep)', border: '1px solid rgba(212,175,55,0.3)' },
-  low:    { background: 'var(--bg-raised)',       color: 'var(--ink-low)',   border: '1px solid var(--line)' },
+  urgent: {
+    background: 'rgba(220,38,38,0.08)',
+    color: '#dc2626',
+    border: '1px solid rgba(220,38,38,0.2)',
+  },
+  high: {
+    background: 'rgba(234,88,12,0.08)',
+    color: '#ea580c',
+    border: '1px solid rgba(234,88,12,0.2)',
+  },
+  medium: {
+    background: 'var(--gold-glow)',
+    color: 'var(--gold-deep)',
+    border: '1px solid rgba(212,175,55,0.3)',
+  },
+  low: { background: 'var(--bg-raised)', color: 'var(--ink-low)', border: '1px solid var(--line)' },
 };
 
 const COLUMNS = [
-  { status: 'pending',     label: 'To do',       dotColor: 'var(--line-strong)' },
-  { status: 'in_progress', label: 'In progress',  dotColor: 'var(--gold)' },
-  { status: 'completed',   label: 'Done',         dotColor: '#16a34a' },
+  { status: 'pending', label: 'To do', dotColor: 'var(--line-strong)' },
+  { status: 'in_progress', label: 'In progress', dotColor: 'var(--gold)' },
+  { status: 'completed', label: 'Done', dotColor: '#16a34a' },
 ];
 
 const STATUS_CYCLE: Record<string, string> = {
@@ -136,27 +148,70 @@ function DraggableTaskCard({
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
         <button
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onCycleStatus(task); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onCycleStatus(task);
+          }}
           style={{
-            width: 16, height: 16, borderRadius: 4, flexShrink: 0, marginTop: 1,
+            width: 16,
+            height: 16,
+            borderRadius: 4,
+            flexShrink: 0,
+            marginTop: 1,
             border: `1.5px solid ${task.status === 'completed' ? 'var(--gold)' : task.status === 'in_progress' ? 'var(--gold)' : 'var(--line-strong)'}`,
-            background: task.status === 'completed' ? 'var(--gold)' : task.status === 'in_progress' ? 'var(--gold-glow)' : 'transparent',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            background:
+              task.status === 'completed'
+                ? 'var(--gold)'
+                : task.status === 'in_progress'
+                  ? 'var(--gold-glow)'
+                  : 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
           }}
         >
-          {task.status === 'completed' && <HiOutlineCheck style={{ width: 10, height: 10, color: 'white' }} />}
+          {task.status === 'completed' && (
+            <HiOutlineCheck style={{ width: 10, height: 10, color: 'white' }} />
+          )}
         </button>
-        <p style={{ fontSize: 13, flex: 1, lineHeight: 1.4, color: task.status === 'completed' ? 'var(--ink-dim)' : 'var(--ink-high)', textDecoration: task.status === 'completed' ? 'line-through' : 'none' }}>
+        <p
+          style={{
+            fontSize: 13,
+            flex: 1,
+            lineHeight: 1.4,
+            color: task.status === 'completed' ? 'var(--ink-dim)' : 'var(--ink-high)',
+            textDecoration: task.status === 'completed' ? 'line-through' : 'none',
+          }}
+        >
           {task.title}
         </p>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 24 }}>
-        <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 500, textTransform: 'capitalize', ...PRIORITY_PILL_STYLE[task.priority] }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingLeft: 24,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 10,
+            padding: '2px 6px',
+            borderRadius: 4,
+            fontWeight: 500,
+            textTransform: 'capitalize',
+            ...PRIORITY_PILL_STYLE[task.priority],
+          }}
+        >
           {task.priority}
         </span>
         {task.due_date && (
-          <span className="mono" style={{ fontSize: 10, color: 'var(--ink-dim)' }}>{fmtDate(task.due_date)}</span>
+          <span className="mono" style={{ fontSize: 10, color: 'var(--ink-dim)' }}>
+            {fmtDate(task.due_date)}
+          </span>
         )}
       </div>
 
@@ -172,19 +227,49 @@ function DraggableTaskCard({
       <div style={{ paddingLeft: 24, display: 'flex', gap: 4 }}>
         <button
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onEdit(task); }}
-          style={{ padding: '3px 5px', borderRadius: 4, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--gold-glow)'; (e.currentTarget as HTMLElement).style.color = 'var(--gold-deep)'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)'; }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(task);
+          }}
+          style={{
+            padding: '3px 5px',
+            borderRadius: 4,
+            color: 'var(--ink-dim)',
+            background: 'transparent',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'var(--gold-glow)';
+            (e.currentTarget as HTMLElement).style.color = 'var(--gold-deep)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'transparent';
+            (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)';
+          }}
         >
           <HiOutlinePencil style={{ width: 12, height: 12 }} />
         </button>
         <button
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-          style={{ padding: '3px 5px', borderRadius: 4, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.08)'; (e.currentTarget as HTMLElement).style.color = 'var(--err)'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)'; }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(task.id);
+          }}
+          style={{
+            padding: '3px 5px',
+            borderRadius: 4,
+            color: 'var(--ink-dim)',
+            background: 'transparent',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.08)';
+            (e.currentTarget as HTMLElement).style.color = 'var(--err)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'transparent';
+            (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)';
+          }}
         >
           <HiOutlineTrash style={{ width: 12, height: 12 }} />
         </button>
@@ -203,7 +288,7 @@ function DroppableColumn({
   onDelete,
   onCycleStatus,
 }: {
-  col: typeof COLUMNS[number];
+  col: (typeof COLUMNS)[number];
   tasks: any[];
   activeId: string | null;
   onEdit: (t: any) => void;
@@ -228,9 +313,21 @@ function DroppableColumn({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 4px 8px' }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: col.dotColor, flexShrink: 0 }} />
-        <span className="uppercase-eyebrow" style={{ flex: 1, fontSize: 9 }}>{col.label}</span>
-        <span className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>{tasks.length}</span>
+        <span
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            background: col.dotColor,
+            flexShrink: 0,
+          }}
+        />
+        <span className="uppercase-eyebrow" style={{ flex: 1, fontSize: 9 }}>
+          {col.label}
+        </span>
+        <span className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>
+          {tasks.length}
+        </span>
       </div>
 
       {tasks.map((task: any) => (
@@ -245,7 +342,15 @@ function DroppableColumn({
       ))}
 
       {tasks.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '24px 0', fontSize: 12, fontStyle: 'italic', color: 'var(--ink-dim)' }}>
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '24px 0',
+            fontSize: 12,
+            fontStyle: 'italic',
+            color: 'var(--ink-dim)',
+          }}
+        >
           Drop tasks here
         </div>
       )}
@@ -265,9 +370,7 @@ export default function Tasks() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const queryParams =
     viewMode === 'kanban'
@@ -322,7 +425,8 @@ export default function Tasks() {
       setShowAddModal(false);
       resetForm();
     } catch (error: any) {
-      const msg = error?.response?.data?.message || error?.response?.data?.error || 'Failed to save task';
+      const msg =
+        error?.response?.data?.message || error?.response?.data?.error || 'Failed to save task';
       toast.error(msg);
     }
   };
@@ -370,7 +474,16 @@ export default function Tasks() {
   if (tasksLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 256 }}>
-        <div style={{ width: 44, height: 44, borderRadius: '50%', border: '3px solid var(--line-soft)', borderTopColor: 'var(--gold)', animation: 'spin 0.8s linear infinite' }} />
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: '50%',
+            border: '3px solid var(--line-soft)',
+            borderTopColor: 'var(--gold)',
+            animation: 'spin 0.8s linear infinite',
+          }}
+        />
       </div>
     );
   }
@@ -382,7 +495,14 @@ export default function Tasks() {
         title="Tasks & to-dos"
         action={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ display: 'flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+            <div
+              style={{
+                display: 'flex',
+                border: '1px solid var(--line)',
+                borderRadius: 8,
+                overflow: 'hidden',
+              }}
+            >
               {[
                 { mode: 'list' as const, Icon: HiOutlineViewList, title: 'List view' },
                 { mode: 'kanban' as const, Icon: HiOutlineViewGrid, title: 'Kanban view' },
@@ -464,9 +584,22 @@ export default function Tasks() {
                   width: 240,
                 }}
               >
-                <p style={{ fontSize: 13, color: 'var(--ink-high)', margin: 0 }}>{activeTask.title}</p>
+                <p style={{ fontSize: 13, color: 'var(--ink-high)', margin: 0 }}>
+                  {activeTask.title}
+                </p>
                 {activeTask.priority && (
-                  <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 500, textTransform: 'capitalize', marginTop: 8, display: 'inline-block', ...PRIORITY_PILL_STYLE[activeTask.priority] }}>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      fontWeight: 500,
+                      textTransform: 'capitalize',
+                      marginTop: 8,
+                      display: 'inline-block',
+                      ...PRIORITY_PILL_STYLE[activeTask.priority],
+                    }}
+                  >
                     {activeTask.priority}
                   </span>
                 )}
@@ -522,44 +655,111 @@ export default function Tasks() {
                 <button
                   onClick={() => cycleStatus(task)}
                   style={{
-                    width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                    width: 18,
+                    height: 18,
+                    borderRadius: 4,
+                    flexShrink: 0,
                     border: `1.5px solid ${task.status === 'completed' ? 'var(--gold)' : task.status === 'in_progress' ? 'var(--gold)' : 'var(--line-strong)'}`,
-                    background: task.status === 'completed' ? 'var(--gold)' : task.status === 'in_progress' ? 'var(--gold-glow)' : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                    background:
+                      task.status === 'completed'
+                        ? 'var(--gold)'
+                        : task.status === 'in_progress'
+                          ? 'var(--gold-glow)'
+                          : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
                   }}
                 >
-                  {task.status === 'completed' && <HiOutlineCheck style={{ width: 10, height: 10, color: 'white' }} />}
+                  {task.status === 'completed' && (
+                    <HiOutlineCheck style={{ width: 10, height: 10, color: 'white' }} />
+                  )}
                 </button>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 500, color: task.status === 'completed' ? 'var(--ink-dim)' : 'var(--ink-high)', textDecoration: task.status === 'completed' ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: task.status === 'completed' ? 'var(--ink-dim)' : 'var(--ink-high)',
+                      textDecoration: task.status === 'completed' ? 'line-through' : 'none',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
                     {task.title}
                   </p>
-                  <div className="mono" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, fontSize: 11, color: 'var(--ink-dim)' }}>
+                  <div
+                    className="mono"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      marginTop: 2,
+                      fontSize: 11,
+                      color: 'var(--ink-dim)',
+                    }}
+                  >
                     {task.assigned_to && <span>{task.assigned_to}</span>}
                     {task.assigned_to && task.due_date && <span>·</span>}
                     {task.due_date && <span>{fmtDate(task.due_date)}</span>}
                   </div>
                 </div>
 
-                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 100, fontWeight: 500, textTransform: 'capitalize', flexShrink: 0, ...PRIORITY_PILL_STYLE[task.priority] }}>
+                <span
+                  style={{
+                    fontSize: 10,
+                    padding: '2px 8px',
+                    borderRadius: 100,
+                    fontWeight: 500,
+                    textTransform: 'capitalize',
+                    flexShrink: 0,
+                    ...PRIORITY_PILL_STYLE[task.priority],
+                  }}
+                >
                   {task.priority}
                 </span>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <button
                     onClick={() => handleEdit(task)}
-                    style={{ padding: '5px 7px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--gold-glow)'; (e.currentTarget as HTMLElement).style.color = 'var(--gold-deep)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)'; }}
+                    style={{
+                      padding: '5px 7px',
+                      borderRadius: 6,
+                      color: 'var(--ink-dim)',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = 'var(--gold-glow)';
+                      (e.currentTarget as HTMLElement).style.color = 'var(--gold-deep)';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = 'transparent';
+                      (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)';
+                    }}
                   >
                     <HiOutlinePencil style={{ width: 14, height: 14 }} />
                   </button>
                   <button
                     onClick={() => setDeleteConfirm(task.id)}
-                    style={{ padding: '5px 7px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.08)'; (e.currentTarget as HTMLElement).style.color = 'var(--err)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)'; }}
+                    style={{
+                      padding: '5px 7px',
+                      borderRadius: 6,
+                      color: 'var(--ink-dim)',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.08)';
+                      (e.currentTarget as HTMLElement).style.color = 'var(--err)';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = 'transparent';
+                      (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)';
+                    }}
                   >
                     <HiOutlineTrash style={{ width: 14, height: 14 }} />
                   </button>
@@ -568,7 +768,16 @@ export default function Tasks() {
             ))}
 
             {tasks.length === 0 && (
-              <div className="card" style={{ textAlign: 'center', padding: '40px 0', fontSize: 13, fontStyle: 'italic', color: 'var(--ink-dim)' }}>
+              <div
+                className="card"
+                style={{
+                  textAlign: 'center',
+                  padding: '40px 0',
+                  fontSize: 13,
+                  fontStyle: 'italic',
+                  color: 'var(--ink-dim)',
+                }}
+              >
                 No tasks found
               </div>
             )}
@@ -579,44 +788,122 @@ export default function Tasks() {
       {/* Add / Edit modal */}
       {showAddModal && (
         <Portal>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={attemptCloseTaskModal}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 50,
+              padding: 16,
+            }}
+            onClick={attemptCloseTaskModal}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'var(--bg-panel)',
+                borderRadius: 'var(--radius-lg)',
+                width: '100%',
+                maxWidth: 560,
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '20px 24px',
+                  borderBottom: '1px solid var(--line-soft)',
+                }}
+              >
                 <div>
-                  <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Checklist</div>
-                  <h2 className="display" style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}>{editingTask ? 'Edit task' : 'New task'}</h2>
+                  <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>
+                    Checklist
+                  </div>
+                  <h2
+                    className="display"
+                    style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}
+                  >
+                    {editingTask ? 'Edit task' : 'New task'}
+                  </h2>
                 </div>
-                <button onClick={attemptCloseTaskModal} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
+                <button
+                  onClick={attemptCloseTaskModal}
+                  style={{
+                    padding: '6px 8px',
+                    borderRadius: 6,
+                    color: 'var(--ink-dim)',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                  }}
+                >
                   <HiOutlineX style={{ width: 16, height: 16 }} />
                 </button>
               </div>
 
-              <form id="task-form" onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <form
+                id="task-form"
+                onSubmit={handleSubmit}
+                style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}
+              >
                 <div>
                   <label className="label">Title *</label>
-                  <input type="text" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="input" placeholder="Task title" required />
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="input"
+                    placeholder="Task title"
+                    required
+                  />
                 </div>
 
                 <div>
                   <label className="label">Description</label>
-                  <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="input" rows={3} placeholder="Task description…" />
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="input"
+                    rows={3}
+                    placeholder="Task description…"
+                  />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="label">Due Date</label>
-                    <DatePicker value={formData.due_date} onChange={(v) => setFormData({ ...formData, due_date: v })} placeholder="Pick a due date" />
+                    <DatePicker
+                      value={formData.due_date}
+                      onChange={(v) => setFormData({ ...formData, due_date: v })}
+                      placeholder="Pick a due date"
+                    />
                   </div>
                   <div>
                     <label className="label">Assigned To</label>
-                    <input type="text" value={formData.assigned_to} onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })} className="input" placeholder="Person name" />
+                    <input
+                      type="text"
+                      value={formData.assigned_to}
+                      onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+                      className="input"
+                      placeholder="Person name"
+                    />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="label">Priority</label>
-                    <select value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })} className="input">
+                    <select
+                      value={formData.priority}
+                      onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                      className="input"
+                    >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
                       <option value="high">High</option>
@@ -625,7 +912,11 @@ export default function Tasks() {
                   </div>
                   <div>
                     <label className="label">Status</label>
-                    <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="input">
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="input"
+                    >
                       <option value="pending">To do</option>
                       <option value="in_progress">In progress</option>
                       <option value="completed">Done</option>
@@ -634,9 +925,28 @@ export default function Tasks() {
                 </div>
 
                 <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
-                  <button type="button" onClick={attemptCloseTaskModal} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
-                  <button type="submit" disabled={createMutation.isPending || updateMutation.isPending} className="btn-primary" style={{ flex: 1, opacity: createMutation.isPending || updateMutation.isPending ? 0.5 : 1 }}>
-                    {createMutation.isPending || updateMutation.isPending ? 'Saving…' : editingTask ? 'Update task' : 'Create task'}
+                  <button
+                    type="button"
+                    onClick={attemptCloseTaskModal}
+                    className="btn-outline"
+                    style={{ flex: 1 }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={createMutation.isPending || updateMutation.isPending}
+                    className="btn-primary"
+                    style={{
+                      flex: 1,
+                      opacity: createMutation.isPending || updateMutation.isPending ? 0.5 : 1,
+                    }}
+                  >
+                    {createMutation.isPending || updateMutation.isPending
+                      ? 'Saving…'
+                      : editingTask
+                        ? 'Update task'
+                        : 'Create task'}
                   </button>
                 </div>
               </form>
@@ -649,16 +959,62 @@ export default function Tasks() {
       {/* Delete confirm */}
       {deleteConfirm && (
         <Portal>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={() => setDeleteConfirm(null)}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', padding: 28, maxWidth: 380, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
-              <h3 className="display" style={{ margin: '0 0 8px', fontSize: 20, color: 'var(--ink-high)' }}>Delete task?</h3>
-              <p style={{ fontSize: 13, color: 'var(--ink-low)', marginBottom: 24 }}>This action cannot be undone.</p>
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 50,
+              padding: 16,
+            }}
+            onClick={() => setDeleteConfirm(null)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'var(--bg-panel)',
+                borderRadius: 'var(--radius-lg)',
+                padding: 28,
+                maxWidth: 380,
+                width: '100%',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+              }}
+            >
+              <h3
+                className="display"
+                style={{ margin: '0 0 8px', fontSize: 20, color: 'var(--ink-high)' }}
+              >
+                Delete task?
+              </h3>
+              <p style={{ fontSize: 13, color: 'var(--ink-low)', marginBottom: 24 }}>
+                This action cannot be undone.
+              </p>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => setDeleteConfirm(null)} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  className="btn-outline"
+                  style={{ flex: 1 }}
+                >
+                  Cancel
+                </button>
                 <button
                   onClick={() => handleDelete(deleteConfirm)}
                   disabled={deleteMutation.isPending}
-                  style={{ flex: 1, padding: '9px 16px', background: 'var(--err)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', opacity: deleteMutation.isPending ? 0.5 : 1 }}
+                  style={{
+                    flex: 1,
+                    padding: '9px 16px',
+                    background: 'var(--err)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    opacity: deleteMutation.isPending ? 0.5 : 1,
+                  }}
                 >
                   {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
                 </button>

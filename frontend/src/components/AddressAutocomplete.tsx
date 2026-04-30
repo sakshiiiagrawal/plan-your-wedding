@@ -50,8 +50,12 @@ export function extractCoordsFromText(text: string): { lat: number; lng: number 
       const lat = parseFloat(m[1]!);
       const lng = parseFloat(m[2]!);
       if (
-        Number.isFinite(lat) && Number.isFinite(lng) &&
-        lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
+        Number.isFinite(lat) &&
+        Number.isFinite(lng) &&
+        lat >= -90 &&
+        lat <= 90 &&
+        lng >= -180 &&
+        lng <= 180
       ) {
         return { lat, lng };
       }
@@ -99,11 +103,18 @@ export default function AddressAutocomplete({
   }, [value]);
 
   useEffect(() => {
-    if (justSelectedRef.current) { justSelectedRef.current = false; return; }
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+      return;
+    }
     if (!userTypingRef.current) return;
 
     const query = input.trim();
-    if (query.length < 3) { setResults([]); setOpen(false); return; }
+    if (query.length < 3) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -129,7 +140,9 @@ export default function AddressAutocomplete({
         .finally(() => setLoading(false));
     }, 250);
 
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [input]);
 
   useEffect(() => {
@@ -146,16 +159,29 @@ export default function AddressAutocomplete({
     setInput(address);
     setOpen(false);
     setResults([]);
-    onChange({ address, place_id: s.place_id, latitude: s.latitude, longitude: s.longitude, city: s.city });
+    onChange({
+      address,
+      place_id: s.place_id,
+      latitude: s.latitude,
+      longitude: s.longitude,
+      city: s.city,
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!open || results.length === 0) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlight((h) => Math.min(h + 1, results.length - 1)); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlight((h) => Math.max(h - 1, 0)); }
-    else if (e.key === 'Enter') {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlight((h) => Math.min(h + 1, results.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlight((h) => Math.max(h - 1, 0));
+    } else if (e.key === 'Enter') {
       const picked = results[highlight];
-      if (picked) { e.preventDefault(); selectSuggestion(picked); }
+      if (picked) {
+        e.preventDefault();
+        selectSuggestion(picked);
+      }
     } else if (e.key === 'Escape') setOpen(false);
   };
 
@@ -171,29 +197,46 @@ export default function AddressAutocomplete({
       userTypingRef.current = false;
       setOpen(false);
       setResults([]);
-      onChange({ address: next, place_id: null, latitude: coords.lat, longitude: coords.lng, city: null });
+      onChange({
+        address: next,
+        place_id: null,
+        latitude: coords.lat,
+        longitude: coords.lng,
+        city: null,
+      });
       return;
     }
 
     onChange({ address: next, place_id: null, latitude: null, longitude: null, city: null });
   };
 
-  const attribution = provider === 'mappls'
-    ? 'Powered by Mappls © MapmyIndia'
-    : 'Results © OpenStreetMap contributors';
+  const attribution =
+    provider === 'mappls'
+      ? 'Powered by Mappls © MapmyIndia'
+      : 'Results © OpenStreetMap contributors';
 
   return (
     <div ref={containerRef} style={{ position: 'relative' }}>
       <div style={{ position: 'relative' }}>
-        <HiOutlineLocationMarker style={{
-          position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-          width: 14, height: 14, color: 'var(--gold)', pointerEvents: 'none',
-        }} />
+        <HiOutlineLocationMarker
+          style={{
+            position: 'absolute',
+            left: 10,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 14,
+            height: 14,
+            color: 'var(--gold)',
+            pointerEvents: 'none',
+          }}
+        />
         <input
           type="text"
           value={input}
           onChange={handleInputChange}
-          onFocus={() => { if (userTypingRef.current && results.length > 0) setOpen(true); }}
+          onFocus={() => {
+            if (userTypingRef.current && results.length > 0) setOpen(true);
+          }}
           onKeyDown={handleKeyDown}
           className={className || 'input'}
           style={{ paddingLeft: 30 }}
@@ -205,19 +248,34 @@ export default function AddressAutocomplete({
       </div>
 
       {isGoogleShortLink(input) && (
-        <span style={{ fontSize: 10, color: 'var(--warn, #b45309)', display: 'block', marginTop: 4 }}>
-          Short Google Maps links can&apos;t be expanded here. Open the link in a browser, copy the full URL from the address bar, and paste that instead.
+        <span
+          style={{ fontSize: 10, color: 'var(--warn, #b45309)', display: 'block', marginTop: 4 }}
+        >
+          Short Google Maps links can&apos;t be expanded here. Open the link in a browser, copy the
+          full URL from the address bar, and paste that instead.
         </span>
       )}
 
       {open && (results.length > 0 || loading) && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 100,
-          background: 'var(--bg-panel)', border: '1px solid var(--line)', borderRadius: 8,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.08)', maxHeight: 260, overflowY: 'auto',
-        }}>
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            right: 0,
+            zIndex: 100,
+            background: 'var(--bg-panel)',
+            border: '1px solid var(--line)',
+            borderRadius: 8,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+            maxHeight: 260,
+            overflowY: 'auto',
+          }}
+        >
           {loading && results.length === 0 && (
-            <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--ink-dim)' }}>Searching…</div>
+            <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--ink-dim)' }}>
+              Searching…
+            </div>
           )}
           {results.map((s, idx) => {
             const active = idx === highlight;
@@ -225,23 +283,42 @@ export default function AddressAutocomplete({
               <button
                 key={`${s.place_id ?? idx}`}
                 type="button"
-                onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  selectSuggestion(s);
+                }}
                 onMouseEnter={() => setHighlight(idx)}
                 style={{
-                  display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
-                  fontSize: 13, border: 'none', background: active ? 'var(--gold-glow)' : 'transparent',
-                  color: 'var(--ink-high)', cursor: 'pointer', borderBottom: '1px solid var(--line-soft)',
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '8px 12px',
+                  fontSize: 13,
+                  border: 'none',
+                  background: active ? 'var(--gold-glow)' : 'transparent',
+                  color: 'var(--ink-high)',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid var(--line-soft)',
                 }}
               >
                 <div style={{ fontWeight: 500 }}>{s.label}</div>
-                {s.sublabel && <div style={{ fontSize: 11, color: 'var(--ink-dim)', marginTop: 2 }}>{s.sublabel}</div>}
+                {s.sublabel && (
+                  <div style={{ fontSize: 11, color: 'var(--ink-dim)', marginTop: 2 }}>
+                    {s.sublabel}
+                  </div>
+                )}
               </button>
             );
           })}
-          <div style={{
-            padding: '6px 12px', fontSize: 10, color: 'var(--ink-dim)',
-            borderTop: '1px solid var(--line-soft)', background: 'var(--bg-raised)',
-          }}>
+          <div
+            style={{
+              padding: '6px 12px',
+              fontSize: 10,
+              color: 'var(--ink-dim)',
+              borderTop: '1px solid var(--line-soft)',
+              background: 'var(--bg-raised)',
+            }}
+          >
             {attribution}
           </div>
         </div>
@@ -257,15 +334,19 @@ export function buildMapsUrl(opts: {
   address?: string | null;
 }): string | null {
   // Only Google place_ids (not osm:/mappls: prefixed ones) work with query_place_id.
-  const googlePlaceId = opts.place_id && !opts.place_id.startsWith('osm:') && !opts.place_id.startsWith('mappls:')
-    ? opts.place_id : null;
+  const googlePlaceId =
+    opts.place_id && !opts.place_id.startsWith('osm:') && !opts.place_id.startsWith('mappls:')
+      ? opts.place_id
+      : null;
 
   if (opts.latitude != null && opts.longitude != null) {
     const coords = `${opts.latitude},${opts.longitude}`;
     const base = `https://www.google.com/maps/search/?api=1&query=${coords}`;
     return googlePlaceId ? `${base}&query_place_id=${encodeURIComponent(googlePlaceId)}` : base;
   }
-  if (googlePlaceId) return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(googlePlaceId)}`;
-  if (opts.address) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(opts.address)}`;
+  if (googlePlaceId)
+    return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(googlePlaceId)}`;
+  if (opts.address)
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(opts.address)}`;
   return null;
 }

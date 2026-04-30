@@ -66,9 +66,18 @@ export function ProgressRing({
   return (
     <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth={stroke} />
         <circle
-          cx={size / 2} cy={size / 2} r={r}
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="rgba(0,0,0,0.08)"
+          strokeWidth={stroke}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
           fill="none"
           stroke="#D4AF37"
           strokeWidth={stroke}
@@ -78,11 +87,17 @@ export function ProgressRing({
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="display text-lg font-medium" style={{ color: 'var(--ink-high)', lineHeight: 1 }}>
+        <span
+          className="display text-lg font-medium"
+          style={{ color: 'var(--ink-high)', lineHeight: 1 }}
+        >
           {label}
         </span>
         {sublabel && (
-          <span className="uppercase-eyebrow mt-1" style={{ color: 'var(--ink-dim)', letterSpacing: '0.1em' }}>
+          <span
+            className="uppercase-eyebrow mt-1"
+            style={{ color: 'var(--ink-dim)', letterSpacing: '0.1em' }}
+          >
             {sublabel}
           </span>
         )}
@@ -128,14 +143,29 @@ export function SectionHeader({
   return (
     <div className="flex items-end justify-between gap-4 mb-6 flex-wrap">
       <div>
-        {eyebrow && (
-          <div className="uppercase-eyebrow mb-2">{eyebrow}</div>
-        )}
-        <h1 className="display" style={{ fontSize: 30, color: 'var(--ink-high)', fontWeight: 500, lineHeight: 1.1, margin: 0 }}>
+        {eyebrow && <div className="uppercase-eyebrow mb-2">{eyebrow}</div>}
+        <h1
+          className="display"
+          style={{
+            fontSize: 30,
+            color: 'var(--ink-high)',
+            fontWeight: 500,
+            lineHeight: 1.1,
+            margin: 0,
+          }}
+        >
           {title}
         </h1>
         {description && (
-          <p style={{ fontSize: 13, color: 'var(--ink-low)', marginTop: 6, maxWidth: 600, lineHeight: 1.6 }}>
+          <p
+            style={{
+              fontSize: 13,
+              color: 'var(--ink-low)',
+              marginTop: 6,
+              maxWidth: 600,
+              lineHeight: 1.6,
+            }}
+          >
             {description}
           </p>
         )}
@@ -170,14 +200,16 @@ export function KPICard({
     <div className="card">
       <div className="uppercase-eyebrow mb-3">{eyebrow}</div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-        <span className="kpi-num" style={{ color: numColor }}>{value}</span>
+        <span className="kpi-num" style={{ color: numColor }}>
+          {value}
+        </span>
         {suffix && (
-          <span className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>{suffix}</span>
+          <span className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>
+            {suffix}
+          </span>
         )}
       </div>
-      {hint && (
-        <div style={{ fontSize: 11, color: 'var(--ink-low)', marginTop: 8 }}>{hint}</div>
-      )}
+      {hint && <div style={{ fontSize: 11, color: 'var(--ink-low)', marginTop: 8 }}>{hint}</div>}
     </div>
   );
 }
@@ -197,11 +229,7 @@ export function DrawerPanel({
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 flex">
-      <div
-        className="flex-1"
-        style={{ background: 'rgba(0,0,0,0.45)' }}
-        onClick={onClose}
-      />
+      <div className="flex-1" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={onClose} />
       <div
         style={{
           width,
@@ -294,6 +322,12 @@ export function StarRating({ rating, max = 5 }: { rating: number; max?: number }
 }
 
 // ─── Eyebrow label ────────────────────────────────────────────────────────────
-export function Eyebrow({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+export function Eyebrow({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return <div className={`uppercase-eyebrow ${className}`}>{children}</div>;
 }

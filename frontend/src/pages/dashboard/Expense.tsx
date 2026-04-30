@@ -102,9 +102,7 @@ export default function Expense() {
       const sideMeta = getSideMeta(expense);
       const categorySummary = Array.from(
         new Set(
-          expense.items.map(
-            (item) => categoryNameById.get(item.category_id) ?? 'Uncategorized',
-          ),
+          expense.items.map((item) => categoryNameById.get(item.category_id) ?? 'Uncategorized'),
         ),
       ).join(', ');
 
@@ -145,13 +143,30 @@ export default function Expense() {
         allocated: parseFloat(category.allocated_amount || 0),
       }))
       .filter((category: { committed: number }) => category.committed > 0)
-      .sort((left: { committed: number }, right: { committed: number }) => right.committed - left.committed);
+      .sort(
+        (left: { committed: number }, right: { committed: number }) =>
+          right.committed - left.committed,
+      );
   }, [expenseOverview, expenses]);
 
   const sideWiseExpenses = useMemo(() => {
     const initial = {
-      bride: { items: [] as any[], total: 0, directCount: 0, sharedCount: 0, directTotal: 0, sharedTotal: 0 },
-      groom: { items: [] as any[], total: 0, directCount: 0, sharedCount: 0, directTotal: 0, sharedTotal: 0 },
+      bride: {
+        items: [] as any[],
+        total: 0,
+        directCount: 0,
+        sharedCount: 0,
+        directTotal: 0,
+        sharedTotal: 0,
+      },
+      groom: {
+        items: [] as any[],
+        total: 0,
+        directCount: 0,
+        sharedCount: 0,
+        directTotal: 0,
+        sharedTotal: 0,
+      },
     };
 
     for (const expense of expenses) {
@@ -251,9 +266,7 @@ export default function Expense() {
       setActiveTab('expenses');
     } catch (error: any) {
       const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
-        'Failed to add expense.';
+        error?.response?.data?.message || error?.response?.data?.error || 'Failed to add expense.';
       toast.error(message);
     }
   };
@@ -324,7 +337,9 @@ export default function Expense() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card">
-          <div className="stat-value" style={{ color: 'var(--gold-deep)' }}>{formatCurrency(totalBudget)}</div>
+          <div className="stat-value" style={{ color: 'var(--gold-deep)' }}>
+            {formatCurrency(totalBudget)}
+          </div>
           <div className="stat-label">Budget</div>
         </div>
         <div className="stat-card">
@@ -351,7 +366,12 @@ export default function Expense() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                padding: '8px 16px', borderRadius: 8, fontWeight: 500, fontSize: 14, cursor: 'pointer', transition: 'all 150ms',
+                padding: '8px 16px',
+                borderRadius: 8,
+                fontWeight: 500,
+                fontSize: 14,
+                cursor: 'pointer',
+                transition: 'all 150ms',
                 background: activeTab === tab.id ? 'var(--gold)' : 'var(--bg-raised)',
                 color: activeTab === tab.id ? 'white' : 'var(--ink-low)',
               }}
@@ -381,10 +401,7 @@ export default function Expense() {
         )}
 
         {activeTab === 'sidewise' && (
-          <ExpenseSideWiseTab
-            sideWiseExpenses={sideWiseExpenses}
-            formatCurrency={formatCurrency}
-          />
+          <ExpenseSideWiseTab sideWiseExpenses={sideWiseExpenses} formatCurrency={formatCurrency} />
         )}
 
         {activeTab === 'categories' && (

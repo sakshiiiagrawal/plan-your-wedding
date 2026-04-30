@@ -40,7 +40,6 @@ function getEditVendorFormState(vendor: VendorRow | null): FormData | null {
   };
 }
 
-
 export default function EditVendorModal({
   vendor,
   onClose,
@@ -59,8 +58,7 @@ export default function EditVendorModal({
 
   const set = (patch: Partial<FormData>) =>
     setFormData((prev) => (prev ? { ...prev, ...patch } : null));
-  const isDirty =
-    JSON.stringify(formData) !== JSON.stringify(getEditVendorFormState(vendor));
+  const isDirty = JSON.stringify(formData) !== JSON.stringify(getEditVendorFormState(vendor));
   const { attemptClose, dialog: unsavedDialog } = useUnsavedChangesPrompt({
     isDirty,
     onDiscard: onClose,
@@ -83,14 +81,56 @@ export default function EditVendorModal({
 
   return (
     <Portal>
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={attemptClose}>
-        <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50,
+          padding: 16,
+        }}
+        onClick={attemptClose}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: 'var(--bg-panel)',
+            borderRadius: 'var(--radius-lg)',
+            width: '100%',
+            maxWidth: 480,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '20px 24px',
+              borderBottom: '1px solid var(--line-soft)',
+            }}
+          >
             <div>
-              <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Vendor</div>
-              <h2 className="display" style={{ margin: 0, fontSize: 20, color: 'var(--ink-high)' }}>Edit Vendor</h2>
+              <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>
+                Vendor
+              </div>
+              <h2 className="display" style={{ margin: 0, fontSize: 20, color: 'var(--ink-high)' }}>
+                Edit Vendor
+              </h2>
             </div>
-            <button onClick={attemptClose} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
+            <button
+              onClick={attemptClose}
+              style={{
+                padding: '6px 8px',
+                borderRadius: 6,
+                color: 'var(--ink-dim)',
+                background: 'transparent',
+                cursor: 'pointer',
+              }}
+            >
               <HiOutlineX style={{ width: 16, height: 16 }} />
             </button>
           </div>
@@ -134,17 +174,42 @@ export default function EditVendorModal({
               <div style={{ display: 'flex', gap: 6 }}>
                 {(['bride', 'groom', 'mutual'] as const).map((s) => {
                   const isActive = formData.side === s;
-                  const activeStyle = s === 'bride'
-                    ? { borderColor: '#be185d', background: 'rgba(190,24,93,0.06)', color: '#be185d' }
-                    : s === 'groom'
-                    ? { borderColor: '#1d4ed8', background: 'rgba(29,78,216,0.06)', color: '#1d4ed8' }
-                    : { borderColor: 'var(--gold)', background: 'var(--gold-glow)', color: 'var(--gold-deep)' };
+                  const activeStyle =
+                    s === 'bride'
+                      ? {
+                          borderColor: '#be185d',
+                          background: 'rgba(190,24,93,0.06)',
+                          color: '#be185d',
+                        }
+                      : s === 'groom'
+                        ? {
+                            borderColor: '#1d4ed8',
+                            background: 'rgba(29,78,216,0.06)',
+                            color: '#1d4ed8',
+                          }
+                        : {
+                            borderColor: 'var(--gold)',
+                            background: 'var(--gold-glow)',
+                            color: 'var(--gold-deep)',
+                          };
                   return (
                     <button
                       key={s}
                       type="button"
                       onClick={() => set({ side: s, is_shared: s === 'mutual' })}
-                      style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: `2px solid ${isActive ? activeStyle.borderColor : 'var(--line)'}`, background: isActive ? activeStyle.background : 'transparent', color: isActive ? activeStyle.color : 'var(--ink-low)', fontSize: 12, fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize', transition: 'all 150ms' }}
+                      style={{
+                        flex: 1,
+                        padding: '8px 4px',
+                        borderRadius: 8,
+                        border: `2px solid ${isActive ? activeStyle.borderColor : 'var(--line)'}`,
+                        background: isActive ? activeStyle.background : 'transparent',
+                        color: isActive ? activeStyle.color : 'var(--ink-low)',
+                        fontSize: 12,
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        textTransform: 'capitalize',
+                        transition: 'all 150ms',
+                      }}
                     >
                       {s}
                     </button>
@@ -154,9 +219,29 @@ export default function EditVendorModal({
             </div>
           </form>
 
-          <div style={{ display: 'flex', gap: 10, padding: '16px 24px', borderTop: '1px solid var(--line-soft)' }}>
-            <button type="button" onClick={attemptClose} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
-            <button type="submit" form="edit-vendor-form" disabled={isPending} className="btn-primary" style={{ flex: 1, opacity: isPending ? 0.5 : 1 }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 10,
+              padding: '16px 24px',
+              borderTop: '1px solid var(--line-soft)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={attemptClose}
+              className="btn-outline"
+              style={{ flex: 1 }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="edit-vendor-form"
+              disabled={isPending}
+              className="btn-primary"
+              style={{ flex: 1, opacity: isPending ? 0.5 : 1 }}
+            >
               {isPending ? 'Saving…' : 'Save Changes'}
             </button>
           </div>

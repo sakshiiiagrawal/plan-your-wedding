@@ -137,9 +137,7 @@ export default function AddExpenseModal({
               payment_method: formData.payment_date > TODAY ? null : formData.payment_method,
               paid_by_side: formData.paid_by_side,
               paid_bride_share_percentage:
-                formData.paid_by_side === 'shared'
-                  ? formData.paid_bride_share_percentage
-                  : null,
+                formData.paid_by_side === 'shared' ? formData.paid_bride_share_percentage : null,
               notes: formData.payment_notes || null,
             },
           ]
@@ -154,14 +152,61 @@ export default function AddExpenseModal({
   return (
     <>
       <Portal>
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }} onClick={attemptClose}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 768, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            padding: 16,
+          }}
+          onClick={attemptClose}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-panel)',
+              borderRadius: 'var(--radius-lg)',
+              width: '100%',
+              maxWidth: 768,
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '20px 24px',
+                borderBottom: '1px solid var(--line-soft)',
+              }}
+            >
               <div>
-                <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Expenses</div>
-                <h2 className="display" style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}>Add Expense</h2>
+                <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>
+                  Expenses
+                </div>
+                <h2
+                  className="display"
+                  style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}
+                >
+                  Add Expense
+                </h2>
               </div>
-              <button onClick={attemptClose} style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}>
+              <button
+                onClick={attemptClose}
+                style={{
+                  padding: '6px 8px',
+                  borderRadius: 6,
+                  color: 'var(--ink-dim)',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                }}
+              >
                 <HiOutlineX style={{ width: 18, height: 18 }} />
               </button>
             </div>
@@ -185,9 +230,7 @@ export default function AddExpenseModal({
                   <label className="label">Expense Date *</label>
                   <DatePicker
                     value={formData.expense_date}
-                    onChange={(v) =>
-                      setFormData((prev) => ({ ...prev, expense_date: v }))
-                    }
+                    onChange={(v) => setFormData((prev) => ({ ...prev, expense_date: v }))}
                     required
                     placeholder="Expense date"
                   />
@@ -219,7 +262,16 @@ export default function AddExpenseModal({
                     onClick={() =>
                       setFormData((prev) => ({ ...prev, items: [...prev.items, createItem()] }))
                     }
-                    style={{ fontSize: 13, color: 'var(--gold-deep)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, background: 'transparent', cursor: 'pointer' }}
+                    style={{
+                      fontSize: 13,
+                      color: 'var(--gold-deep)',
+                      fontWeight: 500,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      background: 'transparent',
+                      cursor: 'pointer',
+                    }}
                   >
                     <HiOutlinePlus className="w-4 h-4" />
                     Add Item
@@ -228,9 +280,21 @@ export default function AddExpenseModal({
 
                 <div className="space-y-4">
                   {formData.items.map((item, index) => (
-                    <div key={item.id} style={{ borderRadius: 10, border: '1px solid var(--line-soft)', padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <div
+                      key={item.id}
+                      style={{
+                        borderRadius: 10,
+                        border: '1px solid var(--line-soft)',
+                        padding: 16,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 14,
+                      }}
+                    >
                       <div className="flex items-center justify-between">
-                        <h4 style={{ fontWeight: 600, color: 'var(--ink-high)', fontSize: 13 }}>Item {index + 1}</h4>
+                        <h4 style={{ fontWeight: 600, color: 'var(--ink-high)', fontSize: 13 }}>
+                          Item {index + 1}
+                        </h4>
                         <button
                           type="button"
                           onClick={() => removeItem(item.id)}
@@ -262,7 +326,9 @@ export default function AddExpenseModal({
                             min="0"
                             step="0.01"
                             value={item.amount}
-                            onChange={(event) => updateItem(item.id, { amount: event.target.value })}
+                            onChange={(event) =>
+                              updateItem(item.id, { amount: event.target.value })
+                            }
                             className="input"
                             placeholder="0"
                             required
@@ -291,19 +357,46 @@ export default function AddExpenseModal({
                         <div style={{ display: 'flex', gap: 6 }}>
                           {(['bride', 'groom', 'shared'] as const).map((side) => {
                             const isActive = item.side === side;
-                            const activeStyle = side === 'bride'
-                              ? { borderColor: '#be185d', background: 'rgba(190,24,93,0.06)', color: '#be185d' }
-                              : side === 'groom'
-                              ? { borderColor: '#1d4ed8', background: 'rgba(29,78,216,0.06)', color: '#1d4ed8' }
-                              : { borderColor: 'var(--gold)', background: 'var(--gold-glow)', color: 'var(--gold-deep)' };
+                            const activeStyle =
+                              side === 'bride'
+                                ? {
+                                    borderColor: '#be185d',
+                                    background: 'rgba(190,24,93,0.06)',
+                                    color: '#be185d',
+                                  }
+                                : side === 'groom'
+                                  ? {
+                                      borderColor: '#1d4ed8',
+                                      background: 'rgba(29,78,216,0.06)',
+                                      color: '#1d4ed8',
+                                    }
+                                  : {
+                                      borderColor: 'var(--gold)',
+                                      background: 'var(--gold-glow)',
+                                      color: 'var(--gold-deep)',
+                                    };
                             return (
                               <button
                                 key={side}
                                 type="button"
                                 onClick={() => updateItem(item.id, { side })}
-                                style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: `2px solid ${isActive ? activeStyle.borderColor : 'var(--line)'}`, background: isActive ? activeStyle.background : 'transparent', color: isActive ? activeStyle.color : 'var(--ink-low)', fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'all 150ms', textTransform: 'capitalize' }}
+                                style={{
+                                  flex: 1,
+                                  padding: '8px 4px',
+                                  borderRadius: 8,
+                                  border: `2px solid ${isActive ? activeStyle.borderColor : 'var(--line)'}`,
+                                  background: isActive ? activeStyle.background : 'transparent',
+                                  color: isActive ? activeStyle.color : 'var(--ink-low)',
+                                  fontSize: 12,
+                                  fontWeight: 500,
+                                  cursor: 'pointer',
+                                  transition: 'all 150ms',
+                                  textTransform: 'capitalize',
+                                }}
                               >
-                                {side === 'shared' ? 'Shared' : `${side.charAt(0).toUpperCase()}${side.slice(1)}`}
+                                {side === 'shared'
+                                  ? 'Shared'
+                                  : `${side.charAt(0).toUpperCase()}${side.slice(1)}`}
                               </button>
                             );
                           })}
@@ -321,9 +414,21 @@ export default function AddExpenseModal({
                   ))}
                 </div>
 
-                <div style={{ background: 'var(--bg-raised)', borderRadius: 10, padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid var(--line-soft)' }}>
+                <div
+                  style={{
+                    background: 'var(--bg-raised)',
+                    borderRadius: 10,
+                    padding: '10px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    border: '1px solid var(--line-soft)',
+                  }}
+                >
                   <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>Committed Total</span>
-                  <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--gold-deep)' }}>₹{totalCommitted.toLocaleString('en-IN')}</span>
+                  <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--gold-deep)' }}>
+                    ₹{totalCommitted.toLocaleString('en-IN')}
+                  </span>
                 </div>
               </div>
 
@@ -344,7 +449,16 @@ export default function AddExpenseModal({
                 </label>
 
                 {formData.record_payment_now && (
-                  <div style={{ borderRadius: 10, border: '1px solid var(--line-soft)', padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div
+                    style={{
+                      borderRadius: 10,
+                      border: '1px solid var(--line-soft)',
+                      padding: 16,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 14,
+                    }}
+                  >
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
                         <label className="label">Payment Amount *</label>
@@ -435,8 +549,18 @@ export default function AddExpenseModal({
                     )}
 
                     {isPaymentReversal && (
-                      <div style={{ border: '1px solid rgba(3,105,161,0.22)', background: 'rgba(3,105,161,0.06)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#0c4a6e' }}>
-                        Negative amounts are recorded as payment reversals and reduce the paid total.
+                      <div
+                        style={{
+                          border: '1px solid rgba(3,105,161,0.22)',
+                          background: 'rgba(3,105,161,0.06)',
+                          borderRadius: 8,
+                          padding: '10px 14px',
+                          fontSize: 13,
+                          color: '#0c4a6e',
+                        }}
+                      >
+                        Negative amounts are recorded as payment reversals and reduce the paid
+                        total.
                       </div>
                     )}
 
@@ -465,9 +589,29 @@ export default function AddExpenseModal({
                 )}
               </div>
 
-              <div style={{ display: 'flex', gap: 10, paddingTop: 8, borderTop: '1px solid var(--line-soft)', marginTop: 8 }}>
-                <button type="button" onClick={attemptClose} className="btn-outline" style={{ flex: 1 }}>Cancel</button>
-                <button type="submit" disabled={isPending || paymentExceedsTotal} className="btn-primary" style={{ flex: 1, opacity: isPending || paymentExceedsTotal ? 0.5 : 1 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 10,
+                  paddingTop: 8,
+                  borderTop: '1px solid var(--line-soft)',
+                  marginTop: 8,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={attemptClose}
+                  className="btn-outline"
+                  style={{ flex: 1 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending || paymentExceedsTotal}
+                  className="btn-primary"
+                  style={{ flex: 1, opacity: isPending || paymentExceedsTotal ? 0.5 : 1 }}
+                >
                   {isPending ? 'Saving…' : 'Add Expense'}
                 </button>
               </div>

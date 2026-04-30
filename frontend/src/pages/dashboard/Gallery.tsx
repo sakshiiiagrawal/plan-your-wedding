@@ -44,7 +44,9 @@ function GalleryCard({ item, index }: { item: GalleryItem; index: number }) {
       {item.src ? (
         <img src={item.src} alt={item.label} className="w-full h-full object-cover" />
       ) : (
-        <div className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+        <div
+          className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}
+        >
           <HiOutlinePhotograph className="w-10 h-10 text-gold-300" />
         </div>
       )}
@@ -125,8 +127,14 @@ export default function Gallery() {
 
       {/* Upload modal placeholder */}
       {showUpload && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowUpload(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowUpload(false)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-gold-500 font-semibold mb-0.5">
@@ -147,7 +155,9 @@ export default function Gallery() {
               className="border-2 border-dashed border-gold-200 rounded-xl p-12 text-center cursor-pointer hover:border-gold-400 hover:bg-gold-50 transition-colors"
             >
               <HiOutlinePhotograph className="w-12 h-12 text-gold-300 mx-auto mb-3" />
-              <p className="text-sm font-medium text-gray-600">Click to browse or drag photos here</p>
+              <p className="text-sm font-medium text-gray-600">
+                Click to browse or drag photos here
+              </p>
               <p className="text-xs text-gray-400 mt-1">JPG, PNG, HEIC up to 20 MB each</p>
             </div>
 

@@ -62,7 +62,11 @@ export default function ExpenseExpensesTab({
               key={type}
               onClick={() => setFilterType(type)}
               style={{
-                padding: '4px 12px', fontSize: 13, borderRadius: 6, cursor: 'pointer', transition: 'all 150ms',
+                padding: '4px 12px',
+                fontSize: 13,
+                borderRadius: 6,
+                cursor: 'pointer',
+                transition: 'all 150ms',
                 background: filterType === type ? 'white' : 'transparent',
                 color: filterType === type ? 'var(--gold-deep)' : 'var(--ink-low)',
                 fontWeight: filterType === type ? 600 : 400,
@@ -79,7 +83,11 @@ export default function ExpenseExpensesTab({
               key={side}
               onClick={() => setFilterSide(side)}
               style={{
-                padding: '4px 12px', fontSize: 13, borderRadius: 6, cursor: 'pointer', transition: 'all 150ms',
+                padding: '4px 12px',
+                fontSize: 13,
+                borderRadius: 6,
+                cursor: 'pointer',
+                transition: 'all 150ms',
                 background: filterSide === side ? 'white' : 'transparent',
                 color: filterSide === side ? 'var(--gold-deep)' : 'var(--ink-low)',
                 fontWeight: filterSide === side ? 600 : 400,
@@ -93,7 +101,9 @@ export default function ExpenseExpensesTab({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="card p-8 text-center text-gray-500">No entries match the selected filters.</div>
+        <div className="card p-8 text-center text-gray-500">
+          No entries match the selected filters.
+        </div>
       ) : (
         <div className="card overflow-hidden p-0">
           <div className="overflow-x-auto">
@@ -118,13 +128,18 @@ export default function ExpenseExpensesTab({
                       <div>{row.description}</div>
                       <div className="text-xs text-gray-400">{row.item_count} line items</div>
                     </td>
-                    <td className="p-4 text-gray-600 hidden sm:table-cell">{row.category_summary}</td>
+                    <td className="p-4 text-gray-600 hidden sm:table-cell">
+                      {row.category_summary}
+                    </td>
                     <td className="p-4">
                       <span className="badge text-xs bg-gray-100 text-gray-700 capitalize">
                         {row.source_type}
                       </span>
                     </td>
-                    <td className="p-4 text-right font-medium" style={{ color: 'var(--gold-deep)' }}>
+                    <td
+                      className="p-4 text-right font-medium"
+                      style={{ color: 'var(--gold-deep)' }}
+                    >
                       {formatCurrency(row.committed)}
                     </td>
                     <td className="p-4 text-right text-green-700 hidden md:table-cell">
@@ -144,9 +159,22 @@ export default function ExpenseExpensesTab({
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => onEdit(row)}
-                            style={{ padding: '5px 7px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--gold-glow)'; (e.currentTarget as HTMLElement).style.color = 'var(--gold-deep)'; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)'; }}
+                            style={{
+                              padding: '5px 7px',
+                              borderRadius: 6,
+                              color: 'var(--ink-dim)',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                            }}
+                            onMouseEnter={(e) => {
+                              (e.currentTarget as HTMLElement).style.background =
+                                'var(--gold-glow)';
+                              (e.currentTarget as HTMLElement).style.color = 'var(--gold-deep)';
+                            }}
+                            onMouseLeave={(e) => {
+                              (e.currentTarget as HTMLElement).style.background = 'transparent';
+                              (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)';
+                            }}
                             title="Edit expense"
                           >
                             <HiOutlinePencil className="w-4 h-4" />
@@ -169,7 +197,9 @@ export default function ExpenseExpensesTab({
                   <td colSpan={3} className="p-4">
                     Total Committed
                   </td>
-                  <td className="p-4 text-right" style={{ color: 'var(--gold-deep)' }}>{formatCurrency(committedTotal)}</td>
+                  <td className="p-4 text-right" style={{ color: 'var(--gold-deep)' }}>
+                    {formatCurrency(committedTotal)}
+                  </td>
                   <td colSpan={5}></td>
                 </tr>
               </tfoot>

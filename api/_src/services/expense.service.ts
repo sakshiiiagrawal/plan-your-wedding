@@ -258,7 +258,13 @@ export async function getExpense(id: string, ownerId: string) {
   return finance.getExpense(ownerId, id);
 }
 
-export async function createExpense(payload: Omit<ExpenseInsert, 'user_id'> & { items: finance.ExpenseWriteInput['items']; payments?: finance.PaymentMutationInput[] }, ownerId: string) {
+export async function createExpense(
+  payload: Omit<ExpenseInsert, 'user_id'> & {
+    items: finance.ExpenseWriteInput['items'];
+    payments?: finance.PaymentMutationInput[];
+  },
+  ownerId: string,
+) {
   return finance.createManualExpense(ownerId, { ...payload, items: payload.items });
 }
 
@@ -393,15 +399,23 @@ export async function getAlerts(ownerId: string) {
       allocated: toFloat(category.allocated_amount),
       spent: spending.get(category.id)?.committed_amount ?? 0,
     }))
-    .filter((category) => category.allocated > 0 && category.spent <= category.allocated && category.spent / category.allocated >= 0.8)
+    .filter(
+      (category) =>
+        category.allocated > 0 &&
+        category.spent <= category.allocated &&
+        category.spent / category.allocated >= 0.8,
+    )
     .map((category) => ({
       ...category,
       percentage: Math.round((category.spent / category.allocated) * 100),
     }));
 
-  const overdue = scheduled.filter((payment) => payment.due_date != null && payment.due_date < today);
+  const overdue = scheduled.filter(
+    (payment) => payment.due_date != null && payment.due_date < today,
+  );
   const upcoming = scheduled.filter(
-    (payment) => payment.due_date != null && payment.due_date >= today && payment.due_date <= nextWeekStr,
+    (payment) =>
+      payment.due_date != null && payment.due_date >= today && payment.due_date <= nextWeekStr,
   );
 
   return {
@@ -446,7 +460,10 @@ export async function getExpensesByCategoryTree(ownerId: string) {
 
     const parentExpenses = byCategory.get(parent.id) ?? [];
     const parentDirectSpent = parentExpenses.reduce((sum, item) => sum + toFloat(item.amount), 0);
-    const childrenTotalSpent = childrenWithExpenses.reduce((sum, child) => sum + child.totalSpent, 0);
+    const childrenTotalSpent = childrenWithExpenses.reduce(
+      (sum, child) => sum + child.totalSpent,
+      0,
+    );
 
     return {
       ...parent,
@@ -458,7 +475,10 @@ export async function getExpensesByCategoryTree(ownerId: string) {
   });
 }
 
-export async function getExpensePayments(expenseId: string, ownerId: string): Promise<PaymentRow[]> {
+export async function getExpensePayments(
+  expenseId: string,
+  ownerId: string,
+): Promise<PaymentRow[]> {
   return finance.listExpensePayments(ownerId, expenseId);
 }
 

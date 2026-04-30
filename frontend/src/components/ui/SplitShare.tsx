@@ -48,11 +48,7 @@ export default function SplitShare({
     return { brideAmt: b, groomAmt: Math.max(0, roundedTotal - b) };
   }, [total, bridePct]);
 
-  const updateFromMetric = (
-    side: 'bride' | 'groom',
-    raw: string,
-    metric: 'percent' | 'amount',
-  ) => {
+  const updateFromMetric = (side: 'bride' | 'groom', raw: string, metric: 'percent' | 'amount') => {
     if (raw.trim() === '') return;
     const num = Number(raw);
     if (!Number.isFinite(num)) return;
@@ -90,8 +86,7 @@ export default function SplitShare({
     const secondaryValue = secondaryMetric === 'amount' ? String(amt) : formatPct(pct);
     const secondaryPrefix = secondaryMetric === 'amount' ? '≈ ₹' : '';
     const secondarySuffix = secondaryMetric === 'percent' ? '%' : '';
-    const showSecondaryInput =
-      !disabled && (hoveredSide === side || focusedSecondarySide === side);
+    const showSecondaryInput = !disabled && (hoveredSide === side || focusedSecondarySide === side);
 
     return (
       <div
@@ -120,9 +115,7 @@ export default function SplitShare({
           {isBride ? 'Bride' : 'Groom'}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {prefix && (
-            <span style={{ color, fontSize: 15, fontWeight: 500 }}>{prefix}</span>
-          )}
+          {prefix && <span style={{ color, fontSize: 15, fontWeight: 500 }}>{prefix}</span>}
           <input
             type="number"
             inputMode="decimal"
@@ -146,9 +139,7 @@ export default function SplitShare({
               fontFamily: 'var(--font-sans)',
             }}
           />
-          {suffix && (
-            <span style={{ color, fontSize: 15, fontWeight: 500 }}>{suffix}</span>
-          )}
+          {suffix && <span style={{ color, fontSize: 15, fontWeight: 500 }}>{suffix}</span>}
         </div>
         <div
           style={{
@@ -197,7 +188,11 @@ export default function SplitShare({
               {secondarySuffix && <span>{secondarySuffix}</span>}
             </>
           ) : effectiveMode === 'percent' ? (
-            hasTotal ? `≈ ₹${formatInr(amt)}` : ''
+            hasTotal ? (
+              `≈ ₹${formatInr(amt)}`
+            ) : (
+              ''
+            )
           ) : (
             `${formatPct(pct)}%`
           )}

@@ -122,7 +122,9 @@ async function searchPhoton(query: string): Promise<GeocodeSuggestion[]> {
   const data = (await res.json()) as { features?: PhotonFeature[] };
   return (data.features ?? []).map((f) => {
     const p = f.properties;
-    const line1 = [p.name, [p.housenumber, p.street].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
+    const line1 = [p.name, [p.housenumber, p.street].filter(Boolean).join(' ')]
+      .filter(Boolean)
+      .join(' · ');
     const line2 = [p.district, p.city, p.state, p.country].filter(Boolean).join(', ');
     const [lon, lat] = f.geometry.coordinates;
     return {
@@ -151,9 +153,7 @@ export async function searchPlaces(query: string): Promise<{
     try {
       // Use OAuth2 when secret is present; otherwise treat client_id as a
       // static REST key (also accepted by Mappls as a bearer token).
-      const token = clientSecret
-        ? await getMappplsToken(clientId, clientSecret)
-        : clientId;
+      const token = clientSecret ? await getMappplsToken(clientId, clientSecret) : clientId;
       const results = await searchMappls(query, token);
       return { results, provider: 'mappls' };
     } catch (err) {

@@ -87,7 +87,12 @@ export const updateStatus = async (
   try {
     const { id: userId } = getAuthUser(req);
     res.json(
-      await service.updateTaskStatus(req.params.id, getWeddingOwnerId(req), req.body.status, userId),
+      await service.updateTaskStatus(
+        req.params.id,
+        getWeddingOwnerId(req),
+        req.body.status,
+        userId,
+      ),
     );
   } catch (e) {
     next(e);

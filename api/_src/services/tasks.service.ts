@@ -24,11 +24,20 @@ export async function getTask(id: string, ownerId: string) {
   return task;
 }
 
-export async function createTask(payload: Omit<TaskInsert, 'user_id'>, ownerId: string, userId?: string) {
+export async function createTask(
+  payload: Omit<TaskInsert, 'user_id'>,
+  ownerId: string,
+  userId?: string,
+) {
   return repo.insertTask({ ...payload, user_id: ownerId, created_by: userId ?? ownerId });
 }
 
-export async function updateTask(id: string, ownerId: string, payload: Partial<TaskInsert>, userId?: string) {
+export async function updateTask(
+  id: string,
+  ownerId: string,
+  payload: Partial<TaskInsert>,
+  userId?: string,
+) {
   await getTask(id, ownerId);
   return repo.updateTask(id, ownerId, { ...payload, updated_by: userId ?? ownerId });
 }

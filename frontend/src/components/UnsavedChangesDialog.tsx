@@ -53,7 +53,12 @@ export default function UnsavedChangesDialog({
             You have unsaved changes in this modal.
           </p>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button type="button" onClick={onKeepEditing} className="btn-outline" style={{ flex: 1 }}>
+            <button
+              type="button"
+              onClick={onKeepEditing}
+              className="btn-outline"
+              style={{ flex: 1 }}
+            >
               Keep editing
             </button>
             <button

@@ -23,9 +23,35 @@ interface DateRangePickerProps {
   className?: string;
 }
 
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const WEEKDAYS = ['S','M','T','W','T','F','S'];
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+const MONTHS_SHORT = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 function parseISO(v: string): Date | null {
   if (!v) return null;
@@ -43,7 +69,11 @@ function toISO(d: Date): string {
 }
 
 function sameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
 }
 
 function startOfDay(d: Date): number {
@@ -101,9 +131,10 @@ export default function DateRangePicker({
     const popupHeight = 360;
     const popupWidth = 320;
     const spaceBelow = window.innerHeight - rect.bottom;
-    const top = spaceBelow < popupHeight + 20 && rect.top > popupHeight + 20
-      ? rect.top - popupHeight - 8
-      : rect.bottom + 6;
+    const top =
+      spaceBelow < popupHeight + 20 && rect.top > popupHeight + 20
+        ? rect.top - popupHeight - 8
+        : rect.bottom + 6;
     const left = Math.min(rect.left, window.innerWidth - popupWidth - 12);
     setPickerStyle({
       position: 'fixed',
@@ -122,7 +153,7 @@ export default function DateRangePicker({
     // Choose initial stage: end trigger with no start yet still starts at 'start'.
     const initialStage: Stage = which === 'end' && startDate ? 'end' : 'start';
     setStage(initialStage);
-    const focusDate = initialStage === 'end' ? (endDate || startDate) : (startDate || endDate);
+    const focusDate = initialStage === 'end' ? endDate || startDate : startDate || endDate;
     setViewMonth(focusDate || new Date());
     setHovered(null);
     setAnimIn(false);
@@ -195,7 +226,8 @@ export default function DateRangePicker({
 
   // Range display: effective end for highlighting uses hover preview during 'end' stage.
   const effectiveEnd: Date | null = useMemo(() => {
-    if (stage === 'end' && hovered && startDate && startOfDay(hovered) > startOfDay(startDate)) return hovered;
+    if (stage === 'end' && hovered && startDate && startOfDay(hovered) > startOfDay(startDate))
+      return hovered;
     return endDate;
   }, [stage, hovered, startDate, endDate]);
 
@@ -206,7 +238,8 @@ export default function DateRangePicker({
     const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
     const cells: (Date | null)[] = [];
     for (let i = 0; i < startOffset; i++) cells.push(null);
-    for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(viewMonth.getFullYear(), viewMonth.getMonth(), d));
+    for (let d = 1; d <= daysInMonth; d++)
+      cells.push(new Date(viewMonth.getFullYear(), viewMonth.getMonth(), d));
     while (cells.length % 7 !== 0) cells.push(null);
     return cells;
   }, [viewMonth]);
@@ -232,7 +265,7 @@ export default function DateRangePicker({
           if (!enabled) return;
           setStage(s);
           flashStage();
-          const focus = s === 'end' ? (endDate || startDate) : (startDate || endDate);
+          const focus = s === 'end' ? endDate || startDate : startDate || endDate;
           if (focus) setViewMonth(focus);
         }}
         className="px-2 py-1 rounded-md text-left transition-all"
@@ -246,7 +279,10 @@ export default function DateRangePicker({
       >
         <div
           className="text-[10px] uppercase tracking-wider leading-none"
-          style={{ color: isActive ? 'var(--gold-deep)' : 'var(--ink-low)', letterSpacing: '0.12em' }}
+          style={{
+            color: isActive ? 'var(--gold-deep)' : 'var(--ink-low)',
+            letterSpacing: '0.12em',
+          }}
         >
           {placeholder}
         </div>
@@ -274,9 +310,7 @@ export default function DateRangePicker({
     joinSide: 'left' | 'right',
   ) => {
     const active = isOpen && stage === which;
-    const borderRadius = joinSide === 'left'
-      ? '8px 0 0 8px'
-      : '0 8px 8px 0';
+    const borderRadius = joinSide === 'left' ? '8px 0 0 8px' : '0 8px 8px 0';
     return (
       <button
         ref={ref}
@@ -302,7 +336,10 @@ export default function DateRangePicker({
         aria-haspopup="dialog"
         aria-expanded={isOpen}
       >
-        <HiOutlineCalendar className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--gold-deep)' }} />
+        <HiOutlineCalendar
+          className="w-4 h-4 flex-shrink-0"
+          style={{ color: 'var(--gold-deep)' }}
+        />
         <span className="flex flex-col min-w-0">
           {label && (
             <span
@@ -413,7 +450,8 @@ export default function DateRangePicker({
             const isStart = Boolean(startDate && sameDay(d, startDate));
             const isEnd = Boolean(effectiveEnd && sameDay(d, effectiveEnd));
             const inRange = Boolean(
-              startDate && effectiveEnd &&
+              startDate &&
+              effectiveEnd &&
               startOfDay(d) > startOfDay(startDate) &&
               startOfDay(d) < startOfDay(effectiveEnd),
             );
@@ -516,7 +554,15 @@ export default function DateRangePicker({
     <>
       <div ref={wrapperRef} className={`relative ${className}`}>
         <div className="flex items-stretch w-full">
-          {renderTrigger(startBtnRef, 'start', startDate, startPlaceholder, startLabel, startFilled, 'left')}
+          {renderTrigger(
+            startBtnRef,
+            'start',
+            startDate,
+            startPlaceholder,
+            startLabel,
+            startFilled,
+            'left',
+          )}
           {renderTrigger(endBtnRef, 'end', endDate, endPlaceholder, endLabel, endFilled, 'right')}
         </div>
         {required && (
@@ -527,7 +573,14 @@ export default function DateRangePicker({
               required
               value={startValue}
               onChange={() => {}}
-              style={{ position: 'absolute', inset: 0, opacity: 0, pointerEvents: 'none', height: 0, width: 0 }}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                opacity: 0,
+                pointerEvents: 'none',
+                height: 0,
+                width: 0,
+              }}
             />
             <input
               tabIndex={-1}
@@ -535,7 +588,14 @@ export default function DateRangePicker({
               required
               value={endValue}
               onChange={() => {}}
-              style={{ position: 'absolute', inset: 0, opacity: 0, pointerEvents: 'none', height: 0, width: 0 }}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                opacity: 0,
+                pointerEvents: 'none',
+                height: 0,
+                width: 0,
+              }}
             />
           </>
         )}

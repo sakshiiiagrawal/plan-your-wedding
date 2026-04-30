@@ -35,7 +35,8 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
       return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
     };
 
-    const legacyCategory = typeof req.query['category'] === 'string' ? req.query['category'] : undefined;
+    const legacyCategory =
+      typeof req.query['category'] === 'string' ? req.query['category'] : undefined;
     const categoryIds = [
       ...parseStringList(req.query['category_ids']),
       ...(legacyCategory ? [legacyCategory] : []),
@@ -63,7 +64,11 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
-export const getCategories = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getCategories = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     res.json(await service.getCategories(getWeddingOwnerId(req)));
   } catch (e) {
@@ -161,9 +166,7 @@ export const addPayment = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res
-      .status(201)
-      .json(await service.addPayment(req.params.id, getWeddingOwnerId(req), req.body));
+    res.status(201).json(await service.addPayment(req.params.id, getWeddingOwnerId(req), req.body));
   } catch (e) {
     next(e);
   }

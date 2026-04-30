@@ -21,7 +21,11 @@ router.get('/allocations/unassigned', ctrl.getUnassignedGuests);
 router.get('/allocations/template/download', ctrl.downloadAllocationTemplate);
 router.get('/allocations/template/all-venues/download', ctrl.downloadAllVenuesTemplate);
 router.post('/allocations/import', upload.single('file'), ctrl.importAllocations);
-router.post('/allocations/import/all-venues', upload.single('file'), ctrl.importAllVenuesAllocations);
+router.post(
+  '/allocations/import/all-venues',
+  upload.single('file'),
+  ctrl.importAllVenuesAllocations,
+);
 router.post('/allocations', validateBody(createAllocationSchema), ctrl.createAllocation);
 router.put('/allocations/:id', validateBody(updateAllocationSchema), ctrl.updateAllocation);
 router.delete('/allocations/:id', ctrl.deleteAllocation);

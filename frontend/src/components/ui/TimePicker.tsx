@@ -80,7 +80,7 @@ export default function TimePicker({
   const hours = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), []);
   const minutes = useMemo(
     () => Array.from({ length: Math.ceil(60 / minuteStep) }, (_, i) => i * minuteStep),
-    [minuteStep]
+    [minuteStep],
   );
 
   const open = () => {
@@ -89,9 +89,10 @@ export default function TimePicker({
     const popupHeight = 280;
     const popupWidth = 240;
     const spaceBelow = window.innerHeight - rect.bottom;
-    const top = spaceBelow < popupHeight + 20 && rect.top > popupHeight + 20
-      ? rect.top - popupHeight - 8
-      : rect.bottom + 6;
+    const top =
+      spaceBelow < popupHeight + 20 && rect.top > popupHeight + 20
+        ? rect.top - popupHeight - 8
+        : rect.bottom + 6;
     const left = Math.min(rect.left, window.innerWidth - popupWidth - 12);
     setPickerStyle({
       position: 'fixed',
@@ -103,9 +104,11 @@ export default function TimePicker({
     setIsOpen(true);
     // Scroll selected values into view once opened
     setTimeout(() => {
-      hourColRef.current?.querySelector<HTMLButtonElement>('[data-active="true"]')
+      hourColRef.current
+        ?.querySelector<HTMLButtonElement>('[data-active="true"]')
         ?.scrollIntoView({ block: 'center' });
-      minuteColRef.current?.querySelector<HTMLButtonElement>('[data-active="true"]')
+      minuteColRef.current
+        ?.querySelector<HTMLButtonElement>('[data-active="true"]')
         ?.scrollIntoView({ block: 'center' });
     }, 20);
   };
@@ -168,10 +171,7 @@ export default function TimePicker({
               letterSpacing: '0.02em',
             }}
           >
-            {formatDisplay(
-              (draft.h12 % 12) + (draft.period === 'PM' ? 12 : 0),
-              draft.m
-            )}
+            {formatDisplay((draft.h12 % 12) + (draft.period === 'PM' ? 12 : 0), draft.m)}
           </div>
         </div>
 
@@ -201,7 +201,8 @@ export default function TimePicker({
                     fontWeight: active ? 600 : 400,
                   }}
                   onMouseEnter={(e) => {
-                    if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--gold-glow)';
+                    if (!active)
+                      (e.currentTarget as HTMLElement).style.background = 'var(--gold-glow)';
                   }}
                   onMouseLeave={(e) => {
                     if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent';
@@ -238,7 +239,8 @@ export default function TimePicker({
                     fontWeight: active ? 600 : 400,
                   }}
                   onMouseEnter={(e) => {
-                    if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--gold-glow)';
+                    if (!active)
+                      (e.currentTarget as HTMLElement).style.background = 'var(--gold-glow)';
                   }}
                   onMouseLeave={(e) => {
                     if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent';
@@ -272,7 +274,8 @@ export default function TimePicker({
                     letterSpacing: '0.08em',
                   }}
                   onMouseEnter={(e) => {
-                    if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--bg-raised)';
+                    if (!active)
+                      (e.currentTarget as HTMLElement).style.background = 'var(--bg-raised)';
                   }}
                   onMouseLeave={(e) => {
                     if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent';
@@ -297,7 +300,7 @@ export default function TimePicker({
               const h = now.getHours();
               const period = h >= 12 ? 'PM' : 'AM';
               const h12 = h % 12 === 0 ? 12 : h % 12;
-              const roundedM = Math.round(now.getMinutes() / minuteStep) * minuteStep % 60;
+              const roundedM = (Math.round(now.getMinutes() / minuteStep) * minuteStep) % 60;
               const next = { h12, m: roundedM, period: period as 'AM' | 'PM' };
               setDraft(next);
               commit(next);
@@ -343,7 +346,9 @@ export default function TimePicker({
             className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
             style={{ color: 'var(--gold-deep)' }}
           />
-          <span className="truncate">{parsed ? formatDisplay(parsed.h, parsed.m) : placeholder}</span>
+          <span className="truncate">
+            {parsed ? formatDisplay(parsed.h, parsed.m) : placeholder}
+          </span>
         </button>
         {value && !disabled && (
           <button

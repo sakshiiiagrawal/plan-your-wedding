@@ -50,7 +50,9 @@ function SideCard({
     <div className={`card border-l-4 ${color} overflow-hidden`}>
       <div className="flex items-start justify-between gap-4 mb-5">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full ${iconBg} flex items-center justify-center shadow-sm`}>
+          <div
+            className={`w-10 h-10 rounded-full ${iconBg} flex items-center justify-center shadow-sm`}
+          >
             <Icon className={`w-5 h-5 ${iconColor}`} />
           </div>
           <div>
@@ -74,12 +76,16 @@ function SideCard({
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl border border-black/5 bg-black/[0.02] px-4 py-3">
           <div className="text-[11px] uppercase tracking-[0.18em] text-gray-400">Direct</div>
-          <div className="mt-1 text-sm font-semibold text-gray-800">{formatCurrency(directTotal)}</div>
+          <div className="mt-1 text-sm font-semibold text-gray-800">
+            {formatCurrency(directTotal)}
+          </div>
           <div className="text-xs text-gray-500">{directCount} dedicated items</div>
         </div>
         <div className="rounded-2xl border border-black/5 bg-black/[0.02] px-4 py-3">
           <div className="text-[11px] uppercase tracking-[0.18em] text-gray-400">Shared</div>
-          <div className="mt-1 text-sm font-semibold text-gray-800">{formatCurrency(sharedTotal)}</div>
+          <div className="mt-1 text-sm font-semibold text-gray-800">
+            {formatCurrency(sharedTotal)}
+          </div>
           <div className="text-xs text-gray-500">{sharedCount} shared allocations</div>
         </div>
       </div>
@@ -114,31 +120,56 @@ function SideSummaryCard({
         <div>
           <h3 className="display text-3xl text-stone-900">Bride and groom totals, side by side</h3>
           <p className="mt-2 max-w-2xl text-sm text-stone-500">
-            Shared expenses are folded into both columns using the configured split, so each side reflects the amount it actually carries.
+            Shared expenses are folded into both columns using the configured split, so each side
+            reflects the amount it actually carries.
           </p>
         </div>
         <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-sm">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-stone-400">Combined view</div>
-          <div className="mt-1 text-2xl font-semibold text-stone-900">{formatCurrency(grandTotal)}</div>
-          <div className="text-xs text-stone-500">{brideCount + groomCount} visible allocations</div>
+          <div className="text-[11px] uppercase tracking-[0.18em] text-stone-400">
+            Combined view
+          </div>
+          <div className="mt-1 text-2xl font-semibold text-stone-900">
+            {formatCurrency(grandTotal)}
+          </div>
+          <div className="text-xs text-stone-500">
+            {brideCount + groomCount} visible allocations
+          </div>
         </div>
       </div>
       <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/80 ring-1 ring-black/5">
         <div className="flex h-full">
-          <div className="bg-gradient-to-r from-pink-400 to-pink-500" style={{ width: `${brideWidth}%` }} />
-          <div className="bg-gradient-to-r from-blue-400 to-blue-500" style={{ width: `${groomWidth}%` }} />
+          <div
+            className="bg-gradient-to-r from-pink-400 to-pink-500"
+            style={{ width: `${brideWidth}%` }}
+          />
+          <div
+            className="bg-gradient-to-r from-blue-400 to-blue-500"
+            style={{ width: `${groomWidth}%` }}
+          />
         </div>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <div className="rounded-2xl border border-pink-100 bg-pink-50/80 px-4 py-3">
-          <div className="text-xs font-medium uppercase tracking-[0.18em] text-pink-500">Bride share</div>
-          <div className="mt-1 text-lg font-semibold text-pink-800">{formatCurrency(brideTotal)}</div>
-          <div className="text-xs text-pink-700/80">{brideCount} line items shown in this column</div>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-pink-500">
+            Bride share
+          </div>
+          <div className="mt-1 text-lg font-semibold text-pink-800">
+            {formatCurrency(brideTotal)}
+          </div>
+          <div className="text-xs text-pink-700/80">
+            {brideCount} line items shown in this column
+          </div>
         </div>
         <div className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3">
-          <div className="text-xs font-medium uppercase tracking-[0.18em] text-blue-500">Groom share</div>
-          <div className="mt-1 text-lg font-semibold text-blue-800">{formatCurrency(groomTotal)}</div>
-          <div className="text-xs text-blue-700/80">{groomCount} line items shown in this column</div>
+          <div className="text-xs font-medium uppercase tracking-[0.18em] text-blue-500">
+            Groom share
+          </div>
+          <div className="mt-1 text-lg font-semibold text-blue-800">
+            {formatCurrency(groomTotal)}
+          </div>
+          <div className="text-xs text-blue-700/80">
+            {groomCount} line items shown in this column
+          </div>
         </div>
       </div>
     </div>
@@ -222,12 +253,16 @@ function ExpenseList({
                   </div>
                 )}
               </div>
-              <div className={`rounded-2xl px-3 py-2 text-sm font-semibold ${amountColor} ml-2 shrink-0 bg-black/[0.03]`}>
+              <div
+                className={`rounded-2xl px-3 py-2 text-sm font-semibold ${amountColor} ml-2 shrink-0 bg-black/[0.03]`}
+              >
                 {formatCurrency(item.amount)}
               </div>
             </div>
           ))}
-          <div className={`p-4 ${totalBg} flex justify-between items-center font-bold ${totalColor}`}>
+          <div
+            className={`p-4 ${totalBg} flex justify-between items-center font-bold ${totalColor}`}
+          >
             <span>{title} total</span>
             <span className="text-base">
               {formatCurrency(items.reduce((sum, item) => sum + item.amount, 0))}
@@ -240,7 +275,9 @@ function ExpenseList({
             <div className="h-2.5 w-2.5 rounded-full bg-black/20" />
           </div>
           <div className="text-sm font-medium text-gray-500">{emptyText}</div>
-          <div className="mt-1 text-xs text-gray-400">New entries will appear here once they are assigned to this side.</div>
+          <div className="mt-1 text-xs text-gray-400">
+            New entries will appear here once they are assigned to this side.
+          </div>
         </div>
       )}
     </div>

@@ -32,9 +32,7 @@ function plannedBadge(paymentDate: string) {
       </span>
     );
   }
-  return (
-    <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Scheduled</span>
-  );
+  return <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Scheduled</span>;
 }
 
 export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTabProps) {
@@ -106,19 +104,29 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   .map((payment) => (
                     <tr key={payment.id} className="table-row">
                       <td className="p-4 font-medium">{payment.expense.description}</td>
-                      <td className="p-4 text-gray-500 capitalize">{payment.expense.source_type}</td>
-                      <td className="p-4 text-right font-medium" style={{ color: 'var(--gold-deep)' }}>
+                      <td className="p-4 text-gray-500 capitalize">
+                        {payment.expense.source_type}
+                      </td>
+                      <td
+                        className="p-4 text-right font-medium"
+                        style={{ color: 'var(--gold-deep)' }}
+                      >
                         {formatPaymentAmount(payment.amount, payment.direction, formatCurrency)}
                       </td>
                       <td className="p-4 text-gray-600 capitalize">
-                        {payment.paid_by_side === 'shared' && payment.paid_bride_share_percentage != null
+                        {payment.paid_by_side === 'shared' &&
+                        payment.paid_bride_share_percentage != null
                           ? `Bride ${payment.paid_bride_share_percentage}% · Groom ${100 - payment.paid_bride_share_percentage}%`
                           : payment.paid_by_side || '—'}
                       </td>
                       <td className="p-4 text-gray-600">
-                        {new Date(payment.due_date ?? payment.created_at).toLocaleDateString('en-IN')}
+                        {new Date(payment.due_date ?? payment.created_at).toLocaleDateString(
+                          'en-IN',
+                        )}
                       </td>
-                      <td className="p-4">{plannedBadge(payment.due_date ?? payment.created_at)}</td>
+                      <td className="p-4">
+                        {plannedBadge(payment.due_date ?? payment.created_at)}
+                      </td>
                     </tr>
                   ))}
               </tbody>
@@ -129,7 +137,9 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
 
       <div className="card overflow-hidden p-0">
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--line-soft)' }}>
-          <h3 style={{ fontWeight: 600, color: 'var(--ink-high)', fontSize: 14 }}>Payment History</h3>
+          <h3 style={{ fontWeight: 600, color: 'var(--ink-high)', fontSize: 14 }}>
+            Payment History
+          </h3>
         </div>
         {postedPayments.length === 0 ? (
           <div className="p-8 text-center text-gray-400 text-sm">No payments recorded yet.</div>
@@ -157,7 +167,9 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   .map((payment) => (
                     <tr key={payment.id} className="table-row">
                       <td className="p-4 font-medium">{payment.expense.description}</td>
-                      <td className="p-4 text-gray-500 capitalize">{payment.expense.source_type}</td>
+                      <td className="p-4 text-gray-500 capitalize">
+                        {payment.expense.source_type}
+                      </td>
                       <td
                         className={`p-4 text-right font-medium ${
                           payment.direction === 'inflow' ? 'text-sky-700' : 'text-green-700'
@@ -166,12 +178,15 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                         {formatPaymentAmount(payment.amount, payment.direction, formatCurrency)}
                       </td>
                       <td className="p-4 text-gray-600 capitalize">
-                        {payment.paid_by_side === 'shared' && payment.paid_bride_share_percentage != null
+                        {payment.paid_by_side === 'shared' &&
+                        payment.paid_bride_share_percentage != null
                           ? `Bride ${payment.paid_bride_share_percentage}% · Groom ${100 - payment.paid_bride_share_percentage}%`
                           : payment.paid_by_side || '—'}
                       </td>
                       <td className="p-4 text-gray-600">
-                        {new Date(payment.paid_date ?? payment.created_at).toLocaleDateString('en-IN')}
+                        {new Date(payment.paid_date ?? payment.created_at).toLocaleDateString(
+                          'en-IN',
+                        )}
                       </td>
                       <td className="p-4 text-gray-600 capitalize">
                         {payment.payment_method?.replace('_', ' ') || '—'}

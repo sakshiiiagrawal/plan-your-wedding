@@ -51,16 +51,30 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: () => void 
     <button
       onClick={onChange}
       style={{
-        position: 'relative', flexShrink: 0, width: 34, height: 20, borderRadius: 999,
+        position: 'relative',
+        flexShrink: 0,
+        width: 34,
+        height: 20,
+        borderRadius: 999,
         background: enabled ? 'var(--gold)' : 'var(--line-strong)',
-        transition: 'background 200ms', border: 'none', cursor: 'pointer',
+        transition: 'background 200ms',
+        border: 'none',
+        cursor: 'pointer',
       }}
     >
-      <div style={{
-        position: 'absolute', top: 2, width: 16, height: 16, borderRadius: '50%',
-        background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-        transition: 'left 200ms', left: enabled ? 16 : 2,
-      }} />
+      <div
+        style={{
+          position: 'absolute',
+          top: 2,
+          width: 16,
+          height: 16,
+          borderRadius: '50%',
+          background: 'white',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+          transition: 'left 200ms',
+          left: enabled ? 16 : 2,
+        }}
+      />
     </button>
   );
 }
@@ -82,18 +96,43 @@ function PreviewPane({
   const enabledSections = sections.filter((s) => s.enabled);
 
   return (
-    <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', border: '1px solid var(--line-soft)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <div
+      style={{
+        background: 'white',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--line-soft)',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       {/* Browser chrome */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-raised)', borderBottom: '1px solid var(--line-soft)' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '8px 12px',
+          background: 'var(--bg-raised)',
+          borderBottom: '1px solid var(--line-soft)',
+        }}
+      >
         <div style={{ display: 'flex', gap: 6 }}>
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fc625d' }} />
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fdbc40' }} />
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#35cd4b' }} />
         </div>
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-          <span className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>https://{slug}.weds.app</span>
+          <span className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>
+            https://{slug}.weds.app
+          </span>
         </div>
-        <a href={`https://${slug}.weds.app`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--ink-dim)' }}>
+        <a
+          href={`https://${slug}.weds.app`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: 'var(--ink-dim)' }}
+        >
           <HiOutlineExternalLink style={{ width: 13, height: 13 }} />
         </a>
       </div>
@@ -101,29 +140,118 @@ function PreviewPane({
       {/* Preview content */}
       <div style={{ overflowY: 'auto', maxHeight: '70vh' }}>
         {/* Hero */}
-        <div style={{ padding: '32px 24px', textAlign: 'center', background: themeObj.heroGradient, color: 'white' }}>
-          <p style={{ fontSize: 8, letterSpacing: '0.15em', textTransform: 'uppercase', opacity: 0.7, marginBottom: 8 }}>Together with their families</p>
-          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 28, margin: '0 0 4px', color: 'white' }}>
+        <div
+          style={{
+            padding: '32px 24px',
+            textAlign: 'center',
+            background: themeObj.heroGradient,
+            color: 'white',
+          }}
+        >
+          <p
+            style={{
+              fontSize: 8,
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+              opacity: 0.7,
+              marginBottom: 8,
+            }}
+          >
+            Together with their families
+          </p>
+          <h2
+            style={{
+              fontFamily: 'Georgia, serif',
+              fontSize: 28,
+              margin: '0 0 4px',
+              color: 'white',
+            }}
+          >
             {heroContent?.bride_name || 'Bride'} &amp; {heroContent?.groom_name || 'Groom'}
           </h2>
-          <p style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 13, opacity: 0.8, marginTop: 6 }}>
+          <p
+            style={{
+              fontFamily: 'Georgia, serif',
+              fontStyle: 'italic',
+              fontSize: 13,
+              opacity: 0.8,
+              marginTop: 6,
+            }}
+          >
             {heroTagline || 'Your tagline here'}
           </p>
-          <p className="mono" style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6, marginTop: 8 }}>
-            {heroContent?.wedding_date ? new Date(heroContent.wedding_date).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Date · City'}
+          <p
+            className="mono"
+            style={{
+              fontSize: 9,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              opacity: 0.6,
+              marginTop: 8,
+            }}
+          >
+            {heroContent?.wedding_date
+              ? new Date(heroContent.wedding_date).toLocaleDateString('en-US', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })
+              : 'Date · City'}
           </p>
         </div>
 
         {/* Section stubs */}
         {enabledSections.map((s) => (
-          <div key={s.id} style={{ padding: '20px 24px', borderBottom: '1px solid var(--line-soft)', textAlign: 'center' }}>
-            <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.14em', color: themeObj.accentColor, marginBottom: 8, fontWeight: 600 }}>{s.name}</p>
-            <div style={{ height: 6, background: 'var(--bg-raised)', borderRadius: 4, maxWidth: 200, margin: '0 auto 6px' }} />
-            <div style={{ height: 6, background: 'var(--line-soft)', borderRadius: 4, maxWidth: 140, margin: '0 auto' }} />
+          <div
+            key={s.id}
+            style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid var(--line-soft)',
+              textAlign: 'center',
+            }}
+          >
+            <p
+              style={{
+                fontSize: 9,
+                textTransform: 'uppercase',
+                letterSpacing: '0.14em',
+                color: themeObj.accentColor,
+                marginBottom: 8,
+                fontWeight: 600,
+              }}
+            >
+              {s.name}
+            </p>
+            <div
+              style={{
+                height: 6,
+                background: 'var(--bg-raised)',
+                borderRadius: 4,
+                maxWidth: 200,
+                margin: '0 auto 6px',
+              }}
+            />
+            <div
+              style={{
+                height: 6,
+                background: 'var(--line-soft)',
+                borderRadius: 4,
+                maxWidth: 140,
+                margin: '0 auto',
+              }}
+            />
           </div>
         ))}
         {enabledSections.length === 0 && (
-          <div style={{ padding: '32px 24px', textAlign: 'center', color: 'var(--ink-dim)', fontSize: 12, fontStyle: 'italic' }}>
+          <div
+            style={{
+              padding: '32px 24px',
+              textAlign: 'center',
+              color: 'var(--ink-dim)',
+              fontSize: 12,
+              fontStyle: 'italic',
+            }}
+          >
             No sections enabled
           </div>
         )}
@@ -139,9 +267,7 @@ export default function Website() {
 
   const [theme, setTheme] = useState('royal');
   const [heroTagline, setHeroTagline] = useState('');
-  const [sections, setSections] = useState(
-    SECTIONS.map((s) => ({ ...s, enabled: true }))
-  );
+  const [sections, setSections] = useState(SECTIONS.map((s) => ({ ...s, enabled: true })));
   const [showFullPreview, setShowFullPreview] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
@@ -159,9 +285,7 @@ export default function Website() {
   }, [heroContent]);
 
   const toggleSection = (id: string) => {
-    setSections((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s))
-    );
+    setSections((prev) => prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)));
     setIsDirty(true);
   };
 
@@ -227,12 +351,30 @@ export default function Website() {
               onClick={handlePublish}
               disabled={updateContent.isPending}
               className="btn-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, opacity: updateContent.isPending ? 0.6 : 1, position: 'relative' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 13,
+                opacity: updateContent.isPending ? 0.6 : 1,
+                position: 'relative',
+              }}
             >
               <HiOutlineSparkles style={{ width: 14, height: 14 }} />
               {updateContent.isPending ? 'Publishing…' : 'Publish changes'}
               {isDirty && !updateContent.isPending && (
-                <span style={{ position: 'absolute', top: -4, right: -4, width: 8, height: 8, borderRadius: '50%', background: '#f97316', border: '1.5px solid white' }} />
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: -4,
+                    right: -4,
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: '#f97316',
+                    border: '1.5px solid white',
+                  }}
+                />
               )}
             </button>
           </div>
@@ -244,26 +386,49 @@ export default function Website() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Theme preset */}
           <div className="card">
-            <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>Theme preset</div>
+            <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>
+              Theme preset
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {THEMES.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => handleThemeChange(t.id)}
                   style={{
-                    width: '100%', textAlign: 'left', padding: '10px 12px', borderRadius: 8,
-                    display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
-                    border: theme === t.id ? '1.5px solid var(--gold)' : '1px solid var(--line-soft)',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    cursor: 'pointer',
+                    border:
+                      theme === t.id ? '1.5px solid var(--gold)' : '1px solid var(--line-soft)',
                     background: theme === t.id ? 'var(--gold-glow)' : 'var(--bg-raised)',
                     transition: 'all 150ms',
                   }}
                 >
-                  <div style={{ width: 22, height: 22, borderRadius: 6, flexShrink: 0, background: t.gradient }} />
+                  <div
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 6,
+                      flexShrink: 0,
+                      background: t.gradient,
+                    }}
+                  />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, color: 'var(--ink-high)', fontWeight: 500 }}>{t.label}</div>
+                    <div style={{ fontSize: 13, color: 'var(--ink-high)', fontWeight: 500 }}>
+                      {t.label}
+                    </div>
                     <div style={{ fontSize: 10, color: 'var(--ink-dim)' }}>{t.hint}</div>
                   </div>
-                  {theme === t.id && <HiOutlineCheck style={{ width: 14, height: 14, color: 'var(--gold-deep)', flexShrink: 0 }} />}
+                  {theme === t.id && (
+                    <HiOutlineCheck
+                      style={{ width: 14, height: 14, color: 'var(--gold-deep)', flexShrink: 0 }}
+                    />
+                  )}
                 </button>
               ))}
             </div>
@@ -271,7 +436,9 @@ export default function Website() {
 
           {/* Hero tagline */}
           <div className="card">
-            <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>Hero tagline</div>
+            <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>
+              Hero tagline
+            </div>
             <textarea
               value={heroTagline}
               onChange={(e) => handleTaglineChange(e.target.value)}
@@ -286,17 +453,28 @@ export default function Website() {
 
           {/* Section toggles */}
           <div className="card">
-            <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>Sections</div>
+            <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>
+              Sections
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {sections.map((s, i) => (
                 <div
                   key={s.id}
                   style={{
-                    display: 'flex', alignItems: 'center', padding: '10px 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '10px 0',
                     borderTop: i > 0 ? '1px solid var(--line-soft)' : 'none',
                   }}
                 >
-                  <span style={{ flex: 1, fontSize: 13, color: s.enabled ? 'var(--ink-high)' : 'var(--ink-dim)', transition: 'color 200ms' }}>
+                  <span
+                    style={{
+                      flex: 1,
+                      fontSize: 13,
+                      color: s.enabled ? 'var(--ink-high)' : 'var(--ink-dim)',
+                      transition: 'color 200ms',
+                    }}
+                  >
                     {s.name}
                   </span>
                   <Toggle enabled={s.enabled} onChange={() => toggleSection(s.id)} />
@@ -307,8 +485,20 @@ export default function Website() {
 
           {/* Domain */}
           <div className="card">
-            <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>Domain</div>
-            <div className="mono" style={{ fontSize: 11, color: 'var(--ink-mid)', background: 'var(--bg-raised)', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line-soft)' }}>
+            <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>
+              Domain
+            </div>
+            <div
+              className="mono"
+              style={{
+                fontSize: 11,
+                color: 'var(--ink-mid)',
+                background: 'var(--bg-raised)',
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--line-soft)',
+              }}
+            >
               {slug}.weds.app
             </div>
             <button
@@ -333,23 +523,60 @@ export default function Website() {
 
       {/* Full-screen preview modal */}
       {showFullPreview && (
-        <div style={{ position: 'fixed', inset: 0, background: 'var(--bg-page)', zIndex: 100, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', background: 'var(--bg-panel)', borderBottom: '1px solid var(--line-soft)', position: 'sticky', top: 0 }}>
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'var(--bg-page)',
+            zIndex: 100,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '10px 16px',
+              background: 'var(--bg-panel)',
+              borderBottom: '1px solid var(--line-soft)',
+              position: 'sticky',
+              top: 0,
+            }}
+          >
             <button
               onClick={() => setShowFullPreview(false)}
-              style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
+              style={{
+                padding: '6px 8px',
+                borderRadius: 6,
+                color: 'var(--ink-dim)',
+                background: 'transparent',
+                cursor: 'pointer',
+              }}
             >
               <HiOutlineX style={{ width: 18, height: 18 }} />
             </button>
-            <span className="mono" style={{ fontSize: 12, color: 'var(--ink-low)' }}>{slug}.weds.app</span>
+            <span className="mono" style={{ fontSize: 12, color: 'var(--ink-low)' }}>
+              {slug}.weds.app
+            </span>
             <span className="pill ok" style={{ fontSize: 9 }}>
-              <span className="dot" />Live
+              <span className="dot" />
+              Live
             </span>
             <a
               href={`https://${slug}.weds.app`}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--gold-deep)', textDecoration: 'none' }}
+              style={{
+                marginLeft: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 12,
+                color: 'var(--gold-deep)',
+                textDecoration: 'none',
+              }}
             >
               Open in new tab <HiOutlineExternalLink style={{ width: 12, height: 12 }} />
             </a>
@@ -361,30 +588,137 @@ export default function Website() {
               const enabledSections = sections.filter((s) => s.enabled);
               return (
                 <div style={{ maxWidth: 680, margin: '0 auto', padding: '0 0 48px' }}>
-                  <div style={{ padding: '64px 32px', textAlign: 'center', background: themeObj.heroGradient, color: 'white' }}>
-                    <p style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', opacity: 0.7, marginBottom: 12 }}>Together with their families</p>
-                    <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 48, margin: '0 0 8px', color: 'white' }}>
+                  <div
+                    style={{
+                      padding: '64px 32px',
+                      textAlign: 'center',
+                      background: themeObj.heroGradient,
+                      color: 'white',
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: 10,
+                        letterSpacing: '0.15em',
+                        textTransform: 'uppercase',
+                        opacity: 0.7,
+                        marginBottom: 12,
+                      }}
+                    >
+                      Together with their families
+                    </p>
+                    <h1
+                      style={{
+                        fontFamily: 'Georgia, serif',
+                        fontSize: 48,
+                        margin: '0 0 8px',
+                        color: 'white',
+                      }}
+                    >
                       {heroContent?.bride_name || 'Bride'}
                     </h1>
-                    <p style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 32, color: themeObj.accentColor, margin: '4px 0' }}>&amp;</p>
-                    <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 48, margin: '0 0 16px', color: 'white' }}>
+                    <p
+                      style={{
+                        fontFamily: 'Georgia, serif',
+                        fontStyle: 'italic',
+                        fontSize: 32,
+                        color: themeObj.accentColor,
+                        margin: '4px 0',
+                      }}
+                    >
+                      &amp;
+                    </p>
+                    <h1
+                      style={{
+                        fontFamily: 'Georgia, serif',
+                        fontSize: 48,
+                        margin: '0 0 16px',
+                        color: 'white',
+                      }}
+                    >
                       {heroContent?.groom_name || 'Groom'}
                     </h1>
                     {heroTagline && (
-                      <p style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 18, opacity: 0.85, marginTop: 8 }}>{heroTagline}</p>
+                      <p
+                        style={{
+                          fontFamily: 'Georgia, serif',
+                          fontStyle: 'italic',
+                          fontSize: 18,
+                          opacity: 0.85,
+                          marginTop: 8,
+                        }}
+                      >
+                        {heroTagline}
+                      </p>
                     )}
                     {heroContent?.wedding_date && (
-                      <p className="mono" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6, marginTop: 16 }}>
-                        {new Date(heroContent.wedding_date).toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                      <p
+                        className="mono"
+                        style={{
+                          fontSize: 11,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.1em',
+                          opacity: 0.6,
+                          marginTop: 16,
+                        }}
+                      >
+                        {new Date(heroContent.wedding_date).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                        })}
                       </p>
                     )}
                   </div>
                   {enabledSections.map((s) => (
-                    <div key={s.id} style={{ padding: '40px 32px', borderBottom: '1px solid var(--line-soft)', textAlign: 'center' }}>
-                      <p style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.14em', color: themeObj.accentColor, fontWeight: 600, marginBottom: 16 }}>{s.name}</p>
-                      <div style={{ height: 8, background: 'var(--bg-raised)', borderRadius: 4, maxWidth: 360, margin: '0 auto 8px' }} />
-                      <div style={{ height: 8, background: 'var(--line-soft)', borderRadius: 4, maxWidth: 240, margin: '0 auto 8px' }} />
-                      <div style={{ height: 8, background: 'var(--line-soft)', borderRadius: 4, maxWidth: 200, margin: '0 auto' }} />
+                    <div
+                      key={s.id}
+                      style={{
+                        padding: '40px 32px',
+                        borderBottom: '1px solid var(--line-soft)',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <p
+                        style={{
+                          fontSize: 10,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.14em',
+                          color: themeObj.accentColor,
+                          fontWeight: 600,
+                          marginBottom: 16,
+                        }}
+                      >
+                        {s.name}
+                      </p>
+                      <div
+                        style={{
+                          height: 8,
+                          background: 'var(--bg-raised)',
+                          borderRadius: 4,
+                          maxWidth: 360,
+                          margin: '0 auto 8px',
+                        }}
+                      />
+                      <div
+                        style={{
+                          height: 8,
+                          background: 'var(--line-soft)',
+                          borderRadius: 4,
+                          maxWidth: 240,
+                          margin: '0 auto 8px',
+                        }}
+                      />
+                      <div
+                        style={{
+                          height: 8,
+                          background: 'var(--line-soft)',
+                          borderRadius: 4,
+                          maxWidth: 200,
+                          margin: '0 auto',
+                        }}
+                      />
                     </div>
                   ))}
                 </div>

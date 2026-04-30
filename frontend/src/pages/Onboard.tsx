@@ -31,7 +31,7 @@ export default function Onboard() {
       navigate(`/${slug}/dashboard`, { replace: true });
     }
   }, [loading, isAuthenticated, slug, navigate]);
-  
+
   const [submitting, setSubmitting] = useState(false);
   const [successSlug, setSuccessSlug] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({

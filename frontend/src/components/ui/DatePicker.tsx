@@ -21,10 +21,33 @@ interface DatePickerProps {
 }
 
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
-const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_SHORT = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 function parseISO(v: string): Date | null {
@@ -43,7 +66,11 @@ function toISO(d: Date): string {
 }
 
 function sameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
 }
 
 function formatDisplay(d: Date): string {
@@ -85,9 +112,10 @@ export default function DatePicker({
     const popupHeight = 340;
     const popupWidth = 300;
     const spaceBelow = window.innerHeight - rect.bottom;
-    const top = spaceBelow < popupHeight + 20 && rect.top > popupHeight + 20
-      ? rect.top - popupHeight - 8
-      : rect.bottom + 6;
+    const top =
+      spaceBelow < popupHeight + 20 && rect.top > popupHeight + 20
+        ? rect.top - popupHeight - 8
+        : rect.bottom + 6;
     const left = Math.min(rect.left, window.innerWidth - popupWidth - 12);
     setPickerStyle({
       position: 'fixed',
@@ -144,7 +172,8 @@ export default function DatePicker({
     const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
     const cells: (Date | null)[] = [];
     for (let i = 0; i < startOffset; i++) cells.push(null);
-    for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(viewMonth.getFullYear(), viewMonth.getMonth(), d));
+    for (let d = 1; d <= daysInMonth; d++)
+      cells.push(new Date(viewMonth.getFullYear(), viewMonth.getMonth(), d));
     while (cells.length % 7 !== 0) cells.push(null);
     return cells;
   }, [viewMonth]);
@@ -193,7 +222,11 @@ export default function DatePicker({
             type="button"
             onClick={() => setYearMode((v) => !v)}
             className="text-sm font-medium px-2 py-1 rounded transition-colors hover:bg-[var(--bg-raised)]"
-            style={{ fontFamily: 'var(--font-display)', fontSize: '15px', color: 'var(--ink-high)' }}
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '15px',
+              color: 'var(--ink-high)',
+            }}
           >
             {MONTHS[viewMonth.getMonth()]} {currentYear}
           </button>
@@ -226,7 +259,8 @@ export default function DatePicker({
                     border: `1px solid ${active ? 'var(--gold)' : 'var(--line-soft)'}`,
                   }}
                   onMouseEnter={(e) => {
-                    if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--bg-raised)';
+                    if (!active)
+                      (e.currentTarget as HTMLElement).style.background = 'var(--bg-raised)';
                   }}
                   onMouseLeave={(e) => {
                     if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent';
@@ -270,12 +304,15 @@ export default function DatePicker({
                       color: disabledDay
                         ? 'var(--ink-dim)'
                         : isSelected
-                        ? '#fff'
-                        : isToday
-                        ? 'var(--gold-deep)'
-                        : 'var(--ink-high)',
+                          ? '#fff'
+                          : isToday
+                            ? 'var(--gold-deep)'
+                            : 'var(--ink-high)',
                       fontWeight: isSelected || isToday ? 600 : 400,
-                      border: isToday && !isSelected ? '1px solid var(--gold-soft)' : '1px solid transparent',
+                      border:
+                        isToday && !isSelected
+                          ? '1px solid var(--gold-soft)'
+                          : '1px solid transparent',
                       cursor: disabledDay ? 'not-allowed' : 'pointer',
                       opacity: disabledDay ? 0.4 : 1,
                     }}

@@ -137,7 +137,9 @@ function sharedPaymentSideAmounts(
   }
 
   const itemById = new Map(items.map((item) => [item.id, item]));
-  const allocationsForPayment = allocations.filter((allocation) => allocation.payment_id === payment.id);
+  const allocationsForPayment = allocations.filter(
+    (allocation) => allocation.payment_id === payment.id,
+  );
 
   let bride = 0;
   let groom = 0;
@@ -178,8 +180,10 @@ function getFirstFinanceItem(vendor: VendorWithFinance) {
 }
 
 function getVendorCategoryLabel(vendor: VendorWithFinance) {
-  return (vendor as VendorWithFinance & { expense_categories?: { name?: string } }).expense_categories
-    ?.name ?? null;
+  return (
+    (vendor as VendorWithFinance & { expense_categories?: { name?: string } }).expense_categories
+      ?.name ?? null
+  );
 }
 
 function getVendorEvents(vendor: VendorWithFinance): string[] {
@@ -303,9 +307,12 @@ export default function Vendors() {
   const getVendorFormState = (vendor?: VendorWithFinance | null): VendorFormData => {
     if (!vendor) return DEFAULT_FORM;
     const firstItem = getFirstFinanceItem(vendor);
-    const teamMembers = (vendor as VendorWithFinance & {
-      team_members?: Array<{ first_name: string }>;
-    }).team_members ?? [];
+    const teamMembers =
+      (
+        vendor as VendorWithFinance & {
+          team_members?: Array<{ first_name: string }>;
+        }
+      ).team_members ?? [];
     const teamSize = vendor.team_size ?? 0;
     return {
       name: vendor.name,
@@ -412,14 +419,18 @@ export default function Vendors() {
     setPage(1);
   }, [selectedCategoryIds, paymentFilters, logisticsFilters, searchQuery]);
 
-  const toggleSelection = <T extends string,>(value: T, selected: T[], setSelected: (next: T[]) => void) => {
-    setSelected(selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value]);
+  const toggleSelection = <T extends string>(
+    value: T,
+    selected: T[],
+    setSelected: (next: T[]) => void,
+  ) => {
+    setSelected(
+      selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value],
+    );
   };
 
   const categorySummary = summarizeMultiSelect(
-    categoryTree
-      .filter((cat) => selectedCategoryIds.includes(cat.id))
-      .map((cat) => cat.name),
+    categoryTree.filter((cat) => selectedCategoryIds.includes(cat.id)).map((cat) => cat.name),
     'All categories',
   );
   const paymentSummary = summarizeMultiSelect(
@@ -460,9 +471,7 @@ export default function Vendors() {
         (document.getElementById('vendor-form') as HTMLFormElement | null)?.requestSubmit();
       },
       isSaving:
-        createMutation.isPending ||
-        updateMutation.isPending ||
-        createVendorPayment.isPending,
+        createMutation.isPending || updateMutation.isPending || createVendorPayment.isPending,
     });
 
   const handleEdit = (vendor: VendorWithFinance) => {
@@ -495,9 +504,7 @@ export default function Vendors() {
       needs_food: formData.needs_food,
       needs_accommodation: formData.needs_accommodation,
       team_size: effectiveTeamSize,
-      team_member_names: teamRelevant
-        ? formData.team_member_names.slice(0, effectiveTeamSize)
-        : [],
+      team_member_names: teamRelevant ? formData.team_member_names.slice(0, effectiveTeamSize) : [],
     };
 
     try {
@@ -545,9 +552,7 @@ export default function Vendors() {
       closeVendorModal();
     } catch (error: any) {
       const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
-        'Failed to save vendor.';
+        error?.response?.data?.message || error?.response?.data?.error || 'Failed to save vendor.';
       toast.error(message);
     }
   };
@@ -577,9 +582,7 @@ export default function Vendors() {
         payment_method: isScheduled ? null : paymentForm.payment_method,
         paid_by_side: paymentForm.paid_by_side,
         paid_bride_share_percentage:
-          paymentForm.paid_by_side === 'shared'
-            ? paymentForm.paid_bride_share_percentage
-            : null,
+          paymentForm.paid_by_side === 'shared' ? paymentForm.paid_bride_share_percentage : null,
         notes: paymentForm.notes || null,
         new_items:
           excessAmount > 0 && paymentForm.extra_category_id
@@ -609,9 +612,7 @@ export default function Vendors() {
       setPaymentForm(getVendorPaymentFormState(editingVendor));
     } catch (error: any) {
       const message =
-        error?.response?.data?.error ||
-        error?.response?.data?.message ||
-        'Failed to save payment.';
+        error?.response?.data?.error || error?.response?.data?.message || 'Failed to save payment.';
       toast.error(message);
     }
   };
@@ -647,7 +648,12 @@ export default function Vendors() {
   if (loadingVendors || loadingCategories) {
     return (
       <div
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 0' }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '48px 0',
+        }}
       >
         <div
           style={{
@@ -682,7 +688,10 @@ export default function Vendors() {
         }
       />
 
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 18 }}>
+      <div
+        className="card"
+        style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 18 }}
+      >
         <div
           style={{
             display: 'flex',
@@ -731,300 +740,329 @@ export default function Vendors() {
               </button>
             )}
             <div ref={filterMenuRef} style={{ position: 'relative' }}>
-            <button
-              type="button"
-              onClick={() => setIsFilterMenuOpen((open) => !open)}
-              style={{
-                width: 240,
-                minHeight: 46,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 10,
-                textAlign: 'left',
-                padding: '10px 12px',
-                borderRadius: 'var(--radius-md)',
-                border: `1px solid ${isFilterMenuOpen ? 'var(--gold)' : 'var(--line)'}`,
-                background: 'var(--bg-raised)',
-                color: 'var(--ink-high)',
-                boxShadow: isFilterMenuOpen ? '0 0 0 3px var(--gold-glow)' : 'none',
-                lineHeight: 1.2,
-                fontFamily: 'inherit',
-              }}
-            >
-              <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: 'var(--ink-mid)',
-                    fontWeight: 600,
-                    lineHeight: 1.3,
-                  }}
-                >
-                  Filters
-                </span>
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: 'var(--ink-high)',
-                    fontWeight: 500,
-                    lineHeight: 1.3,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {hasActiveFilters
-                    ? `${categorySummary} · ${paymentSummary} · ${logisticsSummary}`
-                    : 'All vendors'}
-                </span>
-              </span>
-              <HiOutlineSelector
+              <button
+                type="button"
+                onClick={() => setIsFilterMenuOpen((open) => !open)}
                 style={{
-                  width: 16,
-                  height: 16,
-                  color: 'var(--ink-mid)',
-                  flexShrink: 0,
-                  transform: isFilterMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                  transition: 'transform 150ms ease',
-                }}
-              />
-            </button>
-
-            {isFilterMenuOpen && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 8px)',
-                  right: 0,
-                  width: 340,
-                  maxWidth: 'calc(100vw - 32px)',
-                  background: 'var(--bg-panel)',
-                  border: '1px solid var(--line-soft)',
-                  borderRadius: 16,
-                  boxShadow: '0 20px 48px rgba(15, 23, 42, 0.14)',
-                  padding: 14,
-                  zIndex: 20,
+                  width: 240,
+                  minHeight: 46,
                   display: 'flex',
-                  flexDirection: 'column',
-                  gap: 14,
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 10,
+                  textAlign: 'left',
+                  padding: '10px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  border: `1px solid ${isFilterMenuOpen ? 'var(--gold)' : 'var(--line)'}`,
+                  background: 'var(--bg-raised)',
+                  color: 'var(--ink-high)',
+                  boxShadow: isFilterMenuOpen ? '0 0 0 3px var(--gold-glow)' : 'none',
+                  lineHeight: 1.2,
+                  fontFamily: 'inherit',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                  <div>
-                    <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Vendor filters</div>
-                    <div style={{ fontSize: 12, color: 'var(--ink-low)' }}>Mix and match multiple filters.</div>
-                  </div>
-                  {hasActiveFilters && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedCategoryIds([]);
-                        setPaymentFilters([]);
-                        setLogisticsFilters([]);
-                        setPage(1);
-                      }}
-                      style={{
-                        border: 'none',
-                        background: 'transparent',
-                        color: 'var(--gold-deep)',
-                        fontSize: 12,
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Reset
-                    </button>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div className="uppercase-eyebrow">Categories</div>
-                  <div
+                <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                  <span
                     style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                      gap: 8,
-                      fontSize: 12,
-                      color: 'var(--ink-high)',
+                      fontSize: 11,
+                      color: 'var(--ink-mid)',
+                      fontWeight: 600,
+                      lineHeight: 1.3,
                     }}
                   >
-                    {categoryTree.filter((cat) => cat.name !== 'Venue').map((cat) => {
-                      const checked = selectedCategoryIds.includes(cat.id);
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => toggleSelection(cat.id, selectedCategoryIds, setSelectedCategoryIds)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'flex-start',
-                            gap: 8,
-                            width: '100%',
-                            minHeight: 36,
-                            padding: '8px 10px',
-                            borderRadius: 10,
-                            border: `1px solid ${checked ? 'rgba(212,175,55,0.35)' : 'var(--line-soft)'}`,
-                            background: checked ? 'var(--gold-glow)' : 'var(--bg-raised)',
-                            cursor: 'pointer',
-                            fontSize: 12,
-                            color: 'var(--ink-high)',
-                            textTransform: 'none',
-                            letterSpacing: 'normal',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleSelection(cat.id, selectedCategoryIds, setSelectedCategoryIds)}
-                            style={{
-                              accentColor: 'var(--gold)',
-                              pointerEvents: 'none',
-                              width: 14,
-                              height: 14,
-                              margin: 0,
-                              flexShrink: 0,
-                            }}
-                          />
-                          <span
-                            style={{
-                              display: 'block',
-                              minWidth: 0,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              color: checked ? 'var(--gold-deep)' : 'var(--ink-high)',
-                              fontWeight: checked ? 600 : 500,
-                              lineHeight: 1.3,
-                              textAlign: 'left',
-                            }}
-                          >
-                            {cat.name}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                    Filters
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      color: 'var(--ink-high)',
+                      fontWeight: 500,
+                      lineHeight: 1.3,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {hasActiveFilters
+                      ? `${categorySummary} · ${paymentSummary} · ${logisticsSummary}`
+                      : 'All vendors'}
+                  </span>
+                </span>
+                <HiOutlineSelector
+                  style={{
+                    width: 16,
+                    height: 16,
+                    color: 'var(--ink-mid)',
+                    flexShrink: 0,
+                    transform: isFilterMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 150ms ease',
+                  }}
+                />
+              </button>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div className="uppercase-eyebrow">Payment status</div>
-                  <div style={{ display: 'grid', gap: 8 }}>
-                    {paymentFilterOptions.map((option) => {
-                      const checked = paymentFilters.includes(option.id);
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => toggleSelection(option.id, paymentFilters, setPaymentFilters)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'flex-start',
-                            gap: 8,
-                            width: '100%',
-                            minHeight: 36,
-                            padding: '8px 10px',
-                            borderRadius: 10,
-                            border: `1px solid ${checked ? 'rgba(212,175,55,0.35)' : 'var(--line-soft)'}`,
-                            background: checked ? 'var(--gold-glow)' : 'var(--bg-raised)',
-                            cursor: 'pointer',
-                            fontSize: 12,
-                            color: 'var(--ink-high)',
-                            textTransform: 'none',
-                            letterSpacing: 'normal',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleSelection(option.id, paymentFilters, setPaymentFilters)}
-                            style={{
-                              accentColor: 'var(--gold)',
-                              pointerEvents: 'none',
-                              width: 14,
-                              height: 14,
-                              margin: 0,
-                              flexShrink: 0,
-                            }}
-                          />
-                          <span
-                            style={{
-                              display: 'block',
-                              color: checked ? 'var(--gold-deep)' : 'var(--ink-high)',
-                              fontWeight: checked ? 600 : 500,
-                              lineHeight: 1.3,
-                              textAlign: 'left',
-                            }}
-                          >
-                            {option.label}
-                          </span>
-                        </button>
-                      );
-                    })}
+              {isFilterMenuOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    width: 340,
+                    maxWidth: 'calc(100vw - 32px)',
+                    background: 'var(--bg-panel)',
+                    border: '1px solid var(--line-soft)',
+                    borderRadius: 16,
+                    boxShadow: '0 20px 48px rgba(15, 23, 42, 0.14)',
+                    padding: 14,
+                    zIndex: 20,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 14,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                    }}
+                  >
+                    <div>
+                      <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>
+                        Vendor filters
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--ink-low)' }}>
+                        Mix and match multiple filters.
+                      </div>
+                    </div>
+                    {hasActiveFilters && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategoryIds([]);
+                          setPaymentFilters([]);
+                          setLogisticsFilters([]);
+                          setPage(1);
+                        }}
+                        style={{
+                          border: 'none',
+                          background: 'transparent',
+                          color: 'var(--gold-deep)',
+                          fontSize: 12,
+                          fontWeight: 500,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Reset
+                      </button>
+                    )}
                   </div>
-                </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div className="uppercase-eyebrow">Team logistics</div>
-                  <div style={{ display: 'grid', gap: 8 }}>
-                    {logisticsFilterOptions.map((option) => {
-                      const checked = logisticsFilters.includes(option.id);
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => toggleSelection(option.id, logisticsFilters, setLogisticsFilters)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'flex-start',
-                            gap: 8,
-                            width: '100%',
-                            minHeight: 36,
-                            padding: '8px 10px',
-                            borderRadius: 10,
-                            border: `1px solid ${checked ? 'rgba(15,118,110,0.22)' : 'var(--line-soft)'}`,
-                            background: checked ? 'rgba(15,118,110,0.08)' : 'var(--bg-raised)',
-                            cursor: 'pointer',
-                            fontSize: 12,
-                            color: 'var(--ink-high)',
-                            textTransform: 'none',
-                            letterSpacing: 'normal',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleSelection(option.id, logisticsFilters, setLogisticsFilters)}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div className="uppercase-eyebrow">Categories</div>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                        gap: 8,
+                        fontSize: 12,
+                        color: 'var(--ink-high)',
+                      }}
+                    >
+                      {categoryTree
+                        .filter((cat) => cat.name !== 'Venue')
+                        .map((cat) => {
+                          const checked = selectedCategoryIds.includes(cat.id);
+                          return (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() =>
+                                toggleSelection(cat.id, selectedCategoryIds, setSelectedCategoryIds)
+                              }
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'flex-start',
+                                gap: 8,
+                                width: '100%',
+                                minHeight: 36,
+                                padding: '8px 10px',
+                                borderRadius: 10,
+                                border: `1px solid ${checked ? 'rgba(212,175,55,0.35)' : 'var(--line-soft)'}`,
+                                background: checked ? 'var(--gold-glow)' : 'var(--bg-raised)',
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                color: 'var(--ink-high)',
+                                textTransform: 'none',
+                                letterSpacing: 'normal',
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() =>
+                                  toggleSelection(
+                                    cat.id,
+                                    selectedCategoryIds,
+                                    setSelectedCategoryIds,
+                                  )
+                                }
+                                style={{
+                                  accentColor: 'var(--gold)',
+                                  pointerEvents: 'none',
+                                  width: 14,
+                                  height: 14,
+                                  margin: 0,
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <span
+                                style={{
+                                  display: 'block',
+                                  minWidth: 0,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  color: checked ? 'var(--gold-deep)' : 'var(--ink-high)',
+                                  fontWeight: checked ? 600 : 500,
+                                  lineHeight: 1.3,
+                                  textAlign: 'left',
+                                }}
+                              >
+                                {cat.name}
+                              </span>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div className="uppercase-eyebrow">Payment status</div>
+                    <div style={{ display: 'grid', gap: 8 }}>
+                      {paymentFilterOptions.map((option) => {
+                        const checked = paymentFilters.includes(option.id);
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() =>
+                              toggleSelection(option.id, paymentFilters, setPaymentFilters)
+                            }
                             style={{
-                              accentColor: '#0f766e',
-                              pointerEvents: 'none',
-                              width: 14,
-                              height: 14,
-                              margin: 0,
-                              flexShrink: 0,
-                            }}
-                          />
-                          <span
-                            style={{
-                              display: 'block',
-                              color: checked ? '#0f766e' : 'var(--ink-high)',
-                              fontWeight: checked ? 600 : 500,
-                              lineHeight: 1.3,
-                              textAlign: 'left',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'flex-start',
+                              gap: 8,
+                              width: '100%',
+                              minHeight: 36,
+                              padding: '8px 10px',
+                              borderRadius: 10,
+                              border: `1px solid ${checked ? 'rgba(212,175,55,0.35)' : 'var(--line-soft)'}`,
+                              background: checked ? 'var(--gold-glow)' : 'var(--bg-raised)',
+                              cursor: 'pointer',
+                              fontSize: 12,
+                              color: 'var(--ink-high)',
+                              textTransform: 'none',
+                              letterSpacing: 'normal',
                             }}
                           >
-                            {option.label}
-                          </span>
-                        </button>
-                      );
-                    })}
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() =>
+                                toggleSelection(option.id, paymentFilters, setPaymentFilters)
+                              }
+                              style={{
+                                accentColor: 'var(--gold)',
+                                pointerEvents: 'none',
+                                width: 14,
+                                height: 14,
+                                margin: 0,
+                                flexShrink: 0,
+                              }}
+                            />
+                            <span
+                              style={{
+                                display: 'block',
+                                color: checked ? 'var(--gold-deep)' : 'var(--ink-high)',
+                                fontWeight: checked ? 600 : 500,
+                                lineHeight: 1.3,
+                                textAlign: 'left',
+                              }}
+                            >
+                              {option.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div className="uppercase-eyebrow">Team logistics</div>
+                    <div style={{ display: 'grid', gap: 8 }}>
+                      {logisticsFilterOptions.map((option) => {
+                        const checked = logisticsFilters.includes(option.id);
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() =>
+                              toggleSelection(option.id, logisticsFilters, setLogisticsFilters)
+                            }
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'flex-start',
+                              gap: 8,
+                              width: '100%',
+                              minHeight: 36,
+                              padding: '8px 10px',
+                              borderRadius: 10,
+                              border: `1px solid ${checked ? 'rgba(15,118,110,0.22)' : 'var(--line-soft)'}`,
+                              background: checked ? 'rgba(15,118,110,0.08)' : 'var(--bg-raised)',
+                              cursor: 'pointer',
+                              fontSize: 12,
+                              color: 'var(--ink-high)',
+                              textTransform: 'none',
+                              letterSpacing: 'normal',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() =>
+                                toggleSelection(option.id, logisticsFilters, setLogisticsFilters)
+                              }
+                              style={{
+                                accentColor: '#0f766e',
+                                pointerEvents: 'none',
+                                width: 14,
+                                height: 14,
+                                margin: 0,
+                                flexShrink: 0,
+                              }}
+                            />
+                            <span
+                              style={{
+                                display: 'block',
+                                color: checked ? '#0f766e' : 'var(--ink-high)',
+                                fontWeight: checked ? 600 : 500,
+                                lineHeight: 1.3,
+                                textAlign: 'left',
+                              }}
+                            >
+                              {option.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1045,18 +1083,33 @@ export default function Vendors() {
       </div>
 
       {vendors.length > 0 ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: 16,
+          }}
+        >
           {vendors.map((vendor, vendorIndex) => {
-            const plannedPayments = vendor.finance?.payments?.filter((payment) => payment.status === 'scheduled') ?? [];
+            const plannedPayments =
+              vendor.finance?.payments?.filter((payment) => payment.status === 'scheduled') ?? [];
             const events = getVendorEvents(vendor);
             const committed = vendor.finance_summary?.committed_amount ?? 0;
             const paid = vendor.finance_summary?.paid_amount ?? 0;
             const outstanding = vendor.finance_summary?.outstanding_amount ?? 0;
             const paidPct = committed > 0 ? Math.min(100, (paid / committed) * 100) : 0;
             const statusLabel =
-              paid >= committed && committed > 0 ? 'Confirmed' : paid > 0 ? 'Deposit paid' : 'Quoted';
+              paid >= committed && committed > 0
+                ? 'Confirmed'
+                : paid > 0
+                  ? 'Deposit paid'
+                  : 'Quoted';
             const statusDotColor =
-              paid >= committed && committed > 0 ? '#16a34a' : paid > 0 ? 'var(--gold)' : 'var(--line-strong)';
+              paid >= committed && committed > 0
+                ? '#16a34a'
+                : paid > 0
+                  ? 'var(--gold)'
+                  : 'var(--line-strong)';
             const hasTeamLogistics =
               Boolean(vendor.needs_food) ||
               Boolean(vendor.needs_accommodation) ||
@@ -1078,7 +1131,14 @@ export default function Vendors() {
                     gap: 8,
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                    }}
+                  >
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>
                         {getVendorCategoryLabel(vendor) ?? 'Vendor'}
@@ -1105,7 +1165,15 @@ export default function Vendors() {
                       >
                         {vendor.name}
                       </h3>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, flexWrap: 'wrap' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          marginTop: 3,
+                          flexWrap: 'wrap',
+                        }}
+                      >
                         <span style={{ fontSize: 10, color: 'var(--ink-low)' }}>{statusLabel}</span>
                         {vendor.finance?.items?.[0]?.side && (
                           <span
@@ -1139,11 +1207,31 @@ export default function Vendors() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: statusDotColor, display: 'inline-block' }} />
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          background: statusDotColor,
+                          display: 'inline-block',
+                        }}
+                      />
                       <button
                         onClick={() => handleEdit(vendor)}
                         title="Edit vendor"
-                        style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--line)', color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                        style={{
+                          width: 30,
+                          height: 30,
+                          borderRadius: 8,
+                          border: '1px solid var(--line)',
+                          color: 'var(--ink-dim)',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.15s',
+                        }}
                         onMouseEnter={(e) => {
                           const el = e.currentTarget as HTMLElement;
                           el.style.background = 'var(--gold-glow)';
@@ -1173,20 +1261,42 @@ export default function Vendors() {
                     }}
                   >
                     <div>
-                      <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>Committed</div>
+                      <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
+                        Committed
+                      </div>
                       <div style={{ fontSize: 12, color: 'var(--ink-high)', fontWeight: 500 }}>
-                        {committed > 0 ? formatCurrency(committed) : <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>—</span>}
+                        {committed > 0 ? (
+                          formatCurrency(committed)
+                        ) : (
+                          <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>—</span>
+                        )}
                       </div>
                     </div>
                     <div>
-                      <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>Paid</div>
-                      <div style={{ fontSize: 12, color: paid > 0 ? '#16a34a' : 'var(--ink-dim)', fontWeight: 500 }}>
+                      <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
+                        Paid
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: paid > 0 ? '#16a34a' : 'var(--ink-dim)',
+                          fontWeight: 500,
+                        }}
+                      >
                         {paid > 0 ? formatCurrency(paid) : '—'}
                       </div>
                     </div>
                     <div>
-                      <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>Due</div>
-                      <div style={{ fontSize: 12, color: outstanding > 0 ? '#ea580c' : 'var(--ink-dim)', fontWeight: 500 }}>
+                      <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
+                        Due
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: outstanding > 0 ? '#ea580c' : 'var(--ink-dim)',
+                          fontWeight: 500,
+                        }}
+                      >
                         {outstanding > 0 ? formatCurrency(outstanding) : '—'}
                       </div>
                     </div>
@@ -1194,40 +1304,95 @@ export default function Vendors() {
 
                   {committed > 0 && (
                     <div>
-                    <div style={{ height: 4, background: 'var(--line-soft)', borderRadius: 100, overflow: 'hidden', marginBottom: 6 }}>
                       <div
                         style={{
-                          height: '100%',
+                          height: 4,
+                          background: 'var(--line-soft)',
                           borderRadius: 100,
-                          background: 'linear-gradient(90deg, #16a34a, var(--gold))',
-                          width: `${paidPct}%`,
-                          transition: 'width 0.3s',
+                          overflow: 'hidden',
+                          marginBottom: 6,
                         }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span className="mono" style={{ fontSize: 10, color: '#16a34a' }}>
-                        {formatCurrency(paid)} paid
-                      </span>
-                      <span className="mono" style={{ fontSize: 10, color: 'var(--ink-dim)' }}>
-                        of {formatCurrency(committed)}
-                      </span>
-                    </div>
+                      >
+                        <div
+                          style={{
+                            height: '100%',
+                            borderRadius: 100,
+                            background: 'linear-gradient(90deg, #16a34a, var(--gold))',
+                            width: `${paidPct}%`,
+                            transition: 'width 0.3s',
+                          }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span className="mono" style={{ fontSize: 10, color: '#16a34a' }}>
+                          {formatCurrency(paid)} paid
+                        </span>
+                        <span className="mono" style={{ fontSize: 10, color: 'var(--ink-dim)' }}>
+                          of {formatCurrency(committed)}
+                        </span>
+                      </div>
                     </div>
                   )}
 
-                  {(plannedPayments.length > 0 || vendor.contact_person || vendor.phone || vendor.email) && (
+                  {(plannedPayments.length > 0 ||
+                    vendor.contact_person ||
+                    vendor.phone ||
+                    vendor.email) && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       {(vendor.contact_person || vendor.phone || vendor.email) && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--ink-mid)', padding: '4px 8px', background: 'var(--bg-raised)', borderRadius: 6 }}>
-                          <HiOutlinePhone style={{ width: 11, height: 11, color: 'var(--ink-dim)', flexShrink: 0 }} />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                            {vendor.contact_person && <span style={{ color: 'var(--ink-mid)' }}>{vendor.contact_person}</span>}
-                            {vendor.contact_person && vendor.phone && <span style={{ color: 'var(--ink-dim)' }}> · </span>}
-                            {vendor.phone && <a href={`tel:${vendor.phone}`} style={{ color: 'var(--gold-deep)', fontWeight: 500, textDecoration: 'none' }}>{vendor.phone}</a>}
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            fontSize: 11,
+                            color: 'var(--ink-mid)',
+                            padding: '4px 8px',
+                            background: 'var(--bg-raised)',
+                            borderRadius: 6,
+                          }}
+                        >
+                          <HiOutlinePhone
+                            style={{
+                              width: 11,
+                              height: 11,
+                              color: 'var(--ink-dim)',
+                              flexShrink: 0,
+                            }}
+                          />
+                          <span
+                            style={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              flex: 1,
+                            }}
+                          >
+                            {vendor.contact_person && (
+                              <span style={{ color: 'var(--ink-mid)' }}>
+                                {vendor.contact_person}
+                              </span>
+                            )}
+                            {vendor.contact_person && vendor.phone && (
+                              <span style={{ color: 'var(--ink-dim)' }}> · </span>
+                            )}
+                            {vendor.phone && (
+                              <a
+                                href={`tel:${vendor.phone}`}
+                                style={{
+                                  color: 'var(--gold-deep)',
+                                  fontWeight: 500,
+                                  textDecoration: 'none',
+                                }}
+                              >
+                                {vendor.phone}
+                              </a>
+                            )}
                             {!vendor.phone && vendor.email && (
                               <>
-                                {vendor.contact_person && <span style={{ color: 'var(--ink-dim)' }}> · </span>}
+                                {vendor.contact_person && (
+                                  <span style={{ color: 'var(--ink-dim)' }}> · </span>
+                                )}
                                 <span>{vendor.email}</span>
                               </>
                             )}
@@ -1251,10 +1416,25 @@ export default function Vendors() {
                               fontSize: 11,
                             }}
                           >
-                            <span className="mono" style={{ fontWeight: 500, color: payment.direction === 'inflow' ? '#0369a1' : 'var(--gold-deep)' }}>
+                            <span
+                              className="mono"
+                              style={{
+                                fontWeight: 500,
+                                color:
+                                  payment.direction === 'inflow' ? '#0369a1' : 'var(--gold-deep)',
+                              }}
+                            >
                               {formatPaymentAmount(payment.amount, payment.direction)}
                             </span>
-                            <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 6px', borderRadius: 4, ...badge.style }}>
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 500,
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                ...badge.style,
+                              }}
+                            >
                               {badge.label}
                             </span>
                           </div>
@@ -1266,17 +1446,44 @@ export default function Vendors() {
                   {hasTeamLogistics && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                       {vendor.needs_food && (
-                        <span style={{ fontSize: 10, background: 'rgba(15,118,110,0.08)', color: '#0f766e', padding: '2px 8px', borderRadius: 100, border: '1px solid rgba(15,118,110,0.18)' }}>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            background: 'rgba(15,118,110,0.08)',
+                            color: '#0f766e',
+                            padding: '2px 8px',
+                            borderRadius: 100,
+                            border: '1px solid rgba(15,118,110,0.18)',
+                          }}
+                        >
                           Needs food
                         </span>
                       )}
                       {vendor.needs_accommodation && (
-                        <span style={{ fontSize: 10, background: 'rgba(29,78,216,0.08)', color: '#1d4ed8', padding: '2px 8px', borderRadius: 100, border: '1px solid rgba(29,78,216,0.18)' }}>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            background: 'rgba(29,78,216,0.08)',
+                            color: '#1d4ed8',
+                            padding: '2px 8px',
+                            borderRadius: 100,
+                            border: '1px solid rgba(29,78,216,0.18)',
+                          }}
+                        >
                           Needs stay
                         </span>
                       )}
                       {Number(vendor.team_size ?? 0) > 0 && (
-                        <span style={{ fontSize: 10, background: 'var(--gold-glow)', color: 'var(--gold-deep)', padding: '2px 8px', borderRadius: 100, border: '1px solid rgba(212,175,55,0.25)' }}>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            background: 'var(--gold-glow)',
+                            color: 'var(--gold-deep)',
+                            padding: '2px 8px',
+                            borderRadius: 100,
+                            border: '1px solid rgba(212,175,55,0.25)',
+                          }}
+                        >
                           {vendor.team_size} team
                         </span>
                       )}
@@ -1284,7 +1491,15 @@ export default function Vendors() {
                   )}
 
                   {events.length > 0 && (
-                    <div style={{ paddingTop: 8, borderTop: '1px solid var(--line-soft)', display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    <div
+                      style={{
+                        paddingTop: 8,
+                        borderTop: '1px solid var(--line-soft)',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 4,
+                      }}
+                    >
                       {events.map((event) => (
                         <span
                           key={event}
@@ -1317,7 +1532,16 @@ export default function Vendors() {
                     {vendor.expense_id && committed > 0 ? (
                       <button
                         onClick={() => openPaymentsTab(vendor)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--gold-deep)', background: 'transparent', cursor: 'pointer', fontWeight: 500 }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: 11,
+                          color: 'var(--gold-deep)',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          fontWeight: 500,
+                        }}
                       >
                         <HiOutlineCurrencyRupee style={{ width: 12, height: 12 }} />
                         Manage payments
@@ -1326,12 +1550,24 @@ export default function Vendors() {
                       <span style={{ fontSize: 11, color: 'var(--ink-dim)' }}>No payments yet</span>
                     )}
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        alignItems: 'center',
+                        gap: 2,
+                      }}
+                    >
                       {vendor.phone && (
                         <a
                           href={`tel:${vendor.phone}`}
                           title="Call vendor"
-                          style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent' }}
+                          style={{
+                            padding: '6px 8px',
+                            borderRadius: 6,
+                            color: 'var(--ink-dim)',
+                            background: 'transparent',
+                          }}
                           onMouseEnter={(e) => {
                             (e.currentTarget as HTMLElement).style.background = 'var(--bg-raised)';
                           }}
@@ -1345,9 +1581,16 @@ export default function Vendors() {
                       <button
                         onClick={() => setDeleteConfirm(vendor.id)}
                         title="Delete vendor"
-                        style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
+                        style={{
+                          padding: '6px 8px',
+                          borderRadius: 6,
+                          color: 'var(--ink-dim)',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                        }}
                         onMouseEnter={(e) => {
-                          (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.08)';
+                          (e.currentTarget as HTMLElement).style.background =
+                            'rgba(220,38,38,0.08)';
                           (e.currentTarget as HTMLElement).style.color = 'var(--err)';
                         }}
                         onMouseLeave={(e) => {
@@ -1407,7 +1650,9 @@ export default function Vendors() {
           >
             Prev
           </button>
-          <span style={{ fontSize: 12, color: 'var(--ink-low)', minWidth: 80, textAlign: 'center' }}>
+          <span
+            style={{ fontSize: 12, color: 'var(--ink-low)', minWidth: 80, textAlign: 'center' }}
+          >
             Page {activePage} / {totalPages}
           </span>
           <button
@@ -1450,8 +1695,21 @@ export default function Vendors() {
                 boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
               }}
             >
-              <div style={{ padding: '14px 24px 16px', borderBottom: '1px solid var(--line-soft)', flexShrink: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div
+                style={{
+                  padding: '14px 24px 16px',
+                  borderBottom: '1px solid var(--line-soft)',
+                  flexShrink: 0,
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 10,
+                  }}
+                >
                   <div className="uppercase-eyebrow">
                     Service providers · {editingVendor ? 'Edit vendor' : 'Add vendor'}
                   </div>
@@ -1468,7 +1726,9 @@ export default function Vendors() {
                           borderRadius: 100,
                         }}
                       >
-                        <HiOutlineInformationCircle style={{ width: 13, height: 13, color: 'var(--warn)', flexShrink: 0 }} />
+                        <HiOutlineInformationCircle
+                          style={{ width: 13, height: 13, color: 'var(--warn)', flexShrink: 0 }}
+                        />
                         <span style={{ fontSize: 11, color: 'var(--warn)', whiteSpace: 'nowrap' }}>
                           Set a committed amount to record payments
                         </span>
@@ -1480,7 +1740,9 @@ export default function Vendors() {
                           Paid: <strong>{formatCurrency(paymentPaid)}</strong>
                         </span>
                         {paymentOutstanding > 0 && (
-                          <span style={{ fontSize: 12, color: 'var(--warn)', whiteSpace: 'nowrap' }}>
+                          <span
+                            style={{ fontSize: 12, color: 'var(--warn)', whiteSpace: 'nowrap' }}
+                          >
                             Outstanding: <strong>{formatCurrency(paymentOutstanding)}</strong>
                           </span>
                         )}
@@ -1488,14 +1750,28 @@ export default function Vendors() {
                     )}
                     <button
                       onClick={attemptCloseVendorModal}
-                      style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer', flexShrink: 0 }}
+                      style={{
+                        padding: '6px 8px',
+                        borderRadius: 6,
+                        color: 'var(--ink-dim)',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                      }}
                     >
                       <HiOutlineX style={{ width: 16, height: 16 }} />
                     </button>
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', columnGap: 16, alignItems: 'end' }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1.4fr 1fr',
+                    columnGap: 16,
+                    alignItems: 'end',
+                  }}
+                >
                   <div style={{ minWidth: 0 }}>
                     <label className="label">Vendor Name *</label>
                     <input
@@ -1515,7 +1791,9 @@ export default function Vendors() {
                       min="0"
                       step="0.01"
                       value={formData.total_cost}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, total_cost: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, total_cost: e.target.value }))
+                      }
                       className="input"
                       placeholder="0"
                       form="vendor-form"
@@ -1524,8 +1802,18 @@ export default function Vendors() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', borderBottom: '1px solid var(--line-soft)', padding: '0 24px', flexShrink: 0 }}>
-                {[{ id: 0, label: 'Details' }, { id: 1, label: 'Payments' }].map((tab) => (
+              <div
+                style={{
+                  display: 'flex',
+                  borderBottom: '1px solid var(--line-soft)',
+                  padding: '0 24px',
+                  flexShrink: 0,
+                }}
+              >
+                {[
+                  { id: 0, label: 'Details' },
+                  { id: 1, label: 'Payments' },
+                ].map((tab) => (
                   <button
                     key={tab.id}
                     type="button"
@@ -1537,7 +1825,8 @@ export default function Vendors() {
                       color: activeTab === tab.id ? 'var(--gold-deep)' : 'var(--ink-low)',
                       background: 'transparent',
                       border: 'none',
-                      borderBottom: activeTab === tab.id ? '2px solid var(--gold)' : '2px solid transparent',
+                      borderBottom:
+                        activeTab === tab.id ? '2px solid var(--gold)' : '2px solid transparent',
                       cursor: 'pointer',
                       marginBottom: -1,
                       display: 'flex',
@@ -1547,7 +1836,17 @@ export default function Vendors() {
                   >
                     {tab.label}
                     {tab.id === 1 && editingVendor && sortedPayments.length > 0 && (
-                      <span style={{ fontSize: 9, background: 'rgba(22,163,74,0.1)', color: '#16a34a', padding: '1px 6px', borderRadius: 100, border: '1px solid rgba(22,163,74,0.25)', fontWeight: 600 }}>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          background: 'rgba(22,163,74,0.1)',
+                          color: '#16a34a',
+                          padding: '1px 6px',
+                          borderRadius: 100,
+                          border: '1px solid rgba(22,163,74,0.25)',
+                          fontWeight: 600,
+                        }}
+                      >
                         {sortedPayments.length}
                       </span>
                     )}
@@ -1555,12 +1854,35 @@ export default function Vendors() {
                 ))}
               </div>
 
-              <form id="vendor-form" onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <form
+                id="vendor-form"
+                onSubmit={handleSubmit}
+                style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+              >
                 <div style={{ flex: 1, overflow: 'hidden' }}>
                   {activeTab === 0 && (
-                    <div style={{ height: '100%', overflowY: 'auto', padding: 24, display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignContent: 'start' }}>
+                    <div
+                      style={{
+                        height: '100%',
+                        overflowY: 'auto',
+                        padding: 24,
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 320px',
+                        gap: 24,
+                        alignContent: 'start',
+                      }}
+                    >
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: 'var(--ink-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: 'var(--ink-dim)',
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
                           Vendor details
                         </p>
 
@@ -1569,7 +1891,9 @@ export default function Vendors() {
                             <label className="label">Category *</label>
                             <CategoryCombobox
                               value={formData.category_id}
-                              onChange={(id) => setFormData((prev) => ({ ...prev, category_id: id }))}
+                              onChange={(id) =>
+                                setFormData((prev) => ({ ...prev, category_id: id }))
+                              }
                               level="subcategory"
                               placeholder="Search categories…"
                             />
@@ -1579,7 +1903,9 @@ export default function Vendors() {
                             <input
                               type="text"
                               value={formData.contact_person}
-                              onChange={(e) => setFormData((prev) => ({ ...prev, contact_person: e.target.value }))}
+                              onChange={(e) =>
+                                setFormData((prev) => ({ ...prev, contact_person: e.target.value }))
+                              }
                               className="input"
                               placeholder="Contact name"
                             />
@@ -1592,7 +1918,9 @@ export default function Vendors() {
                             <input
                               type="tel"
                               value={formData.phone}
-                              onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                              onChange={(e) =>
+                                setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                              }
                               className="input"
                               placeholder="Phone number"
                             />
@@ -1602,7 +1930,9 @@ export default function Vendors() {
                             <input
                               type="email"
                               value={formData.email}
-                              onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                              onChange={(e) =>
+                                setFormData((prev) => ({ ...prev, email: e.target.value }))
+                              }
                               className="input"
                               placeholder="Email address"
                             />
@@ -1613,7 +1943,10 @@ export default function Vendors() {
                           const teamRelevant = formData.needs_food || formData.needs_accommodation;
                           const renderedSize = teamRelevant ? parseTeamSize(formData.team_size) : 0;
                           const adjustSize = (delta: number) => {
-                            const next = Math.max(1, Math.min(100, parseTeamSize(formData.team_size) + delta));
+                            const next = Math.max(
+                              1,
+                              Math.min(100, parseTeamSize(formData.team_size) + delta),
+                            );
                             setFormData((prev) => ({ ...prev, team_size: String(next) }));
                           };
                           const stepperBtn = {
@@ -1653,27 +1986,69 @@ export default function Vendors() {
                                 }}
                               >
                                 <div className="uppercase-eyebrow">Team logistics</div>
-                                <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-                                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-mid)', cursor: 'pointer' }}>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    gap: 16,
+                                    alignItems: 'center',
+                                    flexWrap: 'wrap',
+                                  }}
+                                >
+                                  <label
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 6,
+                                      fontSize: 13,
+                                      color: 'var(--ink-mid)',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
                                     <input
                                       type="checkbox"
                                       checked={formData.needs_food}
-                                      onChange={(e) => setFormData((prev) => ({ ...prev, needs_food: e.target.checked }))}
+                                      onChange={(e) =>
+                                        setFormData((prev) => ({
+                                          ...prev,
+                                          needs_food: e.target.checked,
+                                        }))
+                                      }
                                     />
                                     Needs food
                                   </label>
-                                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-mid)', cursor: 'pointer' }}>
+                                  <label
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 6,
+                                      fontSize: 13,
+                                      color: 'var(--ink-mid)',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
                                     <input
                                       type="checkbox"
                                       checked={formData.needs_accommodation}
-                                      onChange={(e) => setFormData((prev) => ({ ...prev, needs_accommodation: e.target.checked }))}
+                                      onChange={(e) =>
+                                        setFormData((prev) => ({
+                                          ...prev,
+                                          needs_accommodation: e.target.checked,
+                                        }))
+                                      }
                                     />
                                     Needs accommodation
                                   </label>
                                   {teamRelevant && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                      <span style={{ fontSize: 12, color: 'var(--ink-low)' }}>Team size</span>
-                                      <button type="button" style={stepperBtn} onClick={() => adjustSize(-1)} aria-label="Decrease">
+                                      <span style={{ fontSize: 12, color: 'var(--ink-low)' }}>
+                                        Team size
+                                      </span>
+                                      <button
+                                        type="button"
+                                        style={stepperBtn}
+                                        onClick={() => adjustSize(-1)}
+                                        aria-label="Decrease"
+                                      >
                                         −
                                       </button>
                                       <input
@@ -1685,7 +2060,10 @@ export default function Vendors() {
                                           setFormData((prev) => ({ ...prev, team_size: cleaned }));
                                         }}
                                         onBlur={() => {
-                                          setFormData((prev) => ({ ...prev, team_size: String(parseTeamSize(prev.team_size)) }));
+                                          setFormData((prev) => ({
+                                            ...prev,
+                                            team_size: String(parseTeamSize(prev.team_size)),
+                                          }));
                                         }}
                                         style={{
                                           width: 48,
@@ -1698,7 +2076,12 @@ export default function Vendors() {
                                           fontSize: 13,
                                         }}
                                       />
-                                      <button type="button" style={stepperBtn} onClick={() => adjustSize(1)} aria-label="Increase">
+                                      <button
+                                        type="button"
+                                        style={stepperBtn}
+                                        onClick={() => adjustSize(1)}
+                                        aria-label="Increase"
+                                      >
                                         +
                                       </button>
                                     </div>
@@ -1708,10 +2091,25 @@ export default function Vendors() {
 
                               {teamRelevant && (
                                 <div>
-                                  <div style={{ fontSize: 11, color: 'var(--ink-low)', marginBottom: 6 }}>
-                                    Team member names <span style={{ color: 'var(--ink-dim)' }}>· optional, auto-filled if blank</span>
+                                  <div
+                                    style={{
+                                      fontSize: 11,
+                                      color: 'var(--ink-low)',
+                                      marginBottom: 6,
+                                    }}
+                                  >
+                                    Team member names{' '}
+                                    <span style={{ color: 'var(--ink-dim)' }}>
+                                      · optional, auto-filled if blank
+                                    </span>
                                   </div>
-                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
+                                  <div
+                                    style={{
+                                      display: 'grid',
+                                      gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                                      gap: 8,
+                                    }}
+                                  >
                                     {Array.from({ length: renderedSize }).map((_, idx) => (
                                       <input
                                         key={idx}
@@ -1723,7 +2121,10 @@ export default function Vendors() {
                                           const next = [...formData.team_member_names];
                                           while (next.length <= idx) next.push('');
                                           next[idx] = e.target.value;
-                                          setFormData((prev) => ({ ...prev, team_member_names: next }));
+                                          setFormData((prev) => ({
+                                            ...prev,
+                                            team_member_names: next,
+                                          }));
                                         }}
                                       />
                                     ))}
@@ -1736,7 +2137,16 @@ export default function Vendors() {
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                        <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: 'var(--ink-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: 'var(--ink-dim)',
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
                           Financial details
                         </p>
 
@@ -1744,7 +2154,9 @@ export default function Vendors() {
                           <label className="label">Obligation Date</label>
                           <DatePicker
                             value={formData.expense_date}
-                            onChange={(value) => setFormData((prev) => ({ ...prev, expense_date: value }))}
+                            onChange={(value) =>
+                              setFormData((prev) => ({ ...prev, expense_date: value }))
+                            }
                             placeholder="Obligation date"
                           />
                         </div>
@@ -1756,10 +2168,22 @@ export default function Vendors() {
                               const isActive = formData.side === side;
                               const activeColors =
                                 side === 'bride'
-                                  ? { border: '#be185d', bg: 'rgba(190,24,93,0.08)', color: '#be185d' }
+                                  ? {
+                                      border: '#be185d',
+                                      bg: 'rgba(190,24,93,0.08)',
+                                      color: '#be185d',
+                                    }
                                   : side === 'groom'
-                                    ? { border: '#1d4ed8', bg: 'rgba(29,78,216,0.08)', color: '#1d4ed8' }
-                                    : { border: 'var(--gold)', bg: 'var(--gold-glow)', color: 'var(--gold-deep)' };
+                                    ? {
+                                        border: '#1d4ed8',
+                                        bg: 'rgba(29,78,216,0.08)',
+                                        color: '#1d4ed8',
+                                      }
+                                    : {
+                                        border: 'var(--gold)',
+                                        bg: 'var(--gold-glow)',
+                                        color: 'var(--gold-deep)',
+                                      };
                               return (
                                 <button
                                   key={side}
@@ -1777,7 +2201,9 @@ export default function Vendors() {
                                     fontWeight: isActive ? 500 : 400,
                                   }}
                                 >
-                                  {side === 'shared' ? 'Shared' : side.charAt(0).toUpperCase() + side.slice(1)}
+                                  {side === 'shared'
+                                    ? 'Shared'
+                                    : side.charAt(0).toUpperCase() + side.slice(1)}
                                 </button>
                               );
                             })}
@@ -1788,7 +2214,12 @@ export default function Vendors() {
                           <SplitShare
                             total={Number(formData.total_cost) || 0}
                             bridePercentage={formData.bride_share_percentage}
-                            onChange={(percentage) => setFormData((prev) => ({ ...prev, bride_share_percentage: percentage }))}
+                            onChange={(percentage) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                bride_share_percentage: percentage,
+                              }))
+                            }
                           />
                         )}
 
@@ -1805,21 +2236,56 @@ export default function Vendors() {
                               gap: 10,
                             }}
                           >
-                            <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: 'var(--ink-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: 10,
+                                fontWeight: 600,
+                                color: 'var(--ink-dim)',
+                                letterSpacing: '0.08em',
+                                textTransform: 'uppercase',
+                              }}
+                            >
                               Payment Summary
                             </p>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            <div
+                              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}
+                            >
                               <div>
-                                <div style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}>Committed</div>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-mid)' }}>{formatCurrency(paymentCommitted)}</div>
+                                <div
+                                  style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}
+                                >
+                                  Committed
+                                </div>
+                                <div
+                                  style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-mid)' }}
+                                >
+                                  {formatCurrency(paymentCommitted)}
+                                </div>
                               </div>
                               <div>
-                                <div style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}>Paid</div>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>{formatCurrency(paymentPaid)}</div>
+                                <div
+                                  style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}
+                                >
+                                  Paid
+                                </div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>
+                                  {formatCurrency(paymentPaid)}
+                                </div>
                               </div>
                               <div style={{ gridColumn: '1 / -1' }}>
-                                <div style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}>Outstanding</div>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: paymentOutstanding > 0 ? '#ea580c' : 'var(--ink-dim)' }}>
+                                <div
+                                  style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}
+                                >
+                                  Outstanding
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    color: paymentOutstanding > 0 ? '#ea580c' : 'var(--ink-dim)',
+                                  }}
+                                >
                                   {formatCurrency(paymentOutstanding)}
                                 </div>
                               </div>
@@ -1827,9 +2293,20 @@ export default function Vendors() {
                             <button
                               type="button"
                               onClick={() => setActiveTab(1)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--gold-deep)', background: 'transparent', cursor: 'pointer', fontWeight: 500, padding: 0 }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                fontSize: 12,
+                                color: 'var(--gold-deep)',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                fontWeight: 500,
+                                padding: 0,
+                              }}
                             >
-                              <HiOutlineCurrencyRupee style={{ width: 13, height: 13 }} /> Manage payments →
+                              <HiOutlineCurrencyRupee style={{ width: 13, height: 13 }} /> Manage
+                              payments →
                             </button>
                           </div>
                         )}
@@ -1838,24 +2315,62 @@ export default function Vendors() {
                   )}
 
                   {activeTab === 1 && (
-                    <div style={{ height: '100%', display: 'grid', gridTemplateColumns: editingVendor ? '1fr 340px' : '1fr', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        height: '100%',
+                        display: 'grid',
+                        gridTemplateColumns: editingVendor ? '1fr 340px' : '1fr',
+                        overflow: 'hidden',
+                      }}
+                    >
                       {editingVendor && (
-                        <div style={{ overflowY: 'auto', padding: 24, borderRight: '1px solid var(--line-soft)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                          <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: 'var(--ink-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                        <div
+                          style={{
+                            overflowY: 'auto',
+                            padding: 24,
+                            borderRight: '1px solid var(--line-soft)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 12,
+                          }}
+                        >
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: 10,
+                              fontWeight: 600,
+                              color: 'var(--ink-dim)',
+                              letterSpacing: '0.08em',
+                              textTransform: 'uppercase',
+                            }}
+                          >
                             Payment History
                           </p>
                           {sortedPayments.length === 0 ? (
-                            <div style={{ border: '1.5px dashed var(--line)', borderRadius: 10, padding: '24px 20px', fontSize: 13, color: 'var(--ink-dim)', textAlign: 'center' }}>
+                            <div
+                              style={{
+                                border: '1.5px dashed var(--line)',
+                                borderRadius: 10,
+                                padding: '24px 20px',
+                                fontSize: 13,
+                                color: 'var(--ink-dim)',
+                                textAlign: 'center',
+                              }}
+                            >
                               No payments recorded yet.
                             </div>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                               {sortedPayments.map((payment) => {
-                                const dateLabel = payment.paid_date ?? payment.due_date ?? payment.created_at;
+                                const dateLabel =
+                                  payment.paid_date ?? payment.due_date ?? payment.created_at;
                                 const isDeleteAllowed = payment.status === 'scheduled';
                                 const isInflow = payment.direction === 'inflow';
-                                const amountColor =
-                                  isInflow ? '#0369a1' : payment.status === 'posted' ? 'var(--ok)' : 'var(--gold-deep)';
+                                const amountColor = isInflow
+                                  ? '#0369a1'
+                                  : payment.status === 'posted'
+                                    ? 'var(--ok)'
+                                    : 'var(--gold-deep)';
                                 const sideShares = sharedPaymentSideAmounts(
                                   payment,
                                   currentVendorFinance?.items ?? [],
@@ -1863,27 +2378,86 @@ export default function Vendors() {
                                 );
 
                                 return (
-                                  <div key={payment.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, border: '1px solid var(--line-soft)', borderRadius: 10, padding: '10px 14px' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-                                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-                                        <span style={{ fontWeight: 600, fontSize: 14, color: amountColor }}>
+                                  <div
+                                    key={payment.id}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'flex-start',
+                                      justifyContent: 'space-between',
+                                      gap: 12,
+                                      border: '1px solid var(--line-soft)',
+                                      borderRadius: 10,
+                                      padding: '10px 14px',
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: 4,
+                                        minWidth: 0,
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          flexWrap: 'wrap',
+                                          alignItems: 'center',
+                                          gap: 6,
+                                        }}
+                                      >
+                                        <span
+                                          style={{
+                                            fontWeight: 600,
+                                            fontSize: 14,
+                                            color: amountColor,
+                                          }}
+                                        >
                                           {formatPaymentAmount(payment.amount, payment.direction)}
                                         </span>
-                                        <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: 'var(--bg-raised)', color: 'var(--ink-low)', textTransform: 'capitalize' }}>
+                                        <span
+                                          style={{
+                                            fontSize: 10,
+                                            padding: '2px 7px',
+                                            borderRadius: 100,
+                                            background: 'var(--bg-raised)',
+                                            color: 'var(--ink-low)',
+                                            textTransform: 'capitalize',
+                                          }}
+                                        >
                                           {payment.status.replaceAll('_', ' ')}
                                         </span>
                                         {payment.paid_by_side && (
-                                          <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 100, background: 'var(--bg-raised)', color: 'var(--ink-low)', textTransform: 'capitalize' }}>
+                                          <span
+                                            style={{
+                                              fontSize: 10,
+                                              padding: '2px 7px',
+                                              borderRadius: 100,
+                                              background: 'var(--bg-raised)',
+                                              color: 'var(--ink-low)',
+                                              textTransform: 'capitalize',
+                                            }}
+                                          >
                                             {payment.paid_by_side}
                                           </span>
                                         )}
                                       </div>
                                       {sideShares && (
-                                        <div style={{ fontSize: 11, color: 'var(--ink-low)', lineHeight: 1.35 }}>
-                                          Bride {formatCurrency(sideShares.bride)} · Groom {formatCurrency(sideShares.groom)}
+                                        <div
+                                          style={{
+                                            fontSize: 11,
+                                            color: 'var(--ink-low)',
+                                            lineHeight: 1.35,
+                                          }}
+                                        >
+                                          Bride {formatCurrency(sideShares.bride)} · Groom{' '}
+                                          {formatCurrency(sideShares.groom)}
                                         </div>
                                       )}
-                                      <div className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>
+                                      <div
+                                        className="mono"
+                                        style={{ fontSize: 11, color: 'var(--ink-dim)' }}
+                                      >
                                         {new Date(dateLabel).toLocaleDateString('en-IN')}
                                         {payment.payment_method &&
                                           ` · ${PAYMENT_METHOD_LABELS[payment.payment_method] ?? payment.payment_method}`}
@@ -1894,12 +2468,22 @@ export default function Vendors() {
                                       <button
                                         onClick={() => handlePaymentDelete(payment.id)}
                                         disabled={deleteVendorPayment.isPending}
-                                        style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--err)', background: 'transparent', cursor: 'pointer', flexShrink: 0, opacity: deleteVendorPayment.isPending ? 0.5 : 1 }}
+                                        style={{
+                                          padding: '6px 8px',
+                                          borderRadius: 6,
+                                          color: 'var(--err)',
+                                          background: 'transparent',
+                                          cursor: 'pointer',
+                                          flexShrink: 0,
+                                          opacity: deleteVendorPayment.isPending ? 0.5 : 1,
+                                        }}
                                         onMouseEnter={(e) => {
-                                          (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.08)';
+                                          (e.currentTarget as HTMLElement).style.background =
+                                            'rgba(220,38,38,0.08)';
                                         }}
                                         onMouseLeave={(e) => {
-                                          (e.currentTarget as HTMLElement).style.background = 'transparent';
+                                          (e.currentTarget as HTMLElement).style.background =
+                                            'transparent';
                                         }}
                                       >
                                         <HiOutlineTrash style={{ width: 15, height: 15 }} />
@@ -1913,14 +2497,36 @@ export default function Vendors() {
                         </div>
                       )}
 
-                      <div style={{ overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                        <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: 'var(--ink-dim)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                          {editingVendor ? (isScheduled ? 'Schedule Payment' : 'Record Payment') : 'Initial Payment (Optional)'}
+                      <div
+                        style={{
+                          overflowY: 'auto',
+                          padding: 24,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 14,
+                        }}
+                      >
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: 'var(--ink-dim)',
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          {editingVendor
+                            ? isScheduled
+                              ? 'Schedule Payment'
+                              : 'Record Payment'
+                            : 'Initial Payment (Optional)'}
                         </p>
 
                         {!editingVendor && (
                           <p style={{ margin: 0, fontSize: 12, color: 'var(--ink-low)' }}>
-                            Optionally record a token or advance payment alongside the vendor. Leave blank to skip.
+                            Optionally record a token or advance payment alongside the vendor. Leave
+                            blank to skip.
                           </p>
                         )}
 
@@ -1931,16 +2537,22 @@ export default function Vendors() {
                               type="number"
                               step="0.01"
                               value={paymentForm.amount}
-                              onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))}
+                              onChange={(e) =>
+                                setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))
+                              }
                               className="input"
                               placeholder="Enter amount"
                             />
                           </div>
                           <div>
-                            <label className="label">{isScheduled ? 'Due Date' : 'Payment Date'}</label>
+                            <label className="label">
+                              {isScheduled ? 'Due Date' : 'Payment Date'}
+                            </label>
                             <DatePicker
                               value={paymentForm.payment_date}
-                              onChange={(value) => setPaymentForm((prev) => ({ ...prev, payment_date: value }))}
+                              onChange={(value) =>
+                                setPaymentForm((prev) => ({ ...prev, payment_date: value }))
+                              }
                               placeholder={isScheduled ? 'Due date' : 'Payment date'}
                             />
                           </div>
@@ -1951,7 +2563,12 @@ export default function Vendors() {
                             <label className="label">Method</label>
                             <select
                               value={paymentForm.payment_method}
-                              onChange={(e) => setPaymentForm((prev) => ({ ...prev, payment_method: e.target.value }))}
+                              onChange={(e) =>
+                                setPaymentForm((prev) => ({
+                                  ...prev,
+                                  payment_method: e.target.value,
+                                }))
+                              }
                               className="input"
                               disabled={isScheduled}
                             >
@@ -1966,7 +2583,12 @@ export default function Vendors() {
                             <label className="label">Paid By</label>
                             <select
                               value={paymentForm.paid_by_side}
-                              onChange={(e) => setPaymentForm((prev) => ({ ...prev, paid_by_side: e.target.value as 'bride' | 'groom' | 'shared' }))}
+                              onChange={(e) =>
+                                setPaymentForm((prev) => ({
+                                  ...prev,
+                                  paid_by_side: e.target.value as 'bride' | 'groom' | 'shared',
+                                }))
+                              }
                               className="input"
                             >
                               <option value="bride">Bride</option>
@@ -1980,7 +2602,12 @@ export default function Vendors() {
                           <SplitShare
                             total={paymentMagnitude}
                             bridePercentage={paymentForm.paid_bride_share_percentage}
-                            onChange={(percentage) => setPaymentForm((prev) => ({ ...prev, paid_bride_share_percentage: percentage }))}
+                            onChange={(percentage) =>
+                              setPaymentForm((prev) => ({
+                                ...prev,
+                                paid_bride_share_percentage: percentage,
+                              }))
+                            }
                           />
                         )}
 
@@ -1988,46 +2615,91 @@ export default function Vendors() {
                           <label className="label">Notes</label>
                           <textarea
                             value={paymentForm.notes}
-                            onChange={(e) => setPaymentForm((prev) => ({ ...prev, notes: e.target.value }))}
+                            onChange={(e) =>
+                              setPaymentForm((prev) => ({ ...prev, notes: e.target.value }))
+                            }
                             className="input"
                             style={{ minHeight: 60 }}
-                            placeholder={isScheduled ? 'Optional reminder note' : 'Reference, cheque no., or note'}
+                            placeholder={
+                              isScheduled
+                                ? 'Optional reminder note'
+                                : 'Reference, cheque no., or note'
+                            }
                           />
                         </div>
 
                         {isScheduled && (
-                          <div style={{ border: '1px solid rgba(217,119,6,0.25)', background: 'rgba(217,119,6,0.06)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--warn)' }}>
+                          <div
+                            style={{
+                              border: '1px solid rgba(217,119,6,0.25)',
+                              background: 'rgba(217,119,6,0.06)',
+                              borderRadius: 8,
+                              padding: '10px 14px',
+                              fontSize: 12,
+                              color: 'var(--warn)',
+                            }}
+                          >
                             Future date — will be saved as a scheduled reminder.
                           </div>
                         )}
 
                         {isReversal && (
-                          <div style={{ border: '1px solid rgba(3,105,161,0.22)', background: 'rgba(3,105,161,0.06)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#0c4a6e' }}>
-                            Negative amounts are recorded as payment reversals and reduce the paid total.
+                          <div
+                            style={{
+                              border: '1px solid rgba(3,105,161,0.22)',
+                              background: 'rgba(3,105,161,0.06)',
+                              borderRadius: 8,
+                              padding: '10px 14px',
+                              fontSize: 12,
+                              color: '#0c4a6e',
+                            }}
+                          >
+                            Negative amounts are recorded as payment reversals and reduce the paid
+                            total.
                           </div>
                         )}
 
                         {editingVendor && excessAmount > 0 && (
-                          <div style={{ border: '1px solid rgba(234,88,12,0.25)', background: 'rgba(234,88,12,0.05)', borderRadius: 8, padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          <div
+                            style={{
+                              border: '1px solid rgba(234,88,12,0.25)',
+                              background: 'rgba(234,88,12,0.05)',
+                              borderRadius: 8,
+                              padding: 14,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 12,
+                            }}
+                          >
                             <div style={{ fontSize: 12, color: '#9a3412' }}>
-                              {formatCurrency(excessAmount)} over outstanding — classify the extra amount.
+                              {formatCurrency(excessAmount)} over outstanding — classify the extra
+                              amount.
                             </div>
                             <div>
                               <label className="label">Category</label>
                               <CategoryCombobox
                                 value={paymentForm.extra_category_id}
-                                onChange={(id) => setPaymentForm((prev) => ({ ...prev, extra_category_id: id }))}
+                                onChange={(id) =>
+                                  setPaymentForm((prev) => ({ ...prev, extra_category_id: id }))
+                                }
                                 level="subcategory"
                                 placeholder="Select category"
                               />
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            <div
+                              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}
+                            >
                               <div>
                                 <label className="label">Label</label>
                                 <input
                                   type="text"
                                   value={paymentForm.extra_description}
-                                  onChange={(e) => setPaymentForm((prev) => ({ ...prev, extra_description: e.target.value }))}
+                                  onChange={(e) =>
+                                    setPaymentForm((prev) => ({
+                                      ...prev,
+                                      extra_description: e.target.value,
+                                    }))
+                                  }
                                   className="input"
                                   placeholder="Tip, late fee…"
                                 />
@@ -2036,7 +2708,12 @@ export default function Vendors() {
                                 <label className="label">Side</label>
                                 <select
                                   value={paymentForm.extra_side}
-                                  onChange={(e) => setPaymentForm((prev) => ({ ...prev, extra_side: e.target.value as 'bride' | 'groom' | 'shared' }))}
+                                  onChange={(e) =>
+                                    setPaymentForm((prev) => ({
+                                      ...prev,
+                                      extra_side: e.target.value as 'bride' | 'groom' | 'shared',
+                                    }))
+                                  }
                                   className="input"
                                 >
                                   <option value="bride">Bride</option>
@@ -2049,7 +2726,12 @@ export default function Vendors() {
                               <SplitShare
                                 total={excessAmount}
                                 bridePercentage={paymentForm.extra_bride_share_percentage}
-                                onChange={(percentage) => setPaymentForm((prev) => ({ ...prev, extra_bride_share_percentage: percentage }))}
+                                onChange={(percentage) =>
+                                  setPaymentForm((prev) => ({
+                                    ...prev,
+                                    extra_bride_share_percentage: percentage,
+                                  }))
+                                }
                               />
                             )}
                           </div>
@@ -2061,7 +2743,12 @@ export default function Vendors() {
                             onClick={handlePaymentSave}
                             disabled={createVendorPayment.isPending || !editingVendor.expense_id}
                             className="btn-primary"
-                            style={{ opacity: createVendorPayment.isPending || !editingVendor.expense_id ? 0.5 : 1 }}
+                            style={{
+                              opacity:
+                                createVendorPayment.isPending || !editingVendor.expense_id
+                                  ? 0.5
+                                  : 1,
+                            }}
                           >
                             {createVendorPayment.isPending
                               ? 'Saving…'
@@ -2075,15 +2762,31 @@ export default function Vendors() {
                   )}
                 </div>
 
-                <div style={{ display: 'flex', gap: 10, padding: '14px 24px', borderTop: '1px solid var(--line-soft)', flexShrink: 0 }}>
-                  <button type="button" onClick={attemptCloseVendorModal} className="btn-outline" style={{ flex: 1 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 10,
+                    padding: '14px 24px',
+                    borderTop: '1px solid var(--line-soft)',
+                    flexShrink: 0,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={attemptCloseVendorModal}
+                    className="btn-outline"
+                    style={{ flex: 1 }}
+                  >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={createMutation.isPending || updateMutation.isPending}
                     className="btn-primary"
-                    style={{ flex: 1, opacity: createMutation.isPending || updateMutation.isPending ? 0.5 : 1 }}
+                    style={{
+                      flex: 1,
+                      opacity: createMutation.isPending || updateMutation.isPending ? 0.5 : 1,
+                    }}
                   >
                     {createMutation.isPending || updateMutation.isPending
                       ? 'Saving…'
@@ -2104,27 +2807,61 @@ export default function Vendors() {
       {deleteConfirm && (
         <Portal>
           <div
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 50,
+              padding: 16,
+            }}
             onClick={() => setDeleteConfirm(null)}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', padding: 28, maxWidth: 380, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}
+              style={{
+                background: 'var(--bg-panel)',
+                borderRadius: 'var(--radius-lg)',
+                padding: 28,
+                maxWidth: 380,
+                width: '100%',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+              }}
             >
-              <h3 className="display" style={{ margin: '0 0 8px', fontSize: 20, color: 'var(--ink-high)' }}>
+              <h3
+                className="display"
+                style={{ margin: '0 0 8px', fontSize: 20, color: 'var(--ink-high)' }}
+              >
                 Delete vendor?
               </h3>
               <p style={{ fontSize: 13, color: 'var(--ink-low)', marginBottom: 24 }}>
                 This action cannot be undone.
               </p>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => setDeleteConfirm(null)} className="btn-outline" style={{ flex: 1 }}>
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  className="btn-outline"
+                  style={{ flex: 1 }}
+                >
                   Cancel
                 </button>
                 <button
                   onClick={() => handleDelete(deleteConfirm)}
                   disabled={deleteMutation.isPending}
-                  style={{ flex: 1, padding: '9px 16px', background: 'var(--err)', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', opacity: deleteMutation.isPending ? 0.5 : 1 }}
+                  style={{
+                    flex: 1,
+                    padding: '9px 16px',
+                    background: 'var(--err)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    opacity: deleteMutation.isPending ? 0.5 : 1,
+                  }}
                 >
                   {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
                 </button>

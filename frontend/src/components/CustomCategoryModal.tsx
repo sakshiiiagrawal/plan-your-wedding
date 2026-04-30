@@ -77,23 +77,66 @@ export default function CustomCategoryModal({
 
   return (
     <Portal>
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 16 }} onClick={attemptClose}>
-        <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-panel)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--line-soft)' }}>
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 60,
+          padding: 16,
+        }}
+        onClick={attemptClose}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: 'var(--bg-panel)',
+            borderRadius: 'var(--radius-lg)',
+            width: '100%',
+            maxWidth: 480,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '20px 24px',
+              borderBottom: '1px solid var(--line-soft)',
+            }}
+          >
             <div>
-              <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>Categories</div>
-              <h2 className="display" style={{ margin: 0, fontSize: 20, color: 'var(--ink-high)' }}>Add custom category</h2>
+              <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>
+                Categories
+              </div>
+              <h2 className="display" style={{ margin: 0, fontSize: 20, color: 'var(--ink-high)' }}>
+                Add custom category
+              </h2>
             </div>
             <button
               type="button"
               onClick={attemptClose}
-              style={{ padding: '6px 8px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
+              style={{
+                padding: '6px 8px',
+                borderRadius: 6,
+                color: 'var(--ink-dim)',
+                background: 'transparent',
+                cursor: 'pointer',
+              }}
             >
               <HiOutlineX style={{ width: 16, height: 16 }} />
             </button>
           </div>
 
-          <form id="custom-category-form" onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <form
+            id="custom-category-form"
+            onSubmit={handleSubmit}
+            style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}
+          >
             <div>
               <label className="label">Category Name *</label>
               <input
@@ -121,13 +164,26 @@ export default function CustomCategoryModal({
                   </option>
                 ))}
               </select>
-              <p style={{ fontSize: 11, color: 'var(--ink-dim)', marginTop: 4 }}>Leave empty to create a top-level category</p>
+              <p style={{ fontSize: 11, color: 'var(--ink-dim)', marginTop: 4 }}>
+                Leave empty to create a top-level category
+              </p>
             </div>
 
             <div>
               <label className="label">Allocated Budget (optional)</label>
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-dim)', fontSize: 13 }}>₹</span>
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: 12,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--ink-dim)',
+                    fontSize: 13,
+                  }}
+                >
+                  ₹
+                </span>
                 <input
                   type="number"
                   value={formData.allocated_amount}
@@ -152,7 +208,14 @@ export default function CustomCategoryModal({
             </div>
           </form>
 
-          <div style={{ display: 'flex', gap: 10, padding: '16px 24px', borderTop: '1px solid var(--line-soft)' }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 10,
+              padding: '16px 24px',
+              borderTop: '1px solid var(--line-soft)',
+            }}
+          >
             <button
               type="button"
               onClick={attemptClose}

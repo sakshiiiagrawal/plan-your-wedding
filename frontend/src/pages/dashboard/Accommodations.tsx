@@ -238,8 +238,7 @@ export default function Accommodations() {
       check_out_date: '',
     });
   };
-  const isRoomFormDirty =
-    JSON.stringify(roomCategories) !== JSON.stringify(initialRoomCategories);
+  const isRoomFormDirty = JSON.stringify(roomCategories) !== JSON.stringify(initialRoomCategories);
   const { attemptClose: attemptCloseRoomModal, dialog: roomUnsavedDialog } =
     useUnsavedChangesPrompt({
       isDirty: isRoomFormDirty,
@@ -254,23 +253,21 @@ export default function Accommodations() {
     });
   const isAllocationFormDirty =
     JSON.stringify(allocationFormData) !== JSON.stringify(initialAllocationFormData);
-  const {
-    attemptClose: attemptCloseAllocationModal,
-    dialog: allocationUnsavedDialog,
-  } = useUnsavedChangesPrompt({
-    isDirty: isAllocationFormDirty,
-    onDiscard: () => {
-      setShowAllocationModal(false);
-      resetAllocationForm();
-    },
-    onSave: () => {
-      (document.getElementById('allocation-form') as HTMLFormElement | null)?.requestSubmit();
-    },
-    isSaving:
-      createAllocationMutation.isPending ||
-      updateAllocationMutation.isPending ||
-      deleteAllocationMutation.isPending,
-  });
+  const { attemptClose: attemptCloseAllocationModal, dialog: allocationUnsavedDialog } =
+    useUnsavedChangesPrompt({
+      isDirty: isAllocationFormDirty,
+      onDiscard: () => {
+        setShowAllocationModal(false);
+        resetAllocationForm();
+      },
+      onSave: () => {
+        (document.getElementById('allocation-form') as HTMLFormElement | null)?.requestSubmit();
+      },
+      isSaving:
+        createAllocationMutation.isPending ||
+        updateAllocationMutation.isPending ||
+        deleteAllocationMutation.isPending,
+    });
 
   const handleRoomSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -630,8 +627,8 @@ export default function Accommodations() {
               No accommodation venues yet
             </h2>
             <p className="text-gray-500 text-sm max-w-sm">
-              Add a venue in the Venues page and enable &quot;Has Accommodation&quot; to start managing room
-              allocations here.
+              Add a venue in the Venues page and enable &quot;Has Accommodation&quot; to start
+              managing room allocations here.
             </p>
           </div>
           <button onClick={() => navigate('../venues')} className="btn-primary mt-2">
@@ -814,321 +811,323 @@ export default function Accommodations() {
 
                   {!isHotelCollapsed && (
                     <>
-                  {/* Default dates row */}
-                  {isEditingDates ? (
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="w-[360px]">
-                        <DateRangePicker
-                          startValue={editHotelDateValues.default_check_in_date}
-                          endValue={editHotelDateValues.default_check_out_date}
-                          onChange={({ start, end }) =>
-                            setEditHotelDateValues({
-                              default_check_in_date: start,
-                              default_check_out_date: end,
-                            })
-                          }
-                          size="sm"
-                          startLabel="Check-in"
-                          endLabel="Check-out"
-                        />
-                      </div>
-                      <button
-                        onClick={handleHotelDateSave}
-                        disabled={updateHotelMutation.isPending}
-                        className="text-xs text-green-600 hover:text-green-700 font-medium disabled:opacity-50"
-                      >
-                        {updateHotelMutation.isPending ? 'Saving…' : 'Save'}
-                      </button>
-                      <button
-                        onClick={() => setEditingHotelId(null)}
-                        className="text-xs text-gray-500 hover:text-gray-700"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap items-center gap-4 group/dates">
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span>Default check-in:</span>
-                        <span className="font-medium text-gray-700">
-                          {hotel.default_check_in_date ?? (
-                            <span className="italic text-gray-400">not set</span>
-                          )}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span>Check-out:</span>
-                        <span className="font-medium text-gray-700">
-                          {hotel.default_check_out_date ?? (
-                            <span className="italic text-gray-400">not set</span>
-                          )}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setEditHotelDateValues({
-                            default_check_in_date: hotel.default_check_in_date ?? '',
-                            default_check_out_date: hotel.default_check_out_date ?? '',
-                          });
-                          setEditingHotelId(hotel.id);
-                          setCollapsedHotelIds((prev) => {
-                            const next = new Set(prev);
-                            next.delete(hotel.id);
-                            return next;
-                          });
-                        }}
-                        className="opacity-0 group-hover/dates:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
-                        title="Edit default dates"
-                      >
-                        <HiOutlinePencil className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Room list */}
-                  <div className="border-t border-gold-100 pt-4">
-                    {draggingGuestId && hotel.rooms && hotel.rooms.length > 0 && (
-                      <p className="text-xs text-green-600 font-medium mb-2 animate-pulse">
-                        ↓ Drop guest onto a room to assign
-                      </p>
-                    )}
-                    {hotel.rooms && hotel.rooms.length > 0 ? (
-                      <div className="space-y-2">
-                        {hotel.rooms.map((room: any) => {
-                          const allocations = room.room_allocations || [];
-                          const existingAlloc = allocations[0] ?? null;
-                          const guests = allocations.flatMap(
-                            (alloc: any) => alloc.guests || [],
-                          ) as Array<{
-                            id: string;
-                            first_name: string;
-                            last_name: string | null;
-                            side?: string;
-                            needs_accommodation?: boolean;
-                          }>;
-
-                          const isEditingRoom = editingRoomId === room.id;
-
-                          const handleRoomEditSave = async () => {
-                            try {
-                              await updateRoomMutation.mutateAsync({
-                                id: room.id,
-                                room_number: editRoomValues.room_number,
-                                capacity: editRoomValues.capacity,
+                      {/* Default dates row */}
+                      {isEditingDates ? (
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div className="w-[360px]">
+                            <DateRangePicker
+                              startValue={editHotelDateValues.default_check_in_date}
+                              endValue={editHotelDateValues.default_check_out_date}
+                              onChange={({ start, end }) =>
+                                setEditHotelDateValues({
+                                  default_check_in_date: start,
+                                  default_check_out_date: end,
+                                })
+                              }
+                              size="sm"
+                              startLabel="Check-in"
+                              endLabel="Check-out"
+                            />
+                          </div>
+                          <button
+                            onClick={handleHotelDateSave}
+                            disabled={updateHotelMutation.isPending}
+                            className="text-xs text-green-600 hover:text-green-700 font-medium disabled:opacity-50"
+                          >
+                            {updateHotelMutation.isPending ? 'Saving…' : 'Save'}
+                          </button>
+                          <button
+                            onClick={() => setEditingHotelId(null)}
+                            className="text-xs text-gray-500 hover:text-gray-700"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-4 group/dates">
+                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                            <span>Default check-in:</span>
+                            <span className="font-medium text-gray-700">
+                              {hotel.default_check_in_date ?? (
+                                <span className="italic text-gray-400">not set</span>
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                            <span>Check-out:</span>
+                            <span className="font-medium text-gray-700">
+                              {hotel.default_check_out_date ?? (
+                                <span className="italic text-gray-400">not set</span>
+                              )}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setEditHotelDateValues({
+                                default_check_in_date: hotel.default_check_in_date ?? '',
+                                default_check_out_date: hotel.default_check_out_date ?? '',
                               });
-                              setEditingRoomId(null);
-                              toast.success('Room updated');
-                            } catch (err: unknown) {
-                              const e = err as {
-                                response?: { data?: { message?: string; error?: string } };
+                              setEditingHotelId(hotel.id);
+                              setCollapsedHotelIds((prev) => {
+                                const next = new Set(prev);
+                                next.delete(hotel.id);
+                                return next;
+                              });
+                            }}
+                            className="opacity-0 group-hover/dates:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
+                            title="Edit default dates"
+                          >
+                            <HiOutlinePencil className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Room list */}
+                      <div className="border-t border-gold-100 pt-4">
+                        {draggingGuestId && hotel.rooms && hotel.rooms.length > 0 && (
+                          <p className="text-xs text-green-600 font-medium mb-2 animate-pulse">
+                            ↓ Drop guest onto a room to assign
+                          </p>
+                        )}
+                        {hotel.rooms && hotel.rooms.length > 0 ? (
+                          <div className="space-y-2">
+                            {hotel.rooms.map((room: any) => {
+                              const allocations = room.room_allocations || [];
+                              const existingAlloc = allocations[0] ?? null;
+                              const guests = allocations.flatMap(
+                                (alloc: any) => alloc.guests || [],
+                              ) as Array<{
+                                id: string;
+                                first_name: string;
+                                last_name: string | null;
+                                side?: string;
+                                needs_accommodation?: boolean;
+                              }>;
+
+                              const isEditingRoom = editingRoomId === room.id;
+
+                              const handleRoomEditSave = async () => {
+                                try {
+                                  await updateRoomMutation.mutateAsync({
+                                    id: room.id,
+                                    room_number: editRoomValues.room_number,
+                                    capacity: editRoomValues.capacity,
+                                  });
+                                  setEditingRoomId(null);
+                                  toast.success('Room updated');
+                                } catch (err: unknown) {
+                                  const e = err as {
+                                    response?: { data?: { message?: string; error?: string } };
+                                  };
+                                  toast.error(
+                                    e.response?.data?.message ||
+                                      e.response?.data?.error ||
+                                      'Failed to update room',
+                                  );
+                                }
                               };
-                              toast.error(
-                                e.response?.data?.message ||
-                                  e.response?.data?.error ||
-                                  'Failed to update room',
-                              );
-                            }
-                          };
 
-                          const isDropTarget = dropTargetRoomId === room.id;
-                          const isFull =
-                            (room.capacity ?? 0) > 0 && guests.length >= (room.capacity ?? 0);
+                              const isDropTarget = dropTargetRoomId === room.id;
+                              const isFull =
+                                (room.capacity ?? 0) > 0 && guests.length >= (room.capacity ?? 0);
 
-                          return (
-                            <div
-                              key={room.id}
-                              onDragOver={
-                                draggingGuestId
-                                  ? (e) => {
-                                      e.preventDefault();
-                                      e.dataTransfer.dropEffect = 'move';
-                                      setDropTargetRoomId(room.id);
-                                    }
-                                  : undefined
-                              }
-                              onDragLeave={
-                                draggingGuestId ? () => setDropTargetRoomId(null) : undefined
-                              }
-                              onDrop={
-                                draggingGuestId
-                                  ? (e) => {
-                                      e.preventDefault();
-                                      handleDropOnRoom(room, hotel);
-                                    }
-                                  : undefined
-                              }
-                              className={`flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg group transition-colors ${
-                                isDropTarget
-                                  ? isFull
-                                    ? 'bg-red-50 ring-2 ring-red-300'
-                                    : 'bg-green-50 ring-2 ring-green-300'
-                                  : 'bg-gray-50'
-                              }`}
-                            >
-                              {/* Room number + type */}
-                              <div className="flex items-center gap-2 min-w-0">
-                                {isEditingRoom ? (
-                                  <input
-                                    className="input py-1 px-2 text-sm w-24"
-                                    value={editRoomValues.room_number}
-                                    onChange={(e) =>
-                                      setEditRoomValues({
-                                        ...editRoomValues,
-                                        room_number: e.target.value,
-                                      })
-                                    }
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') handleRoomEditSave();
-                                      if (e.key === 'Escape') setEditingRoomId(null);
-                                    }}
-                                    autoFocus
-                                  />
-                                ) : (
-                                  <span className="inline-flex items-center gap-1.5 font-medium text-sm text-gray-800">
-                                    Room {room.room_number}
-                                    <button
-                                      onClick={() => {
-                                        setEditingRoomId(room.id);
-                                        setEditRoomValues({
-                                          room_number: room.room_number,
-                                          capacity: room.capacity ?? 0,
-                                        });
-                                      }}
-                                      className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-opacity"
-                                      title="Edit room"
-                                    >
-                                      <HiOutlinePencil className="w-3.5 h-3.5" />
-                                    </button>
-                                  </span>
-                                )}
-                                {room.room_type && (
-                                  <span className="badge bg-gray-100 text-gray-600 text-xs capitalize">
-                                    {room.room_type}
-                                  </span>
-                                )}
-                                <span className="text-xs text-gray-400">
-                                  {isEditingRoom ? (
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      className="input py-1 px-2 text-xs w-16"
-                                      value={editRoomValues.capacity}
-                                      onChange={(e) =>
-                                        setEditRoomValues({
-                                          ...editRoomValues,
-                                          capacity: Number(e.target.value),
-                                        })
-                                      }
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleRoomEditSave();
-                                        if (e.key === 'Escape') setEditingRoomId(null);
-                                      }}
-                                    />
-                                  ) : (
-                                    `${guests.length}/${room.capacity || 0}`
-                                  )}
-                                </span>
-                              </div>
-
-                              {/* Guest chips */}
-                              <div className="flex flex-wrap gap-1.5 flex-1">
-                                {guests.length > 0 ? (
-                                  guests.map((g) => (
-                                    <span
-                                      key={g.id}
-                                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                        g.side === 'bride'
-                                          ? 'bg-pink-100 text-pink-800'
-                                          : g.side === 'groom'
-                                            ? 'bg-blue-100 text-blue-800'
-                                            : 'bg-gray-100 text-gray-700'
-                                      }`}
-                                    >
-                                      {[g.first_name, g.last_name].filter(Boolean).join(' ')}
+                              return (
+                                <div
+                                  key={room.id}
+                                  onDragOver={
+                                    draggingGuestId
+                                      ? (e) => {
+                                          e.preventDefault();
+                                          e.dataTransfer.dropEffect = 'move';
+                                          setDropTargetRoomId(room.id);
+                                        }
+                                      : undefined
+                                  }
+                                  onDragLeave={
+                                    draggingGuestId ? () => setDropTargetRoomId(null) : undefined
+                                  }
+                                  onDrop={
+                                    draggingGuestId
+                                      ? (e) => {
+                                          e.preventDefault();
+                                          handleDropOnRoom(room, hotel);
+                                        }
+                                      : undefined
+                                  }
+                                  className={`flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg group transition-colors ${
+                                    isDropTarget
+                                      ? isFull
+                                        ? 'bg-red-50 ring-2 ring-red-300'
+                                        : 'bg-green-50 ring-2 ring-green-300'
+                                      : 'bg-gray-50'
+                                  }`}
+                                >
+                                  {/* Room number + type */}
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    {isEditingRoom ? (
+                                      <input
+                                        className="input py-1 px-2 text-sm w-24"
+                                        value={editRoomValues.room_number}
+                                        onChange={(e) =>
+                                          setEditRoomValues({
+                                            ...editRoomValues,
+                                            room_number: e.target.value,
+                                          })
+                                        }
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') handleRoomEditSave();
+                                          if (e.key === 'Escape') setEditingRoomId(null);
+                                        }}
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1.5 font-medium text-sm text-gray-800">
+                                        Room {room.room_number}
+                                        <button
+                                          onClick={() => {
+                                            setEditingRoomId(room.id);
+                                            setEditRoomValues({
+                                              room_number: room.room_number,
+                                              capacity: room.capacity ?? 0,
+                                            });
+                                          }}
+                                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-opacity"
+                                          title="Edit room"
+                                        >
+                                          <HiOutlinePencil className="w-3.5 h-3.5" />
+                                        </button>
+                                      </span>
+                                    )}
+                                    {room.room_type && (
+                                      <span className="badge bg-gray-100 text-gray-600 text-xs capitalize">
+                                        {room.room_type}
+                                      </span>
+                                    )}
+                                    <span className="text-xs text-gray-400">
+                                      {isEditingRoom ? (
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          className="input py-1 px-2 text-xs w-16"
+                                          value={editRoomValues.capacity}
+                                          onChange={(e) =>
+                                            setEditRoomValues({
+                                              ...editRoomValues,
+                                              capacity: Number(e.target.value),
+                                            })
+                                          }
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleRoomEditSave();
+                                            if (e.key === 'Escape') setEditingRoomId(null);
+                                          }}
+                                        />
+                                      ) : (
+                                        `${guests.length}/${room.capacity || 0}`
+                                      )}
                                     </span>
-                                  ))
-                                ) : (
-                                  <span className="text-xs italic text-gray-400">Available</span>
-                                )}
-                              </div>
+                                  </div>
 
-                              {/* Actions */}
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                {isEditingRoom ? (
-                                  <>
-                                    <button
-                                      onClick={handleRoomEditSave}
-                                      disabled={updateRoomMutation.isPending}
-                                      className="text-xs text-green-600 hover:text-green-700 font-medium disabled:opacity-50"
-                                    >
-                                      {updateRoomMutation.isPending ? 'Saving…' : 'Save'}
-                                    </button>
-                                    <button
-                                      onClick={() => setEditingRoomId(null)}
-                                      className="text-xs text-gray-500 hover:text-gray-700"
-                                    >
-                                      Cancel
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    onClick={() => {
-                                      setRoomCapacity(room.capacity ?? 0);
-                                      if (existingAlloc) {
-                                        setEditAllocation({
-                                          id: existingAlloc.id,
-                                          currentGuests: guests.map((g) => ({
-                                            id: g.id,
-                                            first_name: g.first_name,
-                                            last_name: g.last_name,
-                                            needs_accommodation: g.needs_accommodation ?? true,
-                                            side: g.side,
-                                          })),
-                                        });
-                                        const nextAllocationFormData = {
-                                          room_id: room.id,
-                                          guest_ids: existingAlloc.guest_ids ?? [],
-                                          check_in_date: existingAlloc.check_in_date ?? '',
-                                          check_out_date: existingAlloc.check_out_date ?? '',
-                                        };
-                                        setAllocationFormData(nextAllocationFormData);
-                                        setInitialAllocationFormData(nextAllocationFormData);
-                                      } else {
-                                        setEditAllocation(null);
-                                        const nextAllocationFormData = {
-                                          room_id: room.id,
-                                          guest_ids: [],
-                                          check_in_date: hotel.default_check_in_date ?? '',
-                                          check_out_date: hotel.default_check_out_date ?? '',
-                                        };
-                                        setAllocationFormData(nextAllocationFormData);
-                                        setInitialAllocationFormData(nextAllocationFormData);
-                                      }
-                                      setGuestSearchQuery('');
-                                      setShowAllocationModal(true);
-                                    }}
-                                    className="text-xs text-gold-600 hover:text-gold-700 font-medium"
-                                  >
-                                    {guests.length > 0 ? 'Edit' : 'Assign'}
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
+                                  {/* Guest chips */}
+                                  <div className="flex flex-wrap gap-1.5 flex-1">
+                                    {guests.length > 0 ? (
+                                      guests.map((g) => (
+                                        <span
+                                          key={g.id}
+                                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                            g.side === 'bride'
+                                              ? 'bg-pink-100 text-pink-800'
+                                              : g.side === 'groom'
+                                                ? 'bg-blue-100 text-blue-800'
+                                                : 'bg-gray-100 text-gray-700'
+                                          }`}
+                                        >
+                                          {[g.first_name, g.last_name].filter(Boolean).join(' ')}
+                                        </span>
+                                      ))
+                                    ) : (
+                                      <span className="text-xs italic text-gray-400">
+                                        Available
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Actions */}
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    {isEditingRoom ? (
+                                      <>
+                                        <button
+                                          onClick={handleRoomEditSave}
+                                          disabled={updateRoomMutation.isPending}
+                                          className="text-xs text-green-600 hover:text-green-700 font-medium disabled:opacity-50"
+                                        >
+                                          {updateRoomMutation.isPending ? 'Saving…' : 'Save'}
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingRoomId(null)}
+                                          className="text-xs text-gray-500 hover:text-gray-700"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <button
+                                        onClick={() => {
+                                          setRoomCapacity(room.capacity ?? 0);
+                                          if (existingAlloc) {
+                                            setEditAllocation({
+                                              id: existingAlloc.id,
+                                              currentGuests: guests.map((g) => ({
+                                                id: g.id,
+                                                first_name: g.first_name,
+                                                last_name: g.last_name,
+                                                needs_accommodation: g.needs_accommodation ?? true,
+                                                side: g.side,
+                                              })),
+                                            });
+                                            const nextAllocationFormData = {
+                                              room_id: room.id,
+                                              guest_ids: existingAlloc.guest_ids ?? [],
+                                              check_in_date: existingAlloc.check_in_date ?? '',
+                                              check_out_date: existingAlloc.check_out_date ?? '',
+                                            };
+                                            setAllocationFormData(nextAllocationFormData);
+                                            setInitialAllocationFormData(nextAllocationFormData);
+                                          } else {
+                                            setEditAllocation(null);
+                                            const nextAllocationFormData = {
+                                              room_id: room.id,
+                                              guest_ids: [],
+                                              check_in_date: hotel.default_check_in_date ?? '',
+                                              check_out_date: hotel.default_check_out_date ?? '',
+                                            };
+                                            setAllocationFormData(nextAllocationFormData);
+                                            setInitialAllocationFormData(nextAllocationFormData);
+                                          }
+                                          setGuestSearchQuery('');
+                                          setShowAllocationModal(true);
+                                        }}
+                                        className="text-xs text-gold-600 hover:text-gold-700 font-medium"
+                                      >
+                                        {guests.length > 0 ? 'Edit' : 'Assign'}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between py-3">
+                            <p className="text-sm text-gray-400 italic">No rooms added yet</p>
+                            <button
+                              onClick={() => navigate('../venues')}
+                              className="text-xs text-gold-700 hover:text-gold-900 font-medium"
+                            >
+                              Add rooms from Venues page →
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="flex items-center justify-between py-3">
-                        <p className="text-sm text-gray-400 italic">No rooms added yet</p>
-                        <button
-                          onClick={() => navigate('../venues')}
-                          className="text-xs text-gold-700 hover:text-gold-900 font-medium"
-                        >
-                          Add rooms from Venues page →
-                        </button>
-                      </div>
-                    )}
-                  </div>
                     </>
                   )}
                 </div>
@@ -1154,8 +1153,14 @@ export default function Accommodations() {
 
           return (
             <Portal>
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={attemptCloseRoomModal}>
-                <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div
+                className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                onClick={attemptCloseRoomModal}
+              >
+                <div
+                  className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <div className="flex items-center justify-between p-6 border-b border-gold-200">
                     <div>
                       <h2 className="text-xl font-display font-bold text-maroon-800">Add Rooms</h2>
@@ -1408,8 +1413,14 @@ export default function Accommodations() {
 
           return (
             <Portal>
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={attemptCloseAllocationModal}>
-                <div className="bg-white rounded-2xl w-full max-w-2xl flex flex-col max-h-[92vh]" onClick={(e) => e.stopPropagation()}>
+              <div
+                className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                onClick={attemptCloseAllocationModal}
+              >
+                <div
+                  className="bg-white rounded-2xl w-full max-w-2xl flex flex-col max-h-[92vh]"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {/* Header */}
                   <div className="flex items-center justify-between p-6 border-b border-gold-200 flex-shrink-0">
                     <div>
@@ -1444,7 +1455,11 @@ export default function Accommodations() {
                     </button>
                   </div>
 
-                  <form id="allocation-form" onSubmit={handleAllocationSubmit} className="flex flex-col flex-1 min-h-0">
+                  <form
+                    id="allocation-form"
+                    onSubmit={handleAllocationSubmit}
+                    className="flex flex-col flex-1 min-h-0"
+                  >
                     <div className="flex-1 overflow-y-auto p-6 space-y-5">
                       {/* Guest selector */}
                       <div>
@@ -1663,10 +1678,10 @@ export default function Accommodations() {
                       {modalGuests.length === 0 ? (
                         <button
                           type="button"
-                            onClick={() => {
-                              attemptCloseAllocationModal();
-                              navigate('../guests');
-                            }}
+                          onClick={() => {
+                            attemptCloseAllocationModal();
+                            navigate('../guests');
+                          }}
                           className="btn-primary flex-1"
                         >
                           Add Guests
@@ -1719,8 +1734,14 @@ export default function Accommodations() {
       {allocationUnsavedDialog}
       {showImportModal && (
         <Portal>
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowImportModal(false)}>
-            <div className="bg-white rounded-2xl w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowImportModal(false)}
+          >
+            <div
+              className="bg-white rounded-2xl w-full max-w-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between p-6 border-b border-gold-200">
                 <h2 className="text-xl font-display font-bold text-maroon-800">
                   Import Room Allocations from Excel
@@ -1798,11 +1819,17 @@ export default function Accommodations() {
       {/* Import Results Modal */}
       {showImportResultsModal && importResults && (
         <Portal>
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => {
-            setShowImportResultsModal(false);
-            setImportResults(null);
-          }}>
-            <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => {
+              setShowImportResultsModal(false);
+              setImportResults(null);
+            }}
+          >
+            <div
+              className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between p-6 border-b border-gold-200">
                 <h2 className="text-xl font-display font-bold text-maroon-800">Import Results</h2>
                 <button

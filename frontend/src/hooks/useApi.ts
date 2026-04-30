@@ -896,10 +896,7 @@ export const useExpenseAlerts = () =>
     queryFn: () => api.get('/expense/alerts').then((res) => res.data),
   });
 
-export const useSourcePayments = (
-  sourceType: 'vendor' | 'venue',
-  sourceId?: string | null,
-) =>
+export const useSourcePayments = (sourceType: 'vendor' | 'venue', sourceId?: string | null) =>
   useQuery<PaymentRow[]>({
     queryKey: [sourceType, sourceId, 'payments'],
     queryFn: () => api.get(`/${sourceType}s/${sourceId}/payments`).then((res) => res.data),
@@ -918,18 +915,21 @@ const syncSourceFinanceCache = (
   queryClient.setQueryData([sourceType, sourceId, 'payments'], finance.payments ?? []);
 
   const listKey = getSourceListQueryKey(sourceType);
-  queryClient.setQueryData(listKey, (current: VendorWithFinance[] | VenueWithFinance[] | undefined) => {
-    if (!Array.isArray(current)) return current;
-    return current.map((entry) =>
-      entry.id === sourceId
-        ? {
-            ...entry,
-            finance,
-            finance_summary: finance.summary,
-          }
-        : entry,
-    );
-  });
+  queryClient.setQueryData(
+    listKey,
+    (current: VendorWithFinance[] | VenueWithFinance[] | undefined) => {
+      if (!Array.isArray(current)) return current;
+      return current.map((entry) =>
+        entry.id === sourceId
+          ? {
+              ...entry,
+              finance,
+              finance_summary: finance.summary,
+            }
+          : entry,
+      );
+    },
+  );
 
   queryClient.setQueryData(
     [listKey[0], sourceId],
@@ -951,7 +951,12 @@ export const useCreateSourcePayment = (sourceType: 'vendor' | 'venue') => {
       api.post(`/${sourceType}s/${sourceId}/payments`, data).then((res) => res.data),
     onSuccess: (data, variables) => {
       if (variables?.sourceId && data?.summary) {
-        syncSourceFinanceCache(queryClient, sourceType, variables.sourceId, data as ExpenseWithDetails);
+        syncSourceFinanceCache(
+          queryClient,
+          sourceType,
+          variables.sourceId,
+          data as ExpenseWithDetails,
+        );
       }
       if (variables?.sourceId) {
         queryClient.invalidateQueries({ queryKey: [sourceType, variables.sourceId, 'payments'] });
@@ -976,9 +981,8 @@ export const useDeleteSourcePayment = (sourceType: 'vendor' | 'venue') => {
         sourceId,
         'payments',
       ]);
-      queryClient.setQueryData<PaymentRow[]>(
-        [sourceType, sourceId, 'payments'],
-        (current = []) => current.filter((payment) => payment.id !== paymentId),
+      queryClient.setQueryData<PaymentRow[]>([sourceType, sourceId, 'payments'], (current = []) =>
+        current.filter((payment) => payment.id !== paymentId),
       );
       return { previousPayments, sourceId };
     },

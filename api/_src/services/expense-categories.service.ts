@@ -71,7 +71,13 @@ export async function ensureDefaultCategoriesTx(
       .map((category) => [category.name, category] as const),
   );
 
-  let nextParentOrder = Math.max(0, ...categories.filter((category) => !category.parent_category_id).map((category) => category.display_order)) + 1;
+  let nextParentOrder =
+    Math.max(
+      0,
+      ...categories
+        .filter((category) => !category.parent_category_id)
+        .map((category) => category.display_order),
+    ) + 1;
 
   for (const entry of DEFAULT_CATEGORY_TREE) {
     let parent = parents.get(entry.name);
@@ -87,7 +93,9 @@ export async function ensureDefaultCategoriesTx(
       nextParentOrder += 1;
     }
 
-    const existingChildren = categories.filter((category) => category.parent_category_id === parent.id);
+    const existingChildren = categories.filter(
+      (category) => category.parent_category_id === parent.id,
+    );
     const existingChildNames = new Set(existingChildren.map((category) => category.name));
     let nextChildOrder =
       Math.max(0, ...existingChildren.map((category) => category.display_order)) + 1;
