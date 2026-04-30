@@ -61,11 +61,17 @@ export default function ExpenseExpensesTab({
             <button
               key={type}
               onClick={() => setFilterType(type)}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                filterType === type
-                  ? 'bg-white shadow text-maroon-800 font-medium'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+              style={{
+                padding: '4px 12px',
+                fontSize: 13,
+                borderRadius: 6,
+                cursor: 'pointer',
+                transition: 'all 150ms',
+                background: filterType === type ? 'white' : 'transparent',
+                color: filterType === type ? 'var(--gold-deep)' : 'var(--ink-low)',
+                fontWeight: filterType === type ? 600 : 400,
+                boxShadow: filterType === type ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              }}
             >
               {type === 'all' ? 'All' : `${type.charAt(0).toUpperCase()}${type.slice(1)}s`}
             </button>
@@ -76,11 +82,17 @@ export default function ExpenseExpensesTab({
             <button
               key={side}
               onClick={() => setFilterSide(side)}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                filterSide === side
-                  ? 'bg-white shadow text-maroon-800 font-medium'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+              style={{
+                padding: '4px 12px',
+                fontSize: 13,
+                borderRadius: 6,
+                cursor: 'pointer',
+                transition: 'all 150ms',
+                background: filterSide === side ? 'white' : 'transparent',
+                color: filterSide === side ? 'var(--gold-deep)' : 'var(--ink-low)',
+                fontWeight: filterSide === side ? 600 : 400,
+                boxShadow: filterSide === side ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              }}
             >
               {side === 'all' ? 'All Sides' : `${side.charAt(0).toUpperCase()}${side.slice(1)}`}
             </button>
@@ -124,7 +136,10 @@ export default function ExpenseExpensesTab({
                         {row.source_type}
                       </span>
                     </td>
-                    <td className="p-4 text-right font-medium text-maroon-800">
+                    <td
+                      className="p-4 text-right font-medium"
+                      style={{ color: 'var(--gold-deep)' }}
+                    >
                       {formatCurrency(row.committed)}
                     </td>
                     <td className="p-4 text-right text-green-700 hidden md:table-cell">
@@ -144,7 +159,22 @@ export default function ExpenseExpensesTab({
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => onEdit(row)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-maroon-700 hover:bg-maroon-50 transition-colors"
+                            style={{
+                              padding: '5px 7px',
+                              borderRadius: 6,
+                              color: 'var(--ink-dim)',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                            }}
+                            onMouseEnter={(e) => {
+                              (e.currentTarget as HTMLElement).style.background =
+                                'var(--gold-glow)';
+                              (e.currentTarget as HTMLElement).style.color = 'var(--gold-deep)';
+                            }}
+                            onMouseLeave={(e) => {
+                              (e.currentTarget as HTMLElement).style.background = 'transparent';
+                              (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)';
+                            }}
                             title="Edit expense"
                           >
                             <HiOutlinePencil className="w-4 h-4" />
@@ -167,7 +197,7 @@ export default function ExpenseExpensesTab({
                   <td colSpan={3} className="p-4">
                     Total Committed
                   </td>
-                  <td className="p-4 text-right text-maroon-800">
+                  <td className="p-4 text-right" style={{ color: 'var(--gold-deep)' }}>
                     {formatCurrency(committedTotal)}
                   </td>
                   <td colSpan={5}></td>

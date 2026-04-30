@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   useEvents,
   useVenues,
@@ -10,16 +11,22 @@ import {
 import toast from 'react-hot-toast';
 import Portal from '../../components/Portal';
 import {
-  HiOutlineCalendar,
   HiOutlineLocationMarker,
-  HiOutlineClock,
-  HiOutlineSparkles,
   HiOutlinePlus,
   HiOutlineX,
   HiOutlineTrash,
   HiOutlineSearch,
   HiOutlineChevronDown,
+  HiOutlineViewList,
+  HiOutlineViewGrid,
+  HiOutlinePencil,
+  HiOutlineUserGroup,
+  HiOutlineChevronRight,
 } from 'react-icons/hi';
+import { SectionHeader, Ornament } from '../../components/ui';
+import DatePicker from '../../components/ui/DatePicker';
+import TimePicker from '../../components/ui/TimePicker';
+import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 
 // ── PAN India wedding event types ──────────────────────────────────────────
 const EVENT_TYPES = [
@@ -66,6 +73,44 @@ const EVENT_TYPES = [
   { value: 'sumangali_prarthanai', label: 'Sumangali Prarthanai', group: 'South Indian' },
 ];
 
+const EVENT_ICONS: Record<string, string> = {
+  roka: '🤝',
+  engagement: '💍',
+  ring_ceremony: '💍',
+  tilak: '🪔',
+  chunni: '🧣',
+  lagan: '📜',
+  shagun: '🎁',
+  saatak: '🙏',
+  mehendi: '🌿',
+  haldi: '🌼',
+  sangeet: '🎶',
+  cocktail: '🍹',
+  bachelor: '🎉',
+  bachelorette: '👑',
+  bridal_shower: '🌸',
+  baraat: '🐴',
+  jaimala: '🌹',
+  pheras: '🔥',
+  wedding: '💒',
+  vidaai: '🚗',
+  reception: '🥂',
+  griha_pravesh: '🏠',
+  pag_phere: '👪',
+  ganesh_puja: '🐘',
+  havan: '🔥',
+  mata_ki_chowki: '🪔',
+  satyanarayan_katha: '📿',
+  nischitartham: '💛',
+  naandi: '🙏',
+  pellikuturu: '💛',
+  pellikoduku: '💛',
+  oonjal: '🌸',
+  kashi_yatra: '🌊',
+  muhurtam: '⭐',
+  sumangali_prarthanai: '🌺',
+};
+
 const KNOWN_TYPE_VALUES = new Set(EVENT_TYPES.map((t) => t.value));
 
 function getTypeLabel(value: string) {
@@ -99,10 +144,7 @@ function EventTypeCombobox({ value, isOther, onSelect }: EventTypeComboboxProps)
   const q = query.toLowerCase();
   const filtered = q
     ? EVENT_TYPES.filter(
-        (t) =>
-          t.label.toLowerCase().includes(q) ||
-          t.group.toLowerCase().includes(q) ||
-          t.value.toLowerCase().includes(q),
+        (t) => t.label.toLowerCase().includes(q) || t.value.toLowerCase().includes(q),
       )
     : EVENT_TYPES;
 
@@ -151,7 +193,10 @@ function EventTypeCombobox({ value, isOther, onSelect }: EventTypeComboboxProps)
           <div className="max-h-56 overflow-y-auto">
             {Object.entries(grouped).map(([group, types]) => (
               <div key={group}>
-                <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
+                <div
+                  className="uppercase-eyebrow"
+                  style={{ padding: '6px 12px', background: 'var(--bg-raised)', fontSize: 9 }}
+                >
                   {group}
                 </div>
                 {types.map((t) => (
@@ -163,11 +208,17 @@ function EventTypeCombobox({ value, isOther, onSelect }: EventTypeComboboxProps)
                       setOpen(false);
                       setQuery('');
                     }}
-                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gold-50 transition-colors ${
-                      value === t.value && !isOther
-                        ? 'bg-gold-50 text-gold-700 font-medium'
-                        : 'text-gray-700'
-                    }`}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '8px 16px',
+                      fontSize: 13,
+                      background:
+                        value === t.value && !isOther ? 'var(--gold-glow)' : 'transparent',
+                      color: value === t.value && !isOther ? 'var(--gold-deep)' : 'var(--ink-mid)',
+                      fontWeight: value === t.value && !isOther ? 500 : 400,
+                      cursor: 'pointer',
+                    }}
                   >
                     {t.label}
                   </button>
@@ -178,7 +229,10 @@ function EventTypeCombobox({ value, isOther, onSelect }: EventTypeComboboxProps)
             {/* "Other" option always visible at bottom */}
             {!q && (
               <div>
-                <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
+                <div
+                  className="uppercase-eyebrow"
+                  style={{ padding: '6px 12px', background: 'var(--bg-raised)', fontSize: 9 }}
+                >
                   Other
                 </div>
                 <button
@@ -188,9 +242,16 @@ function EventTypeCombobox({ value, isOther, onSelect }: EventTypeComboboxProps)
                     setOpen(false);
                     setQuery('');
                   }}
-                  className={`w-full text-left px-4 py-2 text-sm hover:bg-gold-50 transition-colors ${
-                    isOther ? 'bg-gold-50 text-gold-700 font-medium' : 'text-gray-700'
-                  }`}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '8px 16px',
+                    fontSize: 13,
+                    background: isOther ? 'var(--gold-glow)' : 'transparent',
+                    color: isOther ? 'var(--gold-deep)' : 'var(--ink-mid)',
+                    fontWeight: isOther ? 500 : 400,
+                    cursor: 'pointer',
+                  }}
                 >
                   Other (Custom)
                 </button>
@@ -202,7 +263,13 @@ function EventTypeCombobox({ value, isOther, onSelect }: EventTypeComboboxProps)
                 No match — select{' '}
                 <button
                   type="button"
-                  className="text-gold-600 underline"
+                  style={{
+                    color: 'var(--gold-deep)',
+                    textDecoration: 'underline',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                  }}
                   onClick={() => {
                     onSelect('', true);
                     setOpen(false);
@@ -251,7 +318,32 @@ const DEFAULT_FORM: EventFormData = {
   color_palette: { primary: '#8B0000' },
 };
 
+function getEventFormState(event?: any): EventFormData {
+  if (!event) return DEFAULT_FORM;
+  const colorPalette =
+    typeof event.color_palette === 'string'
+      ? JSON.parse(event.color_palette)
+      : event.color_palette || {};
+
+  return {
+    name: event.name || '',
+    event_type: event.event_type || '',
+    event_date: event.event_date || '',
+    start_time: event.start_time || '',
+    end_time: event.end_time || '',
+    venue_id: event.venue_id || null,
+    theme: event.theme || '',
+    description: event.description || '',
+    dress_code: event.dress_code || '',
+    estimated_guests: event.estimated_guests || 0,
+    color_palette: colorPalette,
+  };
+}
+
 export default function Events() {
+  const navigate = useNavigate();
+  const [viewMode, setViewMode] = useState<'timeline' | 'cards'>('cards');
+  const [detailEvent, setDetailEvent] = useState<any>(null);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [formData, setFormData] = useState<EventFormData>(DEFAULT_FORM);
@@ -264,6 +356,20 @@ export default function Events() {
   const createMutation = useCreateEvent();
   const updateMutation = useUpdateEvent();
   const deleteMutation = useDeleteEvent();
+  const isEventFormDirty =
+    JSON.stringify(formData) !== JSON.stringify(getEventFormState(editingEvent));
+  const { attemptClose: attemptCloseEventModal, dialog: eventUnsavedDialog } =
+    useUnsavedChangesPrompt({
+      isDirty: isEventFormDirty,
+      onDiscard: () => {
+        setShowEventModal(false);
+        resetForm();
+      },
+      onSave: () => {
+        (document.getElementById('event-form') as HTMLFormElement | null)?.requestSubmit();
+      },
+      isSaving: createMutation.isPending || updateMutation.isPending,
+    });
 
   const resetForm = () => {
     setFormData(DEFAULT_FORM);
@@ -273,25 +379,9 @@ export default function Events() {
 
   const handleEdit = (event: any) => {
     setEditingEvent(event);
-    const colorPalette =
-      typeof event.color_palette === 'string'
-        ? JSON.parse(event.color_palette)
-        : event.color_palette || {};
     const isCustom = event.event_type && !KNOWN_TYPE_VALUES.has(event.event_type);
     setIsOtherType(isCustom);
-    setFormData({
-      name: event.name || '',
-      event_type: event.event_type || '',
-      event_date: event.event_date || '',
-      start_time: event.start_time || '',
-      end_time: event.end_time || '',
-      venue_id: event.venue_id || null,
-      theme: event.theme || '',
-      description: event.description || '',
-      dress_code: event.dress_code || '',
-      estimated_guests: event.estimated_guests || 0,
-      color_palette: colorPalette,
-    });
+    setFormData(getEventFormState(event));
     setShowEventModal(true);
   };
 
@@ -338,15 +428,6 @@ export default function Events() {
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  };
-
   const formatTime = (time: string | null | undefined) => {
     if (!time) return null;
     const parts = time.split(':');
@@ -360,183 +441,708 @@ export default function Events() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500"></div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 256 }}>
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: '50%',
+            border: '3px solid var(--line-soft)',
+            borderTopColor: 'var(--gold)',
+            animation: 'spin 0.8s linear infinite',
+          }}
+        />
       </div>
     );
   }
 
+  const EVENT_COLORS_LIST = ['#8B0000', '#B8860B', '#5C6BC0', '#2E7D32', '#6A1B9A', '#0277BD'];
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h1 className="page-title">Events & Itinerary</h1>
-        <button
-          onClick={() => setShowEventModal(true)}
-          className="btn-primary flex items-center gap-2 self-start sm:self-auto"
-        >
-          <HiOutlinePlus className="w-4 h-4" />
-          Add Event
-        </button>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <SectionHeader
+        eyebrow="Festivities"
+        title="Events & timeline"
+        description="All events and ceremonies. Click any event to see full details."
+        action={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: 2,
+                background: 'var(--bg-raised)',
+                padding: 4,
+                borderRadius: 10,
+              }}
+            >
+              {[
+                { mode: 'timeline' as const, Icon: HiOutlineViewList, label: 'Timeline' },
+                { mode: 'cards' as const, Icon: HiOutlineViewGrid, label: 'Cards' },
+              ].map(({ mode, Icon, label }) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '5px 10px',
+                    borderRadius: 7,
+                    fontSize: 11,
+                    fontWeight: 500,
+                    background: viewMode === mode ? 'var(--bg-panel)' : 'transparent',
+                    color: viewMode === mode ? 'var(--gold-deep)' : 'var(--ink-low)',
+                    boxShadow: viewMode === mode ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    cursor: 'pointer',
+                    transition: 'all 150ms',
+                  }}
+                >
+                  <Icon style={{ width: 13, height: 13 }} /> {label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowEventModal(true)}
+              className="btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
+            >
+              <HiOutlinePlus style={{ width: 14, height: 14 }} /> New event
+            </button>
+          </div>
+        }
+      />
 
-      <div className="relative">
-        <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gold-300 hidden md:block" />
-
-        <div className="space-y-6">
+      {/* ── Timeline View ── */}
+      {viewMode === 'timeline' && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          {events.length === 0 && (
+            <div
+              style={{
+                padding: '48px 0',
+                textAlign: 'center',
+                color: 'var(--ink-dim)',
+                fontSize: 13,
+              }}
+            >
+              No events yet — add your first event.
+            </div>
+          )}
           {events.map((event, index) => {
             const colorPalette =
               typeof event.color_palette === 'string'
                 ? JSON.parse(event.color_palette)
                 : event.color_palette || {};
-            const eventColor = (colorPalette as any).primary || '#8B0000';
+            const eventColor =
+              (colorPalette as any).primary || EVENT_COLORS_LIST[index % EVENT_COLORS_LIST.length];
             const startTime = formatTime(event.start_time);
             const endTime = formatTime(event.end_time);
-
+            const dateShort = new Date(event.event_date).toLocaleDateString('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+            });
             return (
-              <div key={event.id} className="relative md:pl-16">
-                <div
-                  className="absolute left-4 w-5 h-5 rounded-full border-4 border-white shadow hidden md:block"
-                  style={{ backgroundColor: eventColor }}
-                />
-
-                <div
-                  className="card-hover cursor-pointer overflow-hidden"
-                  onClick={() =>
-                    setSelectedEvent((selectedEvent as any)?.id === event.id ? null : event)
-                  }
-                >
-                  <div className="h-2 -mx-6 -mt-6 mb-4" style={{ backgroundColor: eventColor }} />
-
-                  <div className="flex flex-col md:flex-row md:items-center gap-4">
-                    <div
-                      className="w-16 h-16 rounded-xl flex items-center justify-center text-white text-2xl font-bold shrink-0"
-                      style={{ backgroundColor: eventColor }}
-                    >
-                      {index + 1}
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-xl font-display font-bold text-maroon-800">
-                          {event.name}
-                        </h3>
-                        {event.event_type && (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-maroon-50 text-maroon-700 border border-maroon-200">
-                            {getTypeLabel(event.event_type)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-600">
-                        <span className="flex items-center gap-1">
-                          <HiOutlineCalendar className="w-4 h-4" />
-                          {formatDate(event.event_date)}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <HiOutlineClock className="w-4 h-4" />
-                          {startTime}
-                          {endTime ? ` – ${endTime}` : ''}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 mt-1 text-sm text-gray-600">
-                        <HiOutlineLocationMarker className="w-4 h-4" />
-                        {(event as any).venues?.name || 'Venue TBD'}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-2 items-start md:items-end">
-                      {event.theme && (
-                        <span className="badge bg-gold-100 text-gold-700">
-                          <HiOutlineSparkles className="w-3 h-3 mr-1" />
-                          {event.theme}
-                        </span>
-                      )}
-                      {event.estimated_guests ? (
-                        <span className="text-sm text-gray-500">
-                          ~{event.estimated_guests} guests
-                        </span>
-                      ) : null}
-                    </div>
+              <div
+                key={event.id}
+                onClick={() => setDetailEvent(event)}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '100px 1fr auto',
+                  gap: 20,
+                  padding: '18px 24px',
+                  cursor: 'pointer',
+                  borderTop: index > 0 ? '1px solid var(--line-soft)' : 'none',
+                  transition: 'background 150ms',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = 'var(--bg-raised)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = 'transparent';
+                }}
+              >
+                <div>
+                  <div
+                    className="display"
+                    style={{ fontSize: 16, fontWeight: 500, color: eventColor }}
+                  >
+                    {dateShort.split(',')[0]}
                   </div>
-
-                  {(selectedEvent as any)?.id === event.id && (
-                    <div className="mt-6 pt-6 border-t border-gold-200 animate-fade-in">
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div>
-                          <h4 className="font-semibold text-maroon-800 mb-2">Description</h4>
-                          <p className="text-gray-600">
-                            {event.description || 'No description available'}
-                          </p>
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-maroon-800 mb-2">Dress Code</h4>
-                          <p className="text-gray-600">{event.dress_code || 'Casual/Formal'}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-3 mt-6">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(event);
-                          }}
-                          className="btn-primary"
-                        >
-                          Edit Event
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteConfirm(event.id);
-                          }}
-                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-                        >
-                          <HiOutlineTrash className="w-4 h-4" />
-                        </button>
-                      </div>
+                  <div
+                    className="mono"
+                    style={{ fontSize: 10, color: 'var(--ink-dim)', marginTop: 2 }}
+                  >
+                    {startTime || '—'}
+                  </div>
+                  {endTime && (
+                    <div className="mono" style={{ fontSize: 10, color: 'var(--ink-dim)' }}>
+                      → {endTime}
                     </div>
                   )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 22,
+                      flexShrink: 0,
+                      background: `${eventColor}18`,
+                      border: `1.5px solid ${eventColor}44`,
+                    }}
+                  >
+                    {EVENT_ICONS[event.event_type as keyof typeof EVENT_ICONS] || '🎊'}
+                  </div>
+                  <div>
+                    <div className="display" style={{ fontSize: 17, color: 'var(--ink-high)' }}>
+                      {event.name}
+                    </div>
+                    {event.description && (
+                      <div style={{ fontSize: 12, color: 'var(--ink-low)', marginTop: 2 }}>
+                        {event.description}
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 12,
+                        marginTop: 6,
+                        fontSize: 11,
+                        color: 'var(--ink-dim)',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <HiOutlineLocationMarker style={{ width: 12, height: 12 }} />
+                        {(event as any).venues?.name || 'Venue TBD'}
+                      </span>
+                      {event.estimated_guests ? (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <HiOutlineUserGroup style={{ width: 12, height: 12 }} />
+                          {event.estimated_guests} guests
+                        </span>
+                      ) : null}
+                      {event.dress_code && (
+                        <span style={{ color: eventColor }}>◆ {event.dress_code}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <HiOutlineChevronRight
+                    style={{ width: 16, height: 16, color: 'var(--ink-dim)' }}
+                  />
                 </div>
               </div>
             );
           })}
-
-          {events.length === 0 && (
-            <div className="card text-center py-12">
-              <div className="text-5xl mb-3">🎊</div>
-              <p className="text-gray-500 mb-4">No events yet. Start planning your celebrations!</p>
-              <button
-                onClick={() => setShowEventModal(true)}
-                className="btn-primary inline-flex items-center gap-2"
-              >
-                <HiOutlinePlus className="w-4 h-4" />
-                Add First Event
-              </button>
-            </div>
-          )}
         </div>
-      </div>
+      )}
+
+      {/* ── Cards Timeline View (zigzag with curvy connectors) ── */}
+      {viewMode === 'cards' &&
+        (() => {
+          if (events.length === 0) {
+            return (
+              <div
+                className="card"
+                style={{
+                  padding: '48px 0',
+                  textAlign: 'center',
+                  color: 'var(--ink-dim)',
+                  fontSize: 13,
+                }}
+              >
+                No events yet — add your first event.
+              </div>
+            );
+          }
+          const CARD_W = 340;
+          const CARD_H = 180;
+          const GAP_Y = 80;
+          const OFFSET_X = 260;
+          const PAD_X = 24;
+          const PAD_Y = 24;
+          const stepY = CARD_H + GAP_Y;
+          const contentW = PAD_X * 2 + CARD_W + OFFSET_X;
+          const contentH = PAD_Y * 2 + events.length * CARD_H + (events.length - 1) * GAP_Y;
+          // Viewport shows ~2 cards at a time
+          const viewportH = PAD_Y * 2 + 2 * CARD_H + GAP_Y;
+          const anchors = events.map((_, i) => {
+            const x = PAD_X + (i % 2 === 0 ? 0 : OFFSET_X);
+            const y = PAD_Y + i * stepY;
+            return { x, y, midX: x + CARD_W / 2, topY: y, bottomY: y + CARD_H };
+          });
+          return (
+            <div style={{ padding: 0 }}>
+              <div style={{ overflowY: 'auto', overflowX: 'hidden', maxHeight: viewportH }}>
+                <div
+                  style={{
+                    position: 'relative',
+                    width: contentW,
+                    height: contentH,
+                    margin: '0 auto',
+                  }}
+                >
+                  {/* Curvy connectors */}
+                  <svg
+                    width={contentW}
+                    height={contentH}
+                    style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+                  >
+                    <defs>
+                      <linearGradient id="tl-line" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.55" />
+                        <stop offset="100%" stopColor="var(--gold)" stopOpacity="0.3" />
+                      </linearGradient>
+                    </defs>
+                    {anchors.slice(0, -1).map((a, i) => {
+                      const b = anchors[i + 1]!;
+                      const x1 = a.midX;
+                      const y1 = a.bottomY;
+                      const x2 = b.midX;
+                      const y2 = b.topY;
+                      const cy = (y1 + y2) / 2;
+                      const d = `M ${x1} ${y1} C ${x1} ${cy}, ${x2} ${cy}, ${x2} ${y2}`;
+                      return (
+                        <g key={i}>
+                          <path
+                            d={d}
+                            fill="none"
+                            stroke="url(#tl-line)"
+                            strokeWidth={1.5}
+                            strokeDasharray="4 5"
+                          />
+                          <circle cx={x1} cy={y1} r={3} fill="var(--gold)" opacity={0.75} />
+                          <circle cx={x2} cy={y2} r={3} fill="var(--gold)" opacity={0.75} />
+                        </g>
+                      );
+                    })}
+                  </svg>
+                  {/* Cards */}
+                  {events.map((event, index) => {
+                    const colorPalette =
+                      typeof event.color_palette === 'string'
+                        ? JSON.parse(event.color_palette)
+                        : event.color_palette || {};
+                    const eventColor =
+                      (colorPalette as any).primary ||
+                      EVENT_COLORS_LIST[index % EVENT_COLORS_LIST.length];
+                    const startTime = formatTime(event.start_time);
+                    const a = anchors[index]!;
+                    return (
+                      <div
+                        key={event.id}
+                        onClick={() => setDetailEvent(event)}
+                        className="card"
+                        style={{
+                          position: 'absolute',
+                          left: a.x,
+                          top: a.y,
+                          width: CARD_W,
+                          height: CARD_H,
+                          padding: 0,
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          transition: 'transform 150ms, box-shadow 150ms',
+                          display: 'flex',
+                          flexDirection: 'column',
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLElement).style.boxShadow =
+                            '0 8px 24px rgba(0,0,0,0.12)';
+                          (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLElement).style.boxShadow = '';
+                          (e.currentTarget as HTMLElement).style.transform = '';
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: 68,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 34,
+                            background: `linear-gradient(135deg, ${eventColor}44, ${eventColor}11)`,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {EVENT_ICONS[event.event_type as keyof typeof EVENT_ICONS] || '🎊'}
+                        </div>
+                        <div
+                          style={{
+                            padding: '10px 14px 12px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            flex: 1,
+                            minHeight: 0,
+                          }}
+                        >
+                          <div
+                            className="mono"
+                            style={{
+                              fontSize: 9,
+                              letterSpacing: '0.12em',
+                              textTransform: 'uppercase',
+                              marginBottom: 3,
+                              color: eventColor,
+                            }}
+                          >
+                            {new Date(event.event_date)
+                              .toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                              })
+                              .toUpperCase()}
+                            {startTime ? ` · ${startTime}` : ''}
+                          </div>
+                          <div
+                            className="display"
+                            style={{
+                              fontSize: 15,
+                              color: 'var(--ink-high)',
+                              lineHeight: 1.25,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {event.name}
+                          </div>
+                          {(event as any).venues?.name && (
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color: 'var(--ink-dim)',
+                                marginTop: 2,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {(event as any).venues.name}
+                            </div>
+                          )}
+                          <div
+                            style={{ display: 'flex', gap: 5, marginTop: 'auto', flexWrap: 'wrap' }}
+                          >
+                            {event.estimated_guests ? (
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  padding: '2px 7px',
+                                  borderRadius: 100,
+                                  background: 'var(--bg-raised)',
+                                  color: 'var(--ink-low)',
+                                  border: '1px solid var(--line)',
+                                }}
+                              >
+                                {event.estimated_guests} guests
+                              </span>
+                            ) : null}
+                            {event.dress_code && (
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  padding: '2px 7px',
+                                  borderRadius: 100,
+                                  border: `1px solid ${eventColor}55`,
+                                  background: `${eventColor}11`,
+                                  color: eventColor,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  maxWidth: 120,
+                                }}
+                              >
+                                {event.dress_code}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+      {/* ── Event Detail Modal ── */}
+      {detailEvent &&
+        (() => {
+          const ev = detailEvent;
+          const colorPalette =
+            typeof ev.color_palette === 'string'
+              ? JSON.parse(ev.color_palette)
+              : ev.color_palette || {};
+          const eventColor = (colorPalette as any).primary || '#8B0000';
+          const startTime = formatTime(ev.start_time);
+          const endTime = formatTime(ev.end_time);
+          return (
+            <Portal>
+              <div
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  background: 'rgba(0,0,0,0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 50,
+                  padding: 16,
+                }}
+                onClick={() => setDetailEvent(null)}
+              >
+                <div
+                  style={{
+                    background: 'var(--bg-panel)',
+                    borderRadius: 'var(--radius-lg)',
+                    width: '100%',
+                    maxWidth: 480,
+                    overflow: 'hidden',
+                    position: 'relative',
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => setDetailEvent(null)}
+                    style={{
+                      position: 'absolute',
+                      top: 14,
+                      right: 14,
+                      padding: '5px 8px',
+                      borderRadius: 6,
+                      color: 'var(--ink-dim)',
+                      background: 'rgba(255,255,255,0.8)',
+                      cursor: 'pointer',
+                      zIndex: 10,
+                    }}
+                  >
+                    <HiOutlineX style={{ width: 14, height: 14 }} />
+                  </button>
+                  <div
+                    style={{
+                      height: 110,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 56,
+                      background: `linear-gradient(135deg, ${eventColor}44, ${eventColor}11)`,
+                    }}
+                  >
+                    {EVENT_ICONS[ev.event_type as keyof typeof EVENT_ICONS] || '🎊'}
+                  </div>
+                  <div style={{ padding: '20px 32px 32px', textAlign: 'center' }}>
+                    <Ornament mark="❋" />
+                    <h2
+                      className="display"
+                      style={{
+                        margin: '10px 0 0',
+                        fontSize: 28,
+                        color: 'var(--ink-high)',
+                        fontWeight: 400,
+                      }}
+                    >
+                      {ev.name}
+                    </h2>
+                    {(startTime || endTime) && (
+                      <div
+                        className="mono"
+                        style={{
+                          fontSize: 10,
+                          letterSpacing: '0.12em',
+                          textTransform: 'uppercase',
+                          marginTop: 8,
+                          color: eventColor,
+                        }}
+                      >
+                        {new Date(ev.event_date)
+                          .toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            month: 'long',
+                            day: 'numeric',
+                          })
+                          .toUpperCase()}
+                        {startTime ? ` · ${startTime}` : ''}
+                        {endTime ? ` – ${endTime}` : ''}
+                      </div>
+                    )}
+                    {ev.description && (
+                      <p
+                        className="display"
+                        style={{
+                          fontStyle: 'italic',
+                          color: 'var(--ink-low)',
+                          fontSize: 14,
+                          marginTop: 10,
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {ev.description}
+                      </p>
+                    )}
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: 16,
+                        marginTop: 24,
+                        textAlign: 'left',
+                      }}
+                    >
+                      {[
+                        { label: 'Venue', value: (ev as any).venues?.name || 'TBD' },
+                        { label: 'Dress code', value: ev.dress_code || '—', colored: true },
+                        {
+                          label: 'Guests',
+                          value: ev.estimated_guests ? `${ev.estimated_guests} attending` : '—',
+                        },
+                        {
+                          label: 'Duration',
+                          value:
+                            startTime && endTime ? `${startTime} – ${endTime}` : startTime || '—',
+                        },
+                      ].map(({ label, value, colored }) => (
+                        <div key={label}>
+                          <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>
+                            {label}
+                          </div>
+                          <div
+                            style={{ fontSize: 13, color: colored ? eventColor : 'var(--ink-mid)' }}
+                          >
+                            {value}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div
+                      style={{ display: 'flex', gap: 8, marginTop: 24, justifyContent: 'flex-end' }}
+                    >
+                      <button
+                        onClick={() => {
+                          setDetailEvent(null);
+                          setDeleteConfirm(ev.id);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontSize: 12,
+                          padding: '7px 14px',
+                          borderRadius: 8,
+                          border: '1px solid var(--line)',
+                          color: 'var(--err)',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <HiOutlineTrash style={{ width: 13, height: 13 }} /> Delete
+                      </button>
+                      <button
+                        onClick={() => {
+                          setDetailEvent(null);
+                          handleEdit(ev);
+                        }}
+                        className="btn-outline"
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+                      >
+                        <HiOutlinePencil style={{ width: 13, height: 13 }} /> Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          setDetailEvent(null);
+                          navigate('../guests');
+                        }}
+                        className="btn-primary"
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+                      >
+                        <HiOutlineUserGroup style={{ width: 13, height: 13 }} /> Manage guests
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Portal>
+          );
+        })()}
 
       {/* Add / Edit modal */}
       {showEventModal && (
         <Portal>
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between p-6 border-b border-gold-200">
-                <h2 className="text-xl font-display font-bold text-maroon-800">
-                  {editingEvent ? 'Edit Event' : 'Add New Event'}
-                </h2>
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 50,
+              padding: 16,
+            }}
+            onClick={attemptCloseEventModal}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'var(--bg-panel)',
+                borderRadius: 'var(--radius-lg)',
+                width: '100%',
+                maxWidth: 600,
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '20px 24px',
+                  borderBottom: '1px solid var(--line-soft)',
+                }}
+              >
+                <div>
+                  <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>
+                    Festivities
+                  </div>
+                  <h2
+                    className="display"
+                    style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}
+                  >
+                    {editingEvent ? 'Edit event' : 'Add event'}
+                  </h2>
+                </div>
                 <button
-                  onClick={() => {
-                    setShowEventModal(false);
-                    resetForm();
+                  onClick={attemptCloseEventModal}
+                  style={{
+                    padding: '6px 8px',
+                    borderRadius: 6,
+                    color: 'var(--ink-dim)',
+                    background: 'transparent',
+                    cursor: 'pointer',
                   }}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
                 >
-                  <HiOutlineX className="w-5 h-5" />
+                  <HiOutlineX style={{ width: 16, height: 16 }} />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <form
+                id="event-form"
+                onSubmit={handleSubmit}
+                style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}
+              >
                 <div>
                   <label className="label">Event Name *</label>
                   <input
@@ -549,7 +1155,7 @@ export default function Events() {
                   />
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="label">Event Type *</label>
                     <EventTypeCombobox
@@ -562,7 +1168,8 @@ export default function Events() {
                         type="text"
                         value={formData.event_type}
                         onChange={(e) => setFormData({ ...formData, event_type: e.target.value })}
-                        className="input mt-2"
+                        className="input"
+                        style={{ marginTop: 8 }}
                         placeholder="Describe your custom event type"
                         required
                         autoFocus
@@ -571,17 +1178,16 @@ export default function Events() {
                   </div>
                   <div>
                     <label className="label">Event Date *</label>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={formData.event_date}
-                      onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
-                      className="input"
+                      onChange={(v) => setFormData({ ...formData, event_date: v })}
+                      placeholder="Select event date"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="label">Venue</label>
                     <select
@@ -601,24 +1207,22 @@ export default function Events() {
                   </div>
                   <div>
                     <label className="label">Start Time *</label>
-                    <input
-                      type="time"
+                    <TimePicker
                       value={formData.start_time}
-                      onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                      className="input"
+                      onChange={(v) => setFormData({ ...formData, start_time: v })}
+                      placeholder="Start time"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="label">End Time</label>
-                    <input
-                      type="time"
+                    <TimePicker
                       value={formData.end_time}
-                      onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                      className="input"
+                      onChange={(v) => setFormData({ ...formData, end_time: v })}
+                      placeholder="End time"
                     />
                   </div>
                   <div>
@@ -639,7 +1243,7 @@ export default function Events() {
                   </div>
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label className="label">Theme</label>
                     <input
@@ -658,7 +1262,8 @@ export default function Events() {
                       onChange={(e) =>
                         setFormData({ ...formData, color_palette: { primary: e.target.value } })
                       }
-                      className="input h-10"
+                      className="input"
+                      style={{ height: 40 }}
                     />
                   </div>
                 </div>
@@ -670,7 +1275,7 @@ export default function Events() {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="input"
                     rows={3}
-                    placeholder="Event description, rituals, schedule details..."
+                    placeholder="Event description, rituals, schedule details…"
                   />
                 </div>
 
@@ -685,27 +1290,29 @@ export default function Events() {
                   />
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowEventModal(false);
-                      resetForm();
-                    }}
-                    className="btn-outline flex-1"
+                    onClick={attemptCloseEventModal}
+                    className="btn-outline"
+                    style={{ flex: 1 }}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={createMutation.isPending || updateMutation.isPending}
-                    className="btn-primary flex-1 disabled:opacity-50"
+                    className="btn-primary"
+                    style={{
+                      flex: 1,
+                      opacity: createMutation.isPending || updateMutation.isPending ? 0.5 : 1,
+                    }}
                   >
                     {createMutation.isPending || updateMutation.isPending
-                      ? 'Saving...'
+                      ? 'Saving…'
                       : editingEvent
-                        ? 'Update Event'
-                        : 'Create Event'}
+                        ? 'Update event'
+                        : 'Create event'}
                   </button>
                 </div>
               </form>
@@ -713,26 +1320,68 @@ export default function Events() {
           </div>
         </Portal>
       )}
+      {eventUnsavedDialog}
 
-      {/* Delete confirmation */}
       {deleteConfirm && (
         <Portal>
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 max-w-md">
-              <h3 className="text-lg font-bold text-maroon-800 mb-2">Confirm Deletion</h3>
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to delete this event? This action cannot be undone.
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 50,
+              padding: 16,
+            }}
+            onClick={() => setDeleteConfirm(null)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'var(--bg-panel)',
+                borderRadius: 'var(--radius-lg)',
+                padding: 28,
+                maxWidth: 380,
+                width: '100%',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+              }}
+            >
+              <h3
+                className="display"
+                style={{ margin: '0 0 8px', fontSize: 20, color: 'var(--ink-high)' }}
+              >
+                Delete event?
+              </h3>
+              <p style={{ fontSize: 13, color: 'var(--ink-low)', marginBottom: 24 }}>
+                This action cannot be undone.
               </p>
-              <div className="flex gap-3">
-                <button onClick={() => setDeleteConfirm(null)} className="btn-outline flex-1">
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  className="btn-outline"
+                  style={{ flex: 1 }}
+                >
                   Cancel
                 </button>
                 <button
                   onClick={() => handleDelete(deleteConfirm)}
                   disabled={deleteMutation.isPending}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex-1 disabled:opacity-50"
+                  style={{
+                    flex: 1,
+                    padding: '9px 16px',
+                    background: 'var(--err)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    opacity: deleteMutation.isPending ? 0.5 : 1,
+                  }}
                 >
-                  {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                  {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
                 </button>
               </div>
             </div>

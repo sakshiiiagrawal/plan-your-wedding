@@ -24,22 +24,32 @@ export async function getTask(id: string, ownerId: string) {
   return task;
 }
 
-export async function createTask(payload: Omit<TaskInsert, 'user_id'>, ownerId: string) {
-  return repo.insertTask({ ...payload, user_id: ownerId });
+export async function createTask(
+  payload: Omit<TaskInsert, 'user_id'>,
+  ownerId: string,
+  userId?: string,
+) {
+  return repo.insertTask({ ...payload, user_id: ownerId, created_by: userId ?? ownerId });
 }
 
-export async function updateTask(id: string, ownerId: string, payload: Partial<TaskInsert>) {
+export async function updateTask(
+  id: string,
+  ownerId: string,
+  payload: Partial<TaskInsert>,
+  userId?: string,
+) {
   await getTask(id, ownerId);
-  return repo.updateTask(id, ownerId, payload);
+  return repo.updateTask(id, ownerId, { ...payload, updated_by: userId ?? ownerId });
 }
 
 export async function updateTaskStatus(
   id: string,
   ownerId: string,
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled',
+  userId?: string,
 ) {
   await getTask(id, ownerId);
-  const payload: Partial<TaskInsert> = { status };
+  const payload: Partial<TaskInsert> = { status, updated_by: userId ?? ownerId };
   if (status === 'completed') {
     // completed_at is not in TaskInsert, update via partial cast
     (payload as Record<string, unknown>)['completed_at'] = new Date().toISOString();

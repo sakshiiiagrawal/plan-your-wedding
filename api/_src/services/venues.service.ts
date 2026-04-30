@@ -55,6 +55,9 @@ async function extractVenueFinanceInput(
       items: Awaited<ReturnType<typeof buildVenueSourceItems>>;
       payments?: PaymentMutationInput[];
     } | null;
+    // When updating, the existing single venue expense_item's id so syncExpenseItems
+    // updates it in place instead of DELETE+INSERT (which breaks the FK from payment_allocations).
+    existingItemId?: string | null;
   },
 ) {
   if (payload.finance) {
@@ -76,11 +79,16 @@ async function extractVenueFinanceInput(
     payload.bride_share_percentage ?? null,
   );
 
+  const itemsWithId =
+    payload.existingItemId && items.length > 0
+      ? [{ ...items[0]!, id: payload.existingItemId }, ...items.slice(1)]
+      : items;
+
   return {
     description: payload.name,
     expense_date: normalizeDate(payload.expense_date),
     notes: payload.notes ?? null,
-    items,
+    items: itemsWithId,
     payments: [] as PaymentMutationInput[],
   };
 }
@@ -156,7 +164,9 @@ export async function createVenue(
           venue_type,
           address,
           city,
-          google_maps_link,
+          place_id,
+          latitude,
+          longitude,
           contact_person,
           contact_phone,
           capacity,
@@ -165,7 +175,7 @@ export async function createVenue(
           default_check_out_date,
           notes
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING *
       `,
       [
@@ -174,7 +184,9 @@ export async function createVenue(
         venuePayload.venue_type ?? null,
         venuePayload.address ?? null,
         venuePayload.city ?? null,
-        venuePayload.google_maps_link ?? null,
+        venuePayload.place_id ?? null,
+        venuePayload.latitude ?? null,
+        venuePayload.longitude ?? null,
         venuePayload.contact_person ?? null,
         venuePayload.contact_phone ?? null,
         venuePayload.capacity ?? null,
@@ -196,9 +208,12 @@ export async function createVenue(
             room_type,
             capacity,
             rate_per_night,
+            includes_breakfast,
+            check_in_date,
+            check_out_date,
             notes
           )
-          VALUES ($1, $2, $3, $4, $5, $6)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         `,
         [
           venue.id,
@@ -206,6 +221,9 @@ export async function createVenue(
           room.room_type,
           room.capacity ?? null,
           room.rate_per_night ?? null,
+          room.includes_breakfast ?? false,
+          room.check_in_date ?? null,
+          room.check_out_date ?? null,
           room.notes ?? null,
         ],
       );
@@ -266,7 +284,9 @@ export async function updateVenue(
       venue_type: venuePayload.venue_type ?? existing.venue_type,
       address: venuePayload.address ?? existing.address,
       city: venuePayload.city ?? existing.city,
-      google_maps_link: venuePayload.google_maps_link ?? existing.google_maps_link,
+      place_id: venuePayload.place_id ?? existing.place_id,
+      latitude: venuePayload.latitude ?? existing.latitude,
+      longitude: venuePayload.longitude ?? existing.longitude,
       contact_person: venuePayload.contact_person ?? existing.contact_person,
       contact_phone: venuePayload.contact_phone ?? existing.contact_phone,
       capacity: venuePayload.capacity ?? existing.capacity,
@@ -285,14 +305,16 @@ export async function updateVenue(
           venue_type = $4,
           address = $5,
           city = $6,
-          google_maps_link = $7,
-          contact_person = $8,
-          contact_phone = $9,
-          capacity = $10,
-          has_accommodation = $11,
-          default_check_in_date = $12,
-          default_check_out_date = $13,
-          notes = $14
+          place_id = $7,
+          latitude = $8,
+          longitude = $9,
+          contact_person = $10,
+          contact_phone = $11,
+          capacity = $12,
+          has_accommodation = $13,
+          default_check_in_date = $14,
+          default_check_out_date = $15,
+          notes = $16
         WHERE id = $1
           AND user_id = $2
         RETURNING *
@@ -304,7 +326,9 @@ export async function updateVenue(
         nextValues.venue_type,
         nextValues.address,
         nextValues.city,
-        nextValues.google_maps_link,
+        nextValues.place_id,
+        nextValues.latitude,
+        nextValues.longitude,
         nextValues.contact_person,
         nextValues.contact_phone,
         nextValues.capacity,
@@ -326,9 +350,12 @@ export async function updateVenue(
             room_type,
             capacity,
             rate_per_night,
+            includes_breakfast,
+            check_in_date,
+            check_out_date,
             notes
           )
-          VALUES ($1, $2, $3, $4, $5, $6)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         `,
         [
           venue.id,
@@ -336,6 +363,9 @@ export async function updateVenue(
           room.room_type,
           room.capacity ?? null,
           room.rate_per_night ?? null,
+          room.includes_breakfast ?? false,
+          room.check_in_date ?? null,
+          room.check_out_date ?? null,
           room.notes ?? null,
         ],
       );
@@ -378,6 +408,7 @@ export async function updateVenue(
               bride_share_percentage: bride_share_percentage ?? null,
               notes: venue.notes,
               finance: finance ?? null,
+              existingItemId: linkedExpense?.items?.[0]?.id ?? null,
             })
           : linkedExpense
             ? {
@@ -451,10 +482,31 @@ export async function addRoom(venueId: string, payload: Omit<RoomInsert, 'venue_
   return repo.insertRoom({ ...payload, venue_id: venueId });
 }
 
+export async function deleteRoom(id: string) {
+  const allocs = await repo.findAllocationsByRoom(id);
+  const hasGuests = allocs.some((a) => ((a.guest_ids as string[]) ?? []).length > 0);
+  if (hasGuests) {
+    throw new BadRequestError(
+      'Cannot delete a room that has guests assigned. Remove guest assignments first.',
+    );
+  }
+  await repo.deleteRoom(id);
+}
+
 export async function updateRoom(
   id: string,
   payload: Partial<
-    Pick<RoomInsert, 'room_number' | 'capacity' | 'room_type' | 'rate_per_night' | 'notes'>
+    Pick<
+      RoomInsert,
+      | 'room_number'
+      | 'capacity'
+      | 'room_type'
+      | 'rate_per_night'
+      | 'includes_breakfast'
+      | 'check_in_date'
+      | 'check_out_date'
+      | 'notes'
+    >
   >,
 ) {
   // If lowering capacity, make sure it doesn't go below current occupancy

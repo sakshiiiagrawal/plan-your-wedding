@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { getWeddingOwnerId } from '../shared/utils/auth.utils';
+import { getAuthUser, getWeddingOwnerId } from '../shared/utils/auth.utils';
 import * as guestsService from '../services/guests.service';
 
 type IdParam = { id: string };
@@ -71,8 +71,9 @@ export const getById = async (
 
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    const { id: userId } = getAuthUser(req);
     const ownerId = getWeddingOwnerId(req);
-    res.status(201).json(await guestsService.createGuest(req.body, ownerId));
+    res.status(201).json(await guestsService.createGuest(req.body, ownerId, userId));
   } catch (error) {
     next(error);
   }
@@ -84,8 +85,9 @@ export const bulkCreate = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
+    const { id: userId } = getAuthUser(req);
     const ownerId = getWeddingOwnerId(req);
-    res.status(201).json(await guestsService.bulkCreateGuests(req.body.guests, ownerId));
+    res.status(201).json(await guestsService.bulkCreateGuests(req.body.guests, ownerId, userId));
   } catch (error) {
     next(error);
   }
@@ -97,8 +99,9 @@ export const update = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
+    const { id: userId } = getAuthUser(req);
     const ownerId = getWeddingOwnerId(req);
-    res.json(await guestsService.updateGuest(req.params.id, ownerId, req.body));
+    res.json(await guestsService.updateGuest(req.params.id, ownerId, req.body, userId));
   } catch (error) {
     next(error);
   }

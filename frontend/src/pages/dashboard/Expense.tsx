@@ -27,6 +27,35 @@ interface Tab {
   label: string;
 }
 
+interface ApiError {
+  response?: { data?: { message?: string; error?: string } };
+}
+
+interface ExpenseOverviewCategory {
+  id: string;
+  name: string;
+  committed?: number | string;
+  spent?: number | string;
+  paid?: number | string;
+  outstanding?: number | string;
+  allocated_amount?: number | string;
+}
+
+interface SideWiseExpenseItem {
+  id: string;
+  description: string;
+  category_name: string;
+  amount: number;
+  expense_date: string;
+  expense_title: string;
+  bride_share_percentage: number | null;
+  is_shared: boolean;
+  shared_share_percentage?: number;
+  shared_total_amount?: number;
+  bride_share_amount?: number;
+  groom_share_amount?: number;
+}
+
 const TABS: Tab[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'expenses', label: 'Expenses' },
@@ -133,13 +162,14 @@ export default function Expense() {
     }
 
     return (expenseOverview ?? [])
-      .map((category: any) => ({
+      .map((category: ExpenseOverviewCategory) => ({
+        id: category.id,
         name: category.name,
-        committed: parseFloat(category.committed || category.spent || 0),
-        paid: parseFloat(category.paid || 0),
-        outstanding: parseFloat(category.outstanding || 0),
+        committed: Number(category.committed ?? category.spent ?? 0),
+        paid: Number(category.paid ?? 0),
+        outstanding: Number(category.outstanding ?? 0),
         count: countByCategory.get(category.id) ?? 0,
-        allocated: parseFloat(category.allocated_amount || 0),
+        allocated: Number(category.allocated_amount ?? 0),
       }))
       .filter((category: { committed: number }) => category.committed > 0)
       .sort(
@@ -150,9 +180,22 @@ export default function Expense() {
 
   const sideWiseExpenses = useMemo(() => {
     const initial = {
-      bride: { items: [] as any[], total: 0 },
-      groom: { items: [] as any[], total: 0 },
-      shared: { items: [] as any[], total: 0 },
+      bride: {
+        items: [] as SideWiseExpenseItem[],
+        total: 0,
+        directCount: 0,
+        sharedCount: 0,
+        directTotal: 0,
+        sharedTotal: 0,
+      },
+      groom: {
+        items: [] as SideWiseExpenseItem[],
+        total: 0,
+        directCount: 0,
+        sharedCount: 0,
+        directTotal: 0,
+        sharedTotal: 0,
+      },
     };
 
     for (const expense of expenses) {
@@ -165,17 +208,50 @@ export default function Expense() {
           expense_date: expense.expense_date,
           expense_title: expense.description,
           bride_share_percentage: item.bride_share_percentage,
+          is_shared: item.side === 'shared',
         };
 
         if (item.side === 'bride') {
           initial.bride.items.push(mapped);
           initial.bride.total += item.amount;
+          initial.bride.directTotal += item.amount;
+          initial.bride.directCount += 1;
         } else if (item.side === 'groom') {
           initial.groom.items.push(mapped);
           initial.groom.total += item.amount;
+          initial.groom.directTotal += item.amount;
+          initial.groom.directCount += 1;
         } else {
-          initial.shared.items.push(mapped);
-          initial.shared.total += item.amount;
+          const brideSharePercentage = item.bride_share_percentage ?? 50;
+          const groomSharePercentage = 100 - brideSharePercentage;
+          const brideAmount = item.amount * (brideSharePercentage / 100);
+          const groomAmount = item.amount * (groomSharePercentage / 100);
+
+          initial.bride.items.push({
+            ...mapped,
+            id: `${item.id}-bride`,
+            amount: brideAmount,
+            shared_share_percentage: brideSharePercentage,
+            shared_total_amount: item.amount,
+            bride_share_amount: brideAmount,
+            groom_share_amount: groomAmount,
+          });
+          initial.bride.total += brideAmount;
+          initial.bride.sharedTotal += brideAmount;
+          initial.bride.sharedCount += 1;
+
+          initial.groom.items.push({
+            ...mapped,
+            id: `${item.id}-groom`,
+            amount: groomAmount,
+            shared_share_percentage: groomSharePercentage,
+            shared_total_amount: item.amount,
+            bride_share_amount: brideAmount,
+            groom_share_amount: groomAmount,
+          });
+          initial.groom.total += groomAmount;
+          initial.groom.sharedTotal += groomAmount;
+          initial.groom.sharedCount += 1;
         }
       }
     }
@@ -188,10 +264,11 @@ export default function Expense() {
       await updateExpenseMutation.mutateAsync({ id, ...payload });
       toast.success('Expense updated.');
       setEditingExpense(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
+        apiError.response?.data?.message ||
+        apiError.response?.data?.error ||
         'Failed to update expense.';
       toast.error(message);
     }
@@ -202,10 +279,11 @@ export default function Expense() {
     try {
       await deleteExpenseMutation.mutateAsync(id);
       toast.success('Expense deleted.');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
+        apiError.response?.data?.message ||
+        apiError.response?.data?.error ||
         'Failed to delete expense.';
       toast.error(message);
     }
@@ -217,9 +295,12 @@ export default function Expense() {
       toast.success('Expense added successfully.');
       setShowExpenseModal(false);
       setActiveTab('expenses');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
       const message =
-        error?.response?.data?.message || error?.response?.data?.error || 'Failed to add expense.';
+        apiError.response?.data?.message ||
+        apiError.response?.data?.error ||
+        'Failed to add expense.';
       toast.error(message);
     }
   };
@@ -290,7 +371,9 @@ export default function Expense() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat-card">
-          <div className="stat-value text-maroon-800">{formatCurrency(totalBudget)}</div>
+          <div className="stat-value" style={{ color: 'var(--gold-deep)' }}>
+            {formatCurrency(totalBudget)}
+          </div>
           <div className="stat-label">Budget</div>
         </div>
         <div className="stat-card">
@@ -316,11 +399,16 @@ export default function Expense() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-maroon-800 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 8,
+                fontWeight: 500,
+                fontSize: 14,
+                cursor: 'pointer',
+                transition: 'all 150ms',
+                background: activeTab === tab.id ? 'var(--gold)' : 'var(--bg-raised)',
+                color: activeTab === tab.id ? 'white' : 'var(--ink-low)',
+              }}
             >
               {tab.label}
             </button>

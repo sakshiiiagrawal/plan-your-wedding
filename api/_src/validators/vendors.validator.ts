@@ -16,6 +16,10 @@ export const createVendorSchema = z.object({
   bride_share_percentage: z.coerce.number().min(0).max(100).optional().nullable(),
   is_confirmed: z.boolean().optional(),
   notes: z.string().optional().nullable(),
+  needs_food: z.boolean().optional(),
+  needs_accommodation: z.boolean().optional(),
+  team_size: z.coerce.number().int().min(0).optional(),
+  team_member_names: z.array(z.string().trim()).optional(),
   finance: z
     .object({
       expense_date: z.string().min(1),

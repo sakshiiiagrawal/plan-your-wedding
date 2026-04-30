@@ -6,5 +6,6 @@ const router = Router();
 router.get('/stats', ctrl.getStats);
 router.get('/summary', ctrl.getSummary);
 router.get('/countdown', ctrl.getCountdown);
+router.get('/activity', ctrl.getRecentActivity);
 
 export default router;

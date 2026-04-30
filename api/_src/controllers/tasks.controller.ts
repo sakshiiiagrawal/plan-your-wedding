@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { getWeddingOwnerId } from '../shared/utils/auth.utils';
+import { getAuthUser, getWeddingOwnerId } from '../shared/utils/auth.utils';
 import * as service from '../services/tasks.service';
 
 type IdParam = { id: string };
@@ -59,7 +59,8 @@ export const getById = async (
 
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    res.status(201).json(await service.createTask(req.body, getWeddingOwnerId(req)));
+    const { id: userId } = getAuthUser(req);
+    res.status(201).json(await service.createTask(req.body, getWeddingOwnerId(req), userId));
   } catch (e) {
     next(e);
   }
@@ -71,7 +72,8 @@ export const update = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.json(await service.updateTask(req.params.id, getWeddingOwnerId(req), req.body));
+    const { id: userId } = getAuthUser(req);
+    res.json(await service.updateTask(req.params.id, getWeddingOwnerId(req), req.body, userId));
   } catch (e) {
     next(e);
   }
@@ -83,8 +85,14 @@ export const updateStatus = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
+    const { id: userId } = getAuthUser(req);
     res.json(
-      await service.updateTaskStatus(req.params.id, getWeddingOwnerId(req), req.body.status),
+      await service.updateTaskStatus(
+        req.params.id,
+        getWeddingOwnerId(req),
+        req.body.status,
+        userId,
+      ),
     );
   } catch (e) {
     next(e);

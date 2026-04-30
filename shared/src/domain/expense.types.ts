@@ -84,6 +84,7 @@ export interface PaymentRow {
   paid_date: string | null;
   payment_method: PaymentMethod | null;
   paid_by_side: FinancePaidBySide | null;
+  paid_bride_share_percentage: number | null;
   transaction_reference: string | null;
   notes: string | null;
   reverses_payment_id: string | null;
@@ -100,6 +101,7 @@ export interface PaymentInsert {
   paid_date?: string | null;
   payment_method?: PaymentMethod | null;
   paid_by_side?: FinancePaidBySide | null;
+  paid_bride_share_percentage?: number | null;
   transaction_reference?: string | null;
   notes?: string | null;
   reverses_payment_id?: string | null;

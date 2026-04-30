@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate, Navigate, useParams } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, Navigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useHeroContent } from '../hooks/useApi';
 import {
@@ -12,34 +12,63 @@ import {
   HiOutlineClipboardList,
   HiOutlineLogout,
   HiOutlineMenu,
+  HiOutlinePhotograph,
+  HiOutlineGlobe,
+  HiOutlineSearch,
+  HiOutlineBell,
+  HiOutlineChevronRight,
+  HiOutlineExternalLink,
 } from 'react-icons/hi';
 import { useState } from 'react';
+import { CornerFlourish } from '../components/ui';
+
+const NAV_ITEMS = [
+  { path: '', label: 'Overview', icon: HiOutlineHome, end: true },
+  { path: '/venues', label: 'Venues', icon: HiOutlineLocationMarker },
+  { path: '/events', label: 'Events', icon: HiOutlineCalendar },
+  { path: '/vendors', label: 'Vendors', icon: HiOutlineBriefcase },
+  { path: '/guests', label: 'Guests & RSVP', icon: HiOutlineUserGroup },
+  { path: '/accommodations', label: 'Accommodations', icon: HiOutlineOfficeBuilding },
+  { path: '/expense', label: 'Budget', icon: HiOutlineCurrencyRupee },
+  { path: '/tasks', label: 'Tasks', icon: HiOutlineClipboardList },
+  { path: '/gallery', label: 'Gallery', icon: HiOutlinePhotograph },
+  { path: '/website', label: 'Public Site', icon: HiOutlineGlobe },
+];
+
+const CRUMB_MAP: Record<string, string> = {
+  '': 'overview',
+  '/guests': 'guests & rsvp',
+  '/events': 'events',
+  '/venues': 'venues',
+  '/accommodations': 'accommodations',
+  '/vendors': 'vendors',
+  '/expense': 'budget',
+  '/tasks': 'tasks',
+  '/gallery': 'gallery',
+  '/website': 'public site',
+};
 
 export default function DashboardLayout() {
   const { logout, user, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { slug } = useParams<{ slug: string }>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const { data: heroContent } = useHeroContent(slug);
   const brideName = heroContent?.bride_name || 'Bride';
   const groomName = heroContent?.groom_name || 'Groom';
-  const initials = `${brideName.charAt(0)}${groomName.charAt(0)}`;
+  const weddingDate = heroContent?.wedding_date
+    ? new Date(heroContent.wedding_date).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : '';
 
-  const navItems = [
-    { path: `/${slug}/dashboard`, label: 'Dashboard', icon: HiOutlineHome, end: true },
-    { path: `/${slug}/dashboard/venues`, label: 'Venues', icon: HiOutlineLocationMarker },
-    { path: `/${slug}/dashboard/events`, label: 'Events', icon: HiOutlineCalendar },
-    { path: `/${slug}/dashboard/guests`, label: 'Guests', icon: HiOutlineUserGroup },
-    {
-      path: `/${slug}/dashboard/accommodations`,
-      label: 'Accommodations',
-      icon: HiOutlineOfficeBuilding,
-    },
-    { path: `/${slug}/dashboard/vendors`, label: 'Vendors', icon: HiOutlineBriefcase },
-    { path: `/${slug}/dashboard/expense`, label: 'Expense', icon: HiOutlineCurrencyRupee },
-    { path: `/${slug}/dashboard/tasks`, label: 'Tasks', icon: HiOutlineClipboardList },
-  ];
+  const basePath = `/${slug}/dashboard`;
+  const subPath = location.pathname.replace(basePath, '') || '';
+  const currentCrumb = CRUMB_MAP[subPath] ?? subPath.replace('/', '');
 
   const handleLogout = () => {
     logout();
@@ -48,10 +77,16 @@ export default function DashboardLayout() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-cream flex items-center justify-center">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'var(--bg-page)' }}
+      >
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-gold-500 border-t-maroon-800 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-maroon-800 font-medium">Loading...</p>
+          <div
+            className="w-14 h-14 border-4 rounded-full animate-spin mx-auto mb-4"
+            style={{ borderColor: 'var(--line-soft)', borderTopColor: 'var(--gold)' }}
+          />
+          <p style={{ color: 'var(--ink-low)', fontSize: 13 }}>Loading…</p>
         </div>
       </div>
     );
@@ -62,113 +97,312 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-cream flex">
+    <div
+      className="flex"
+      style={{ background: 'var(--bg-page)', height: '100vh', overflow: 'hidden' }}
+    >
+      {/* Backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+          className="fixed inset-0 z-20 lg:hidden"
+          style={{ background: 'rgba(0,0,0,0.45)' }}
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
+      {/* ── Sidebar ────────────────────────────────────────────────── */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-gold-200 transform transition-transform duration-200 ease-in-out ${
+        className={`fixed lg:static inset-y-0 left-0 z-30 flex flex-col transform transition-transform duration-200 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
+        style={{
+          width: 248,
+          flexShrink: 0,
+          background: 'var(--bg-panel)',
+          borderRight: '1px solid var(--line-soft)',
+          height: '100vh',
+          overflowY: 'hidden',
+        }}
       >
-        <div className="h-full flex flex-col">
-          <div className="p-6 border-b border-gold-200">
-            <NavLink to={`/${slug}/dashboard`} className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-r from-maroon-800 to-gold-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-script text-xl">{initials}</span>
-              </div>
-              <div>
-                <h1 className="font-display font-bold text-maroon-800">
-                  {brideName} & {groomName}
-                </h1>
-                <p className="text-xs text-gray-500">Wedding Planner</p>
-              </div>
-            </NavLink>
+        {/* Brand */}
+        <div style={{ padding: '28px 24px 24px', position: 'relative' }}>
+          <CornerFlourish
+            size={44}
+            rotate={0}
+            style={{ position: 'absolute', top: 10, right: 10, color: 'var(--gold)', opacity: 0.5 }}
+          />
+          <div className="uppercase-eyebrow" style={{ marginBottom: 10 }}>
+            The Wedding of
           </div>
+          <div
+            className="display"
+            style={{ fontSize: 26, lineHeight: 1.05, color: 'var(--ink-high)' }}
+          >
+            {brideName}
+            <div
+              style={{ fontStyle: 'italic', color: 'var(--gold)', fontSize: 20, margin: '2px 0' }}
+            >
+              &amp;
+            </div>
+            {groomName}
+          </div>
+          {weddingDate && (
+            <div
+              className="mono"
+              style={{
+                marginTop: 10,
+                fontSize: 10,
+                letterSpacing: '0.1em',
+                color: 'var(--ink-dim)',
+                textTransform: 'uppercase',
+              }}
+            >
+              {weddingDate}
+            </div>
+          )}
+        </div>
 
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navItems.map((item) => (
+        <hr className="hairline" style={{ margin: '0 24px' }} />
+
+        {/* Navigation */}
+        <nav style={{ padding: '16px 12px', flex: 1, overflowY: 'auto' }}>
+          {NAV_ITEMS.map((item) => {
+            const fullPath = `${basePath}${item.path}`;
+            return (
               <NavLink
                 key={item.path}
-                to={item.path}
-                end={!!item.end}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
-                    isActive
-                      ? 'bg-maroon-800 text-white'
-                      : 'text-gray-700 hover:bg-gold-100 hover:text-maroon-800'
-                  }`
-                }
+                to={fullPath}
+                end={item.end ?? false}
                 onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) => (isActive ? 'nav-active' : 'nav-inactive')}
+                style={({ isActive }) => ({
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '9px 12px',
+                  width: '100%',
+                  borderRadius: 8,
+                  marginBottom: 2,
+                  color: isActive ? 'var(--gold-deep)' : 'var(--ink-mid)',
+                  background: isActive ? 'var(--gold-glow)' : 'transparent',
+                  fontSize: 13,
+                  fontWeight: isActive ? 500 : 400,
+                  textAlign: 'left' as const,
+                  borderLeft: isActive ? '2px solid var(--gold)' : '2px solid transparent',
+                  transition: 'all 150ms',
+                  textDecoration: 'none',
+                })}
               >
-                <item.icon className="w-5 h-5" />
+                <item.icon style={{ width: 16, height: 16, flexShrink: 0 }} />
                 <span>{item.label}</span>
               </NavLink>
-            ))}
-          </nav>
+            );
+          })}
+        </nav>
 
-          <div className="p-4 border-t border-gold-200">
-            <div className="flex items-center gap-3 mb-3 px-4">
-              <div className="w-8 h-8 bg-gold-500 rounded-full flex items-center justify-center">
-                <span className="text-maroon-800 font-medium text-sm">
-                  {user?.name?.charAt(0) || 'U'}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">{user?.name || 'User'}</p>
-                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-3 px-4 py-3 w-full text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-            >
-              <HiOutlineLogout className="w-5 h-5" />
-              <span>Logout</span>
-            </button>
+        <hr className="hairline" style={{ margin: '0 24px' }} />
+
+        {/* Footer */}
+        <div style={{ padding: '16px 20px' }}>
+          <div
+            className="mono"
+            style={{
+              fontSize: 11,
+              color: 'var(--ink-dim)',
+              letterSpacing: '0.08em',
+              marginBottom: 10,
+            }}
+          >
+            {slug}.weds.app
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <div
+              className="avatar"
+              style={{ width: 28, height: 28, fontSize: 11 }}
+              title={user?.name}
+            >
+              {user?.name?.charAt(0) || 'U'}
+            </div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <p
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: 'var(--ink-high)',
+                  margin: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {user?.name}
+              </p>
+              <p
+                style={{
+                  fontSize: 10,
+                  color: 'var(--ink-dim)',
+                  margin: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {user?.email}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 8px',
+              width: '100%',
+              borderRadius: 6,
+              fontSize: 12,
+              color: 'var(--err)',
+              background: 'transparent',
+              transition: 'background 150ms',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(220,38,38,0.07)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          >
+            <HiOutlineLogout style={{ width: 14, height: 14 }} />
+            <span>Logout</span>
+          </button>
         </div>
       </aside>
 
-      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
-        <header className="bg-white border-b border-gold-200 px-4 py-3 lg:px-6 flex items-center gap-4">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 hover:bg-gold-50 rounded-lg"
-          >
-            <HiOutlineMenu className="w-6 h-6 text-maroon-800" />
-          </button>
-          <div className="flex-1">
-            <h2 className="font-display font-semibold text-maroon-800">Wedding Planner</h2>
+      {/* ── Main ───────────────────────────────────────────────────── */}
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Topbar */}
+        <header
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            padding: '14px 28px',
+            borderBottom: '1px solid var(--line-soft)',
+            background: 'rgba(255,248,231,0.85)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            position: 'sticky',
+            top: 0,
+            zIndex: 20,
+          }}
+        >
+          {/* Mobile hamburger + Breadcrumb */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden"
+              style={{
+                padding: 6,
+                borderRadius: 6,
+                color: 'var(--ink-mid)',
+                background: 'transparent',
+              }}
+            >
+              <HiOutlineMenu style={{ width: 20, height: 20 }} />
+            </button>
+            <div
+              className="mono hidden sm:flex"
+              style={{ alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-low)' }}
+            >
+              <span>dashboard</span>
+              <HiOutlineChevronRight style={{ width: 12, height: 12 }} />
+              <span style={{ color: 'var(--ink-mid)' }}>{currentCrumb}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+
+          {/* Right actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Search */}
+            <div className="hidden md:block" style={{ position: 'relative' }}>
+              <HiOutlineSearch
+                style={{
+                  position: 'absolute',
+                  left: 10,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: 14,
+                  height: 14,
+                  color: 'var(--ink-dim)',
+                  pointerEvents: 'none',
+                }}
+              />
+              <input
+                className="input"
+                placeholder="Search guests, tasks…"
+                style={{ paddingLeft: 32, width: 220, height: 34, fontSize: 12 }}
+              />
+            </div>
+
+            {/* Bell */}
+            <button
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                color: 'var(--ink-mid)',
+                background: 'transparent',
+                transition: 'background 150ms',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-raised)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              <HiOutlineBell style={{ width: 17, height: 17 }} />
+            </button>
+
+            {/* View site */}
             <NavLink
               to={`/${slug}`}
-              className="hidden sm:block text-sm text-gold-600 hover:text-gold-700 font-medium"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--ink-mid)',
+                border: '1px solid var(--line)',
+                borderRadius: 8,
+                padding: '5px 10px',
+                background: 'transparent',
+                transition: 'all 150ms',
+                whiteSpace: 'nowrap',
+                textDecoration: 'none',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.background = 'var(--bg-raised)';
+                (e.currentTarget as HTMLElement).style.color = 'var(--ink-high)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.background = 'transparent';
+                (e.currentTarget as HTMLElement).style.color = 'var(--ink-mid)';
+              }}
             >
-              View Wedding Website →
+              <HiOutlineExternalLink style={{ width: 13, height: 13 }} />
+              View site
             </NavLink>
-            <div className="hidden sm:flex items-center gap-3 pl-4 border-l border-gold-200">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-700">{user?.name}</p>
-                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Logout"
-              >
-                <HiOutlineLogout className="w-5 h-5" />
-              </button>
-            </div>
           </div>
         </header>
 
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+        {/* Page content */}
+        <main style={{ flex: 1, padding: '32px 40px', overflow: 'auto' }}>
           <Outlet />
         </main>
       </div>
