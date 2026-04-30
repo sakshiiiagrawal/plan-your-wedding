@@ -142,6 +142,7 @@ interface VenueRoom {
 interface AllocationVenue {
   id: string;
   name: string;
+  city?: string;
   default_check_in_date?: string | null;
   default_check_out_date?: string | null;
   rooms?: VenueRoom[];
@@ -230,7 +231,9 @@ export default function Accommodations() {
     const validCategories = roomCategories.filter((c) => Number(c.count) > 0);
     if (validCategories.length === 0) return [];
     const existingCountByType = existingRooms.reduce((acc: Record<string, number>, r) => {
-      acc[r.room_type] = (acc[r.room_type] || 0) + 1;
+      const roomType = r.room_type;
+      if (!roomType) return acc;
+      acc[roomType] = (acc[roomType] || 0) + 1;
       return acc;
     }, {});
     const rooms: Array<{
@@ -1177,7 +1180,9 @@ export default function Accommodations() {
           const existingRooms = (hotel?.rooms || []) as VenueRoom[];
           const existingGroups: Record<string, number> = existingRooms.reduce(
             (acc: Record<string, number>, r: VenueRoom) => {
-              acc[r.room_type] = (acc[r.room_type] || 0) + 1;
+              const roomType = r.room_type;
+              if (!roomType) return acc;
+              acc[roomType] = (acc[roomType] || 0) + 1;
               return acc;
             },
             {},
