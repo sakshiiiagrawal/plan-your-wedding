@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { HiOutlineCalendar, HiOutlineLocationMarker, HiOutlineClock } from 'react-icons/hi';
 import Gallery from '../../components/Gallery';
-import { useHeroContent, usePublicEvents } from '../../hooks/useApi';
+import api from '../../api/axios';
+import { useHeroContent, usePublicEvents, useOurStory } from '../../hooks/useApi';
 
 interface Countdown {
   days: number;
@@ -11,6 +13,22 @@ interface Countdown {
   minutes: number;
   seconds: number;
 }
+
+// Mirrors the theme palette in dashboard/Website.tsx
+const THEME_STYLES: Record<string, { heroGradient: string; accentColor: string }> = {
+  royal: {
+    heroGradient: 'linear-gradient(160deg, #8B0000 0%, #5C0000 100%)',
+    accentColor: '#D4AF37',
+  },
+  desert: {
+    heroGradient: 'linear-gradient(160deg, #C9A96E 0%, #A0785A 100%)',
+    accentColor: '#B87676',
+  },
+  mandala: {
+    heroGradient: 'linear-gradient(160deg, #1B2A4A 0%, #0D1629 100%)',
+    accentColor: '#C9A96E',
+  },
+};
 
 export default function Home() {
   const { slug } = useParams<{ slug: string }>();
@@ -20,14 +38,55 @@ export default function Home() {
     minutes: 0,
     seconds: 0,
   });
+  const [rsvpForm, setRsvpForm] = useState({
+    fullName: '',
+    attending: 'yes',
+    guests: 1,
+    message: '',
+  });
+  const [rsvpSubmitting, setRsvpSubmitting] = useState(false);
+  const [rsvpDone, setRsvpDone] = useState(false);
 
   const { data: heroContent } = useHeroContent(slug);
   const { data: events = [] } = usePublicEvents(slug);
+  const { data: storyContent } = useOurStory(slug);
 
   const brideName = heroContent?.bride_name || 'Bride';
   const groomName = heroContent?.groom_name || 'Groom';
   const weddingDateStr = heroContent?.wedding_date ?? null;
   const weddingDate = weddingDateStr ? new Date(weddingDateStr) : null;
+
+  const theme = THEME_STYLES[(heroContent as any)?.theme] ?? THEME_STYLES.royal!;
+  const sections: Record<string, boolean> = (heroContent as any)?.sections ?? {};
+  const showSection = (id: string) => sections[id] !== false;
+
+  const storyText =
+    (storyContent as any)?.story ||
+    'Every love story is beautiful, but ours is our favorite. From strangers to friends to soulmates, our journey has been nothing short of magical. We can’t wait to begin the next chapter of our lives together, surrounded by the people we love most.';
+
+  const handleRsvpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const nameParts = rsvpForm.fullName.trim().split(/\s+/);
+    setRsvpSubmitting(true);
+    try {
+      await api.post(`/public/${slug}/rsvp`, {
+        first_name: nameParts[0],
+        last_name: nameParts.slice(1).join(' ') || null,
+        attending: rsvpForm.attending === 'yes',
+        // API caps plus_ones at 10; the input's max attr doesn't stop typed values
+        plus_ones: Math.min(10, Math.max(0, rsvpForm.guests - 1)),
+        notes: rsvpForm.message || null,
+      });
+      setRsvpDone(true);
+      toast.success('RSVP recorded. Thank you!');
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.error || 'Something went wrong submitting your RSVP. Please retry.',
+      );
+    } finally {
+      setRsvpSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (!weddingDateStr) return;
@@ -53,7 +112,7 @@ export default function Home() {
     <div>
       {/* Hero Section */}
       <section className="min-h-screen flex items-center justify-center relative overflow-hidden pt-16">
-        <div className="absolute inset-0 bg-gradient-to-br from-maroon-800 via-maroon-700 to-gold-600" />
+        <div className="absolute inset-0" style={{ background: theme.heroGradient }} />
 
         <div className="relative z-10 text-center px-4">
           <motion.div
@@ -90,12 +149,15 @@ export default function Home() {
               ))}
             </div>
 
-            <a
-              href="#rsvp"
-              className="inline-block bg-gold-500 text-maroon-900 px-8 py-4 rounded-full font-semibold text-lg hover:bg-gold-400 transition-colors animate-pulse-gold"
-            >
-              RSVP Now
-            </a>
+            {showSection('rsvp') && (
+              <a
+                href="#rsvp"
+                className="inline-block px-8 py-4 rounded-full font-semibold text-lg transition-colors animate-pulse-gold"
+                style={{ background: theme.accentColor, color: '#1a1a1a' }}
+              >
+                RSVP Now
+              </a>
+            )}
           </motion.div>
         </div>
 
@@ -107,6 +169,7 @@ export default function Home() {
       </section>
 
       {/* Our Story Section */}
+      {showSection('story') && (
       <section id="our-story" className="py-20 bg-white">
         <div className="max-w-4xl mx-auto px-4">
           <motion.div
@@ -120,10 +183,8 @@ export default function Home() {
             </h2>
             <div className="w-24 h-1 bg-gold-500 mx-auto mb-8" />
 
-            <p className="text-gray-600 text-lg leading-relaxed mb-8">
-              Every love story is beautiful, but ours is our favorite. From strangers to friends to
-              soulmates, our journey has been nothing short of magical. We can&apos;t wait to begin
-              the next chapter of our lives together, surrounded by the people we love most.
+            <p className="text-gray-600 text-lg leading-relaxed mb-8 whitespace-pre-line">
+              {storyText}
             </p>
 
             <div className="grid md:grid-cols-2 gap-8 mt-12">
@@ -145,8 +206,10 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
+      )}
 
       {/* Events Section */}
+      {showSection('events') && (
       <section id="events" className="py-20 bg-cream">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-12">
@@ -198,85 +261,90 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
 
       {/* RSVP Section */}
-      <section id="rsvp" className="py-20 bg-maroon-800">
+      {showSection('rsvp') && (
+      <section id="rsvp" className="py-20" style={{ background: theme.heroGradient }}>
         <div className="max-w-2xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="font-script text-4xl sm:text-5xl text-cream mb-4">RSVP</h2>
-            <p className="text-gold-300">We would be honored by your presence</p>
+            <p style={{ color: theme.accentColor }}>We would be honored by your presence</p>
           </div>
 
-          <form className="bg-white rounded-2xl p-8 shadow-2xl">
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="label">Full Name *</label>
-                <input type="text" className="input" placeholder="Your name" required />
+          {rsvpDone ? (
+            <div className="bg-white rounded-2xl p-8 shadow-2xl text-center">
+              <h3 className="font-display text-2xl text-maroon-800 mb-2">Thank you!</h3>
+              <p className="text-gray-600">
+                Your RSVP has been recorded. We can&apos;t wait to celebrate with you.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleRsvpSubmit} className="bg-white rounded-2xl p-8 shadow-2xl">
+              <div className="mb-4">
+                <label className="label">Full Name (as on your invitation) *</label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Your name"
+                  value={rsvpForm.fullName}
+                  onChange={(e) => setRsvpForm({ ...rsvpForm, fullName: e.target.value })}
+                  required
+                />
               </div>
-              <div>
-                <label className="label">Phone *</label>
-                <input type="tel" className="input" placeholder="Your phone" required />
+
+              <div className="grid md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="label">Will you attend? *</label>
+                  <select
+                    className="input"
+                    value={rsvpForm.attending}
+                    onChange={(e) => setRsvpForm({ ...rsvpForm, attending: e.target.value })}
+                  >
+                    <option value="yes">Joyfully accept</option>
+                    <option value="no">Regretfully decline</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Number of Guests (including you)</label>
+                  <input
+                    type="number"
+                    className="input"
+                    min="1"
+                    max="11"
+                    value={rsvpForm.guests}
+                    onChange={(e) =>
+                      setRsvpForm({ ...rsvpForm, guests: parseInt(e.target.value, 10) || 1 })
+                    }
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="mb-4">
-              <label className="label">Email</label>
-              <input type="email" className="input" placeholder="Your email" />
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="label">Side</label>
-                <select className="input">
-                  <option value="bride">Bride&apos;s Side</option>
-                  <option value="groom">Groom&apos;s Side</option>
-                </select>
+              <div className="mb-6">
+                <label className="label">Message (Optional)</label>
+                <textarea
+                  className="input"
+                  rows={3}
+                  placeholder="Any special message or requirements..."
+                  value={rsvpForm.message}
+                  onChange={(e) => setRsvpForm({ ...rsvpForm, message: e.target.value })}
+                />
               </div>
-              <div>
-                <label className="label">Number of Guests</label>
-                <input type="number" className="input" min="1" defaultValue="1" />
-              </div>
-            </div>
 
-            <div className="mb-4">
-              <label className="label">Events Attending</label>
-              <div className="flex flex-wrap gap-4 mt-2">
-                {['Mehendi', 'Haldi', 'Sangeet', 'Wedding'].map((event) => (
-                  <label key={event} className="flex items-center gap-2">
-                    <input type="checkbox" defaultChecked className="w-4 h-4 text-maroon-800" />
-                    <span>{event}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="label">Dietary Preference</label>
-              <select className="input">
-                <option value="vegetarian">Vegetarian</option>
-                <option value="jain">Jain</option>
-                <option value="vegan">Vegan</option>
-                <option value="non_vegetarian">Non-Vegetarian</option>
-              </select>
-            </div>
-
-            <div className="mb-6">
-              <label className="label">Message (Optional)</label>
-              <textarea
-                className="input"
-                rows={3}
-                placeholder="Any special message or requirements..."
-              />
-            </div>
-
-            <button type="submit" className="btn-primary w-full py-4 text-lg">
-              Submit RSVP
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={rsvpSubmitting}
+                className="btn-primary w-full py-4 text-lg disabled:opacity-50"
+              >
+                {rsvpSubmitting ? 'Submitting…' : 'Submit RSVP'}
+              </button>
+            </form>
+          )}
         </div>
       </section>
+      )}
 
-      <Gallery slug={slug ?? null} />
+      {showSection('gallery') && <Gallery slug={slug ?? null} />}
     </div>
   );
 }

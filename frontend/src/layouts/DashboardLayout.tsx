@@ -14,8 +14,6 @@ import {
   HiOutlineMenu,
   HiOutlinePhotograph,
   HiOutlineGlobe,
-  HiOutlineSearch,
-  HiOutlineBell,
   HiOutlineChevronRight,
   HiOutlineExternalLink,
 } from 'react-icons/hi';
@@ -213,7 +211,7 @@ export default function DashboardLayout() {
               marginBottom: 10,
             }}
           >
-            {slug}.weds.app
+            {window.location.host}/{slug}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <div
@@ -328,46 +326,6 @@ export default function DashboardLayout() {
 
           {/* Right actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Search */}
-            <div className="hidden md:block" style={{ position: 'relative' }}>
-              <HiOutlineSearch
-                style={{
-                  position: 'absolute',
-                  left: 10,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: 14,
-                  height: 14,
-                  color: 'var(--ink-dim)',
-                  pointerEvents: 'none',
-                }}
-              />
-              <input
-                className="input"
-                placeholder="Search guests, tasks…"
-                style={{ paddingLeft: 32, width: 220, height: 34, fontSize: 12 }}
-              />
-            </div>
-
-            {/* Bell */}
-            <button
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                color: 'var(--ink-mid)',
-                background: 'transparent',
-                transition: 'background 150ms',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-raised)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-            >
-              <HiOutlineBell style={{ width: 17, height: 17 }} />
-            </button>
-
             {/* View site */}
             <NavLink
               to={`/${slug}`}

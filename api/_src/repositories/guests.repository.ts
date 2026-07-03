@@ -12,8 +12,15 @@ import type { ParsedGuest } from '../excel/guests.excel';
 // Joined types
 // ---------------------------------------------------------------------------
 
+export interface GuestRsvpSlice {
+  event_id: string;
+  rsvp_status: string;
+  plus_ones: number | null;
+}
+
 export interface GuestListItem extends GuestRow {
   guest_groups: { name: string } | null;
+  guest_event_rsvp: GuestRsvpSlice[];
 }
 
 export interface GuestDetail extends GuestRow {
@@ -41,7 +48,7 @@ export async function findAllByOwner(
 ): Promise<GuestListItem[]> {
   let query = supabase
     .from('guests')
-    .select('*, guest_groups!group_id(name)')
+    .select('*, guest_groups!group_id(name), guest_event_rsvp(event_id, rsvp_status, plus_ones)')
     .eq('user_id', ownerId);
 
   if (filters.side && filters.side !== 'all') {
@@ -147,10 +154,68 @@ export async function insertRsvpEntries(entries: GuestEventRsvpInsert[]): Promis
 }
 
 export async function upsertRsvp(payload: GuestEventRsvpInsert) {
-  const { data, error } = await supabase.from('guest_event_rsvp').upsert(payload).select().single();
+  const { data, error } = await supabase
+    .from('guest_event_rsvp')
+    .upsert(payload, { onConflict: 'guest_id,event_id' })
+    .select()
+    .single();
 
   if (error) throw error;
   return data;
+}
+
+export async function findRsvpsByGuest(guestId: string) {
+  const { data, error } = await supabase
+    .from('guest_event_rsvp')
+    .select('event_id, rsvp_status, plus_ones')
+    .eq('guest_id', guestId);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function deleteRsvpsForGuestExcept(guestId: string, keepEventIds: string[]) {
+  let query = supabase.from('guest_event_rsvp').delete().eq('guest_id', guestId);
+  if (keepEventIds.length > 0) {
+    query = query.not('event_id', 'in', `(${keepEventIds.join(',')})`);
+  }
+  const { error } = await query;
+  if (error) throw error;
+}
+
+export async function updateAllRsvpsForGuest(
+  guestId: string,
+  payload: Partial<GuestEventRsvpInsert>,
+) {
+  const { data, error } = await supabase
+    .from('guest_event_rsvp')
+    .update(payload)
+    .eq('guest_id', guestId)
+    .select();
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function findGuestByNameAndOwner(
+  ownerId: string,
+  firstName: string,
+  lastName?: string | null,
+): Promise<GuestRow | null> {
+  let query = supabase
+    .from('guests')
+    .select('*')
+    .eq('user_id', ownerId)
+    .ilike('first_name', firstName.trim());
+
+  if (lastName && lastName.trim()) {
+    query = query.ilike('last_name', lastName.trim());
+  }
+
+  const { data, error } = await query.limit(2);
+  if (error) throw error;
+  // Only accept an unambiguous match
+  return data && data.length === 1 ? (data[0] as GuestRow) : null;
 }
 
 // ---------------------------------------------------------------------------

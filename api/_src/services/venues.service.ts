@@ -635,6 +635,8 @@ interface RoomGroup {
   checkInDate: string;
   checkOutDate: string;
   guestIds: string[];
+  guestNames: string[];
+  firstRow: number;
 }
 
 async function processAllocations(
@@ -699,9 +701,13 @@ async function processAllocations(
         checkInDate: allocation.check_in_date,
         checkOutDate: allocation.check_out_date,
         guestIds: [],
+        guestNames: [],
+        firstRow: rowNum,
       });
     }
-    roomGroups.get(groupKey)!.guestIds.push(guest.id);
+    const roomGroup = roomGroups.get(groupKey)!;
+    roomGroup.guestIds.push(guest.id);
+    roomGroup.guestNames.push(allocation.guest_full_name);
   }
 
   // Resolve rooms and build allocation payloads
@@ -742,6 +748,18 @@ async function processAllocations(
     }
 
     const existing = await repo.findAllocationForRoom(room.id, group.checkInDate);
+    const finalCount = existing
+      ? new Set([...(existing.guest_ids ?? []), ...group.guestIds]).size
+      : group.guestIds.length;
+
+    if (finalCount > (room.capacity ?? 0)) {
+      errors.push({
+        row: group.firstRow,
+        guest: group.guestNames.join(', '),
+        error: `Room ${group.roomNumber} has a capacity of ${room.capacity ?? 0}, but this import would put ${finalCount} guest${finalCount !== 1 ? 's' : ''} in it for ${group.checkInDate}.`,
+      });
+      continue;
+    }
 
     if (existing) {
       // Merge guest IDs (avoid duplicates)

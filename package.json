@@ -29,7 +29,7 @@
     "typecheck:api": "cd api && npx tsc --noEmit",
     "typecheck:frontend": "cd frontend && npx tsc --noEmit",
     "typecheck": "npm run typecheck:shared && npm run typecheck:api && npm run typecheck:frontend",
-    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky || true"

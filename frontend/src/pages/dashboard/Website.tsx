@@ -7,7 +7,7 @@ import {
   HiOutlineX,
   HiOutlineCheck,
 } from 'react-icons/hi';
-import { useHeroContent, useUpdateWebsiteContent } from '../../hooks/useApi';
+import { useHeroContent, useOurStory, useUpdateWebsiteContent } from '../../hooks/useApi';
 import { SectionHeader } from '../../components/ui';
 import toast from 'react-hot-toast';
 
@@ -124,11 +124,11 @@ function PreviewPane({
         </div>
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <span className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>
-            https://{slug}.weds.app
+            {window.location.host}/{slug}
           </span>
         </div>
         <a
-          href={`https://${slug}.weds.app`}
+          href={`/${slug}`}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: 'var(--ink-dim)' }}
@@ -263,18 +263,29 @@ function PreviewPane({
 export default function Website() {
   const { slug } = useParams<{ slug: string }>();
   const { data: heroContent } = useHeroContent(undefined);
+  const { data: storyContent } = useOurStory(undefined);
   const updateContent = useUpdateWebsiteContent();
 
   const [theme, setTheme] = useState('royal');
   const [heroTagline, setHeroTagline] = useState('');
+  const [brideName, setBrideName] = useState('');
+  const [groomName, setGroomName] = useState('');
+  const [weddingDate, setWeddingDate] = useState('');
+  const [storyText, setStoryText] = useState('');
   const [sections, setSections] = useState(SECTIONS.map((s) => ({ ...s, enabled: true })));
   const [showFullPreview, setShowFullPreview] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+
+  const siteUrl = `${window.location.origin}/${slug}`;
+  const siteUrlLabel = `${window.location.host}/${slug}`;
 
   useEffect(() => {
     if (heroContent?.tagline) {
       setHeroTagline(heroContent.tagline);
     }
+    if (heroContent?.bride_name) setBrideName(heroContent.bride_name);
+    if (heroContent?.groom_name) setGroomName(heroContent.groom_name);
+    if (heroContent?.wedding_date) setWeddingDate(heroContent.wedding_date.slice(0, 10));
     if ((heroContent as any)?.theme) {
       setTheme((heroContent as any).theme);
     }
@@ -283,6 +294,10 @@ export default function Website() {
       setSections(SECTIONS.map((s) => ({ ...s, enabled: savedSections[s.id] ?? true })));
     }
   }, [heroContent]);
+
+  useEffect(() => {
+    if ((storyContent as any)?.story) setStoryText((storyContent as any).story);
+  }, [storyContent]);
 
   const toggleSection = (id: string) => {
     setSections((prev) => prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)));
@@ -300,7 +315,7 @@ export default function Website() {
   };
 
   const copyLink = () => {
-    navigator.clipboard.writeText(`https://${slug}.weds.app`);
+    navigator.clipboard.writeText(siteUrl);
     toast.success('Link copied!');
   };
 
@@ -312,9 +327,16 @@ export default function Website() {
         payload: {
           ...heroContent,
           tagline: heroTagline,
+          bride_name: brideName,
+          groom_name: groomName,
+          wedding_date: weddingDate || null,
           theme,
           sections: sectionsMap,
         },
+      });
+      await updateContent.mutateAsync({
+        section: 'our_story',
+        payload: { ...(storyContent as any), story: storyText },
       });
       toast.success('Website settings published!');
       setIsDirty(false);
@@ -328,7 +350,7 @@ export default function Website() {
       <SectionHeader
         eyebrow="Public site"
         title="Your wedding website"
-        description={`Live at ${slug}.weds.app — share with guests so they can RSVP, view events, and browse the gallery.`}
+        description={`Live at ${siteUrlLabel} — share with guests so they can RSVP, view events, and browse the gallery.`}
         action={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
@@ -434,6 +456,45 @@ export default function Website() {
             </div>
           </div>
 
+          {/* Couple & date */}
+          <div className="card">
+            <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>
+              Couple &amp; date
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <input
+                value={brideName}
+                onChange={(e) => {
+                  setBrideName(e.target.value);
+                  setIsDirty(true);
+                }}
+                className="input"
+                placeholder="Bride's name"
+              />
+              <input
+                value={groomName}
+                onChange={(e) => {
+                  setGroomName(e.target.value);
+                  setIsDirty(true);
+                }}
+                className="input"
+                placeholder="Groom's name"
+              />
+              <input
+                type="date"
+                value={weddingDate}
+                onChange={(e) => {
+                  setWeddingDate(e.target.value);
+                  setIsDirty(true);
+                }}
+                className="input"
+              />
+            </div>
+            <p style={{ fontSize: 10, color: 'var(--ink-dim)', marginTop: 6 }}>
+              Shown on the public site hero and used for the countdown.
+            </p>
+          </div>
+
           {/* Hero tagline */}
           <div className="card">
             <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>
@@ -448,6 +509,26 @@ export default function Website() {
             />
             <p style={{ fontSize: 10, color: 'var(--ink-dim)', marginTop: 6 }}>
               Displays beneath the couple&apos;s names on the homepage.
+            </p>
+          </div>
+
+          {/* Our story */}
+          <div className="card">
+            <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>
+              Our story
+            </div>
+            <textarea
+              value={storyText}
+              onChange={(e) => {
+                setStoryText(e.target.value);
+                setIsDirty(true);
+              }}
+              className="input"
+              style={{ minHeight: 96, resize: 'vertical' }}
+              placeholder="Tell your guests how you met…"
+            />
+            <p style={{ fontSize: 10, color: 'var(--ink-dim)', marginTop: 6 }}>
+              Shown in the &quot;Our Love Story&quot; section of the public site.
             </p>
           </div>
 
@@ -499,7 +580,7 @@ export default function Website() {
                 border: '1px solid var(--line-soft)',
               }}
             >
-              {slug}.weds.app
+              {siteUrlLabel}
             </div>
             <button
               className="btn-outline"
@@ -558,14 +639,14 @@ export default function Website() {
               <HiOutlineX style={{ width: 18, height: 18 }} />
             </button>
             <span className="mono" style={{ fontSize: 12, color: 'var(--ink-low)' }}>
-              {slug}.weds.app
+              {siteUrlLabel}
             </span>
             <span className="pill ok" style={{ fontSize: 9 }}>
               <span className="dot" />
               Live
             </span>
             <a
-              href={`https://${slug}.weds.app`}
+              href={`/${slug}`}
               target="_blank"
               rel="noopener noreferrer"
               style={{

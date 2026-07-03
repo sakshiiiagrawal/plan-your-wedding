@@ -147,6 +147,31 @@ export const updateRsvp = async (
   }
 };
 
+export const updateOverallRsvp = async (
+  req: Request<IdParam>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const ownerId = getWeddingOwnerId(req);
+    res.json(await guestsService.setOverallRsvp(req.params.id, ownerId, req.body));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const submitPublicRsvp = async (
+  req: Request<{ slug: string }>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res.json(await guestsService.submitPublicRsvp(req.params.slug, req.body));
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const downloadTemplate = async (
   _req: Request,
   res: Response,

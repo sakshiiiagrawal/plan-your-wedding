@@ -5,7 +5,11 @@
 -- linked back to the vendor, so the existing accommodation, RSVP, and meal-count
 -- pipelines work unchanged.
 
-CREATE TYPE guest_type AS ENUM ('guest', 'vendor_team');
+DO $$ BEGIN
+  CREATE TYPE guest_type AS ENUM ('guest', 'vendor_team');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 ALTER TABLE vendors
   ADD COLUMN IF NOT EXISTS needs_food BOOLEAN NOT NULL DEFAULT false,
@@ -18,6 +22,8 @@ ALTER TABLE guests
   ADD COLUMN IF NOT EXISTS vendor_id UUID REFERENCES vendors(id) ON DELETE CASCADE;
 
 -- A vendor_team guest must be tied to a vendor; a regular guest must not be.
+ALTER TABLE guests
+  DROP CONSTRAINT IF EXISTS guests_vendor_link_chk;
 ALTER TABLE guests
   ADD CONSTRAINT guests_vendor_link_chk
   CHECK (

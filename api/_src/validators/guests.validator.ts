@@ -51,6 +51,23 @@ export const updateRsvpSchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
+export const overallRsvpSchema = z.object({
+  rsvp_status: z.enum(['pending', 'confirmed', 'declined', 'tentative']),
+  plus_ones: z.number().int().nonnegative().optional(),
+  notes: z.string().optional(),
+});
+
+export const publicRsvpSchema = z.object({
+  first_name: z.string().min(1),
+  last_name: emptyStringToNull,
+  attending: z.boolean(),
+  plus_ones: z.number().int().nonnegative().max(10).optional(),
+  notes: z.preprocess(
+    (value) => (value === '' ? null : value),
+    z.union([z.string().max(1000), z.null()]).optional(),
+  ),
+});
+
 export const bulkDeleteGuestsSchema = z.object({
   ids: z.array(z.string().uuid()).min(1),
 });

@@ -186,17 +186,6 @@ export const useRecentActivity = () =>
     staleTime: 30 * 1000,
   });
 
-export interface CountdownData {
-  weddingDate?: string;
-}
-
-export const useCountdown = () =>
-  useQuery<CountdownData>({
-    queryKey: ['dashboard', 'countdown'],
-    queryFn: () => api.get('/dashboard/countdown').then((res) => res.data),
-    refetchInterval: 60000,
-  });
-
 // =====================================================
 // GUESTS HOOKS
 // =====================================================
@@ -282,6 +271,38 @@ export const useDeleteGuest = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+    },
+  });
+};
+
+export const useSetOverallRsvp = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; rsvp_status: string; plus_ones?: number }) =>
+      api.put(`/guests/${id}/rsvp`, data).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+export const useUpdateGuestRsvp = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      guestId,
+      eventId,
+      ...data
+    }: {
+      guestId: string;
+      eventId: string;
+      rsvp_status?: string;
+      plus_ones?: number;
+    }) => api.put(`/guests/${guestId}/rsvp/${eventId}`, data).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };

@@ -84,9 +84,11 @@ export function parseGuestExcel(buffer: Buffer): ParsedGuest[] {
     if (!value) return 'vegetarian';
     const v = String(value).toLowerCase().trim();
     if (v.includes('non')) return 'non_vegetarian';
-    if (v === 'jain') return 'jain';
-    if (v === 'vegan') return 'vegan';
-    return 'vegetarian';
+    if (v === 'veg' || v === 'veg.' || v === 'vegetarian') return 'vegetarian';
+    if (v === 'jain' || v === 'vegan') return v;
+    // Preserve unrecognized values so validation can flag them instead of
+    // silently recording the wrong meal
+    return v;
   };
 
   const filtered = data.filter((row) => {
@@ -135,8 +137,8 @@ export function validateGuest(guest: ParsedGuest): GuestValidationResult {
 
   if (!guest.side || guest.side.trim() === '') {
     errors.push('Side* is REQUIRED and cannot be empty');
-  } else if (!['bride', 'groom'].includes(guest.side.toLowerCase())) {
-    errors.push('Side* must be exactly "Bride" or "Groom"');
+  } else if (!['bride', 'groom', 'mutual'].includes(guest.side.toLowerCase())) {
+    errors.push('Side* must be "Bride", "Groom", or "Mutual"');
   }
 
   if (

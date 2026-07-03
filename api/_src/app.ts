@@ -9,6 +9,10 @@ import { verifyToken } from './middleware/auth.middleware';
 
 const app = express();
 
+// Deployed behind Vercel's proxy: trust the rightmost X-Forwarded-For hop so
+// req.ip is the client IP (express-rate-limit throws without this)
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 
@@ -24,7 +28,6 @@ app.use(
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
       if (env.NODE_ENV === 'development') return callback(null, true);
-      if (origin.endsWith('.vercel.app')) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
       return callback(new Error('Not allowed by CORS'));
     },
@@ -64,9 +67,6 @@ app.use((req, res, next) => {
   // Public path prefixes (weddings lookup, public slug-scoped data)
   if (PUBLIC_PREFIXES.some((prefix) => path.startsWith(prefix))) return next();
 
-  // Public GET on website-content (wedding website reads)
-  if (req.method === 'GET' && path.startsWith('/api/v1/website-content')) return next();
-
   // Everything else requires a valid token
   return verifyToken(req, res, next);
 });
@@ -74,12 +74,12 @@ app.use((req, res, next) => {
 // API routes
 app.use('/api/v1', routes);
 
-// Error handling
-app.use(errorMiddleware);
-
-// 404 handler
+// 404 handler (after routes, before the error handler)
 app.use((_req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
+
+// Error handling (must be last)
+app.use(errorMiddleware);
 
 export default app;
