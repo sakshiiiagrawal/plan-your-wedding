@@ -17,6 +17,7 @@ import { publicRsvpSchema } from '../validators/guests.validator';
 import { publicRsvpLimiter } from '../middleware/rate-limit.middleware';
 import weddingsRoutes from './weddings.routes';
 import geocodeRoutes from './geocode.routes';
+import membersRoutes from './members.routes';
 
 const router = Router();
 
@@ -44,5 +45,6 @@ router.use('/vendors', vendorsRoutes);
 router.use('/expense', expenseRoutes);
 router.use('/tasks', tasksRoutes);
 router.use('/website-content', websiteContentRoutes);
+router.use('/members', membersRoutes);
 
 export default router;

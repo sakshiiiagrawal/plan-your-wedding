@@ -148,9 +148,10 @@ export async function deleteGuestsBulk(ids: string[], ownerId: string): Promise<
 // RSVP
 // ---------------------------------------------------------------------------
 
-export async function insertRsvpEntries(entries: GuestEventRsvpInsert[]): Promise<void> {
-  const { error } = await supabase.from('guest_event_rsvp').insert(entries);
+export async function insertRsvpEntries(entries: GuestEventRsvpInsert[]) {
+  const { data, error } = await supabase.from('guest_event_rsvp').insert(entries).select();
   if (error) throw error;
+  return data ?? [];
 }
 
 export async function upsertRsvp(payload: GuestEventRsvpInsert) {
@@ -197,6 +198,12 @@ export async function updateAllRsvpsForGuest(
   return data ?? [];
 }
 
+// ilike treats % and _ as wildcards — escape them in caller-supplied input
+// (this backs the unauthenticated public RSVP endpoint)
+function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+
 export async function findGuestByNameAndOwner(
   ownerId: string,
   firstName: string,
@@ -206,10 +213,10 @@ export async function findGuestByNameAndOwner(
     .from('guests')
     .select('*')
     .eq('user_id', ownerId)
-    .ilike('first_name', firstName.trim());
+    .ilike('first_name', escapeLikePattern(firstName.trim()));
 
   if (lastName && lastName.trim()) {
-    query = query.ilike('last_name', lastName.trim());
+    query = query.ilike('last_name', escapeLikePattern(lastName.trim()));
   }
 
   const { data, error } = await query.limit(2);

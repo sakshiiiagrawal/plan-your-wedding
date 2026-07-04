@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useHeroContent } from '../hooks/useApi';
 import toast from 'react-hot-toast';
@@ -11,10 +11,18 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
 
   const { data: heroContent } = useHeroContent(slug);
   const brideName = heroContent?.bride_name || 'Bride';
   const groomName = heroContent?.groom_name || 'Groom';
+
+  useEffect(() => {
+    if (sessionStorage.getItem('sessionExpired')) {
+      sessionStorage.removeItem('sessionExpired');
+      toast.error('Your session expired. Please log in again.');
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,8 +31,12 @@ export default function Login() {
     try {
       const { slug: returnedSlug } = await login(email, password);
       toast.success('Welcome to Wedding Planner!');
+      // Resume an interrupted flow (e.g. invite acceptance); in-app paths only
+      const next = searchParams.get('next');
       const targetSlug = slug || returnedSlug;
-      if (targetSlug) {
+      if (next && next.startsWith('/')) {
+        navigate(next);
+      } else if (targetSlug) {
         navigate(`/${targetSlug}/dashboard`);
       } else {
         navigate('/');
@@ -94,6 +106,12 @@ export default function Login() {
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
+
+          <p className="mt-4 text-center text-sm">
+            <a href="/forgot-password" className="text-maroon-700 hover:underline">
+              Forgot password?
+            </a>
+          </p>
         </div>
 
         <p className="mt-6 text-center text-cream/70 text-sm">

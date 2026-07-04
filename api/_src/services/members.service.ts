@@ -1,8 +1,9 @@
-import { randomBytes, createHash } from 'crypto';
+import { randomBytes } from 'crypto';
 import { supabase } from '../config/database';
 import { env } from '../config/env';
 import { sendEmail } from './mailer';
 import { NotFoundError, ConflictError } from '../shared/errors/HttpError';
+import { hashToken } from '../shared/utils/token.utils';
 
 export interface MemberRow {
   id: string;
@@ -12,10 +13,6 @@ export interface MemberRow {
   role: 'admin' | 'editor' | 'viewer';
   status: 'pending' | 'active';
   created_at: string;
-}
-
-function hashToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
 }
 
 export async function listMembers(ownerId: string): Promise<MemberRow[]> {
@@ -33,27 +30,36 @@ export async function inviteMember(
   email: string,
   role: 'admin' | 'editor' | 'viewer',
 ): Promise<MemberRow> {
-  const { data: existing } = await supabase
+  const invitedEmail = email.toLowerCase().trim();
+  const { data: existingRows } = await supabase
     .from('wedding_members')
-    .select('id')
+    .select('id, status')
     .eq('owner_id', ownerId)
-    .eq('invited_email', email.toLowerCase().trim())
+    .eq('invited_email', invitedEmail)
     .limit(1);
-  if (existing && existing.length > 0) {
-    throw new ConflictError('This person has already been invited');
+  const existing = existingRows?.[0];
+  if (existing && existing.status === 'active') {
+    throw new ConflictError('This person is already a member');
   }
 
   const token = randomBytes(32).toString('hex');
 
-  const { data, error } = await supabase
-    .from('wedding_members')
-    .insert({
-      owner_id: ownerId,
-      invited_email: email.toLowerCase().trim(),
-      role,
-      status: 'pending',
-      token_hash: hashToken(token),
-    })
+  // A still-pending invite gets a fresh token and a new email (resend) instead
+  // of erroring — otherwise one failed/lost email leaves the invite stuck forever
+  const query = existing
+    ? supabase
+        .from('wedding_members')
+        .update({ role, token_hash: hashToken(token) })
+        .eq('id', existing.id)
+    : supabase.from('wedding_members').insert({
+        owner_id: ownerId,
+        invited_email: invitedEmail,
+        role,
+        status: 'pending',
+        token_hash: hashToken(token),
+      });
+
+  const { data, error } = await query
     .select('id, owner_id, member_id, invited_email, role, status, created_at')
     .single();
   if (error) throw error;
@@ -84,6 +90,11 @@ export async function acceptInvite(userId: string, token: string): Promise<Membe
     .select('id, owner_id, member_id, invited_email, role, status, created_at')
     .single();
   if (updateError) throw updateError;
+
+  // Accepting is an explicit "take me into this wedding" — switch their active
+  // wedding to it. They can switch back to their own via the wedding switcher.
+  await supabase.from('users').update({ active_owner_id: row.owner_id }).eq('id', userId);
+
   return updated as MemberRow;
 }
 

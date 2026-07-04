@@ -15,7 +15,7 @@ export default function AcceptInvite() {
     if (loading || !token) return;
 
     if (!isAuthenticated) {
-      navigate(`/login?next=/accept-invite?token=${token}`);
+      navigate(`/login?next=${encodeURIComponent(`/accept-invite?token=${token}`)}`);
       return;
     }
 

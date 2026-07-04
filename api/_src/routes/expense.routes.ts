@@ -11,11 +11,13 @@ import {
   updateExpensePaymentSchema,
 } from '../validators/expense.validator';
 import * as ctrl from '../controllers/expense.controller';
+import * as exportController from '../controllers/export.controller';
 
 const router = Router();
 
 // Overview
 router.get('/', ctrl.getSummary);
+router.get('/export', exportController.exportBudget);
 router.get('/overview', ctrl.getOverview);
 router.get('/by-side', ctrl.getBySide);
 router.get('/side-summary', ctrl.getSideSummary);

@@ -536,29 +536,64 @@ export async function getAllocationMatrix(ownerId: string) {
   return repo.findAllocationMatrix(ownerId);
 }
 
-async function checkRoomCapacity(roomId: string, guestCount: number) {
+async function checkRoomCapacity(
+  roomId: string,
+  guestCount: number,
+  checkInDate: string,
+  checkOutDate: string,
+  excludeAllocationId?: string,
+) {
   const room = await repo.findRoomById(roomId);
   if (!room) throw new NotFoundError('Room not found');
   const capacity = room.capacity ?? 0;
-  if (guestCount > capacity) {
+
+  const overlapping = await repo.findOverlappingAllocations(
+    roomId,
+    checkInDate,
+    checkOutDate,
+    excludeAllocationId,
+  );
+  const existingOccupancy = overlapping.reduce(
+    (sum, a) => sum + ((a.guest_ids as string[])?.length ?? 0),
+    0,
+  );
+  const totalOccupancy = existingOccupancy + guestCount;
+
+  if (totalOccupancy > capacity) {
     throw new BadRequestError(
-      `Room ${room.room_number} has a capacity of ${capacity}. You tried to assign ${guestCount} guest${guestCount !== 1 ? 's' : ''}.`,
+      `Room ${room.room_number} has a capacity of ${capacity}. ${existingOccupancy} guest${existingOccupancy !== 1 ? 's are' : ' is'} already assigned for an overlapping stay, and this would add ${guestCount} more.`,
     );
   }
 }
 
 export async function createAllocation(payload: RoomAllocationInsert) {
-  await checkRoomCapacity(payload.room_id, (payload.guest_ids ?? []).length);
+  await checkRoomCapacity(
+    payload.room_id,
+    (payload.guest_ids ?? []).length,
+    payload.check_in_date,
+    payload.check_out_date,
+  );
   return repo.insertAllocation(payload);
 }
 
 export async function updateAllocation(id: string, payload: Partial<RoomAllocationInsert>) {
-  if (payload.room_id && payload.guest_ids) {
-    await checkRoomCapacity(payload.room_id, payload.guest_ids.length);
-  } else if (payload.guest_ids) {
-    // room_id not changing — fetch it from the existing allocation
+  const touchesCapacity =
+    payload.room_id !== undefined ||
+    payload.guest_ids !== undefined ||
+    payload.check_in_date !== undefined ||
+    payload.check_out_date !== undefined;
+
+  if (touchesCapacity) {
     const existing = await repo.findAllocationById(id);
-    if (existing) await checkRoomCapacity(existing.room_id, payload.guest_ids.length);
+    if (existing) {
+      const roomId = payload.room_id ?? existing.room_id;
+      const guestCount = payload.guest_ids
+        ? payload.guest_ids.length
+        : ((existing.guest_ids as string[])?.length ?? 0);
+      const checkInDate = payload.check_in_date ?? existing.check_in_date;
+      const checkOutDate = payload.check_out_date ?? existing.check_out_date;
+      await checkRoomCapacity(roomId, guestCount, checkInDate, checkOutDate, id);
+    }
   }
   return repo.updateAllocation(id, payload);
 }

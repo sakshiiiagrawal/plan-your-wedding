@@ -8,12 +8,14 @@ import { parseGuestExcel, validateGuest, generateGuestTemplate } from '../excel/
 /**
  * Collapse per-event RSVPs into one guest-level status:
  * confirmed if the guest confirmed any event, declined if they declined
- * every event they're linked to, pending otherwise (including no events).
+ * every event they're linked to, tentative if any event is tentative,
+ * pending otherwise (including no events).
  */
 function aggregateRsvpStatus(rsvps: { rsvp_status: string }[]): string {
   if (rsvps.length === 0) return 'pending';
   if (rsvps.some((r) => r.rsvp_status === 'confirmed')) return 'confirmed';
   if (rsvps.every((r) => r.rsvp_status === 'declined')) return 'declined';
+  if (rsvps.some((r) => r.rsvp_status === 'tentative')) return 'tentative';
   return 'pending';
 }
 
@@ -41,10 +43,12 @@ export async function getGuestSummary(ownerId: string) {
   for (const g of guests) {
     const guestRsvps = rsvpsByGuest.get(g.id) ?? [];
     const status = aggregateRsvpStatus(guestRsvps);
-    if (status === 'confirmed') confirmed++;
-    else if (status === 'declined') declined++;
-    // A guest brings the same companions to each event — take their max, not the sum
-    plusOnes += guestRsvps.reduce((max, r) => Math.max(max, r.plus_ones ?? 0), 0);
+    if (status === 'confirmed') {
+      confirmed++;
+      // Only confirmed guests add companions to the headcount; a guest brings the
+      // same companions to each event, so take their max across events, not the sum.
+      plusOnes += guestRsvps.reduce((max, r) => Math.max(max, r.plus_ones ?? 0), 0);
+    } else if (status === 'declined') declined++;
   }
 
   return {
@@ -88,6 +92,15 @@ export async function createGuest(
   return guest;
 }
 
+/** Reject event ids that don't belong to this wedding (client-supplied). */
+async function assertEventsBelongToOwner(ownerId: string, eventIds: string[]): Promise<void> {
+  if (eventIds.length === 0) return;
+  const ownerEventIds = new Set((await eventsRepo.findAllByOwner(ownerId)).map((e) => e.id));
+  if (eventIds.some((id) => !ownerEventIds.has(id))) {
+    throw new BadRequestError('One or more events do not belong to this wedding');
+  }
+}
+
 export async function bulkCreateGuests(
   guests: ({ events?: string[] } & Omit<GuestInsert, 'user_id'>)[],
   ownerId: string,
@@ -95,6 +108,7 @@ export async function bulkCreateGuests(
 ) {
   // `events` is not a column on guests — strip it before insert, link after
   const eventsPerGuest = guests.map((g) => g.events ?? []);
+  await assertEventsBelongToOwner(ownerId, eventsPerGuest.flat());
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const payloads = guests.map(({ events, ...g }) => ({
     ...g,
@@ -131,16 +145,20 @@ export async function updateGuest(
   if (events !== undefined) {
     const existing = await repo.findRsvpsByGuest(id);
     const existingIds = new Set(existing.map((r) => r.event_id));
-    await repo.deleteRsvpsForGuestExcept(id, events);
-    const toAdd = events.filter((eventId) => !existingIds.has(eventId));
-    if (toAdd.length > 0) {
-      await repo.insertRsvpEntries(
-        toAdd.map((eventId) => ({
-          guest_id: id,
-          event_id: eventId,
-          rsvp_status: 'pending' as const,
-        })),
-      );
+    const changed = events.length !== existingIds.size || events.some((e) => !existingIds.has(e));
+    if (changed) {
+      await assertEventsBelongToOwner(ownerId, events);
+      await repo.deleteRsvpsForGuestExcept(id, events);
+      const toAdd = events.filter((eventId) => !existingIds.has(eventId));
+      if (toAdd.length > 0) {
+        await repo.insertRsvpEntries(
+          toAdd.map((eventId) => ({
+            guest_id: id,
+            event_id: eventId,
+            rsvp_status: 'pending' as const,
+          })),
+        );
+      }
     }
   }
 
@@ -217,14 +235,13 @@ export async function setOverallRsvp(
   if (events.length === 0) {
     throw new BadRequestError('Create at least one event before recording RSVPs.');
   }
-  await repo.insertRsvpEntries(
+  return repo.insertRsvpEntries(
     events.map((e) => ({
       guest_id: guestId,
       event_id: e.id,
       ...update,
     })) as Parameters<typeof repo.insertRsvpEntries>[0],
   );
-  return repo.findRsvpsByGuest(guestId);
 }
 
 /**

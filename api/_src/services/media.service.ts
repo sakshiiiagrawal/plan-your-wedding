@@ -54,8 +54,11 @@ export async function deleteGalleryImage(ownerId: string, url: string): Promise<
   const images = (current.images ?? []).filter((img) => img.url !== url);
   await contentService.upsertSection('gallery', ownerId, { ...current, images });
 
+  // The URL is caller-supplied — only remove objects inside this wedding's folder
   const path = storagePathFromUrl(url);
-  if (path) await supabase.storage.from(BUCKET).remove([path]);
+  if (path && path.startsWith(`${ownerId}/`)) {
+    await supabase.storage.from(BUCKET).remove([path]);
+  }
 
   return images;
 }

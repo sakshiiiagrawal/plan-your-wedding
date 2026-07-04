@@ -11,6 +11,7 @@ import {
   createGroupSchema,
 } from '../validators/guests.validator';
 import * as guestsController from '../controllers/guests.controller';
+import * as exportController from '../controllers/export.controller';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -20,6 +21,7 @@ router.get('/summary', guestsController.getSummary);
 router.get('/groups', guestsController.getGroups);
 router.post('/groups', validateBody(createGroupSchema), guestsController.createGroup);
 router.get('/template/download', guestsController.downloadTemplate);
+router.get('/export', exportController.exportGuests);
 router.post('/import', upload.single('file'), guestsController.importGuests);
 router.get('/:id', guestsController.getById);
 router.post('/', validateBody(createGuestSchema), guestsController.create);

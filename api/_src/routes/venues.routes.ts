@@ -11,11 +11,13 @@ import {
   createPaymentSchema,
 } from '../validators/venues.validator';
 import * as ctrl from '../controllers/venues.controller';
+import * as exportController from '../controllers/export.controller';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Allocation sub-routes must come before /:id to avoid route conflicts
+router.get('/allocations/export', exportController.exportAllocations);
 router.get('/allocations/matrix', ctrl.getAllocationMatrix);
 router.get('/allocations/unassigned', ctrl.getUnassignedGuests);
 router.get('/allocations/template/download', ctrl.downloadAllocationTemplate);

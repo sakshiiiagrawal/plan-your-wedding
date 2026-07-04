@@ -4,6 +4,8 @@ import { useCreateCustomCategory, useCategoryTree } from '../hooks/useApi';
 import toast from 'react-hot-toast';
 import Portal from './Portal';
 import useUnsavedChangesPrompt from '../hooks/useUnsavedChangesPrompt';
+import { useModalDismiss } from '../hooks/useModalDismiss';
+import { currencySymbol } from '../utils/currency';
 
 interface CustomCategoryModalProps {
   isOpen: boolean;
@@ -38,6 +40,7 @@ export default function CustomCategoryModal({
     },
     isSaving: createMutation.isPending,
   });
+  useModalDismiss(isOpen, attemptClose);
 
   useEffect(() => {
     if (isOpen) {
@@ -182,7 +185,7 @@ export default function CustomCategoryModal({
                     fontSize: 13,
                   }}
                 >
-                  ₹
+                  {currencySymbol()}
                 </span>
                 <input
                   type="number"

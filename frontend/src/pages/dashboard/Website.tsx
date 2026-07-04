@@ -8,6 +8,8 @@ import {
   HiOutlineCheck,
 } from 'react-icons/hi';
 import { useHeroContent, useOurStory, useUpdateWebsiteContent } from '../../hooks/useApi';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
+import { formatDate } from '../../utils/date';
 import { SectionHeader } from '../../components/ui';
 import toast from 'react-hot-toast';
 
@@ -191,7 +193,7 @@ function PreviewPane({
             }}
           >
             {heroContent?.wedding_date
-              ? new Date(heroContent.wedding_date).toLocaleDateString('en-US', {
+              ? formatDate(heroContent.wedding_date, {
                   day: 'numeric',
                   month: 'long',
                   year: 'numeric',
@@ -274,6 +276,7 @@ export default function Website() {
   const [storyText, setStoryText] = useState('');
   const [sections, setSections] = useState(SECTIONS.map((s) => ({ ...s, enabled: true })));
   const [showFullPreview, setShowFullPreview] = useState(false);
+  useModalDismiss(showFullPreview, () => setShowFullPreview(false));
   const [isDirty, setIsDirty] = useState(false);
 
   const siteUrl = `${window.location.origin}/${slug}`;
@@ -322,22 +325,24 @@ export default function Website() {
   const handlePublish = async () => {
     try {
       const sectionsMap = Object.fromEntries(sections.map((s) => [s.id, s.enabled]));
-      await updateContent.mutateAsync({
-        section: 'hero',
-        payload: {
-          ...heroContent,
-          tagline: heroTagline,
-          bride_name: brideName,
-          groom_name: groomName,
-          wedding_date: weddingDate || null,
-          theme,
-          sections: sectionsMap,
-        },
-      });
-      await updateContent.mutateAsync({
-        section: 'our_story',
-        payload: { ...(storyContent as any), story: storyText },
-      });
+      await Promise.all([
+        updateContent.mutateAsync({
+          section: 'hero',
+          payload: {
+            ...heroContent,
+            tagline: heroTagline,
+            bride_name: brideName,
+            groom_name: groomName,
+            wedding_date: weddingDate || null,
+            theme,
+            sections: sectionsMap,
+          },
+        }),
+        updateContent.mutateAsync({
+          section: 'our_story',
+          payload: { ...(storyContent as any), story: storyText },
+        }),
+      ]);
       toast.success('Website settings published!');
       setIsDirty(false);
     } catch {
@@ -743,7 +748,7 @@ export default function Website() {
                           marginTop: 16,
                         }}
                       >
-                        {new Date(heroContent.wedding_date).toLocaleDateString('en-US', {
+                        {formatDate(heroContent.wedding_date, {
                           weekday: 'long',
                           day: 'numeric',
                           month: 'long',

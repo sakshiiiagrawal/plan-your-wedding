@@ -3,10 +3,13 @@ import { getAuthUser, getWeddingOwnerId } from '../shared/utils/auth.utils';
 import { ForbiddenError } from '../shared/errors/HttpError';
 import * as membersService from '../services/members.service';
 
-function requireAdmin(req: Request): void {
+/** Route middleware: member management is admin-only. */
+export function requireAdmin(req: Request, _res: Response, next: NextFunction): void {
   if (getAuthUser(req).role !== 'admin') {
-    throw new ForbiddenError('Only admins can manage members');
+    next(new ForbiddenError('Only admins can manage members'));
+    return;
   }
+  next();
 }
 
 export const list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -20,7 +23,6 @@ export const list = async (req: Request, res: Response, next: NextFunction): Pro
 
 export const invite = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    requireAdmin(req);
     const ownerId = getWeddingOwnerId(req);
     const { email, role } = req.body;
     res.status(201).json(await membersService.inviteMember(ownerId, email, role));
@@ -44,7 +46,6 @@ export const updateRole = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    requireAdmin(req);
     const ownerId = getWeddingOwnerId(req);
     res.json(await membersService.updateMemberRole(ownerId, req.params.id, req.body.role));
   } catch (error) {
@@ -58,7 +59,6 @@ export const remove = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    requireAdmin(req);
     const ownerId = getWeddingOwnerId(req);
     await membersService.removeMember(ownerId, req.params.id);
     res.status(204).send();

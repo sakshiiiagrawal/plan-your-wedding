@@ -18,6 +18,7 @@ import {
   useUpdateTask,
   useUpdateTaskStatus,
   useDeleteTask,
+  useMembers,
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import Portal from '../../components/Portal';
@@ -33,6 +34,9 @@ import {
 import { SectionHeader, KPICard, SegmentedControl } from '../../components/ui';
 import DatePicker from '../../components/ui/DatePicker';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { formatDate } from '../../utils/date';
 
 interface TaskFormData {
   title: string;
@@ -107,7 +111,7 @@ const STATUS_CYCLE: Record<string, string> = {
 
 function fmtDate(d: string) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return formatDate(d, { month: 'short', day: 'numeric' });
 }
 
 // ── Draggable task card ──────────────────────────────────────────────────────
@@ -382,6 +386,7 @@ export default function Tasks() {
 
   const { data: tasks = [], isLoading: tasksLoading } = useTasks(queryParams);
   const { data: stats } = useTaskStats();
+  const { data: members = [] } = useMembers();
   const createMutation = useCreateTask();
   const updateMutation = useUpdateTask();
   const updateStatusMutation = useUpdateTaskStatus();
@@ -400,6 +405,7 @@ export default function Tasks() {
       },
       isSaving: createMutation.isPending || updateMutation.isPending,
     });
+  useModalDismiss(showAddModal, attemptCloseTaskModal);
 
   const resetForm = () => {
     setFormData(DEFAULT_FORM);
@@ -414,6 +420,8 @@ export default function Tasks() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Guard against double-fired submit events creating duplicate tasks
+    if (createMutation.isPending || updateMutation.isPending) return;
     try {
       if (editingTask) {
         await updateMutation.mutateAsync({ id: editingTask.id, ...formData });
@@ -778,7 +786,9 @@ export default function Tasks() {
                   color: 'var(--ink-dim)',
                 }}
               >
-                No tasks found
+                {statusFilter !== 'all' || priorityFilter !== 'all'
+                  ? 'No tasks match these filters.'
+                  : 'No tasks yet — add your first task.'}
               </div>
             )}
           </div>
@@ -892,7 +902,13 @@ export default function Tasks() {
                       onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
                       className="input"
                       placeholder="Person name"
+                      list="task-assignee-options"
                     />
+                    <datalist id="task-assignee-options">
+                      {members.map((m) => (
+                        <option key={m.id} value={m.invited_email} />
+                      ))}
+                    </datalist>
                   </div>
                 </div>
 
@@ -957,72 +973,14 @@ export default function Tasks() {
       {taskUnsavedDialog}
 
       {/* Delete confirm */}
-      {deleteConfirm && (
-        <Portal>
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 50,
-              padding: 16,
-            }}
-            onClick={() => setDeleteConfirm(null)}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                background: 'var(--bg-panel)',
-                borderRadius: 'var(--radius-lg)',
-                padding: 28,
-                maxWidth: 380,
-                width: '100%',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
-              }}
-            >
-              <h3
-                className="display"
-                style={{ margin: '0 0 8px', fontSize: 20, color: 'var(--ink-high)' }}
-              >
-                Delete task?
-              </h3>
-              <p style={{ fontSize: 13, color: 'var(--ink-low)', marginBottom: 24 }}>
-                This action cannot be undone.
-              </p>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button
-                  onClick={() => setDeleteConfirm(null)}
-                  className="btn-outline"
-                  style={{ flex: 1 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(deleteConfirm)}
-                  disabled={deleteMutation.isPending}
-                  style={{
-                    flex: 1,
-                    padding: '9px 16px',
-                    background: 'var(--err)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 8,
-                    fontSize: 13,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    opacity: deleteMutation.isPending ? 0.5 : 1,
-                  }}
-                >
-                  {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        title="Delete task?"
+        message="This action cannot be undone."
+        isPending={deleteMutation.isPending}
+        onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   );
 }

@@ -8,5 +8,5 @@ export function getAuthUser(req: Request): AuthenticatedUser {
 }
 
 export function getWeddingOwnerId(req: Request): string {
-  return getAuthUser(req).id;
+  return getAuthUser(req).ownerId;
 }

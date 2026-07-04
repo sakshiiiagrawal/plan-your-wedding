@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   HiOutlineLocationMarker,
   HiOutlinePhone,
@@ -40,6 +41,9 @@ import type {
   VenueWithFinance,
 } from '@wedding-planner/shared';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { currencySymbol, formatCurrency } from '../../utils/currency';
 
 /** Bride / groom amounts for a payment marked paid_by shared, from allocations + line-item sides. */
 function sharedPaymentSideAmounts(
@@ -123,11 +127,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 const TODAY = new Date().toISOString().slice(0, 10);
 
 const formatPaymentAmount = (amount: number, direction: 'outflow' | 'inflow') =>
-  `${direction === 'inflow' ? '-' : ''}${new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount)}`;
+  `${direction === 'inflow' ? '-' : ''}${formatCurrency(amount)}`;
 
 interface RoomCategoryEntry {
   room_type: string;
@@ -189,8 +189,8 @@ const DEFAULT_FORM: VenueFormData = {
   venue_type: 'wedding_hall',
   address: '',
   city: '',
-  capacity: 0,
-  total_cost: 0,
+  capacity: '',
+  total_cost: '',
   expense_date: new Date().toISOString().slice(0, 10),
   side: 'shared',
   bride_share_percentage: 50,
@@ -416,11 +416,7 @@ function VenueRoomsSection({ venueId }: { venueId: string }) {
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       {r.rate_per_night ? (
-                        new Intl.NumberFormat('en-IN', {
-                          style: 'currency',
-                          currency: 'INR',
-                          maximumFractionDigits: 0,
-                        }).format(r.rate_per_night)
+                        formatCurrency(r.rate_per_night)
                       ) : (
                         <span className="ink-dim">—</span>
                       )}
@@ -504,8 +500,8 @@ export default function Venues() {
       venue_type: venue.venue_type || 'wedding_hall',
       address: venue.address || '',
       city: venue.city || '',
-      capacity: venue.capacity || 0,
-      total_cost: venue.finance_summary?.committed_amount || 0,
+      capacity: venue.capacity || '',
+      total_cost: venue.finance_summary?.committed_amount || '',
       expense_date: venue.finance?.expense_date || new Date().toISOString().slice(0, 10),
       side: firstItem?.side || 'shared',
       bride_share_percentage: firstItem?.bride_share_percentage || 50,
@@ -594,6 +590,7 @@ export default function Venues() {
       isSaving:
         createMutation.isPending || updateMutation.isPending || createVenuePayment.isPending,
     });
+  useModalDismiss(showVenueModal, attemptCloseVenueModal);
 
   const handleEdit = (venue: VenueWithFinance) => {
     setEditingVenue(venue);
@@ -650,14 +647,20 @@ export default function Venues() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (createMutation.isPending || updateMutation.isPending) return;
     const rooms = buildRoomsPayload();
+    const payload = {
+      ...formData,
+      capacity: formData.capacity === '' ? null : Number(formData.capacity),
+      total_cost: formData.total_cost === '' ? 0 : Number(formData.total_cost),
+    };
     try {
       let savedVenue: any;
       if (editingVenue) {
-        savedVenue = await updateMutation.mutateAsync({ id: editingVenue.id, ...formData, rooms });
+        savedVenue = await updateMutation.mutateAsync({ id: editingVenue.id, ...payload, rooms });
         toast.success('Venue updated successfully!');
       } else {
-        savedVenue = await createMutation.mutateAsync({ ...formData, rooms });
+        savedVenue = await createMutation.mutateAsync({ ...payload, rooms });
         toast.success('Venue added successfully!');
       }
 
@@ -782,13 +785,6 @@ export default function Venues() {
     }
   };
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount);
-
   if (isLoading) {
     return (
       <div
@@ -845,7 +841,9 @@ export default function Venues() {
 
       {venues.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '48px 0' }}>
-          <p style={{ color: 'var(--ink-low)', fontSize: 13 }}>No venues found</p>
+          <p style={{ color: 'var(--ink-low)', fontSize: 13 }}>
+            No venues yet — add your first venue.
+          </p>
         </div>
       ) : (
         <div
@@ -1279,6 +1277,12 @@ export default function Venues() {
                         <HiOutlineHome style={{ width: 10, height: 10 }} /> Accommodation
                       </div>
                       <VenueRoomsSection venueId={venue.id} />
+                      <Link
+                        to="../accommodations"
+                        style={{ fontSize: 11, color: 'var(--gold-deep)', fontWeight: 500 }}
+                      >
+                        Manage room allocations →
+                      </Link>
                     </div>
                   )}
 
@@ -1546,6 +1550,9 @@ export default function Venues() {
               <form
                 id="venue-form"
                 onSubmit={handleSubmit}
+                onInvalid={() =>
+                  toast.error('Please fill in the required fields.', { id: 'venue-form-invalid' })
+                }
                 style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
               >
                 <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -2048,7 +2055,7 @@ export default function Venues() {
                                         >
                                           <span>
                                             {g.type} × {g.count}
-                                            {g.rate ? ` · ₹${g.rate}/night` : ''}
+                                            {g.rate ? ` · ${formatCurrency(g.rate)}/night` : ''}
                                             {g.check_out ? ` · out ${fmtDate(g.check_out)}` : ''}
                                           </span>
                                           {!g.hasGuests && (
@@ -2230,7 +2237,7 @@ export default function Venues() {
                                       )
                                     }
                                     className="input text-sm py-1.5"
-                                    placeholder="₹ 0"
+                                    placeholder={`${currencySymbol()} 0`}
                                     min={0}
                                   />
                                   <div
@@ -2791,72 +2798,14 @@ export default function Venues() {
       )}
       {venueUnsavedDialog}
 
-      {deleteConfirm && (
-        <Portal>
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 50,
-              padding: 16,
-            }}
-            onClick={() => setDeleteConfirm(null)}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                background: 'var(--bg-panel)',
-                borderRadius: 'var(--radius-lg)',
-                padding: 28,
-                maxWidth: 380,
-                width: '100%',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
-              }}
-            >
-              <h3
-                className="display"
-                style={{ margin: '0 0 8px', fontSize: 20, color: 'var(--ink-high)' }}
-              >
-                Delete venue?
-              </h3>
-              <p style={{ fontSize: 13, color: 'var(--ink-low)', marginBottom: 24 }}>
-                This action cannot be undone.
-              </p>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button
-                  onClick={() => setDeleteConfirm(null)}
-                  className="btn-outline"
-                  style={{ flex: 1 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(deleteConfirm)}
-                  disabled={deleteMutation.isPending}
-                  style={{
-                    flex: 1,
-                    padding: '9px 16px',
-                    background: 'var(--err)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 8,
-                    fontSize: 13,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    opacity: deleteMutation.isPending ? 0.5 : 1,
-                  }}
-                >
-                  {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        title="Delete venue?"
+        message="This action cannot be undone."
+        isPending={deleteMutation.isPending}
+        onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   );
 }

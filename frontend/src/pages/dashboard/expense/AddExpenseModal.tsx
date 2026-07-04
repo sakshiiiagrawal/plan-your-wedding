@@ -6,6 +6,8 @@ import CustomCategoryModal from '../../../components/CustomCategoryModal';
 import DatePicker from '../../../components/ui/DatePicker';
 import SplitShare from '../../../components/ui/SplitShare';
 import useUnsavedChangesPrompt from '../../../hooks/useUnsavedChangesPrompt';
+import { useModalDismiss } from '../../../hooks/useModalDismiss';
+import { formatCurrency } from '../../../utils/currency';
 
 interface AddExpenseModalProps {
   show: boolean;
@@ -96,6 +98,7 @@ export default function AddExpenseModal({
     },
     isSaving: isPending,
   });
+  useModalDismiss(show, attemptClose);
 
   const updateItem = (id: string, patch: Partial<ExpenseItemForm>) => {
     setFormData((prev) => ({
@@ -427,7 +430,7 @@ export default function AddExpenseModal({
                 >
                   <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>Committed Total</span>
                   <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--gold-deep)' }}>
-                    ₹{totalCommitted.toLocaleString('en-IN')}
+                    {formatCurrency(totalCommitted)}
                   </span>
                 </div>
               </div>

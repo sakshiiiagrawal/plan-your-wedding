@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { HiOutlinePencil, HiOutlineCheck, HiOutlineX } from 'react-icons/hi';
 import { useUpdateExpenseCategory } from '../../../hooks/useApi';
 import toast from 'react-hot-toast';
+import { currencySymbol } from '../../../utils/currency';
 
 interface CategoryAnalysisItem {
   id?: string;
@@ -51,7 +52,7 @@ function BudgetCell({
   if (editing) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <span style={{ fontSize: 11, color: 'var(--ink-dim)' }}>₹</span>
+        <span style={{ fontSize: 11, color: 'var(--ink-dim)' }}>{currencySymbol()}</span>
         <input
           type="number"
           min="0"

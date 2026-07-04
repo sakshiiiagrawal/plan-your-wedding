@@ -6,6 +6,8 @@ import CategoryCombobox from '../../components/CategoryCombobox';
 import DatePicker from '../../components/ui/DatePicker';
 import SplitShare from '../../components/ui/SplitShare';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
+import { formatCurrency } from '../../utils/currency';
 import {
   useCreateSourcePayment,
   useDeleteSourcePayment,
@@ -21,13 +23,6 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 };
 
 const TODAY = new Date().toISOString().slice(0, 10);
-
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount);
 
 const formatPaymentAmount = (amount: number, direction: 'outflow' | 'inflow') =>
   `${direction === 'inflow' ? '-' : ''}${formatCurrency(amount)}`;
@@ -197,6 +192,7 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
     onSave: handleSave,
     isSaving: createPayment.isPending,
   });
+  useModalDismiss(true, attemptClose);
 
   return (
     <>

@@ -34,9 +34,6 @@ function getUserFriendlyMessage(err: SupabaseError): string | null {
     message.includes('invalid input value for enum') ||
     message.includes('invalid input syntax for enum')
   ) {
-    if (message.includes('room_type')) {
-      return 'Invalid room type provided.';
-    }
     if (message.includes('guest_side')) {
       return 'Invalid side. Please select either Bride, Groom, or Mutual.';
     }
@@ -46,9 +43,6 @@ function getUserFriendlyMessage(err: SupabaseError): string | null {
     if (message.includes('meal_preference')) {
       return 'Invalid meal preference. Please select: Vegetarian, Jain, Vegan, or Non-Vegetarian.';
     }
-    if (message.includes('payment_status')) {
-      return 'Invalid payment status. Please select: Pending, Partial, Paid, Overdue, or Cancelled.';
-    }
     if (message.includes('payment_method')) {
       return 'Invalid payment method. Please select: Cash, Bank Transfer, UPI, Cheque, or Credit Card.';
     }
@@ -57,9 +51,6 @@ function getUserFriendlyMessage(err: SupabaseError): string | null {
     }
     if (message.includes('task_status')) {
       return 'Invalid task status. Please select: Pending, In Progress, Completed, or Cancelled.';
-    }
-    if (message.includes('vendor_category')) {
-      return 'Invalid vendor category. Please select a valid category from the list.';
     }
     const enumMatch = message.match(/enum (\w+)/);
     if (enumMatch?.[1]) {
@@ -82,9 +73,6 @@ function getUserFriendlyMessage(err: SupabaseError): string | null {
     if (message.includes('room_id')) {
       return 'The selected room does not exist. Please select a valid room.';
     }
-    if (message.includes('accommodation_id')) {
-      return 'The selected accommodation does not exist. Please select a valid accommodation.';
-    }
     if (message.includes('venue_id')) {
       return 'The selected venue does not exist. Please select a valid venue.';
     }
@@ -102,12 +90,6 @@ function getUserFriendlyMessage(err: SupabaseError): string | null {
   ) {
     if (message.includes('email')) {
       return 'This email address is already registered. Please use a different email.';
-    }
-    if (message.includes('phone')) {
-      return 'This phone number is already registered. Please use a different phone number.';
-    }
-    if (message.includes('room_number')) {
-      return 'This room number already exists. Please use a different room number.';
     }
     return 'This entry already exists. Please check for duplicates and try again.';
   }

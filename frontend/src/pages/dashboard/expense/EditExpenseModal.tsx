@@ -6,7 +6,9 @@ import CustomCategoryModal from '../../../components/CustomCategoryModal';
 import DatePicker from '../../../components/ui/DatePicker';
 import SplitShare from '../../../components/ui/SplitShare';
 import useUnsavedChangesPrompt from '../../../hooks/useUnsavedChangesPrompt';
+import { useModalDismiss } from '../../../hooks/useModalDismiss';
 import type { ExpenseWithDetails } from '@wedding-planner/shared';
+import { formatCurrency } from '../../../utils/currency';
 
 export type ExpenseRow = ExpenseWithDetails;
 
@@ -92,6 +94,7 @@ export default function EditExpenseModal({
     },
     isSaving: isPending,
   });
+  useModalDismiss(expense !== null, attemptClose);
 
   if (!expense || !formData) return null;
 
@@ -421,7 +424,7 @@ export default function EditExpenseModal({
                 >
                   <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>Committed Total</span>
                   <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--gold-deep)' }}>
-                    ₹{totalCommitted.toLocaleString('en-IN')}
+                    {formatCurrency(totalCommitted)}
                   </span>
                 </div>
               </div>

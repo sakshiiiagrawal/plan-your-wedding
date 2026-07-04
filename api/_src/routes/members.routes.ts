@@ -9,10 +9,12 @@ import * as membersController from '../controllers/members.controller';
 
 const router = Router();
 
+const { requireAdmin } = membersController;
+
 router.get('/', membersController.list);
-router.post('/invite', validateBody(inviteMemberSchema), membersController.invite);
+router.post('/invite', requireAdmin, validateBody(inviteMemberSchema), membersController.invite);
 router.post('/accept', validateBody(acceptInviteSchema), membersController.accept);
-router.patch('/:id', validateBody(updateMemberRoleSchema), membersController.updateRole);
-router.delete('/:id', membersController.remove);
+router.patch('/:id', requireAdmin, validateBody(updateMemberRoleSchema), membersController.updateRole);
+router.delete('/:id', requireAdmin, membersController.remove);
 
 export default router;

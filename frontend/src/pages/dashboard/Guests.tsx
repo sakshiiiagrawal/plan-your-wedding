@@ -10,6 +10,7 @@ import {
   useBulkDeleteGuests,
   useEvents,
   useSetOverallRsvp,
+  useExportGuests,
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -27,6 +28,8 @@ import {
 } from 'react-icons/hi';
 import { SectionHeader, SegmentedControl, KPICard, DrawerPanel } from '../../components/ui';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
+import { formatDate } from '../../utils/date';
 
 interface GuestFormData {
   first_name: string;
@@ -103,14 +106,8 @@ function GuestDrawer({
   const rsvps: any[] = (detail as any)?.guest_event_rsvp ?? guest.guest_event_rsvp ?? [];
   const eventsMap = new Map((allEvents as any[]).map((e: any) => [e.id, e]));
 
-  const aggregateStatus =
-    rsvps.length === 0
-      ? 'pending'
-      : rsvps.some((r) => r.rsvp_status === 'confirmed')
-        ? 'confirmed'
-        : rsvps.every((r) => r.rsvp_status === 'declined')
-          ? 'declined'
-          : 'pending';
+  // The list endpoint already aggregates per-event RSVPs into rsvp_status
+  const aggregateStatus = guest.rsvp_status ?? 'pending';
 
   const handleSetRsvp = async (status: string) => {
     try {
@@ -235,7 +232,7 @@ function GuestDrawer({
                 const c = rsvpColor(rsvp.rsvp_status);
                 return (
                   <div
-                    key={rsvp.id}
+                    key={rsvp.event_id}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -255,7 +252,7 @@ function GuestDrawer({
                           className="mono"
                           style={{ fontSize: 11, color: 'var(--ink-dim)', marginTop: 2 }}
                         >
-                          {new Date(event.date).toLocaleDateString('en-US', {
+                          {formatDate(event.date, {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
@@ -390,6 +387,7 @@ export default function Guests() {
     sideFilter !== 'all' ? { side: sideFilter } : {},
   );
   const { data: summary } = useGuestSummary();
+  const exportGuests = useExportGuests();
   const { data: allEvents = [] } = useEvents();
   const bulkCreateMutation = useBulkCreateGuests();
   const updateMutation = useUpdateGuest();
@@ -408,6 +406,8 @@ export default function Guests() {
       },
       isSaving: updateMutation.isPending,
     });
+  useModalDismiss(showEditModal, attemptCloseGuestModal);
+  useModalDismiss(showImportModal, () => setShowImportModal(false));
 
   const resetForm = () => {
     setFormData(DEFAULT_FORM);
@@ -645,6 +645,14 @@ export default function Guests() {
               Import Excel
             </button>
             <button
+              onClick={() => exportGuests.mutate()}
+              disabled={exportGuests.isPending}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 transition-colors"
+            >
+              <HiOutlineDownload className="w-4 h-4" />
+              Export Excel
+            </button>
+            <button
               onClick={() => addPendingRow()}
               className="btn-primary flex items-center gap-1.5 text-sm px-4 py-2"
             >
@@ -871,7 +879,9 @@ export default function Guests() {
               {filteredGuests.length === 0 && pendingRows.length === 0 && (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-gray-500">
-                    No guests found
+                    {searchTerm || rsvpFilter !== 'all'
+                      ? 'No guests match your search.'
+                      : 'No guests yet — add your first guest.'}
                   </td>
                 </tr>
               )}

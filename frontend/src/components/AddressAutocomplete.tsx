@@ -170,6 +170,13 @@ export default function AddressAutocomplete({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!open || results.length === 0) return;
+    if (e.key === 'Escape') {
+      // Consume Escape: close only the dropdown, not a parent modal
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
+      return;
+    }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setHighlight((h) => Math.min(h + 1, results.length - 1));
@@ -182,7 +189,7 @@ export default function AddressAutocomplete({
         e.preventDefault();
         selectSuggestion(picked);
       }
-    } else if (e.key === 'Escape') setOpen(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -236,6 +243,12 @@ export default function AddressAutocomplete({
           onChange={handleInputChange}
           onFocus={() => {
             if (userTypingRef.current && results.length > 0) setOpen(true);
+          }}
+          onBlur={() => {
+            // Suggestions select on mousedown (before blur), so closing here is
+            // safe — and it keeps the dropdown from overlaying buttons (e.g. a
+            // modal's submit) after the user tabs/clicks away.
+            setOpen(false);
           }}
           onKeyDown={handleKeyDown}
           className={className || 'input'}

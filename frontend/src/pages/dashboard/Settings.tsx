@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { SectionHeader } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
+import { CURRENCY_OPTIONS } from '../../utils/currency';
 import {
   useUpdateProfile,
   useChangePassword,
@@ -11,6 +12,7 @@ import {
   useInviteMember,
   useUpdateMemberRole,
   useRemoveMember,
+  useResendVerification,
 } from '../../hooks/useApi';
 
 function MembersPanel() {
@@ -125,6 +127,7 @@ export default function Settings() {
   const [name, setName] = useState(user?.name ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
   const [newSlug, setNewSlug] = useState(slug ?? '');
+  const [currency, setCurrency] = useState(user?.currency ?? 'INR');
   const updateProfile = useUpdateProfile();
 
   const [oldPassword, setOldPassword] = useState('');
@@ -133,15 +136,29 @@ export default function Settings() {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const deleteAccount = useDeleteAccount();
+  const resendVerification = useResendVerification();
+
+  const handleResendVerification = async () => {
+    try {
+      await resendVerification.mutateAsync();
+      toast.success('Verification email sent — check your inbox.');
+    } catch {
+      toast.error('Failed to send verification email');
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const updated = await updateProfile.mutateAsync({ name, email, slug: newSlug });
+      const updated = await updateProfile.mutateAsync({ name, email, slug: newSlug, currency });
       toast.success('Profile updated');
       if (updated.slug && updated.slug !== slug) {
         localStorage.setItem('slug', updated.slug);
-        navigate(`/${updated.slug}/dashboard/settings`, { replace: true });
+        // Full reload so AuthContext re-reads the new slug from storage
+        window.location.href = `/${updated.slug}/dashboard/settings`;
+      } else if (updated.currency && updated.currency !== user?.currency) {
+        // Full reload so AuthContext (and every money display) picks up the change
+        window.location.reload();
       }
     } catch (error) {
       const err = error as { response?: { data?: { error?: string } } };
@@ -203,10 +220,37 @@ export default function Settings() {
               onChange={(e) => setNewSlug(e.target.value)}
             />
           </div>
+          <div>
+            <label className="label">Currency</label>
+            <select
+              className="input"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+            >
+              {CURRENCY_OPTIONS.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
           <button type="submit" disabled={updateProfile.isPending} className="btn-primary">
             {updateProfile.isPending ? 'Saving...' : 'Save changes'}
           </button>
         </form>
+        {user?.emailVerified === false && (
+          <div className="mt-4 flex items-center justify-between gap-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <span>Your email address isn&apos;t verified yet.</span>
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={resendVerification.isPending}
+              className="font-medium underline whitespace-nowrap disabled:opacity-50"
+            >
+              {resendVerification.isPending ? 'Sending...' : 'Resend email'}
+            </button>
+          </div>
+        )}
       </Card>
 
       <MembersPanel />

@@ -40,6 +40,8 @@ api.interceptors.response.use(
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         localStorage.removeItem('slug');
+        // Read by the login page after the redirect to explain why it landed there
+        sessionStorage.setItem('sessionExpired', '1');
         // Redirect to slug-scoped login if we have a slug, otherwise home
         window.location.href = slug ? `/${slug}/login` : '/';
       }

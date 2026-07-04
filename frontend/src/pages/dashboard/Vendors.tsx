@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   HiOutlineCurrencyRupee,
+  HiOutlineDownload,
   HiOutlineInformationCircle,
   HiOutlinePencil,
   HiOutlinePhone,
@@ -12,6 +13,7 @@ import {
 import toast from 'react-hot-toast';
 import Portal from '../../components/Portal';
 import CategoryCombobox from '../../components/CategoryCombobox';
+import { formatCurrency } from '../../utils/currency';
 import {
   useCategoryTree,
   useCreateSourcePayment,
@@ -21,6 +23,7 @@ import {
   useSourcePayments,
   useUpdateVendor,
   useVendorsList,
+  useExportVendors,
 } from '../../hooks/useApi';
 import type {
   ExpenseItemRow,
@@ -32,6 +35,7 @@ import { SectionHeader } from '../../components/ui';
 import DatePicker from '../../components/ui/DatePicker';
 import SplitShare from '../../components/ui/SplitShare';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
 
 interface VendorFormData {
   name: string;
@@ -106,13 +110,6 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   cheque: 'Cheque',
   credit_card: 'Credit Card',
 };
-
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount);
 
 const formatPaymentAmount = (amount: number, direction: 'outflow' | 'inflow') =>
   `${direction === 'inflow' ? '-' : ''}${formatCurrency(amount)}`;
@@ -290,6 +287,7 @@ export default function Vendors() {
   });
   const vendors = vendorsResponse?.items ?? [];
   const totalVendors = vendorsResponse?.total_items ?? 0;
+  const exportVendors = useExportVendors();
   const totalPages = vendorsResponse?.total_pages ?? 1;
   const activePage = vendorsResponse?.page ?? page;
   const activePerPage = vendorsResponse?.per_page ?? perPage;
@@ -472,6 +470,7 @@ export default function Vendors() {
       isSaving:
         createMutation.isPending || updateMutation.isPending || createVendorPayment.isPending,
     });
+  useModalDismiss(showVendorModal, attemptCloseVendorModal);
 
   const handleEdit = (vendor: VendorWithFinance) => {
     setEditingVendor(vendor);
@@ -674,16 +673,27 @@ export default function Vendors() {
         eyebrow="Service providers"
         title="Vendors"
         action={
-          <button
-            onClick={() => {
-              resetForm();
-              setShowVendorModal(true);
-            }}
-            className="btn-primary"
-            style={{ fontSize: 13 }}
-          >
-            Add vendor
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => exportVendors.mutate()}
+              disabled={exportVendors.isPending}
+              className="btn-outline"
+              style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <HiOutlineDownload style={{ width: 14, height: 14 }} />
+              Export Excel
+            </button>
+            <button
+              onClick={() => {
+                resetForm();
+                setShowVendorModal(true);
+              }}
+              className="btn-primary"
+              style={{ fontSize: 13 }}
+            >
+              Add vendor
+            </button>
+          </div>
         }
       />
 

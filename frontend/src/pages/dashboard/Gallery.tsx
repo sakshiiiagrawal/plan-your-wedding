@@ -1,48 +1,34 @@
-import { useState, useRef } from 'react';
-import { HiOutlinePlus, HiOutlinePhotograph, HiOutlineX, HiOutlineDownload } from 'react-icons/hi';
+import { useRef } from 'react';
+import { HiOutlinePlus, HiOutlinePhotograph, HiOutlineTrash } from 'react-icons/hi';
+import toast from 'react-hot-toast';
 import { SectionHeader } from '../../components/ui';
-
-interface GalleryItem {
-  id: string;
-  src: string;
-  label: string;
-  span?: 'wide' | 'tall' | 'default';
-}
-
-const SAMPLE_ITEMS: GalleryItem[] = [
-  { id: '1', src: '', label: 'Engagement ceremony', span: 'wide' },
-  { id: '2', src: '', label: 'Mehendi portraits', span: 'tall' },
-  { id: '3', src: '', label: 'Haldi moments', span: 'default' },
-  { id: '4', src: '', label: 'Sangeet night', span: 'default' },
-  { id: '5', src: '', label: 'Baraat procession', span: 'wide' },
-  { id: '6', src: '', label: 'Wedding vows', span: 'tall' },
-  { id: '7', src: '', label: 'Reception highlights', span: 'default' },
-  { id: '8', src: '', label: 'Couple portraits', span: 'default' },
-];
+import { useGalleryContent, useUploadGalleryImage, useDeleteGalleryImage } from '../../hooks/useApi';
 
 const GRADIENTS = [
   'from-gold-100 to-gold-200',
   'from-rose-100 to-rose-200',
   'from-maroon-50 to-maroon-100',
   'from-amber-100 to-amber-200',
-  'from-yellow-50 to-gold-100',
-  'from-pink-100 to-rose-100',
-  'from-orange-100 to-amber-100',
-  'from-cream to-gold-50',
 ];
 
-function GalleryCard({ item, index }: { item: GalleryItem; index: number }) {
+function GalleryCard({
+  url,
+  index,
+  onDelete,
+}: {
+  url: string;
+  index: number;
+  onDelete: () => void;
+}) {
   const gradient = GRADIENTS[index % GRADIENTS.length];
-  const spanCols = item.span === 'wide' ? 'md:col-span-2' : '';
-  const spanRows = item.span === 'tall' ? 'md:row-span-2' : '';
 
   return (
     <div
-      className={`relative group rounded-xl overflow-hidden cursor-pointer ${spanCols} ${spanRows}`}
-      style={{ minHeight: item.span === 'tall' ? 320 : 180 }}
+      className="relative group rounded-xl overflow-hidden cursor-pointer"
+      style={{ minHeight: 180 }}
     >
-      {item.src ? (
-        <img src={item.src} alt={item.label} className="w-full h-full object-cover" />
+      {url ? (
+        <img src={url} alt="" className="w-full h-full object-cover" />
       ) : (
         <div
           className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}
@@ -51,27 +37,42 @@ function GalleryCard({ item, index }: { item: GalleryItem; index: number }) {
         </div>
       )}
 
-      {/* Hover overlay */}
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-200 flex items-end">
-        <div className="translate-y-full group-hover:translate-y-0 transition-transform duration-200 w-full p-3 bg-gradient-to-t from-black/60 to-transparent">
-          <p className="text-white text-sm font-medium truncate">{item.label}</p>
-        </div>
-      </div>
-
-      {/* Download button on hover */}
-      {item.src && (
-        <button className="absolute top-2 right-2 p-1.5 bg-white/80 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-          <HiOutlineDownload className="w-4 h-4 text-gray-700" />
-        </button>
-      )}
+      <button
+        onClick={onDelete}
+        className="absolute top-2 right-2 p-1.5 bg-white/80 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <HiOutlineTrash className="w-4 h-4 text-gray-700" />
+      </button>
     </div>
   );
 }
 
 export default function Gallery() {
-  const [items] = useState<GalleryItem[]>(SAMPLE_ITEMS);
-  const [showUpload, setShowUpload] = useState(false);
+  const { data } = useGalleryContent(undefined);
+  const uploadImage = useUploadGalleryImage();
+  const deleteImage = useDeleteGalleryImage();
   const fileRef = useRef<HTMLInputElement>(null);
+  const images = data?.images ?? [];
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    for (const file of Array.from(files)) {
+      try {
+        await uploadImage.mutateAsync(file);
+      } catch {
+        toast.error(`Failed to upload ${file.name}`);
+      }
+    }
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const handleDelete = async (url: string) => {
+    try {
+      await deleteImage.mutateAsync(url);
+    } catch {
+      toast.error('Failed to delete photo');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -81,7 +82,7 @@ export default function Gallery() {
         description="Your wedding moments, beautifully organized."
         action={
           <button
-            onClick={() => setShowUpload(true)}
+            onClick={() => fileRef.current?.click()}
             className="flex items-center gap-1.5 px-3 py-2 bg-maroon-800 text-white rounded-lg text-sm font-medium hover:bg-maroon-900 transition-colors"
           >
             <HiOutlinePlus className="w-4 h-4" />
@@ -90,7 +91,6 @@ export default function Gallery() {
         }
       />
 
-      {/* Masonry grid */}
       <div
         className="grid gap-3"
         style={{
@@ -98,76 +98,38 @@ export default function Gallery() {
           gridAutoFlow: 'dense',
         }}
       >
-        {items.map((item, i) => (
-          <GalleryCard key={item.id} item={item} index={i} />
+        {images.map((img, i) => (
+          <GalleryCard key={img.url} url={img.url} index={i} onDelete={() => handleDelete(img.url)} />
         ))}
 
-        {/* Upload placeholder */}
         <div
           onClick={() => fileRef.current?.click()}
           className="rounded-xl border-2 border-dashed border-gold-200 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-gold-400 hover:bg-gold-50 transition-colors"
           style={{ minHeight: 180 }}
         >
-          <HiOutlinePlus className="w-8 h-8 text-gold-300" />
-          <p className="text-xs text-gray-400">Add photos</p>
+          {uploadImage.isPending ? (
+            <p className="text-xs text-gray-400">Uploading...</p>
+          ) : (
+            <>
+              <HiOutlinePlus className="w-8 h-8 text-gold-300" />
+              <p className="text-xs text-gray-400">Add photos</p>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Hidden file input */}
       <input
         ref={fileRef}
         type="file"
         accept="image/*"
         multiple
         className="hidden"
-        onChange={() => {
-          /* upload handler goes here */
-        }}
+        onChange={(e) => handleFiles(e.target.files)}
       />
 
-      {/* Upload modal placeholder */}
-      {showUpload && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowUpload(false)}
-        >
-          <div
-            className="bg-white rounded-2xl w-full max-w-md p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-gold-500 font-semibold mb-0.5">
-                  Memories
-                </p>
-                <h2 className="font-serif-display text-2xl text-maroon-800">Upload photos</h2>
-              </div>
-              <button
-                onClick={() => setShowUpload(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <HiOutlineX className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div
-              onClick={() => fileRef.current?.click()}
-              className="border-2 border-dashed border-gold-200 rounded-xl p-12 text-center cursor-pointer hover:border-gold-400 hover:bg-gold-50 transition-colors"
-            >
-              <HiOutlinePhotograph className="w-12 h-12 text-gold-300 mx-auto mb-3" />
-              <p className="text-sm font-medium text-gray-600">
-                Click to browse or drag photos here
-              </p>
-              <p className="text-xs text-gray-400 mt-1">JPG, PNG, HEIC up to 20 MB each</p>
-            </div>
-
-            <div className="flex gap-3 mt-4">
-              <button onClick={() => setShowUpload(false)} className="btn-outline flex-1">
-                Cancel
-              </button>
-              <button className="btn-primary flex-1">Upload</button>
-            </div>
-          </div>
+      {images.length === 0 && (
+        <div className="text-center text-gray-400 text-sm py-8">
+          No photos yet — upload your first one above.
         </div>
       )}
     </div>

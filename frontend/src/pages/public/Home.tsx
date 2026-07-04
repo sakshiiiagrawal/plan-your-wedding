@@ -6,6 +6,7 @@ import { HiOutlineCalendar, HiOutlineLocationMarker, HiOutlineClock } from 'reac
 import Gallery from '../../components/Gallery';
 import api from '../../api/axios';
 import { useHeroContent, usePublicEvents, useOurStory } from '../../hooks/useApi';
+import { parseLocalDate } from '../../utils/date';
 
 interface Countdown {
   days: number;
@@ -54,7 +55,7 @@ export default function Home() {
   const brideName = heroContent?.bride_name || 'Bride';
   const groomName = heroContent?.groom_name || 'Groom';
   const weddingDateStr = heroContent?.wedding_date ?? null;
-  const weddingDate = weddingDateStr ? new Date(weddingDateStr) : null;
+  const weddingDate = weddingDateStr ? parseLocalDate(weddingDateStr) : null;
 
   const theme = THEME_STYLES[(heroContent as any)?.theme] ?? THEME_STYLES.royal!;
   const sections: Record<string, boolean> = (heroContent as any)?.sections ?? {};
@@ -125,7 +126,7 @@ export default function Home() {
               {brideName} & {groomName}
             </h1>
             <p className="text-gold-300 text-xl mb-12">
-              {weddingDate?.toLocaleDateString('en-US', {
+              {weddingDate?.toLocaleDateString('en-IN', {
                 month: 'long',
                 day: 'numeric',
                 year: 'numeric',

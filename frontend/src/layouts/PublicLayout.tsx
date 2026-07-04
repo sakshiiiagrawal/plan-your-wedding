@@ -3,6 +3,7 @@ import { Outlet, NavLink, useParams } from 'react-router-dom';
 import { HiOutlineMenu, HiOutlineX } from 'react-icons/hi';
 import { useHeroContent } from '../hooks/useApi';
 import { useAuth } from '../contexts/AuthContext';
+import { formatDate } from '../utils/date';
 
 export default function PublicLayout() {
   const { slug } = useParams<{ slug: string }>();
@@ -13,7 +14,7 @@ export default function PublicLayout() {
   const groomName = heroContent?.groom_name || 'Groom';
   const coupleNames = `${brideName} & ${groomName}`;
   const weddingDate = heroContent?.wedding_date
-    ? new Date(heroContent.wedding_date).toLocaleDateString('en-US', {
+    ? formatDate(heroContent.wedding_date, {
         month: 'long',
         day: 'numeric',
         year: 'numeric',
