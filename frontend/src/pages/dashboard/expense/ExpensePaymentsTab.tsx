@@ -1,4 +1,5 @@
 import { useExpenseOutstanding, useExpensePayments } from '../../../hooks/useApi';
+import { parseLocalDate } from '../../../utils/date';
 
 interface ExpensePaymentsTabProps {
   formatCurrency: (amount: number) => string;
@@ -15,7 +16,7 @@ function formatPaymentAmount(
 function plannedBadge(paymentDate: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const due = new Date(paymentDate);
+  const due = parseLocalDate(paymentDate);
   const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
   if (diffDays < 0) {
@@ -98,8 +99,8 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                 {scheduledPayments
                   .sort(
                     (left, right) =>
-                      new Date(left.due_date ?? left.created_at).getTime() -
-                      new Date(right.due_date ?? right.created_at).getTime(),
+                      parseLocalDate(left.due_date ?? left.created_at).getTime() -
+                      parseLocalDate(right.due_date ?? right.created_at).getTime(),
                   )
                   .map((payment) => (
                     <tr key={payment.id} className="table-row">
@@ -120,7 +121,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                           : payment.paid_by_side || '—'}
                       </td>
                       <td className="p-4 text-gray-600">
-                        {new Date(payment.due_date ?? payment.created_at).toLocaleDateString(
+                        {parseLocalDate(payment.due_date ?? payment.created_at).toLocaleDateString(
                           'en-IN',
                         )}
                       </td>
@@ -161,8 +162,8 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                 {postedPayments
                   .sort(
                     (left, right) =>
-                      new Date(right.paid_date ?? right.created_at).getTime() -
-                      new Date(left.paid_date ?? left.created_at).getTime(),
+                      parseLocalDate(right.paid_date ?? right.created_at).getTime() -
+                      parseLocalDate(left.paid_date ?? left.created_at).getTime(),
                   )
                   .map((payment) => (
                     <tr key={payment.id} className="table-row">
@@ -184,7 +185,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                           : payment.paid_by_side || '—'}
                       </td>
                       <td className="p-4 text-gray-600">
-                        {new Date(payment.paid_date ?? payment.created_at).toLocaleDateString(
+                        {parseLocalDate(payment.paid_date ?? payment.created_at).toLocaleDateString(
                           'en-IN',
                         )}
                       </td>

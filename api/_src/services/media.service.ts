@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { supabase } from '../config/database';
 import * as contentService from './website-content.service';
 import { BadRequestError } from '../shared/errors/HttpError';
+import { detectImageType, IMAGE_CONTENT_TYPES } from '../utils/imageType';
 
 const BUCKET = 'wedding-media';
 
@@ -25,16 +26,16 @@ export async function uploadGalleryImage(
   ownerId: string,
   file: Express.Multer.File,
 ): Promise<GalleryImage[]> {
-  if (!file.mimetype.startsWith('image/')) {
-    throw new BadRequestError('Only image files are allowed');
+  const imageType = detectImageType(file.buffer);
+  if (!imageType) {
+    throw new BadRequestError('Only JPG, PNG, WebP, or GIF images are allowed');
   }
 
-  const ext = file.originalname.split('.').pop() || 'jpg';
-  const path = `${ownerId}/${randomUUID()}.${ext}`;
+  const path = `${ownerId}/${randomUUID()}.${imageType}`;
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
-    .upload(path, file.buffer, { contentType: file.mimetype });
+    .upload(path, file.buffer, { contentType: IMAGE_CONTENT_TYPES[imageType] });
   if (uploadError) throw uploadError;
 
   const {
@@ -46,6 +47,46 @@ export async function uploadGalleryImage(
   const images = [...(current.images ?? []), { url: publicUrl }];
   await contentService.upsertSection('gallery', ownerId, { ...current, images });
   return images;
+}
+
+const AUDIO_MIMES = new Set([
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/mp4',
+  'audio/aac',
+  'audio/x-m4a',
+]);
+
+/**
+ * Background soundtrack for a public page. Returns the public URL; the page
+ * stores it in its config (`music_url`) on publish.
+ */
+export async function uploadMusic(ownerId: string, file: Express.Multer.File): Promise<string> {
+  if (!AUDIO_MIMES.has(file.mimetype)) {
+    throw new BadRequestError('Only MP3 / M4A / AAC audio files are allowed');
+  }
+
+  const ext = file.originalname.split('.').pop() || 'mp3';
+  const path = `${ownerId}/music/${randomUUID()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, file.buffer, { contentType: file.mimetype });
+  if (uploadError) throw uploadError;
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return publicUrl;
+}
+
+/** Remove an uploaded soundtrack file. Only touches objects inside this
+ *  wedding's music folder — external URLs are silently ignored. */
+export async function deleteMusic(ownerId: string, url: string): Promise<void> {
+  const path = storagePathFromUrl(url);
+  if (path && path.startsWith(`${ownerId}/music/`)) {
+    await supabase.storage.from(BUCKET).remove([path]);
+  }
 }
 
 export async function deleteGalleryImage(ownerId: string, url: string): Promise<GalleryImage[]> {

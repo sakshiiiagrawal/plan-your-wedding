@@ -8,15 +8,25 @@ export interface PlaceSelection {
   latitude: number | null;
   longitude: number | null;
   city: string | null;
+  photo_url: string | null;
 }
 
 interface GeocodeSuggestion {
   label: string;
   sublabel: string | null;
   place_id: string | null;
-  latitude: number;
-  longitude: number;
+  // Google Places (New) autocomplete doesn't return coordinates — resolved
+  // via a follow-up /geocode/details call once the user picks a suggestion.
+  latitude: number | null;
+  longitude: number | null;
   city: string | null;
+}
+
+interface PlaceDetailsResponse {
+  latitude: number | null;
+  longitude: number | null;
+  city: string | null;
+  photo_url: string | null;
 }
 
 interface Props {
@@ -78,14 +88,18 @@ export default function AddressAutocomplete({
 }: Props) {
   const [input, setInput] = useState(value);
   const [results, setResults] = useState<GeocodeSuggestion[]>([]);
-  const [provider, setProvider] = useState<'mappls' | 'photon' | 'none'>('none');
+  const [provider, setProvider] = useState<'google' | 'mappls' | 'photon' | 'none'>('none');
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resolvingDetails, setResolvingDetails] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortCtrlRef = useRef<AbortController | null>(null);
   const justSelectedRef = useRef(false);
+  // Google recommends reusing one session token across an autocomplete
+  // session through to the details call so it's billed as a single session.
+  const sessionTokenRef = useRef<string | null>(null);
   // Only run the network search when the user is actively typing — prevents
   // dropdown from auto-opening on remount / tab switch / prop sync.
   const userTypingRef = useRef(false);
@@ -97,6 +111,7 @@ export default function AddressAutocomplete({
     if (value === input) return;
     setInput(value);
     userTypingRef.current = false;
+    sessionTokenRef.current = null;
     setOpen(false);
     setResults([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -116,6 +131,8 @@ export default function AddressAutocomplete({
       return;
     }
 
+    if (!sessionTokenRef.current) sessionTokenRef.current = crypto.randomUUID();
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       abortCtrlRef.current?.abort();
@@ -124,8 +141,8 @@ export default function AddressAutocomplete({
       setLoading(true);
 
       api
-        .get<{ results: GeocodeSuggestion[]; provider: 'mappls' | 'photon' }>(
-          `/geocode/search?q=${encodeURIComponent(query)}`,
+        .get<{ results: GeocodeSuggestion[]; provider: 'google' | 'mappls' | 'photon' | 'none' }>(
+          `/geocode/search?q=${encodeURIComponent(query)}&session=${encodeURIComponent(sessionTokenRef.current ?? '')}`,
           { signal: ctrl.signal },
         )
         .then(({ data }) => {
@@ -159,12 +176,55 @@ export default function AddressAutocomplete({
     setInput(address);
     setOpen(false);
     setResults([]);
+
+    if (s.latitude == null || s.longitude == null) {
+      // Google Places (New): the autocomplete suggestion has no coordinates
+      // or photo yet — resolve both with a single follow-up Details call.
+      if (!s.place_id) {
+        onChange({ address, place_id: null, latitude: null, longitude: null, city: s.city, photo_url: null });
+        return;
+      }
+      const session = sessionTokenRef.current ?? '';
+      setResolvingDetails(true);
+      api
+        .get<PlaceDetailsResponse>(
+          `/geocode/details?place_id=${encodeURIComponent(s.place_id)}&session=${encodeURIComponent(session)}`,
+        )
+        .then(({ data }) => {
+          onChange({
+            address,
+            place_id: s.place_id,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            city: data.city ?? s.city,
+            photo_url: data.photo_url,
+          });
+        })
+        .catch((err) => {
+          console.warn('[AddressAutocomplete] Failed to resolve place details:', err);
+          onChange({
+            address,
+            place_id: s.place_id,
+            latitude: null,
+            longitude: null,
+            city: s.city,
+            photo_url: null,
+          });
+        })
+        .finally(() => {
+          setResolvingDetails(false);
+          sessionTokenRef.current = null;
+        });
+      return;
+    }
+
     onChange({
       address,
       place_id: s.place_id,
       latitude: s.latitude,
       longitude: s.longitude,
       city: s.city,
+      photo_url: null,
     });
   };
 
@@ -210,17 +270,27 @@ export default function AddressAutocomplete({
         latitude: coords.lat,
         longitude: coords.lng,
         city: null,
+        photo_url: null,
       });
       return;
     }
 
-    onChange({ address: next, place_id: null, latitude: null, longitude: null, city: null });
+    onChange({
+      address: next,
+      place_id: null,
+      latitude: null,
+      longitude: null,
+      city: null,
+      photo_url: null,
+    });
   };
 
   const attribution =
-    provider === 'mappls'
-      ? 'Powered by Mappls © MapmyIndia'
-      : 'Results © OpenStreetMap contributors';
+    provider === 'google'
+      ? 'Powered by Google'
+      : provider === 'mappls'
+        ? 'Powered by Mappls © MapmyIndia'
+        : 'Results © OpenStreetMap contributors';
 
   return (
     <div ref={containerRef} style={{ position: 'relative' }}>
@@ -259,6 +329,14 @@ export default function AddressAutocomplete({
           autoComplete="off"
         />
       </div>
+
+      {resolvingDetails && (
+        <span
+          style={{ fontSize: 10, color: 'var(--ink-dim)', display: 'block', marginTop: 4 }}
+        >
+          Loading location details…
+        </span>
+      )}
 
       {isGoogleShortLink(input) && (
         <span

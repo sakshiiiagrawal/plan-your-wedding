@@ -6,13 +6,12 @@ import { queryClient } from './api/queryClient';
 
 // Layouts
 import DashboardLayout from './layouts/DashboardLayout';
-import PublicLayout from './layouts/PublicLayout';
 
 // Static imports (small, needed immediately)
 import Login from './pages/Login';
 import Onboard from './pages/Onboard';
 import Marketing from './pages/Marketing';
-import Home from './pages/public/Home';
+import PublicPage from './pages/public/PublicPage';
 import SlugGuard from './components/SlugGuard';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -72,17 +71,16 @@ function App() {
             {/* Onboarding wizard */}
             <Route path="/onboard" element={<Onboard />} />
 
-            {/* Slug-scoped public wedding website */}
+            {/* Slug-scoped public wedding pages — each page owns all chrome.
+                Static segments (login/dashboard below) outrank :pageSlug. */}
             <Route
               path="/:slug"
               element={
                 <SlugGuard>
-                  <PublicLayout />
+                  <PublicPage />
                 </SlugGuard>
               }
-            >
-              <Route index element={<Home />} />
-            </Route>
+            />
 
             {/* Slug-scoped login */}
             <Route
@@ -260,6 +258,17 @@ function App() {
                 }
               />
             </Route>
+
+            {/* Additional public pages (e.g. /:slug/invite) — static segments
+                above (login, dashboard) win route ranking over :pageSlug */}
+            <Route
+              path="/:slug/:pageSlug"
+              element={
+                <SlugGuard>
+                  <PublicPage />
+                </SlugGuard>
+              }
+            />
 
             {/* Catch all */}
             <Route path="*" element={<Navigate to="/" replace />} />

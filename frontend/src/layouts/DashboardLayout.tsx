@@ -381,26 +381,29 @@ export default function DashboardLayout() {
 
           {/* Right actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Print */}
-            <button
-              onClick={() => window.print()}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                fontSize: 12,
-                fontWeight: 500,
-                color: 'var(--ink-mid)',
-                border: '1px solid var(--line)',
-                borderRadius: 8,
-                padding: '5px 10px',
-                background: 'transparent',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <HiOutlinePrinter style={{ width: 13, height: 13 }} />
-              Print
-            </button>
+            {/* Print — list pages only; the Site Studio's zoomed live preview
+                prints as a clipped mess, so hide it there */}
+            {subPath !== '/website' && (
+              <button
+                onClick={() => window.print()}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: 'var(--ink-mid)',
+                  border: '1px solid var(--line)',
+                  borderRadius: 8,
+                  padding: '5px 10px',
+                  background: 'transparent',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <HiOutlinePrinter style={{ width: 13, height: 13 }} />
+                Print
+              </button>
+            )}
             {/* View site */}
             <NavLink
               to={`/${slug}`}
@@ -434,8 +437,15 @@ export default function DashboardLayout() {
           </div>
         </header>
 
-        {/* Page content */}
-        <main style={{ flex: 1, padding: '32px 40px', overflow: 'auto' }}>
+        {/* Page content — the Site Studio manages its own full-height chrome */}
+        <main
+          style={{
+            flex: 1,
+            padding: subPath === '/website' ? 0 : '32px 40px',
+            overflow: 'auto',
+            minHeight: 0,
+          }}
+        >
           <Outlet />
         </main>
       </div>

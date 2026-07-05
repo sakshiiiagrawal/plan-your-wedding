@@ -43,6 +43,7 @@ import type {
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { parseLocalDate } from '../../utils/date';
 import { currencySymbol, formatCurrency } from '../../utils/currency';
 
 /** Bride / groom amounts for a payment marked paid_by shared, from allocations + line-item sides. */
@@ -167,6 +168,7 @@ interface VenueFormData {
   place_id: string | null;
   latitude: number | null;
   longitude: number | null;
+  photo_url: string | null;
   default_check_in_date: string;
   default_check_out_date: string;
 }
@@ -200,6 +202,7 @@ const DEFAULT_FORM: VenueFormData = {
   place_id: null,
   latitude: null,
   longitude: null,
+  photo_url: null,
   default_check_in_date: '',
   default_check_out_date: '',
 };
@@ -274,7 +277,7 @@ function VenueRoomsSection({ venueId }: { venueId: string }) {
     );
 
   const fmtShortDate = (d: string | null) =>
-    d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : null;
+    d ? parseLocalDate(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -504,13 +507,14 @@ export default function Venues() {
       total_cost: venue.finance_summary?.committed_amount || '',
       expense_date: venue.finance?.expense_date || new Date().toISOString().slice(0, 10),
       side: firstItem?.side || 'shared',
-      bride_share_percentage: firstItem?.bride_share_percentage || 50,
+      bride_share_percentage: firstItem?.bride_share_percentage ?? 50,
       has_accommodation: venue.has_accommodation ?? false,
       contact_person: venue.contact_person || '',
       contact_phone: venue.contact_phone || '',
       place_id: (venue as any).place_id ?? null,
       latitude: (venue as any).latitude ?? null,
       longitude: (venue as any).longitude ?? null,
+      photo_url: (venue as any).photo_url ?? null,
       default_check_in_date: venue.default_check_in_date || '',
       default_check_out_date: venue.default_check_out_date || '',
     };
@@ -897,6 +901,23 @@ export default function Venues() {
                       gap: 8,
                     }}
                   >
+                    {(v as any).photo_url && (
+                      <img
+                        src={(v as any).photo_url}
+                        alt=""
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 8,
+                          objectFit: 'cover',
+                          flexShrink: 0,
+                          border: '1px solid var(--line)',
+                        }}
+                      />
+                    )}
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <h3
                         className="display"
@@ -1253,7 +1274,7 @@ export default function Venues() {
                             {formatPaymentAmount(payment.amount, payment.direction)}
                           </span>
                           <span style={{ color: 'var(--ink-low)' }}>
-                            {new Date(payment.due_date ?? payment.created_at).toLocaleDateString(
+                            {parseLocalDate(payment.due_date ?? payment.created_at).toLocaleDateString(
                               'en-IN',
                             )}
                           </span>
@@ -1659,21 +1680,43 @@ export default function Venues() {
 
                         <div>
                           <label className="label">Address *</label>
-                          <AddressAutocomplete
-                            value={formData.address}
-                            onChange={(sel) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                address: sel.address,
-                                place_id: sel.place_id,
-                                latitude: sel.latitude,
-                                longitude: sel.longitude,
-                                city: sel.city ?? prev.city,
-                              }))
-                            }
-                            placeholder="Search venue address…"
-                            required
-                          />
+                          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                            {formData.photo_url && (
+                              <img
+                                src={formData.photo_url}
+                                alt=""
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 8,
+                                  objectFit: 'cover',
+                                  flexShrink: 0,
+                                  border: '1px solid var(--line)',
+                                }}
+                              />
+                            )}
+                            <div style={{ flex: 1 }}>
+                              <AddressAutocomplete
+                                value={formData.address}
+                                onChange={(sel) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    address: sel.address,
+                                    place_id: sel.place_id,
+                                    latitude: sel.latitude,
+                                    longitude: sel.longitude,
+                                    city: sel.city ?? prev.city,
+                                    photo_url: sel.photo_url,
+                                  }))
+                                }
+                                placeholder="Search venue address…"
+                                required
+                              />
+                            </div>
+                          </div>
                         </div>
                         <div>
                           <label className="label">City *</label>
@@ -1988,7 +2031,7 @@ export default function Venues() {
                             });
                             const fmtDate = (d: string | null) =>
                               d
-                                ? new Date(d).toLocaleDateString('en-IN', {
+                                ? parseLocalDate(d).toLocaleDateString('en-IN', {
                                     day: 'numeric',
                                     month: 'short',
                                     year: 'numeric',
@@ -2458,7 +2501,7 @@ export default function Venues() {
                                         className="mono"
                                         style={{ fontSize: 11, color: 'var(--ink-dim)' }}
                                       >
-                                        {new Date(dateLabel).toLocaleDateString('en-IN')}
+                                        {parseLocalDate(dateLabel).toLocaleDateString('en-IN')}
                                         {payment.payment_method &&
                                           ` · ${PAYMENT_METHOD_LABELS[payment.payment_method] ?? payment.payment_method}`}
                                         {payment.notes ? ` · ${payment.notes}` : ''}

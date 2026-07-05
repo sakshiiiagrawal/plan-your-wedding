@@ -35,16 +35,23 @@ export function currencySymbol(currency: string = activeCurrency): string {
   return formatCurrency(0, currency).replace(/[\d.,\s]/g, '');
 }
 
+// Trim a redundant trailing ".0" so whole values read as "2L" not "2.0L".
+function trimDecimal(value: number): string {
+  return value.toFixed(1).replace(/\.0$/, '');
+}
+
 // India uses Lakh/Crore scaling; every other currency here uses the common
 // Western K/M — Lakh/Crore isn't meaningful outside INR.
 export function formatCurrencyCompact(amount: number, currency: string = activeCurrency): string {
   const symbol = currencySymbol(currency);
+  const sign = amount < 0 ? '-' : '';
+  const abs = Math.abs(amount);
   if (currency === 'INR') {
-    if (amount >= 100000) return `${symbol}${(amount / 100000).toFixed(1)}L`;
-    if (amount >= 1000) return `${symbol}${(amount / 1000).toFixed(0)}K`;
-    return `${symbol}${amount}`;
+    if (abs >= 100000) return `${sign}${symbol}${trimDecimal(abs / 100000)}L`;
+    if (abs >= 1000) return `${sign}${symbol}${trimDecimal(abs / 1000)}K`;
+    return `${sign}${symbol}${abs}`;
   }
-  if (amount >= 1000000) return `${symbol}${(amount / 1000000).toFixed(1)}M`;
-  if (amount >= 1000) return `${symbol}${(amount / 1000).toFixed(0)}K`;
-  return `${symbol}${amount}`;
+  if (abs >= 1000000) return `${sign}${symbol}${trimDecimal(abs / 1000000)}M`;
+  if (abs >= 1000) return `${sign}${symbol}${trimDecimal(abs / 1000)}K`;
+  return `${sign}${symbol}${abs}`;
 }

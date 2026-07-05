@@ -557,6 +557,28 @@ a:focus-visible,
   }
 }
 
+/* Gold sheen sweep used by the public-site ShimmerText effect */
+@keyframes site-shimmer {
+  to {
+    background-position: -200% center;
+  }
+}
+
+/* Inline-editable text in the Site Studio preview. Gated on the canvas's
+   [data-site-editing] so the live site never shows edit affordances. */
+[data-site-editing] .site-editable {
+  cursor: text;
+  border-radius: 3px;
+}
+[data-site-editing] .site-editable:hover {
+  outline: 1.5px dashed var(--site-accent, #d4af37);
+  outline-offset: 2px;
+}
+[data-site-editing] .site-editable:focus {
+  outline: 1.5px solid var(--site-accent, #d4af37);
+  outline-offset: 2px;
+}
+
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
@@ -672,6 +694,91 @@ a:focus-visible,
   }
   .bg-gradient-wedding {
     @apply bg-gradient-to-r from-maroon-800 via-maroon-700 to-gold-600;
+  }
+}
+
+/* ── Site Studio editor (dashboard → Public Site) ────────────────────────
+   Full-height editor shell: slim toolbar on top, live preview filling the
+   center, config panel docked right. Collapses to a stacked layout on
+   narrow screens. */
+.studio {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.studio-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+}
+.studio-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.studio-canvas {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background-color: var(--bg-highest);
+  background-image: radial-gradient(rgba(28, 25, 23, 0.07) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+.studio-panel {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line-soft);
+  background: var(--bg-panel);
+  overflow-y: auto;
+}
+.tpl-rail {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  padding: 3px;
+  scrollbar-width: none;
+  mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+}
+.tpl-rail::-webkit-scrollbar {
+  display: none;
+}
+.tpl-card {
+  flex: 0 0 88px;
+  scroll-snap-align: center;
+  position: relative;
+  border-radius: 10px;
+  cursor: pointer;
+}
+@media (max-width: 1023px) {
+  .studio {
+    height: auto;
+    min-height: 100%;
+  }
+  .studio-body {
+    flex-direction: column;
+  }
+  .studio-canvas {
+    flex: none;
+    height: 72vh;
+  }
+  .studio-panel {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--line-soft);
+    overflow-x: hidden;
+    overflow-y: visible;
   }
 }
 

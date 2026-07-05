@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
-import { searchPlaces } from '../services/geocode.service';
+import { searchPlaces, getGooglePlaceDetails } from '../services/geocode.service';
+import { BadRequestError } from '../shared/errors/HttpError';
 
 export const search = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -8,7 +9,20 @@ export const search = async (req: Request, res: Response, next: NextFunction): P
       res.json({ results: [], provider: 'none' });
       return;
     }
-    const data = await searchPlaces(q);
+    const session = req.query.session ? String(req.query.session) : undefined;
+    const data = await searchPlaces(q, session);
+    res.json(data);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const details = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const placeId = String(req.query.place_id ?? '').trim();
+    if (!placeId) throw new BadRequestError('place_id is required');
+    const session = req.query.session ? String(req.query.session) : undefined;
+    const data = await getGooglePlaceDetails(placeId, session);
     res.json(data);
   } catch (error) {
     next(error);

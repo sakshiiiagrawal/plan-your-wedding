@@ -11,6 +11,7 @@ export interface VenueRow {
   place_id: string | null;
   latitude: number | null;
   longitude: number | null;
+  photo_url: string | null;
   contact_person: string | null;
   contact_phone: string | null;
   capacity: number | null;
@@ -31,6 +32,7 @@ export interface VenueInsert {
   place_id?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  photo_url?: string | null;
   contact_person?: string | null;
   contact_phone?: string | null;
   capacity?: number | null;

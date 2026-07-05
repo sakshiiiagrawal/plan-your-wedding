@@ -6,6 +6,7 @@ import { env } from './config/env';
 import routes from './routes/index';
 import errorMiddleware from './middleware/error.middleware';
 import { verifyToken } from './middleware/auth.middleware';
+import { serveWithOgTags } from './controllers/og.controller';
 
 const app = express();
 
@@ -50,6 +51,12 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Public wedding pages rewritten here by Vercel get the SPA shell with
+// per-wedding OpenGraph tags injected (WhatsApp/social link previews).
+// Falls through to the normal chain for anything that isn't a wedding page.
+app.get('/:slug', serveWithOgTags);
+app.get('/:slug/:pageSlug', serveWithOgTags);
+
 // Public paths that do NOT require a token
 const PUBLIC_PATHS: string[] = [
   '/api/v1/auth/login',
@@ -78,6 +85,7 @@ const PROTECTED_PREFIXES: string[] = [
   '/api/v1/tasks',
   '/api/v1/website-content',
   '/api/v1/members',
+  '/api/v1/pages',
 ];
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);

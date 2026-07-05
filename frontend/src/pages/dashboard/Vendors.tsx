@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import Portal from '../../components/Portal';
 import CategoryCombobox from '../../components/CategoryCombobox';
 import { formatCurrency } from '../../utils/currency';
+import { parseLocalDate } from '../../utils/date';
 import {
   useCategoryTree,
   useCreateSourcePayment,
@@ -203,7 +204,7 @@ function summarizeMultiSelect(labels: string[], fallback: string) {
 function daysUntil(dateStr: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr);
+  const target = parseLocalDate(dateStr);
   target.setHours(0, 0, 0, 0);
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
@@ -235,7 +236,7 @@ function plannedBadge(dateStr: string): { label: string; style: React.CSSPropert
     };
   }
   return {
-    label: new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+    label: parseLocalDate(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
     style: { background: 'var(--bg-raised)', color: 'var(--ink-low)' },
   };
 }
@@ -2467,7 +2468,7 @@ export default function Vendors() {
                                         className="mono"
                                         style={{ fontSize: 11, color: 'var(--ink-dim)' }}
                                       >
-                                        {new Date(dateLabel).toLocaleDateString('en-IN')}
+                                        {parseLocalDate(dateLabel).toLocaleDateString('en-IN')}
                                         {payment.payment_method &&
                                           ` · ${PAYMENT_METHOD_LABELS[payment.payment_method] ?? payment.payment_method}`}
                                         {payment.notes ? ` · ${payment.notes}` : ''}

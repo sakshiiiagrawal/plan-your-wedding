@@ -167,6 +167,7 @@ export async function createVenue(
           place_id,
           latitude,
           longitude,
+          photo_url,
           contact_person,
           contact_phone,
           capacity,
@@ -175,7 +176,7 @@ export async function createVenue(
           default_check_out_date,
           notes
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING *
       `,
       [
@@ -187,6 +188,7 @@ export async function createVenue(
         venuePayload.place_id ?? null,
         venuePayload.latitude ?? null,
         venuePayload.longitude ?? null,
+        venuePayload.photo_url ?? null,
         venuePayload.contact_person ?? null,
         venuePayload.contact_phone ?? null,
         venuePayload.capacity ?? null,
@@ -287,6 +289,7 @@ export async function updateVenue(
       place_id: venuePayload.place_id ?? existing.place_id,
       latitude: venuePayload.latitude ?? existing.latitude,
       longitude: venuePayload.longitude ?? existing.longitude,
+      photo_url: venuePayload.photo_url ?? existing.photo_url,
       contact_person: venuePayload.contact_person ?? existing.contact_person,
       contact_phone: venuePayload.contact_phone ?? existing.contact_phone,
       capacity: venuePayload.capacity ?? existing.capacity,
@@ -314,7 +317,8 @@ export async function updateVenue(
           has_accommodation = $13,
           default_check_in_date = $14,
           default_check_out_date = $15,
-          notes = $16
+          notes = $16,
+          photo_url = $17
         WHERE id = $1
           AND user_id = $2
         RETURNING *
@@ -336,6 +340,7 @@ export async function updateVenue(
         nextValues.default_check_in_date,
         nextValues.default_check_out_date,
         nextValues.notes,
+        nextValues.photo_url,
       ],
     );
     const venue = rows[0] as VenueRow | undefined;

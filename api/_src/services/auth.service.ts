@@ -181,6 +181,21 @@ export async function createUser(input: RegisterInput): Promise<UserRow> {
       { onConflict: 'section_name,user_id' },
     );
 
+  // Every wedding starts with a home page (the multi-page public site model);
+  // more pages (e.g. an invitation) are added from the Site Studio.
+  await supabase.from('public_pages').upsert(
+    {
+      user_id: newUser.id,
+      page_slug: '',
+      kind: 'website',
+      title: 'Main website',
+      template: 'classic',
+      palette: 'royal',
+      config: {},
+    },
+    { onConflict: 'user_id,page_slug' },
+  );
+
   void requestEmailVerification(newUser).catch((err) =>
     console.error('[mailer] verification email failed:', err),
   );

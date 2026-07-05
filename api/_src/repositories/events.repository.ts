@@ -111,7 +111,9 @@ export async function findPublicEventsBySlug(ownerId: string): Promise<EventWith
     .from('events')
     .select('*, venues(*)')
     .eq('user_id', ownerId)
-    .order('event_date', { ascending: true });
+    .eq('is_public', true)
+    .order('event_date', { ascending: true })
+    .order('start_time', { ascending: true });
 
   if (error) throw error;
   return (data ?? []) as EventWithVenue[];

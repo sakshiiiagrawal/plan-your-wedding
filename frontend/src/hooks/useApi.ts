@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
+import type { PublicEvent } from '../site/types';
 import type {
   HeroContent,
   GuestWithDetails,
@@ -113,15 +114,7 @@ export const useDeleteGalleryImage = () => {
   });
 };
 
-export interface PublicEvent {
-  name: string;
-  description?: string;
-  date?: string;
-  time?: string;
-  venue?: string;
-  color?: string;
-  dress?: string;
-}
+export type { PublicEvent } from '../site/types';
 
 export const usePublicEvents = (slug?: string | null) =>
   useQuery<PublicEvent[]>({
@@ -130,6 +123,82 @@ export const usePublicEvents = (slug?: string | null) =>
     enabled: !!slug,
     staleTime: 5 * 60 * 1000,
   });
+
+// =====================================================
+// PUBLIC PAGES (multi-page site)
+// =====================================================
+
+export interface PublicPagePayload {
+  page_slug: string;
+  kind: 'website' | 'invite';
+  title: string;
+  template: string;
+  palette: string;
+   
+  config: Record<string, any>;
+}
+
+export interface PublicPageRecord extends PublicPagePayload {
+  id: string;
+  is_published: boolean;
+  display_order: number;
+}
+
+/** Published pages of a wedding, as seen by guests. */
+export const usePublicPages = (slug?: string | null) =>
+  useQuery<PublicPagePayload[]>({
+    queryKey: ['public-pages', slug],
+    queryFn: () => api.get(`/public/${slug}/pages`).then((res) => res.data),
+    enabled: !!slug,
+    staleTime: 60 * 1000,
+  });
+
+/** All pages of the authenticated wedding (Site Studio). */
+export const usePages = () =>
+  useQuery<PublicPageRecord[]>({
+    queryKey: ['pages'],
+    queryFn: () => api.get('/pages').then((res) => res.data),
+  });
+
+const invalidatePages = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({ queryKey: ['pages'] });
+  queryClient.invalidateQueries({ queryKey: ['public-pages'] });
+};
+
+export const useCreatePage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Partial<PublicPageRecord>) =>
+      api.post('/pages', payload).then((res) => res.data),
+    onSuccess: (created: PublicPageRecord) => {
+      // Seed the cache immediately so the newly created page is present
+      // before the invalidated refetch lands (avoids a stale-list render
+      // where the selection falls back to the home page).
+      queryClient.setQueryData<PublicPageRecord[]>(['pages'], (old) => [
+        ...(old ?? []),
+        created,
+      ]);
+      invalidatePages(queryClient);
+    },
+  });
+};
+
+export const useUpdatePage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...payload }: Partial<PublicPageRecord> & { id: string }) =>
+      api.put(`/pages/${id}`, payload).then((res) => res.data),
+    onSuccess: () => invalidatePages(queryClient),
+  });
+};
+
+export const useDeletePage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/pages/${id}`).then((res) => res.data),
+    onSuccess: () => invalidatePages(queryClient),
+  });
+};
 
 // =====================================================
 // DASHBOARD HOOKS
