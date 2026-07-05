@@ -1,12 +1,9 @@
 import { HiOutlinePrinter } from 'react-icons/hi';
-import type { SiteData } from './types';
 
-/** Rendered once, alongside QrCodeBlock, whenever the viewer is the couple or
- *  an editor — never guests. Prints the page exactly as rendered, so the
- *  browser's print dialog already reflects whichever sections are toggled on. */
-export default function PrintButton({ data }: { data: SiteData }) {
-  if (!data.authed) return null;
-
+/** Rendered once, alongside QrCodeBlock, on every public page. Prints the page
+ *  exactly as rendered, so the browser's print dialog already reflects whichever
+ *  sections are toggled on — handy for guests saving the itinerary too. */
+export default function PrintButton() {
   return (
     <button
       onClick={() => window.print()}
@@ -14,24 +11,28 @@ export default function PrintButton({ data }: { data: SiteData }) {
       className="no-print"
       style={{
         position: 'fixed',
-        bottom: 16,
-        left: 16,
+        top: 16,
+        right: 16,
         zIndex: 80,
-        width: 40,
         height: 40,
-        borderRadius: '50%',
-        background: 'rgba(0,0,0,0.35)',
+        padding: '0 16px',
+        borderRadius: 20,
+        background: 'rgba(0,0,0,0.55)',
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255,255,255,0.25)',
+        border: '1px solid rgba(255,255,255,0.3)',
         color: 'white',
+        fontSize: 13,
+        fontWeight: 500,
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
+        gap: 8,
+        boxShadow: '0 6px 20px -8px rgba(0,0,0,0.5)',
       }}
     >
       <HiOutlinePrinter style={{ width: 18, height: 18 }} />
+      Print
     </button>
   );
 }

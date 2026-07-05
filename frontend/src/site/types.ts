@@ -122,6 +122,8 @@ export interface SiteData {
   authed: boolean;
   /** True inside the Site Studio preview canvas (disables live form submission). */
   preview?: boolean;
+  /** Opened via ?print=1: skip tap-to-open intros so the whole page prints. */
+  print?: boolean;
   /** Preview-only: notifies the Studio canvas once a tap-to-open intro has been dismissed, so it can stop suppressing scroll. */
   onIntroOpen?: () => void;
 }

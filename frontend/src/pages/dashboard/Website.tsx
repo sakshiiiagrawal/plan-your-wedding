@@ -9,6 +9,7 @@ import {
   HiOutlineLink,
   HiOutlinePencil,
   HiOutlinePlus,
+  HiOutlinePrinter,
   HiOutlineSparkles,
   HiOutlineTrash,
 } from 'react-icons/hi';
@@ -680,6 +681,32 @@ export default function Website() {
                 }}
               >
                 <HiOutlineExternalLink style={{ width: 14, height: 14 }} />
+              </a>
+              <a
+                href={`${pageUrl(selectedPage)}?print=1`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={selectedPage.is_published ? 'Print page' : 'Publish it first to print'}
+                aria-label="Print page"
+                onClick={(e) => {
+                  if (!selectedPage.is_published) {
+                    e.preventDefault();
+                    toast("This page isn't live yet — publish it with the eye icon first");
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 30,
+                  height: 30,
+                  borderRadius: 8,
+                  border: '1px solid var(--line)',
+                  color: 'var(--ink-mid)',
+                  background: 'transparent',
+                }}
+              >
+                <HiOutlinePrinter style={{ width: 14, height: 14 }} />
               </a>
             </>
           )}

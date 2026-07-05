@@ -241,6 +241,7 @@ export default function Invite({ data }: TemplateProps) {
   const [opened, setOpened] = useState(
     () =>
       !envelopeEnabled ||
+      data.print ||
       (!data.preview && sessionStorage.getItem(`invited:${data.slug}`) === 'true'),
   );
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);

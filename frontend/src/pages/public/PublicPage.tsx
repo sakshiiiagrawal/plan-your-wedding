@@ -1,5 +1,5 @@
-import { Suspense } from 'react';
-import { useParams } from 'react-router-dom';
+import { Suspense, useEffect } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import {
   useGalleryContent,
   useHeroContent,
@@ -27,12 +27,23 @@ import { parseLocalDate } from '../../utils/date';
 export default function PublicPage() {
   const { slug, pageSlug = '' } = useParams<{ slug: string; pageSlug?: string }>();
   const { isAuthenticated } = useAuth();
+  const [searchParams] = useSearchParams();
 
   const { data: pages, isLoading: pagesLoading } = usePublicPages(slug);
   const { data: heroContent, isLoading: heroLoading } = useHeroContent(slug);
   const { data: events = [] } = usePublicEvents(slug);
   const { data: storyContent } = useOurStory(slug);
   const { data: galleryContent } = useGalleryContent(slug);
+
+  // Opened from the Studio's Print button (?print=1): fire the browser dialog
+  // once the page has rendered. ponytail: fixed 800ms lets hero images/fonts
+  // settle; bump it if a template still prints half-loaded.
+  const wantsPrint = searchParams.get('print') === '1';
+  useEffect(() => {
+    if (!wantsPrint || pagesLoading || heroLoading) return;
+    const t = setTimeout(() => window.print(), 800);
+    return () => clearTimeout(t);
+  }, [wantsPrint, pagesLoading, heroLoading]);
 
   if (pagesLoading || heroLoading) {
     return <div className="min-h-screen" style={{ background: '#faf8f4' }} />;
@@ -113,6 +124,7 @@ export default function PublicPage() {
       url: `${window.location.origin}/${slug}${page.page_slug ? `/${page.page_slug}` : ''}`,
     },
     authed: isAuthenticated,
+    print: wantsPrint,
   };
 
   return (
@@ -122,7 +134,7 @@ export default function PublicPage() {
         <Template key={`${page.page_slug}:${template.id}`} data={data} />
       </Suspense>
       <QrCodeBlock data={data} />
-      <PrintButton data={data} />
+      <PrintButton />
     </SiteCopyContext.Provider>
   );
 }

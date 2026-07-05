@@ -26,12 +26,12 @@ import { formatDate } from '../utils/date';
 const NAV_ITEMS = [
   { path: '', label: 'Overview', icon: HiOutlineHome, end: true },
   { path: '/venues', label: 'Venues', icon: HiOutlineLocationMarker },
+  { path: '/events', label: 'Events', icon: HiOutlineCalendar },
   // Grouped right after Venues — this is room allocation for the venues
   // marked "Has Accommodation" there, not a separate venue type.
-  { path: '/accommodations', label: 'Room Allocation', icon: HiOutlineOfficeBuilding },
-  { path: '/events', label: 'Events', icon: HiOutlineCalendar },
-  { path: '/vendors', label: 'Vendors', icon: HiOutlineBriefcase },
   { path: '/guests', label: 'Guests & RSVP', icon: HiOutlineUserGroup },
+  { path: '/vendors', label: 'Vendors', icon: HiOutlineBriefcase },
+  { path: '/accommodations', label: 'Room Allocation', icon: HiOutlineOfficeBuilding },
   { path: '/budget', label: 'Budget', icon: HiOutlineCurrencyRupee },
   { path: '/tasks', label: 'Tasks', icon: HiOutlineClipboardList },
   { path: '/gallery', label: 'Gallery', icon: HiOutlinePhotograph },

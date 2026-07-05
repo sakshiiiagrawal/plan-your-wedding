@@ -134,7 +134,7 @@ export default function Polaroid({ data }: TemplateProps) {
   const envelopeEnabled = hasSection('envelope');
   const showHero = hasSection('hero');
   const [opened, setOpened] = useState(
-    () => !envelopeEnabled || (!data.preview && sessionStorage.getItem(`invited:${data.slug}`) === 'true'),
+    () => !envelopeEnabled || data.print || (!data.preview && sessionStorage.getItem(`invited:${data.slug}`) === 'true'),
   );
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 

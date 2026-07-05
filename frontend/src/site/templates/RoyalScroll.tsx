@@ -143,7 +143,7 @@ export default function RoyalScroll({ data }: TemplateProps) {
   const showHero = hasSection('hero');
   const envelopeEnabled = hasSection('envelope');
   const [opened, setOpened] = useState(
-    () => !envelopeEnabled || (!data.preview && sessionStorage.getItem(`invited:${data.slug}`) === 'true'),
+    () => !envelopeEnabled || data.print || (!data.preview && sessionStorage.getItem(`invited:${data.slug}`) === 'true'),
   );
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
