@@ -1,3 +1,4 @@
+// Re-export from shared package — single source of truth.
 export {
   EXPENSE_CATEGORIES,
   DEFAULT_CATEGORY_TREE,
