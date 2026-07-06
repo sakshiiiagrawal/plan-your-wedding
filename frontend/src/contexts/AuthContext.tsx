@@ -1,11 +1,14 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api/axios';
+import { setActiveCurrency } from '../utils/currency';
 
 export interface AuthUser {
   id: string;
   email: string;
   name: string;
   slug?: string | null;
+  emailVerified?: boolean;
+  currency?: string;
 }
 
 interface RegisterData {
@@ -49,9 +52,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const response = await api.get<AuthUser>('/auth/me');
       setUser(response.data);
-      // Restore slug from localStorage on page reload
-      const storedSlug = localStorage.getItem('slug');
-      if (storedSlug) setSlug(storedSlug);
+      setActiveCurrency(response.data.currency);
+      // The server resolves the active wedding's slug (accounting for
+      // membership), which may differ from what was cached at login time.
+      if (response.data.slug) {
+        localStorage.setItem('slug', response.data.slug);
+        setSlug(response.data.slug);
+      }
     } catch {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -103,6 +110,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.removeItem('slug');
     setUser(null);
     setSlug(null);
+    setActiveCurrency(null);
   };
 
   return (

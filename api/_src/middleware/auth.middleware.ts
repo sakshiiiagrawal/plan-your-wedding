@@ -29,7 +29,7 @@ export const verifyToken = async (
 
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, email, name')
+      .select('id, email, name, slug, email_verified, currency, active_owner_id')
       .eq('id', decoded.id)
       .single();
 
@@ -38,7 +38,46 @@ export const verifyToken = async (
       return;
     }
 
-    req.user = user as AuthenticatedUser;
+    let ownerId = user.id;
+    let slug = user.slug;
+    let currency = user.currency ?? 'INR';
+    let role: AuthenticatedUser['role'] = 'admin';
+
+    // Users default to their own wedding. A collaborator can switch into a
+    // wedding they're an active member of (see setActiveWedding); that choice is
+    // stored in active_owner_id. Re-validate the membership every request so a
+    // revoked invite silently drops them back to their own wedding.
+    if (user.active_owner_id && user.active_owner_id !== user.id) {
+      const { data: membership } = await supabase
+        .from('wedding_members')
+        .select('role, owner:users!owner_id(slug, currency)')
+        .eq('member_id', user.id)
+        .eq('owner_id', user.active_owner_id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (membership) {
+        const owner = membership.owner as unknown as {
+          slug: string | null;
+          currency: string | null;
+        } | null;
+        ownerId = user.active_owner_id;
+        role = membership.role as AuthenticatedUser['role'];
+        slug = owner?.slug ?? null;
+        currency = owner?.currency ?? 'INR';
+      }
+    }
+
+    req.user = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      ownerId,
+      slug,
+      emailVerified: user.email_verified ?? false,
+      currency,
+      role,
+    };
     next();
   } catch (error) {
     if (

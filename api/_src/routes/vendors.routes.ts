@@ -7,11 +7,13 @@ import {
 } from '../validators/vendors.validator';
 import { createPaymentSchema } from '../validators/venues.validator';
 import * as ctrl from '../controllers/vendors.controller';
+import * as exportController from '../controllers/export.controller';
 
 const router = Router();
 
 router.get('/', ctrl.getAll);
 router.get('/categories', ctrl.getCategories);
+router.get('/export', exportController.exportVendors);
 router.get('/:id', ctrl.getById);
 router.post('/', validateBody(createVendorSchema), ctrl.create);
 router.put('/:id', validateBody(updateVendorSchema), ctrl.update);

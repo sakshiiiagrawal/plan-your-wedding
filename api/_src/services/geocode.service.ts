@@ -1,20 +1,142 @@
-// Mappls (MapmyIndia) geocode proxy service.
-// Auth flow: OAuth2 client_credentials when both CLIENT_ID + CLIENT_SECRET are
-// set; otherwise treats CLIENT_ID as a static bearer key (also valid for
-// Mappls REST API keys issued from the console).
-// Falls through to Photon (OSM) when Mappls isn't configured.
+// Geocode proxy service — plug-in provider chain: Google Places (New) is
+// tried first when configured, then Mappls (MapmyIndia), falling through to
+// Photon (OSM, free/no-key) as the final resort.
+//
+// Google Places (New) Autocomplete does not return coordinates or photos —
+// only a place_id + label. Callers must follow up with getGooglePlaceDetails()
+// once the user picks a suggestion to resolve lat/long and (optionally) a
+// photo URL. Mappls/Photon return full coordinates inline, unchanged.
 
 const MAPPLS_TOKEN_URL = 'https://outpost.mappls.com/api/security/oauth/token';
 const MAPPLS_SEARCH_URL = 'https://atlas.mappls.com/api/places/search/json';
 const PHOTON_URL = 'https://photon.komoot.io/api/';
+const GOOGLE_API_ROOT = 'https://places.googleapis.com/v1';
+const GOOGLE_AUTOCOMPLETE_URL = `${GOOGLE_API_ROOT}/places:autocomplete`;
+const GOOGLE_PLACES_BASE_URL = `${GOOGLE_API_ROOT}/places`;
 
 export interface GeocodeSuggestion {
   label: string;
   sublabel: string | null;
   place_id: string | null;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   city: string | null;
+}
+
+export interface PlaceDetails {
+  latitude: number | null;
+  longitude: number | null;
+  city: string | null;
+  formatted_address: string | null;
+  photo_url: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Google Places (New) autocomplete
+// ---------------------------------------------------------------------------
+
+interface GooglePlacePrediction {
+  placePrediction?: {
+    placeId: string;
+    structuredFormat?: {
+      mainText?: { text?: string };
+      secondaryText?: { text?: string };
+    };
+    text?: { text?: string };
+  };
+}
+
+async function searchGoogle(
+  query: string,
+  apiKey: string,
+  sessionToken?: string,
+): Promise<GeocodeSuggestion[]> {
+  const res = await fetch(GOOGLE_AUTOCOMPLETE_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': apiKey,
+    },
+    body: JSON.stringify({ input: query, ...(sessionToken ? { sessionToken } : {}) }),
+  });
+  if (!res.ok) throw new Error(`Google Places autocomplete error: ${res.status}`);
+  const data = (await res.json()) as { suggestions?: GooglePlacePrediction[] };
+
+  return (data.suggestions ?? [])
+    .map((s) => s.placePrediction)
+    .filter((p): p is NonNullable<GooglePlacePrediction['placePrediction']> => p != null)
+    .map((p) => ({
+      label: p.structuredFormat?.mainText?.text ?? p.text?.text ?? 'Unknown',
+      sublabel: p.structuredFormat?.secondaryText?.text ?? null,
+      place_id: p.placeId,
+      // Autocomplete (New) doesn't return geometry — resolved via
+      // getGooglePlaceDetails() once the user picks a suggestion.
+      latitude: null,
+      longitude: null,
+      city: null,
+    }));
+}
+
+interface GooglePlaceDetailsResponse {
+  formattedAddress?: string;
+  location?: { latitude?: number; longitude?: number };
+  addressComponents?: { longText?: string; types?: string[] }[];
+  photos?: { name?: string }[];
+}
+
+async function fetchGooglePhotoUrl(photoName: string, apiKey: string): Promise<string | null> {
+  try {
+    const url = `${GOOGLE_API_ROOT}/${photoName}/media?maxWidthPx=800&skipHttpRedirect=true`;
+    const res = await fetch(url, { headers: { 'X-Goog-Api-Key': apiKey } });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { photoUri?: string };
+    return data.photoUri ?? null;
+  } catch (err) {
+    console.warn('[geocode] Google photo fetch failed:', (err as Error).message);
+    return null;
+  }
+}
+
+function pickGoogleCity(components: GooglePlaceDetailsResponse['addressComponents']): string | null {
+  if (!components) return null;
+  const byType = (type: string) => components.find((c) => c.types?.includes(type))?.longText;
+  return (
+    byType('locality') ??
+    byType('administrative_area_level_2') ??
+    byType('administrative_area_level_1') ??
+    null
+  );
+}
+
+export async function getGooglePlaceDetails(
+  placeId: string,
+  sessionToken?: string,
+): Promise<PlaceDetails> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) throw new Error('GOOGLE_PLACES_API_KEY is not configured');
+
+  const params = new URLSearchParams();
+  if (sessionToken) params.set('sessionToken', sessionToken);
+  const url = `${GOOGLE_PLACES_BASE_URL}/${encodeURIComponent(placeId)}${params.size ? `?${params}` : ''}`;
+  const res = await fetch(url, {
+    headers: {
+      'X-Goog-Api-Key': apiKey,
+      'X-Goog-FieldMask': 'formattedAddress,location,addressComponents,photos',
+    },
+  });
+  if (!res.ok) throw new Error(`Google Places details error: ${res.status}`);
+  const data = (await res.json()) as GooglePlaceDetailsResponse;
+
+  const photoName = data.photos?.[0]?.name;
+  const photo_url = photoName ? await fetchGooglePhotoUrl(photoName, apiKey) : null;
+
+  return {
+    latitude: data.location?.latitude ?? null,
+    longitude: data.location?.longitude ?? null,
+    city: pickGoogleCity(data.addressComponents),
+    formatted_address: data.formattedAddress ?? null,
+    photo_url,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -142,10 +264,23 @@ async function searchPhoton(query: string): Promise<GeocodeSuggestion[]> {
 // Public entry point
 // ---------------------------------------------------------------------------
 
-export async function searchPlaces(query: string): Promise<{
+export async function searchPlaces(
+  query: string,
+  sessionToken?: string,
+): Promise<{
   results: GeocodeSuggestion[];
-  provider: 'mappls' | 'photon';
+  provider: 'google' | 'mappls' | 'photon';
 }> {
+  const googleApiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (googleApiKey) {
+    try {
+      const results = await searchGoogle(query, googleApiKey, sessionToken);
+      return { results, provider: 'google' };
+    } catch (err) {
+      console.warn('[geocode] Google Places failed, falling back:', (err as Error).message);
+    }
+  }
+
   const clientId = process.env.MAPPLS_CLIENT_ID;
   const clientSecret = process.env.MAPPLS_CLIENT_SECRET;
 

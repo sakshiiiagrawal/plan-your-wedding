@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { currencySymbol, formatCurrency } from '../../utils/currency';
 
 interface SplitShareProps {
   total: number;
@@ -18,9 +19,6 @@ const GROOM_BORDER = 'rgba(29,78,216,0.35)';
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 const roundPct = (n: number) => Math.round(n * 100) / 100;
 
-const formatInr = (n: number) =>
-  new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Math.round(n));
-
 const formatPct = (n: number) => {
   const rounded = Math.round(n * 100) / 100;
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
@@ -35,8 +33,6 @@ export default function SplitShare({
 }: SplitShareProps) {
   const hasTotal = total > 0;
   const [mode, setMode] = useState<'percent' | 'amount'>('percent');
-  const [hoveredSide, setHoveredSide] = useState<'bride' | 'groom' | null>(null);
-  const [focusedSecondarySide, setFocusedSecondarySide] = useState<'bride' | 'groom' | null>(null);
   const effectiveMode = hasTotal ? mode : 'percent';
 
   const bridePct = clamp(Number.isFinite(bridePercentage) ? bridePercentage : 50, 0, 100);
@@ -80,18 +76,17 @@ export default function SplitShare({
     const pct = isBride ? bridePct : groomPct;
     const amt = isBride ? brideAmt : groomAmt;
     const inputValue = effectiveMode === 'percent' ? formatPct(pct) : String(amt);
-    const prefix = effectiveMode === 'percent' ? '' : '₹';
+    const prefix = effectiveMode === 'percent' ? '' : currencySymbol();
     const suffix = effectiveMode === 'percent' ? '%' : '';
     const secondaryMetric = effectiveMode === 'percent' ? 'amount' : 'percent';
     const secondaryValue = secondaryMetric === 'amount' ? String(amt) : formatPct(pct);
-    const secondaryPrefix = secondaryMetric === 'amount' ? '≈ ₹' : '';
+    const secondaryPrefix = secondaryMetric === 'amount' ? `≈ ${currencySymbol()}` : '';
     const secondarySuffix = secondaryMetric === 'percent' ? '%' : '';
-    const showSecondaryInput = !disabled && (hoveredSide === side || focusedSecondarySide === side);
+    // The currency secondary is a dead control without a total — show a hint instead
+    const showSecondaryInput = !disabled && (secondaryMetric === 'percent' || hasTotal);
 
     return (
       <div
-        onMouseEnter={() => setHoveredSide(side)}
-        onMouseLeave={() => setHoveredSide((current) => (current === side ? null : current))}
         style={{
           border: `1px solid ${border}`,
           background: bg,
@@ -119,6 +114,7 @@ export default function SplitShare({
           <input
             type="number"
             inputMode="decimal"
+            className="no-spinner"
             min={0}
             max={effectiveMode === 'percent' ? 100 : total || undefined}
             step={effectiveMode === 'percent' ? 0.5 : 1}
@@ -145,7 +141,7 @@ export default function SplitShare({
           style={{
             fontSize: 10,
             color: 'var(--ink-dim)',
-            minHeight: 12,
+            height: 14,
             display: 'flex',
             alignItems: 'center',
             gap: 3,
@@ -157,19 +153,14 @@ export default function SplitShare({
               <input
                 type="number"
                 inputMode="decimal"
+                className="no-spinner"
                 min={0}
                 max={secondaryMetric === 'percent' ? 100 : total || undefined}
                 step={secondaryMetric === 'percent' ? 0.5 : 1}
                 value={secondaryValue}
                 disabled={disabled}
                 onChange={(e) => updateFromMetric(side, e.target.value, secondaryMetric)}
-                onFocus={(e) => {
-                  setFocusedSecondarySide(side);
-                  e.currentTarget.select();
-                }}
-                onBlur={() =>
-                  setFocusedSecondarySide((current) => (current === side ? null : current))
-                }
+                onFocus={(e) => e.currentTarget.select()}
                 aria-label={`${isBride ? 'Bride' : 'Groom'} ${
                   secondaryMetric === 'amount' ? 'amount' : 'percentage'
                 }`}
@@ -181,20 +172,21 @@ export default function SplitShare({
                   outline: 'none',
                   color: 'var(--ink-dim)',
                   fontSize: 10,
+                  height: '100%',
                   padding: 0,
                   fontFamily: 'var(--font-sans)',
                 }}
               />
               {secondarySuffix && <span>{secondarySuffix}</span>}
             </>
-          ) : effectiveMode === 'percent' ? (
+          ) : disabled ? (
             hasTotal ? (
-              `≈ ₹${formatInr(amt)}`
+              `≈ ${formatCurrency(amt)}`
             ) : (
               ''
             )
           ) : (
-            `${formatPct(pct)}%`
+            `Set the total to split by ${currencySymbol()}`
           )}
         </div>
       </div>
@@ -254,7 +246,7 @@ export default function SplitShare({
                   transition: 'all 150ms',
                 }}
               >
-                {m === 'percent' ? '%' : '₹'}
+                {m === 'percent' ? '%' : currencySymbol()}
               </button>
             );
           })}

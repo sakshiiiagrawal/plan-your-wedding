@@ -38,7 +38,7 @@ export default function UnsavedChangesDialog({
             background: 'var(--bg-panel)',
             borderRadius: 'var(--radius-lg)',
             padding: 24,
-            maxWidth: 420,
+            maxWidth: 500,
             width: '100%',
             boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
           }}

@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate, Navigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useHeroContent } from '../hooks/useApi';
+import { useHeroContent, useWeddings, useSetActiveWedding } from '../hooks/useApi';
 import {
   HiOutlineHome,
   HiOutlineCalendar,
@@ -14,25 +14,29 @@ import {
   HiOutlineMenu,
   HiOutlinePhotograph,
   HiOutlineGlobe,
-  HiOutlineSearch,
-  HiOutlineBell,
   HiOutlineChevronRight,
   HiOutlineExternalLink,
+  HiOutlineCog,
+  HiOutlinePrinter,
 } from 'react-icons/hi';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CornerFlourish } from '../components/ui';
+import { formatDate } from '../utils/date';
 
 const NAV_ITEMS = [
   { path: '', label: 'Overview', icon: HiOutlineHome, end: true },
   { path: '/venues', label: 'Venues', icon: HiOutlineLocationMarker },
   { path: '/events', label: 'Events', icon: HiOutlineCalendar },
-  { path: '/vendors', label: 'Vendors', icon: HiOutlineBriefcase },
+  // Grouped right after Venues — this is room allocation for the venues
+  // marked "Has Accommodation" there, not a separate venue type.
   { path: '/guests', label: 'Guests & RSVP', icon: HiOutlineUserGroup },
-  { path: '/accommodations', label: 'Accommodations', icon: HiOutlineOfficeBuilding },
-  { path: '/expense', label: 'Budget', icon: HiOutlineCurrencyRupee },
+  { path: '/vendors', label: 'Vendors', icon: HiOutlineBriefcase },
+  { path: '/accommodations', label: 'Room Allocation', icon: HiOutlineOfficeBuilding },
+  { path: '/budget', label: 'Budget', icon: HiOutlineCurrencyRupee },
   { path: '/tasks', label: 'Tasks', icon: HiOutlineClipboardList },
   { path: '/gallery', label: 'Gallery', icon: HiOutlinePhotograph },
   { path: '/website', label: 'Public Site', icon: HiOutlineGlobe },
+  { path: '/settings', label: 'Settings', icon: HiOutlineCog },
 ];
 
 const CRUMB_MAP: Record<string, string> = {
@@ -40,26 +44,40 @@ const CRUMB_MAP: Record<string, string> = {
   '/guests': 'guests & rsvp',
   '/events': 'events',
   '/venues': 'venues',
-  '/accommodations': 'accommodations',
+  '/accommodations': 'room allocation',
   '/vendors': 'vendors',
-  '/expense': 'budget',
+  '/budget': 'budget',
   '/tasks': 'tasks',
   '/gallery': 'gallery',
   '/website': 'public site',
+  '/settings': 'settings',
 };
 
 export default function DashboardLayout() {
-  const { logout, user, isAuthenticated, loading } = useAuth();
+  const { logout, user, slug: authSlug, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { slug } = useParams<{ slug: string }>();
+  const { slug: urlSlug } = useParams<{ slug: string }>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const { data: heroContent } = useHeroContent(slug);
+  // The URL slug is cosmetic; the authenticated slug (which accounts for
+  // wedding-member access) is the source of truth. Correct the URL if they
+  // ever diverge so branding/data can't come from someone else's wedding.
+  useEffect(() => {
+    if (!loading && isAuthenticated && authSlug && urlSlug && urlSlug !== authSlug) {
+      navigate(location.pathname.replace(`/${urlSlug}`, `/${authSlug}`), { replace: true });
+    }
+  }, [loading, isAuthenticated, authSlug, urlSlug, location.pathname, navigate]);
+
+  const slug = authSlug ?? urlSlug;
+  const { data: weddingData } = useWeddings();
+  const setActiveWedding = useSetActiveWedding();
+  const weddings = weddingData?.weddings ?? [];
+  const { data: heroContent } = useHeroContent();
   const brideName = heroContent?.bride_name || 'Bride';
   const groomName = heroContent?.groom_name || 'Groom';
   const weddingDate = heroContent?.wedding_date
-    ? new Date(heroContent.wedding_date).toLocaleDateString('en-US', {
+    ? formatDate(heroContent.wedding_date, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
@@ -112,7 +130,7 @@ export default function DashboardLayout() {
 
       {/* ── Sidebar ────────────────────────────────────────────────── */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-30 flex flex-col transform transition-transform duration-200 ease-in-out ${
+        className={`no-print fixed lg:static inset-y-0 left-0 z-30 flex flex-col transform transition-transform duration-200 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
         style={{
@@ -204,16 +222,50 @@ export default function DashboardLayout() {
 
         {/* Footer */}
         <div style={{ padding: '16px 20px' }}>
+          {/* Wedding switcher — only when the user collaborates on more than
+              their own wedding. Switching reloads to re-scope all data. */}
+          {weddings.length > 1 && (
+            <div style={{ marginBottom: 12 }}>
+              <div className="uppercase-eyebrow" style={{ marginBottom: 6 }}>
+                Working on
+              </div>
+              <select
+                value={weddingData?.activeOwnerId ?? ''}
+                disabled={setActiveWedding.isPending}
+                onChange={(e) => setActiveWedding.mutate(e.target.value)}
+                style={{
+                  width: '100%',
+                  fontSize: 12,
+                  padding: '7px 8px',
+                  borderRadius: 6,
+                  border: '1px solid var(--line)',
+                  background: 'var(--bg-raised)',
+                  color: 'var(--ink-high)',
+                  cursor: setActiveWedding.isPending ? 'wait' : 'pointer',
+                }}
+              >
+                {weddings.map((w) => (
+                  <option key={w.ownerId} value={w.ownerId}>
+                    {w.isOwn ? `${w.label} (mine)` : `${w.label} · ${w.role}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div
             className="mono"
+            title={`${window.location.host}/${slug}`}
             style={{
               fontSize: 11,
               color: 'var(--ink-dim)',
               letterSpacing: '0.08em',
               marginBottom: 10,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}
           >
-            {slug}.weds.app
+            {window.location.host}/{slug}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <div
@@ -287,6 +339,7 @@ export default function DashboardLayout() {
       >
         {/* Topbar */}
         <header
+          className="no-print"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -328,46 +381,29 @@ export default function DashboardLayout() {
 
           {/* Right actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Search */}
-            <div className="hidden md:block" style={{ position: 'relative' }}>
-              <HiOutlineSearch
+            {/* Print — list pages only; the Site Studio's zoomed live preview
+                prints as a clipped mess, so hide it there */}
+            {subPath !== '/website' && (
+              <button
+                onClick={() => window.print()}
                 style={{
-                  position: 'absolute',
-                  left: 10,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: 14,
-                  height: 14,
-                  color: 'var(--ink-dim)',
-                  pointerEvents: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: 'var(--ink-mid)',
+                  border: '1px solid var(--line)',
+                  borderRadius: 8,
+                  padding: '5px 10px',
+                  background: 'transparent',
+                  whiteSpace: 'nowrap',
                 }}
-              />
-              <input
-                className="input"
-                placeholder="Search guests, tasks…"
-                style={{ paddingLeft: 32, width: 220, height: 34, fontSize: 12 }}
-              />
-            </div>
-
-            {/* Bell */}
-            <button
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                color: 'var(--ink-mid)',
-                background: 'transparent',
-                transition: 'background 150ms',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-raised)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-            >
-              <HiOutlineBell style={{ width: 17, height: 17 }} />
-            </button>
-
+              >
+                <HiOutlinePrinter style={{ width: 13, height: 13 }} />
+                Print
+              </button>
+            )}
             {/* View site */}
             <NavLink
               to={`/${slug}`}
@@ -401,8 +437,15 @@ export default function DashboardLayout() {
           </div>
         </header>
 
-        {/* Page content */}
-        <main style={{ flex: 1, padding: '32px 40px', overflow: 'auto' }}>
+        {/* Page content — the Site Studio manages its own full-height chrome */}
+        <main
+          style={{
+            flex: 1,
+            padding: subPath === '/website' ? 0 : '32px 40px',
+            overflow: 'auto',
+            minHeight: 0,
+          }}
+        >
           <Outlet />
         </main>
       </div>

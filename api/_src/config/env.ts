@@ -8,6 +8,11 @@ const envSchema = z.object({
   SUPABASE_SERVICE_KEY: z.string().min(1),
   DATABASE_URL: z.string().min(1),
   FRONTEND_URL: z.string().url().optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
 });
 
 const result = envSchema.safeParse(process.env);

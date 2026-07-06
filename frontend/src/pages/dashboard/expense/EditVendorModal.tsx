@@ -3,6 +3,7 @@ import { HiOutlineX } from 'react-icons/hi';
 import Portal from '../../../components/Portal';
 import CategoryCombobox from '../../../components/CategoryCombobox';
 import useUnsavedChangesPrompt from '../../../hooks/useUnsavedChangesPrompt';
+import { useModalDismiss } from '../../../hooks/useModalDismiss';
 
 export interface VendorRow {
   vendorId: string;
@@ -66,6 +67,7 @@ export default function EditVendorModal({
     },
     isSaving: isPending,
   });
+  useModalDismiss(vendor !== null, attemptClose);
 
   if (!vendor || !formData) return null;
 

@@ -24,12 +24,15 @@ import {
   useUpdateAllocation,
   useDeleteAllocation,
   useUpdateGuest,
+  useExportAllocations,
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Portal from '../../components/Portal';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
+import { currencySymbol } from '../../utils/currency';
 
 const PRESET_ROOM_TYPES: { label: string; capacity: number; prefix: string }[] = [
   { label: 'Standard Room', capacity: 2, prefix: 'STD' },
@@ -170,6 +173,7 @@ export default function Accommodations() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: allocationMatrix = [], isLoading, error } = useAllocationMatrix();
+  const exportAllocations = useExportAllocations();
   const { data: unassignedGuests = [] } = useUnassignedGuests();
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
@@ -306,6 +310,10 @@ export default function Accommodations() {
         updateAllocationMutation.isPending ||
         deleteAllocationMutation.isPending,
     });
+  useModalDismiss(showRoomModal, attemptCloseRoomModal);
+  useModalDismiss(showAllocationModal, attemptCloseAllocationModal);
+  useModalDismiss(showImportModal, () => setShowImportModal(false));
+  useModalDismiss(showImportResultsModal, () => setShowImportResultsModal(false));
 
   const handleRoomSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -644,6 +652,14 @@ export default function Accommodations() {
           >
             <HiOutlineUpload className="w-4 h-4" />
             Import
+          </button>
+          <button
+            onClick={() => exportAllocations.mutate()}
+            disabled={exportAllocations.isPending}
+            className="btn-outline flex items-center gap-2"
+          >
+            <HiOutlineDownload className="w-4 h-4" />
+            Export Excel
           </button>
           <button onClick={() => navigate('../venues')} className="btn-primary">
             Add Venue
@@ -1357,7 +1373,7 @@ export default function Accommodations() {
                                   )
                                 }
                                 className="input text-sm py-1.5"
-                                placeholder="₹ 0"
+                                placeholder={`${currencySymbol()} 0`}
                                 min={0}
                               />
                               <button

@@ -48,7 +48,9 @@ export type {
   RoomWithAllocations,
 } from './domain/venue.types';
 
-export type { EventRow, EventInsert, EventWithVenue } from './domain/event.types';
+export type { EventRow, EventInsert, EventWithVenue, PublicEventPayload } from './domain/event.types';
+export type { PublicPageRow, PublicPagePayload, PublicPageKind } from './domain/page.types';
+export { RESERVED_PAGE_SLUGS } from './domain/page.types';
 
 export type { VendorRow, VendorInsert, VendorWithFinance } from './domain/vendor.types';
 

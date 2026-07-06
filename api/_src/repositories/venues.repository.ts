@@ -255,6 +255,24 @@ export async function findAllocationsByRoom(roomId: string): Promise<RoomAllocat
   return (data ?? []) as RoomAllocationRow[];
 }
 
+export async function findOverlappingAllocations(
+  roomId: string,
+  checkInDate: string,
+  checkOutDate: string,
+  excludeId?: string,
+): Promise<RoomAllocationRow[]> {
+  let query = supabase
+    .from('room_allocations')
+    .select('*')
+    .eq('room_id', roomId)
+    .lt('check_in_date', checkOutDate)
+    .gt('check_out_date', checkInDate);
+  if (excludeId) query = query.neq('id', excludeId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as RoomAllocationRow[];
+}
+
 export async function findAllocationById(id: string): Promise<RoomAllocationRow | null> {
   const { data, error } = await supabase.from('room_allocations').select('*').eq('id', id).limit(1);
   if (error) throw error;

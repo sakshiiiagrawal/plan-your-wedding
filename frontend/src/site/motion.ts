@@ -1,0 +1,46 @@
+/**
+ * Shared Framer Motion variants — the animation vocabulary every template
+ * speaks (ported from the original weddingplannerdesign invite guide).
+ * Use with: <motion.div variants={fadeUp} {...inViewProps}>.
+ */
+
+export const fadeUp = {
+  hidden: { opacity: 0, y: 40 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] as const },
+  },
+};
+
+export const fadeLeft = {
+  hidden: { opacity: 0, x: -50 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const },
+  },
+};
+
+export const scaleIn = {
+  hidden: { opacity: 0, scale: 0.85 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.5 } },
+};
+
+/** Parent wrapper: children with `fadeUp`/`fadeLeft`/`scaleIn` cascade in. */
+export const stagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.12 } },
+};
+
+/** Draw a rule/divider in from the left. Pair with transformOrigin: 'left'. */
+export const drawLine = {
+  hidden: { scaleX: 0 },
+  visible: { scaleX: 1, transition: { duration: 0.9, ease: [0.22, 1, 0.36, 1] as const } },
+};
+
+export const inViewProps = {
+  initial: 'hidden' as const,
+  whileInView: 'visible' as const,
+  viewport: { once: true, margin: '-80px' },
+};

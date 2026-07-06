@@ -27,6 +27,8 @@ import { SectionHeader, Ornament } from '../../components/ui';
 import DatePicker from '../../components/ui/DatePicker';
 import TimePicker from '../../components/ui/TimePicker';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
+import { formatDate } from '../../utils/date';
 
 // ── PAN India wedding event types ──────────────────────────────────────────
 const EVENT_TYPES = [
@@ -370,6 +372,8 @@ export default function Events() {
       },
       isSaving: createMutation.isPending || updateMutation.isPending,
     });
+  useModalDismiss(showEventModal, attemptCloseEventModal);
+  useModalDismiss(deleteConfirm !== null, () => setDeleteConfirm(null));
 
   const resetForm = () => {
     setFormData(DEFAULT_FORM);
@@ -536,7 +540,7 @@ export default function Events() {
               (colorPalette as any).primary || EVENT_COLORS_LIST[index % EVENT_COLORS_LIST.length];
             const startTime = formatTime(event.start_time);
             const endTime = formatTime(event.end_time);
-            const dateShort = new Date(event.event_date).toLocaleDateString('en-US', {
+            const dateShort = formatDate(event.event_date, {
               weekday: 'short',
               month: 'short',
               day: 'numeric',
@@ -794,13 +798,11 @@ export default function Events() {
                               color: eventColor,
                             }}
                           >
-                            {new Date(event.event_date)
-                              .toLocaleDateString('en-US', {
-                                weekday: 'short',
-                                month: 'short',
-                                day: 'numeric',
-                              })
-                              .toUpperCase()}
+                            {formatDate(event.event_date, {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                            }).toUpperCase()}
                             {startTime ? ` · ${startTime}` : ''}
                           </div>
                           <div
@@ -966,13 +968,11 @@ export default function Events() {
                           color: eventColor,
                         }}
                       >
-                        {new Date(ev.event_date)
-                          .toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            month: 'long',
-                            day: 'numeric',
-                          })
-                          .toUpperCase()}
+                        {formatDate(ev.event_date, {
+                          weekday: 'long',
+                          month: 'long',
+                          day: 'numeric',
+                        }).toUpperCase()}
                         {startTime ? ` · ${startTime}` : ''}
                         {endTime ? ` – ${endTime}` : ''}
                       </div>

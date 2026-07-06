@@ -54,6 +54,18 @@ export const getCoupleContent = async (
   }
 };
 
+export const getGalleryContent = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res.json(await service.getSectionContent('gallery', tryGetOwnerId(req)));
+  } catch (e) {
+    next(e);
+  }
+};
+
 export const getOurStory = async (
   req: Request,
   res: Response,

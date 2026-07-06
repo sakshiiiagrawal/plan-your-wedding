@@ -1,743 +1,966 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
-  HiOutlineLink,
+  HiOutlineDeviceMobile,
+  HiOutlineDesktopComputer,
   HiOutlineExternalLink,
+  HiOutlineEye,
+  HiOutlineEyeOff,
+  HiOutlineLink,
+  HiOutlinePencil,
+  HiOutlinePlus,
+  HiOutlinePrinter,
   HiOutlineSparkles,
-  HiOutlineX,
-  HiOutlineCheck,
+  HiOutlineTrash,
 } from 'react-icons/hi';
-import { useHeroContent, useUpdateWebsiteContent } from '../../hooks/useApi';
-import { SectionHeader } from '../../components/ui';
 import toast from 'react-hot-toast';
+import api from '../../api/axios';
+import {
+  useCreatePage,
+  useDeletePage,
+  useGalleryContent,
+  useHeroContent,
+  useOurStory,
+  usePages,
+  usePublicEvents,
+  useUpdatePage,
+  useUpdateWebsiteContent,
+  type PublicPageRecord,
+} from '../../hooks/useApi';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { resolvePartSettings } from '../../site/config';
+import { getPalette, getTemplate, templatesForKind } from '../../site/registry';
+import type { SiteEditController } from '../../site/copy/context';
+import { defaultForKey } from '../../site/copy/registry';
+import { DEFAULT_QR_DESIGN_ID } from '../../site/qrDesigns';
+import type { PageKind, PartId, SectionSetting, SiteData } from '../../site/types';
+import { parseLocalDate } from '../../utils/date';
+import PreviewCanvas, { type Device } from './website/PreviewCanvas';
+import ContentPanel from './website/ContentPanel';
+import DesignPanel from './website/DesignPanel';
+import { AddPageDialog, EditPageDialog } from './website/PageDialogs';
 
-const THEMES = [
-  {
-    id: 'royal',
-    label: 'Royal Rajasthani',
-    hint: 'Deep maroon · gold',
-    gradient: 'linear-gradient(135deg, #8B0000, #D4AF37)',
-    heroGradient: 'linear-gradient(160deg, #8B0000 0%, #5C0000 100%)',
-    accentColor: '#D4AF37',
-  },
-  {
-    id: 'desert',
-    label: 'Desert Bloom',
-    hint: 'Sand · rose gold',
-    gradient: 'linear-gradient(135deg, #C9A96E, #B87676)',
-    heroGradient: 'linear-gradient(160deg, #C9A96E 0%, #A0785A 100%)',
-    accentColor: '#B87676',
-  },
-  {
-    id: 'mandala',
-    label: 'Midnight Mandala',
-    hint: 'Navy · ivory',
-    gradient: 'linear-gradient(135deg, #1B2A4A, #C9A96E)',
-    heroGradient: 'linear-gradient(160deg, #1B2A4A 0%, #0D1629 100%)',
-    accentColor: '#C9A96E',
-  },
-];
+const DEFAULT_MUSIC_END = 45;
 
-const SECTIONS = [
-  { id: 'story', name: 'Our Story' },
-  { id: 'events', name: 'Events' },
-  { id: 'venue', name: 'Venue' },
-  { id: 'rsvp', name: 'RSVP' },
-  { id: 'gallery', name: 'Gallery' },
-];
-
-interface HeroContentSettings {
-  bride_name?: string;
-  groom_name?: string;
-  wedding_date?: string;
-  tagline?: string;
-  theme?: string;
-  sections?: Record<string, boolean>;
-  [key: string]: unknown;
-}
-
-function Toggle({ enabled, onChange }: { enabled: boolean; onChange: () => void }) {
-  return (
-    <button
-      onClick={onChange}
-      style={{
-        position: 'relative',
-        flexShrink: 0,
-        width: 34,
-        height: 20,
-        borderRadius: 999,
-        background: enabled ? 'var(--gold)' : 'var(--line-strong)',
-        transition: 'background 200ms',
-        border: 'none',
-        cursor: 'pointer',
-      }}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          top: 2,
-          width: 16,
-          height: 16,
-          borderRadius: '50%',
-          background: 'white',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-          transition: 'left 200ms',
-          left: enabled ? 16 : 2,
-        }}
-      />
-    </button>
-  );
-}
-
-function PreviewPane({
-  slug,
-  heroTagline,
-  theme,
-  sections,
-  heroContent,
-}: {
-  slug: string;
-  heroTagline: string;
-  theme: string;
-  sections: { id: string; name: string; enabled: boolean }[];
-  heroContent: HeroContentSettings | null | undefined;
-}) {
-  const themeObj = (THEMES.find((t) => t.id === theme) ?? THEMES[0])!;
-  const enabledSections = sections.filter((s) => s.enabled);
-
-  return (
-    <div
-      style={{
-        background: 'white',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--line-soft)',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      {/* Browser chrome */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '8px 12px',
-          background: 'var(--bg-raised)',
-          borderBottom: '1px solid var(--line-soft)',
-        }}
-      >
-        <div style={{ display: 'flex', gap: 6 }}>
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fc625d' }} />
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fdbc40' }} />
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#35cd4b' }} />
-        </div>
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-          <span className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>
-            https://{slug}.weds.app
-          </span>
-        </div>
-        <a
-          href={`https://${slug}.weds.app`}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: 'var(--ink-dim)' }}
-        >
-          <HiOutlineExternalLink style={{ width: 13, height: 13 }} />
-        </a>
-      </div>
-
-      {/* Preview content */}
-      <div style={{ overflowY: 'auto', maxHeight: '70vh' }}>
-        {/* Hero */}
-        <div
-          style={{
-            padding: '32px 24px',
-            textAlign: 'center',
-            background: themeObj.heroGradient,
-            color: 'white',
-          }}
-        >
-          <p
-            style={{
-              fontSize: 8,
-              letterSpacing: '0.15em',
-              textTransform: 'uppercase',
-              opacity: 0.7,
-              marginBottom: 8,
-            }}
-          >
-            Together with their families
-          </p>
-          <h2
-            style={{
-              fontFamily: 'Georgia, serif',
-              fontSize: 28,
-              margin: '0 0 4px',
-              color: 'white',
-            }}
-          >
-            {heroContent?.bride_name || 'Bride'} &amp; {heroContent?.groom_name || 'Groom'}
-          </h2>
-          <p
-            style={{
-              fontFamily: 'Georgia, serif',
-              fontStyle: 'italic',
-              fontSize: 13,
-              opacity: 0.8,
-              marginTop: 6,
-            }}
-          >
-            {heroTagline || 'Your tagline here'}
-          </p>
-          <p
-            className="mono"
-            style={{
-              fontSize: 9,
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em',
-              opacity: 0.6,
-              marginTop: 8,
-            }}
-          >
-            {heroContent?.wedding_date
-              ? new Date(heroContent.wedding_date).toLocaleDateString('en-US', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                })
-              : 'Date · City'}
-          </p>
-        </div>
-
-        {/* Section stubs */}
-        {enabledSections.map((s) => (
-          <div
-            key={s.id}
-            style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid var(--line-soft)',
-              textAlign: 'center',
-            }}
-          >
-            <p
-              style={{
-                fontSize: 9,
-                textTransform: 'uppercase',
-                letterSpacing: '0.14em',
-                color: themeObj.accentColor,
-                marginBottom: 8,
-                fontWeight: 600,
-              }}
-            >
-              {s.name}
-            </p>
-            <div
-              style={{
-                height: 6,
-                background: 'var(--bg-raised)',
-                borderRadius: 4,
-                maxWidth: 200,
-                margin: '0 auto 6px',
-              }}
-            />
-            <div
-              style={{
-                height: 6,
-                background: 'var(--line-soft)',
-                borderRadius: 4,
-                maxWidth: 140,
-                margin: '0 auto',
-              }}
-            />
-          </div>
-        ))}
-        {enabledSections.length === 0 && (
-          <div
-            style={{
-              padding: '32px 24px',
-              textAlign: 'center',
-              color: 'var(--ink-dim)',
-              fontSize: 12,
-              fontStyle: 'italic',
-            }}
-          >
-            No sections enabled
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+type Tab = 'design' | 'content';
 
 export default function Website() {
   const { slug } = useParams<{ slug: string }>();
-  const { data: heroContent } = useHeroContent(undefined) as {
-    data: HeroContentSettings | null | undefined;
-  };
+  const { data: heroContent } = useHeroContent(undefined);
+  const { data: storyContent } = useOurStory(undefined);
+  const { data: publicEvents = [] } = usePublicEvents(slug);
+  const { data: galleryContent } = useGalleryContent(undefined);
+  const { data: pages = [], isLoading: pagesLoading } = usePages();
   const updateContent = useUpdateWebsiteContent();
+  const updatePage = useUpdatePage();
+  const createPage = useCreatePage();
+  const deletePage = useDeletePage();
 
-  const [theme, setTheme] = useState('royal');
-  const [heroTagline, setHeroTagline] = useState('');
-  const [sections, setSections] = useState(SECTIONS.map((s) => ({ ...s, enabled: true })));
-  const [showFullPreview, setShowFullPreview] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
-
+  const [tab, setTab] = useState<Tab>('design');
+  const [device, setDevice] = useState<Device>(() => {
+    try {
+      const saved = localStorage.getItem('siteStudioDevice');
+      return saved === 'mobile' || saved === 'desktop' ? saved : 'mobile';
+    } catch {
+      return 'mobile';
+    }
+  });
   useEffect(() => {
-    if (heroContent?.tagline) {
-      setHeroTagline(heroContent.tagline);
+    try {
+      localStorage.setItem('siteStudioDevice', device);
+    } catch {
+      // ignore storage failures (private mode, quota)
     }
-    if (heroContent?.theme) {
-      setTheme(heroContent.theme);
-    }
-    if (heroContent?.sections) {
-      const savedSections = heroContent.sections;
-      setSections(SECTIONS.map((s) => ({ ...s, enabled: savedSections[s.id] ?? true })));
-    }
-  }, [heroContent]);
+  }, [device]);
+  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+  const [showAddPage, setShowAddPage] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<PublicPageRecord | null>(null);
+  const [pendingSwitch, setPendingSwitch] = useState<PublicPageRecord | null>(null);
+  const [pendingUnpublish, setPendingUnpublish] = useState<PublicPageRecord | null>(null);
+  const [editingPage, setEditingPage] = useState<PublicPageRecord | null>(null);
+  const [uploadingMusic, setUploadingMusic] = useState(false);
 
-  const toggleSection = (id: string) => {
-    setSections((prev) => prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)));
+  // Per-page draft design state
+  const [templateId, setTemplateId] = useState('classic');
+  const [paletteId, setPaletteId] = useState('royal');
+  const [sections, setSections] = useState<SectionSetting[]>([]);
+  const [musicUrl, setMusicUrl] = useState<string | null>(null);
+  const [musicStartTime, setMusicStartTime] = useState(0);
+  const [musicEndTime, setMusicEndTime] = useState(45);
+  const [qrEnabled, setQrEnabled] = useState(false);
+  const [qrStyle, setQrStyle] = useState(DEFAULT_QR_DESIGN_ID);
+  // Sparse per-page copy overrides (config.text_overrides), edited inline in the preview
+  const [textOverrides, setTextOverrides] = useState<Record<string, string>>({});
+  // Shared couple content drafts
+  const [brideName, setBrideName] = useState('');
+  const [groomName, setGroomName] = useState('');
+  const [weddingDate, setWeddingDate] = useState('');
+  const [heroTagline, setHeroTagline] = useState('');
+  const [storyText, setStoryText] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
+  const [hydratedContent, setHydratedContent] = useState(false);
+  const [hydratedStory, setHydratedStory] = useState(false);
+  const [hydratedPageId, setHydratedPageId] = useState<string | null>(null);
+
+  const homePage = pages.find((p) => p.page_slug === '') ?? pages[0] ?? null;
+  const selectedPage = pages.find((p) => p.id === selectedPageId) ?? homePage;
+
+  // Render-phase hydration: run once per data source / selected page so
+  // cleared-and-saved fields stay cleared.
+  if (heroContent && !hydratedContent) {
+    setHydratedContent(true);
+    setBrideName(heroContent.bride_name ?? '');
+    setGroomName(heroContent.groom_name ?? '');
+    setWeddingDate(heroContent.wedding_date ? heroContent.wedding_date.slice(0, 10) : '');
+    setHeroTagline(heroContent.tagline ?? '');
+  }
+  if (storyContent && !hydratedStory) {
+    setHydratedStory(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setStoryText((storyContent as any).story ?? '');
+  }
+  if (selectedPage && hydratedPageId !== selectedPage.id) {
+    setHydratedPageId(selectedPage.id);
+    setSelectedPageId(selectedPage.id);
+    const template = getTemplate(selectedPage.template, selectedPage.kind);
+    setTemplateId(template.id);
+    setPaletteId(getPalette(selectedPage.palette).id);
+    setSections(resolvePartSettings(template, selectedPage.config));
+    setMusicUrl(selectedPage.config?.music_url ?? null);
+    setMusicStartTime(selectedPage.config?.music_start_time ?? 0);
+    setMusicEndTime(selectedPage.config?.music_end_time ?? DEFAULT_MUSIC_END);
+    setQrEnabled(!!selectedPage.config?.qr_enabled);
+    setQrStyle(selectedPage.config?.qr_style ?? DEFAULT_QR_DESIGN_ID);
+    setTextOverrides(selectedPage.config?.text_overrides ?? {});
+  }
+
+  const kind: PageKind = selectedPage?.kind ?? 'website';
+  const template = getTemplate(templateId, kind);
+  const palette = getPalette(paletteId);
+
+  const pageUrl = (page: PublicPageRecord) =>
+    `${window.location.origin}/${slug}${page.page_slug ? `/${page.page_slug}` : ''}`;
+  const siteUrlLabel = `${window.location.host}/${slug}${
+    selectedPage?.page_slug ? `/${selectedPage.page_slug}` : ''
+  }`;
+
+  const markDirty = <T,>(setter: (v: T) => void) => (v: T) => {
+    setter(v);
     setIsDirty(true);
   };
 
-  const handleThemeChange = (id: string) => {
-    setTheme(id);
+  // Inline-edit sink for the preview: content edits land in the same drafts as
+  // the panel inputs (two-way sync for free); copy edits keep text_overrides
+  // sparse — committing text equal to the default deletes the override.
+  const editController: SiteEditController = {
+    commitContent: (field, value) => {
+      const setter = {
+        brideName: setBrideName,
+        groomName: setGroomName,
+        tagline: setHeroTagline,
+        story: setStoryText,
+      }[field];
+      markDirty(setter)(value);
+    },
+    commitCopy: (key, value) => {
+      setTextOverrides((prev) => {
+        const next = { ...prev };
+        if (value === defaultForKey(key)) delete next[key];
+        else next[key] = value;
+        return next;
+      });
+      setIsDirty(true);
+    },
+  };
+
+  const clearOverride = (key: string) => {
+    setTextOverrides((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
     setIsDirty(true);
   };
 
-  const handleTaglineChange = (v: string) => {
-    setHeroTagline(v);
-    setIsDirty(true);
+  // Unpublished edits shouldn't silently die with the tab
+  useEffect(() => {
+    if (!isDirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [isDirty]);
+
+  const switchToPage = (page: PublicPageRecord) => {
+    setSelectedPageId(page.id);
+    setHydratedPageId(null);
+    // Rehydrate shared content too — a discard is a full discard
+    setHydratedContent(false);
+    setHydratedStory(false);
+    setIsDirty(false);
   };
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(`https://${slug}.weds.app`);
-    toast.success('Link copied!');
+  const requestSwitch = (page: PublicPageRecord) => {
+    if (isDirty) setPendingSwitch(page);
+    else switchToPage(page);
+  };
+
+  const selectTemplate = (id: string) => {
+    const next = getTemplate(id, kind);
+    setTemplateId(next.id);
+    // Palette is an independent choice — keep it. Re-fit sections to the new
+    // template's parts (saved order preserved where part ids overlap).
+    setSections(resolvePartSettings(next, { sections_order: sections }));
+    setIsDirty(true);
   };
 
   const handlePublish = async () => {
+    if (!selectedPage) return;
+    if (!brideName.trim() || !groomName.trim()) {
+      toast.error('Add both names in the Content tab before publishing');
+      setTab('content');
+      return;
+    }
+
+    // Merge onto a *fresh* server copy — the cached blob can be minutes old
+    // and would silently revert edits a partner made from another tab.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let freshHero: Record<string, any> = (heroContent as any) ?? {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let freshStory: Record<string, any> = (storyContent as any) ?? {};
     try {
-      const sectionsMap = Object.fromEntries(sections.map((s) => [s.id, s.enabled]));
-      await updateContent.mutateAsync({
-        section: 'hero',
-        payload: {
-          ...heroContent,
-          tagline: heroTagline,
-          theme,
-          sections: sectionsMap,
-        },
-      });
-      toast.success('Website settings published!');
-      setIsDirty(false);
+      [freshHero, freshStory] = await Promise.all([
+        api.get('/website-content/hero').then((r) => r.data ?? {}),
+        api.get('/website-content/story').then((r) => r.data ?? {}),
+      ]);
     } catch {
+      // offline refetch — fall back to the cached copies above
+    }
+
+    const previousMusicUrl = selectedPage.config?.music_url as string | undefined;
+
+    // The hero blob stays the source of couple data, and mirrors the home
+    // page's design as the legacy fallback for pre-pages clients.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const heroPayload: Record<string, any> = {
+      ...freshHero,
+      tagline: heroTagline,
+      bride_name: brideName,
+      groom_name: groomName,
+      wedding_date: weddingDate || null,
+    };
+    if (selectedPage.page_slug === '') {
+      heroPayload.template = templateId;
+      heroPayload.palette = paletteId;
+      heroPayload.sections_order = sections;
+      heroPayload.theme = ['royal', 'desert', 'mandala'].includes(paletteId)
+        ? paletteId
+        : (heroPayload.theme ?? 'royal');
+      heroPayload.sections = Object.fromEntries(sections.map((s) => [s.id, s.enabled]));
+    }
+
+    const results = await Promise.allSettled([
+      updatePage.mutateAsync({
+        id: selectedPage.id,
+        template: templateId,
+        palette: paletteId,
+        config: {
+          ...selectedPage.config,
+          sections_order: sections,
+          music_url: musicUrl,
+          music_start_time: musicStartTime,
+          music_end_time: musicEndTime,
+          qr_enabled: qrEnabled,
+          qr_style: qrStyle,
+          text_overrides: textOverrides,
+        },
+      }),
+      updateContent.mutateAsync({
+        section: 'our_story',
+        payload: { ...freshStory, story: storyText },
+      }),
+      updateContent.mutateAsync({ section: 'hero', payload: heroPayload }),
+    ]);
+
+    const failures = results.filter((r) => r.status === 'rejected').length;
+    if (failures === 0) {
+      toast.success(
+        selectedPage.is_published
+          ? `${selectedPage.title} published!`
+          : `${selectedPage.title} saved — press the eye icon to take it live`,
+      );
+      setIsDirty(false);
+      // A replaced uploaded soundtrack is now unreferenced — clean it up
+      // (best effort; skip if any other page still points at it).
+      if (
+        previousMusicUrl &&
+        previousMusicUrl !== musicUrl &&
+        previousMusicUrl.includes('/music/') &&
+        !pages.some((p) => p.id !== selectedPage.id && p.config?.music_url === previousMusicUrl)
+      ) {
+        api.delete('/website-content/music', { data: { url: previousMusicUrl } }).catch(() => {});
+      }
+    } else if (failures === results.length) {
       toast.error('Failed to publish changes');
+    } else {
+      // Partial writes happened — leave the dirty flag on so a retry re-sends everything
+      toast.error('Some changes failed to save — publish again to retry');
     }
   };
 
+  const handleEditPage = async (payload: { title: string; page_slug?: string }) => {
+    if (!editingPage) return;
+    try {
+      await updatePage.mutateAsync({ id: editingPage.id, ...payload });
+      toast.success('Page updated');
+      setEditingPage(null);
+    } catch (error) {
+      const err = error as { response?: { data?: { error?: string } } };
+      toast.error(err?.response?.data?.error || 'Failed to update page');
+    }
+  };
+
+  const handleCreatePage = async (payload: {
+    kind: PageKind;
+    title: string;
+    page_slug: string;
+  }) => {
+    try {
+      const templateDefault = templatesForKind(payload.kind)[0]!;
+      const created = await createPage.mutateAsync({
+        ...payload,
+        template: templateDefault.id,
+        palette: templateDefault.defaultPaletteId,
+        config: {},
+      });
+      setShowAddPage(false);
+      setSelectedPageId(created.id);
+      setHydratedPageId(null); // rehydrate drafts from the new page
+      toast.success(`${payload.title} created — pick its design and publish`);
+    } catch (error) {
+      const err = error as { response?: { data?: { error?: string } } };
+      toast.error(err?.response?.data?.error || 'Failed to create page');
+    }
+  };
+
+  const handleDeletePage = async () => {
+    if (!pendingDelete) return;
+    try {
+      await deletePage.mutateAsync(pendingDelete.id);
+      if (selectedPageId === pendingDelete.id) {
+        setSelectedPageId(null);
+        setHydratedPageId(null);
+      }
+      toast.success(`${pendingDelete.title} deleted`);
+    } catch {
+      toast.error('Failed to delete page');
+    } finally {
+      setPendingDelete(null);
+    }
+  };
+
+  const togglePublished = async (page: PublicPageRecord) => {
+    try {
+      await updatePage.mutateAsync({ id: page.id, is_published: !page.is_published });
+      toast.success(page.is_published ? `${page.title} unpublished` : `${page.title} is live`);
+    } catch {
+      toast.error('Failed to update page');
+    }
+  };
+
+  const handleMusicUpload = async (file: File) => {
+    setUploadingMusic(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/website-content/music', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setMusicUrl(res.data.url);
+      setIsDirty(true);
+      toast.success('Soundtrack uploaded — publish to make it live');
+    } catch (error) {
+      const err = error as { response?: { data?: { error?: string } } };
+      toast.error(err?.response?.data?.error || 'Failed to upload audio');
+    } finally {
+      setUploadingMusic(false);
+    }
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const galleryImages = ((galleryContent as any)?.images ?? []) as { url: string }[];
+  // Mirror the live renderer: an empty story disables its section instead of
+  // showing placeholder prose the couple never wrote.
+  const previewSections = storyText.trim()
+    ? sections
+    : sections.map((s) => (s.id === 'story' ? { ...s, enabled: false } : s));
+
+  const previewData: SiteData = {
+    slug: slug ?? '',
+    brideName: brideName || 'Bride',
+    groomName: groomName || 'Groom',
+    weddingDate: weddingDate ? parseLocalDate(weddingDate) : null,
+    tagline: heroTagline,
+    story: storyText,
+    events: publicEvents,
+    galleryImages,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    gallerySubtitle: (galleryContent as any)?.subtitle ?? '',
+    sections: previewSections,
+    palette,
+    pages: pages
+      .filter((p) => p.id !== selectedPage?.id && p.is_published)
+      .map((p) => ({ pageSlug: p.page_slug, kind: p.kind, title: p.title })),
+    musicUrl,
+    musicStartTime,
+    musicEndTime,
+    qrCode: selectedPage ? { enabled: qrEnabled, style: qrStyle, url: pageUrl(selectedPage) } : undefined,
+    // The preview is the guest's-eye view — never show couple-only chrome
+    authed: false,
+    preview: true,
+  };
+
+  // Why a toggled-on section may still show nothing — surfaced in Sections
+  const sectionNote = (id: PartId): string | null => {
+    switch (id) {
+      case 'countdown': {
+        if (!weddingDate) return 'Needs a wedding date — set one in Content';
+        const target = parseLocalDate(weddingDate);
+        if (target && target.getTime() < Date.now() - 24 * 60 * 60 * 1000)
+          return 'Hidden — the wedding date has passed';
+        return null;
+      }
+      case 'events':
+        return publicEvents.length === 0 ? 'No public events yet — mark events public in Events' : null;
+      case 'gallery':
+        return galleryImages.length === 0 ? 'No photos yet — add some in Gallery' : null;
+      case 'story':
+        return !storyText.trim() ? 'Story is empty — write it in Content' : null;
+      default:
+        return null;
+    }
+  };
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'design', label: 'Design' },
+    { id: 'content', label: 'Content' },
+  ];
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <SectionHeader
-        eyebrow="Public site"
-        title="Your wedding website"
-        description={`Live at ${slug}.weds.app — share with guests so they can RSVP, view events, and browse the gallery.`}
-        action={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              onClick={copyLink}
-              className="btn-outline"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
-            >
-              <HiOutlineLink style={{ width: 14, height: 14 }} />
-              Copy link
-            </button>
-            <button
-              onClick={() => setShowFullPreview(true)}
-              className="btn-outline"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
-            >
-              <HiOutlineExternalLink style={{ width: 14, height: 14 }} />
-              Preview
-            </button>
-            <button
-              onClick={handlePublish}
-              disabled={updateContent.isPending}
-              className="btn-primary"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 13,
-                opacity: updateContent.isPending ? 0.6 : 1,
-                position: 'relative',
-              }}
-            >
-              <HiOutlineSparkles style={{ width: 14, height: 14 }} />
-              {updateContent.isPending ? 'Publishing…' : 'Publish changes'}
-              {isDirty && !updateContent.isPending && (
+    <div className="studio">
+      {/* ── Toolbar: pages · url · device · actions ─────────────────────── */}
+      <div className="studio-toolbar no-print">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
+          {pages.map((page) => {
+            const active = selectedPage?.id === page.id;
+            return (
+              <div
+                key={page.id}
+                role="button"
+                tabIndex={0}
+                title={`${window.location.host}/${slug}${page.page_slug ? `/${page.page_slug}` : ''}`}
+                aria-current={active ? 'true' : undefined}
+                onClick={() => {
+                  if (!active) requestSwitch(page);
+                }}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Enter' || e.key === ' ') && !active) {
+                    e.preventDefault();
+                    requestSwitch(page);
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  padding: '5px 10px',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  border: active ? '1.5px solid var(--gold)' : '1px solid var(--line-soft)',
+                  background: active ? 'var(--gold-glow)' : 'var(--bg-raised)',
+                  transition: 'all 150ms',
+                }}
+              >
                 <span
+                  title={page.is_published ? 'Live' : 'Unpublished'}
                   style={{
-                    position: 'absolute',
-                    top: -4,
-                    right: -4,
-                    width: 8,
-                    height: 8,
+                    width: 6,
+                    height: 6,
                     borderRadius: '50%',
-                    background: '#f97316',
-                    border: '1.5px solid white',
+                    background: page.is_published ? '#22c55e' : 'var(--line-strong)',
+                    flexShrink: 0,
                   }}
                 />
-              )}
-            </button>
-          </div>
-        }
-      />
+                <span
+                  style={{
+                    fontSize: 12.5,
+                    fontWeight: active ? 600 : 400,
+                    color: active ? 'var(--ink-high)' : 'var(--ink-mid)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {page.title}
+                </span>
+                {active && (
+                  <span style={{ display: 'flex', gap: 2, marginLeft: 2 }}>
+                    {page.page_slug !== '' && (
+                      <button
+                        title={page.is_published ? 'Unpublish' : 'Publish'}
+                        aria-label={page.is_published ? `Unpublish ${page.title}` : `Publish ${page.title}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Taking a live page down deserves a confirm; going live doesn't
+                          if (page.is_published) setPendingUnpublish(page);
+                          else void togglePublished(page);
+                        }}
+                        style={{ padding: 4, borderRadius: 4, color: 'var(--ink-dim)', display: 'flex' }}
+                      >
+                        {page.is_published ? (
+                          <HiOutlineEye style={{ width: 13, height: 13 }} />
+                        ) : (
+                          <HiOutlineEyeOff style={{ width: 13, height: 13 }} />
+                        )}
+                      </button>
+                    )}
+                    <button
+                      title="Rename page"
+                      aria-label={`Rename ${page.title}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingPage(page);
+                      }}
+                      style={{ padding: 4, borderRadius: 4, color: 'var(--ink-dim)', display: 'flex' }}
+                    >
+                      <HiOutlinePencil style={{ width: 13, height: 13 }} />
+                    </button>
+                    {page.page_slug !== '' && (
+                      <button
+                        title="Delete page"
+                        aria-label={`Delete ${page.title}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPendingDelete(page);
+                        }}
+                        style={{ padding: 4, borderRadius: 4, color: 'var(--ink-dim)', display: 'flex' }}
+                      >
+                        <HiOutlineTrash style={{ width: 13, height: 13 }} />
+                      </button>
+                    )}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+          <button
+            onClick={() => setShowAddPage(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '5px 9px',
+              borderRadius: 8,
+              fontSize: 12,
+              border: '1px dashed var(--line)',
+              color: 'var(--ink-low)',
+              background: 'transparent',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <HiOutlinePlus style={{ width: 13, height: 13 }} />
+            Page
+          </button>
+          {pagesLoading && <span style={{ fontSize: 12, color: 'var(--ink-dim)' }}>Loading…</span>}
+        </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20 }}>
-        {/* Editor sidebar */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Theme preset */}
-          <div className="card">
-            <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>
-              Theme preset
+        {/* Current page address — wide screens only */}
+        <div
+          className="mono hidden xl:block"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            textAlign: 'center',
+            fontSize: 11,
+            color: 'var(--ink-dim)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {selectedPage ? `${siteUrlLabel} · ${template.name} · ${palette.name}` : ''}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+          {/* Device toggle */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 2,
+              padding: 3,
+              background: 'var(--bg-raised)',
+              borderRadius: 8,
+              border: '1px solid var(--line-soft)',
+            }}
+          >
+            {(
+              [
+                { id: 'mobile', icon: HiOutlineDeviceMobile, label: 'Mobile preview' },
+                { id: 'desktop', icon: HiOutlineDesktopComputer, label: 'Desktop preview' },
+              ] as const
+            ).map((d) => (
+              <button
+                key={d.id}
+                onClick={() => setDevice(d.id)}
+                aria-label={d.label}
+                title={d.label}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  display: 'flex',
+                  background: device === d.id ? 'var(--bg-panel)' : 'transparent',
+                  color: device === d.id ? 'var(--gold-deep)' : 'var(--ink-dim)',
+                  boxShadow: device === d.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'all 150ms',
+                }}
+              >
+                <d.icon style={{ width: 15, height: 15 }} />
+              </button>
+            ))}
+          </div>
+
+          {selectedPage && (
+            <>
+              <button
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(pageUrl(selectedPage));
+                    toast.success('Link copied!');
+                  } catch {
+                    toast.error("Couldn't copy the link — your browser blocked clipboard access");
+                  }
+                }}
+                title="Copy link"
+                aria-label="Copy link"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 30,
+                  height: 30,
+                  borderRadius: 8,
+                  border: '1px solid var(--line)',
+                  color: 'var(--ink-mid)',
+                  background: 'transparent',
+                }}
+              >
+                <HiOutlineLink style={{ width: 14, height: 14 }} />
+              </button>
+              <a
+                href={pageUrl(selectedPage)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={selectedPage.is_published ? 'Open live' : 'Not live yet'}
+                aria-label="Open live"
+                onClick={(e) => {
+                  if (!selectedPage.is_published) {
+                    e.preventDefault();
+                    toast("This page isn't live yet — publish it with the eye icon first");
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 30,
+                  height: 30,
+                  borderRadius: 8,
+                  border: '1px solid var(--line)',
+                  color: 'var(--ink-mid)',
+                  background: 'transparent',
+                }}
+              >
+                <HiOutlineExternalLink style={{ width: 14, height: 14 }} />
+              </a>
+              <a
+                href={`${pageUrl(selectedPage)}?print=1`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={selectedPage.is_published ? 'Print page' : 'Publish it first to print'}
+                aria-label="Print page"
+                onClick={(e) => {
+                  if (!selectedPage.is_published) {
+                    e.preventDefault();
+                    toast("This page isn't live yet — publish it with the eye icon first");
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 30,
+                  height: 30,
+                  borderRadius: 8,
+                  border: '1px solid var(--line)',
+                  color: 'var(--ink-mid)',
+                  background: 'transparent',
+                }}
+              >
+                <HiOutlinePrinter style={{ width: 14, height: 14 }} />
+              </a>
+            </>
+          )}
+
+          <button
+            onClick={handlePublish}
+            disabled={updateContent.isPending || updatePage.isPending || !selectedPage}
+            className="btn-primary"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 12.5,
+              padding: '7px 14px',
+              opacity: updateContent.isPending || updatePage.isPending ? 0.6 : 1,
+              position: 'relative',
+            }}
+          >
+            <HiOutlineSparkles style={{ width: 14, height: 14 }} />
+            {updateContent.isPending || updatePage.isPending ? 'Publishing…' : 'Publish'}
+            {isDirty && !updateContent.isPending && !updatePage.isPending && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -4,
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: '#f97316',
+                  border: '1.5px solid white',
+                }}
+              />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Canvas + config panel ───────────────────────────────────────── */}
+      <div className="studio-body">
+        <div className="studio-canvas">
+          {selectedPage ? (
+            <PreviewCanvas
+              data={previewData}
+              templateId={templateId}
+              kind={kind}
+              device={device}
+              overrides={textOverrides}
+              edit={editController}
+            />
+          ) : (
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 12,
+              }}
+            >
+              {pagesLoading ? (
+                <span style={{ fontSize: 13, color: 'var(--ink-dim)' }}>Loading pages…</span>
+              ) : (
+                <>
+                  <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
+                    No pages yet — create your first one.
+                  </span>
+                  <button
+                    className="btn-primary"
+                    style={{ fontSize: 13 }}
+                    onClick={() => setShowAddPage(true)}
+                  >
+                    Add a page
+                  </button>
+                </>
+              )}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {THEMES.map((t) => (
+          )}
+        </div>
+
+        <aside className="studio-panel no-print">
+          <div
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 2,
+              padding: 12,
+              background: 'var(--bg-panel)',
+              borderBottom: '1px solid var(--line-soft)',
+            }}
+          >
+            <div
+              role="tablist"
+              aria-label="Page settings"
+              style={{
+                display: 'flex',
+                gap: 4,
+                padding: 4,
+                background: 'var(--bg-raised)',
+                borderRadius: 10,
+                border: '1px solid var(--line-soft)',
+              }}
+            >
+              {tabs.map((t) => (
                 <button
                   key={t.id}
-                  onClick={() => handleThemeChange(t.id)}
+                  role="tab"
+                  aria-selected={tab === t.id}
+                  onClick={() => setTab(t.id)}
                   style={{
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
+                    flex: 1,
+                    padding: '7px 0',
+                    borderRadius: 7,
+                    fontSize: 12.5,
+                    fontWeight: 500,
                     cursor: 'pointer',
-                    border:
-                      theme === t.id ? '1.5px solid var(--gold)' : '1px solid var(--line-soft)',
-                    background: theme === t.id ? 'var(--gold-glow)' : 'var(--bg-raised)',
+                    border: 'none',
+                    background: tab === t.id ? 'var(--bg-panel)' : 'transparent',
+                    color: tab === t.id ? 'var(--ink-high)' : 'var(--ink-dim)',
+                    boxShadow: tab === t.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                     transition: 'all 150ms',
                   }}
                 >
-                  <div
-                    style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 6,
-                      flexShrink: 0,
-                      background: t.gradient,
-                    }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, color: 'var(--ink-high)', fontWeight: 500 }}>
-                      {t.label}
-                    </div>
-                    <div style={{ fontSize: 10, color: 'var(--ink-dim)' }}>{t.hint}</div>
-                  </div>
-                  {theme === t.id && (
-                    <HiOutlineCheck
-                      style={{ width: 14, height: 14, color: 'var(--gold-deep)', flexShrink: 0 }}
-                    />
-                  )}
+                  {t.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Hero tagline */}
-          <div className="card">
-            <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>
-              Hero tagline
-            </div>
-            <textarea
-              value={heroTagline}
-              onChange={(e) => handleTaglineChange(e.target.value)}
-              className="input"
-              style={{ minHeight: 64, resize: 'vertical' }}
-              placeholder="A short tagline for your wedding site…"
-            />
-            <p style={{ fontSize: 10, color: 'var(--ink-dim)', marginTop: 6 }}>
-              Displays beneath the couple&apos;s names on the homepage.
-            </p>
-          </div>
+          <div style={{ flex: 1 }}>
+            {tab === 'design' && (
+              <DesignPanel
+                kind={kind}
+                templateId={templateId}
+                onSelectTemplate={selectTemplate}
+                paletteId={paletteId}
+                onSelectPalette={markDirty(setPaletteId)}
+                recommendedPaletteIds={template.recommendedPaletteIds}
+              />
+            )}
 
-          {/* Section toggles */}
-          <div className="card">
-            <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>
-              Sections
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {sections.map((s, i) => (
-                <div
-                  key={s.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '10px 0',
-                    borderTop: i > 0 ? '1px solid var(--line-soft)' : 'none',
-                  }}
-                >
-                  <span
-                    style={{
-                      flex: 1,
-                      fontSize: 13,
-                      color: s.enabled ? 'var(--ink-high)' : 'var(--ink-dim)',
-                      transition: 'color 200ms',
-                    }}
-                  >
-                    {s.name}
-                  </span>
-                  <Toggle enabled={s.enabled} onChange={() => toggleSection(s.id)} />
-                </div>
-              ))}
-            </div>
+            {tab === 'content' && (
+              <ContentPanel
+                template={template}
+                sections={sections}
+                onSectionsChange={markDirty(setSections)}
+                sectionNote={sectionNote}
+                slug={slug}
+                brideName={brideName}
+                onBrideName={markDirty(setBrideName)}
+                groomName={groomName}
+                onGroomName={markDirty(setGroomName)}
+                weddingDate={weddingDate}
+                onWeddingDate={markDirty(setWeddingDate)}
+                heroTagline={heroTagline}
+                onHeroTagline={markDirty(setHeroTagline)}
+                storyText={storyText}
+                onStoryText={markDirty(setStoryText)}
+                musicUrl={musicUrl}
+                musicStartTime={musicStartTime}
+                musicEndTime={musicEndTime}
+                uploadingMusic={uploadingMusic}
+                onMusicUpload={(file) => {
+                  setMusicStartTime(0);
+                  setMusicEndTime(DEFAULT_MUSIC_END);
+                  void handleMusicUpload(file);
+                }}
+                onMusicRemove={() => {
+                  setMusicUrl(null);
+                  setMusicStartTime(0);
+                  setMusicEndTime(DEFAULT_MUSIC_END);
+                  setIsDirty(true);
+                }}
+                onMusicRange={(start, end) => {
+                  setMusicStartTime(start);
+                  setMusicEndTime(end);
+                  setIsDirty(true);
+                }}
+                qrEnabled={qrEnabled}
+                onQrEnabled={markDirty(setQrEnabled)}
+                qrStyle={qrStyle}
+                onQrStyle={markDirty(setQrStyle)}
+                qrUrl={selectedPage ? pageUrl(selectedPage) : window.location.origin}
+                siteUrlLabel={siteUrlLabel}
+                palette={palette}
+                textOverrides={textOverrides}
+                onClearOverride={clearOverride}
+                onClearAllOverrides={() => {
+                  setTextOverrides({});
+                  setIsDirty(true);
+                }}
+              />
+            )}
           </div>
-
-          {/* Domain */}
-          <div className="card">
-            <div className="uppercase-eyebrow" style={{ marginBottom: 12 }}>
-              Domain
-            </div>
-            <div
-              className="mono"
-              style={{
-                fontSize: 11,
-                color: 'var(--ink-mid)',
-                background: 'var(--bg-raised)',
-                padding: '8px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--line-soft)',
-              }}
-            >
-              {slug}.weds.app
-            </div>
-            <button
-              className="btn-outline"
-              style={{ marginTop: 8, width: '100%', fontSize: 12 }}
-              onClick={() => toast('Custom domain feature coming soon', { icon: '🔜' })}
-            >
-              Use custom domain
-            </button>
-          </div>
-        </div>
-
-        {/* Live preview */}
-        <PreviewPane
-          slug={slug ?? ''}
-          heroTagline={heroTagline}
-          theme={theme}
-          sections={sections}
-          heroContent={heroContent}
-        />
+        </aside>
       </div>
 
-      {/* Full-screen preview modal */}
-      {showFullPreview && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'var(--bg-page)',
-            zIndex: 100,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: '10px 16px',
-              background: 'var(--bg-panel)',
-              borderBottom: '1px solid var(--line-soft)',
-              position: 'sticky',
-              top: 0,
-            }}
-          >
-            <button
-              onClick={() => setShowFullPreview(false)}
-              style={{
-                padding: '6px 8px',
-                borderRadius: 6,
-                color: 'var(--ink-dim)',
-                background: 'transparent',
-                cursor: 'pointer',
-              }}
-            >
-              <HiOutlineX style={{ width: 18, height: 18 }} />
-            </button>
-            <span className="mono" style={{ fontSize: 12, color: 'var(--ink-low)' }}>
-              {slug}.weds.app
-            </span>
-            <span className="pill ok" style={{ fontSize: 9 }}>
-              <span className="dot" />
-              Live
-            </span>
-            <a
-              href={`https://${slug}.weds.app`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                marginLeft: 'auto',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 12,
-                color: 'var(--gold-deep)',
-                textDecoration: 'none',
-              }}
-            >
-              Open in new tab <HiOutlineExternalLink style={{ width: 12, height: 12 }} />
-            </a>
-          </div>
+      {showAddPage && (
+        <AddPageDialog
+          existingSlugs={pages.map((p) => p.page_slug)}
+          onClose={() => setShowAddPage(false)}
+          onCreate={(payload) => void handleCreatePage(payload)}
+          creating={createPage.isPending}
+        />
+      )}
 
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {(() => {
-              const themeObj = (THEMES.find((t) => t.id === theme) ?? THEMES[0])!;
-              const enabledSections = sections.filter((s) => s.enabled);
-              return (
-                <div style={{ maxWidth: 680, margin: '0 auto', padding: '0 0 48px' }}>
-                  <div
-                    style={{
-                      padding: '64px 32px',
-                      textAlign: 'center',
-                      background: themeObj.heroGradient,
-                      color: 'white',
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontSize: 10,
-                        letterSpacing: '0.15em',
-                        textTransform: 'uppercase',
-                        opacity: 0.7,
-                        marginBottom: 12,
-                      }}
-                    >
-                      Together with their families
-                    </p>
-                    <h1
-                      style={{
-                        fontFamily: 'Georgia, serif',
-                        fontSize: 48,
-                        margin: '0 0 8px',
-                        color: 'white',
-                      }}
-                    >
-                      {heroContent?.bride_name || 'Bride'}
-                    </h1>
-                    <p
-                      style={{
-                        fontFamily: 'Georgia, serif',
-                        fontStyle: 'italic',
-                        fontSize: 32,
-                        color: themeObj.accentColor,
-                        margin: '4px 0',
-                      }}
-                    >
-                      &amp;
-                    </p>
-                    <h1
-                      style={{
-                        fontFamily: 'Georgia, serif',
-                        fontSize: 48,
-                        margin: '0 0 16px',
-                        color: 'white',
-                      }}
-                    >
-                      {heroContent?.groom_name || 'Groom'}
-                    </h1>
-                    {heroTagline && (
-                      <p
-                        style={{
-                          fontFamily: 'Georgia, serif',
-                          fontStyle: 'italic',
-                          fontSize: 18,
-                          opacity: 0.85,
-                          marginTop: 8,
-                        }}
-                      >
-                        {heroTagline}
-                      </p>
-                    )}
-                    {heroContent?.wedding_date && (
-                      <p
-                        className="mono"
-                        style={{
-                          fontSize: 11,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.1em',
-                          opacity: 0.6,
-                          marginTop: 16,
-                        }}
-                      >
-                        {new Date(heroContent.wedding_date).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                        })}
-                      </p>
-                    )}
-                  </div>
-                  {enabledSections.map((s) => (
-                    <div
-                      key={s.id}
-                      style={{
-                        padding: '40px 32px',
-                        borderBottom: '1px solid var(--line-soft)',
-                        textAlign: 'center',
-                      }}
-                    >
-                      <p
-                        style={{
-                          fontSize: 10,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.14em',
-                          color: themeObj.accentColor,
-                          fontWeight: 600,
-                          marginBottom: 16,
-                        }}
-                      >
-                        {s.name}
-                      </p>
-                      <div
-                        style={{
-                          height: 8,
-                          background: 'var(--bg-raised)',
-                          borderRadius: 4,
-                          maxWidth: 360,
-                          margin: '0 auto 8px',
-                        }}
-                      />
-                      <div
-                        style={{
-                          height: 8,
-                          background: 'var(--line-soft)',
-                          borderRadius: 4,
-                          maxWidth: 240,
-                          margin: '0 auto 8px',
-                        }}
-                      />
-                      <div
-                        style={{
-                          height: 8,
-                          background: 'var(--line-soft)',
-                          borderRadius: 4,
-                          maxWidth: 200,
-                          margin: '0 auto',
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
-        </div>
+      {pendingDelete && (
+        <ConfirmDialog
+          open
+          title={`Delete "${pendingDelete.title}"?`}
+          message={`Guests will no longer be able to open /${slug}/${pendingDelete.page_slug}. This can't be undone.`}
+          confirmLabel="Delete page"
+          onConfirm={() => void handleDeletePage()}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
+
+      {pendingSwitch && (
+        <ConfirmDialog
+          open
+          title="Discard unpublished changes?"
+          message={`You have edits that aren't published yet. Switching to "${pendingSwitch.title}" will discard them.`}
+          confirmLabel="Discard and switch"
+          onConfirm={() => {
+            switchToPage(pendingSwitch);
+            setPendingSwitch(null);
+          }}
+          onCancel={() => setPendingSwitch(null)}
+        />
+      )}
+
+      {pendingUnpublish && (
+        <ConfirmDialog
+          open
+          title={`Take "${pendingUnpublish.title}" offline?`}
+          message={`Guests opening ${window.location.host}/${slug}${pendingUnpublish.page_slug ? `/${pendingUnpublish.page_slug}` : ''} will see a "not published" page until you publish it again.`}
+          confirmLabel="Unpublish"
+          onConfirm={() => {
+            void togglePublished(pendingUnpublish);
+            setPendingUnpublish(null);
+          }}
+          onCancel={() => setPendingUnpublish(null)}
+        />
+      )}
+
+      {editingPage && (
+        <EditPageDialog
+          page={editingPage}
+          existingSlugs={pages.filter((p) => p.id !== editingPage.id).map((p) => p.page_slug)}
+          onClose={() => setEditingPage(null)}
+          onSave={(payload) => void handleEditPage(payload)}
+          saving={updatePage.isPending}
+        />
       )}
     </div>
   );

@@ -1596,51 +1596,24 @@ export async function getSideLiabilityRollups(ownerId: string): Promise<
     outstanding_amount: number;
   }>
 > {
-  const [liability, cash] = await Promise.all([
-    withPgClient(async (client) => {
-      const { rows } = await client.query<DbRow>(
-        `
-          SELECT *
-          FROM finance_side_liability_rollups_v
-          WHERE user_id = $1
-        `,
-        [ownerId],
-      );
-      return rows;
-    }),
-    withPgClient(async (client) => {
-      const { rows } = await client.query<DbRow>(
-        `
-          SELECT side, paid_amount
-          FROM finance_side_cash_rollups_v
-          WHERE user_id = $1
-        `,
-        [ownerId],
-      );
-      return rows;
-    }),
-  ]);
+  const liability = await withPgClient(async (client) => {
+    const { rows } = await client.query<DbRow>(
+      `
+        SELECT *
+        FROM finance_side_liability_rollups_v
+        WHERE user_id = $1
+      `,
+      [ownerId],
+    );
+    return rows;
+  });
 
-  const cashBySide = new Map(
-    cash.map((row: DbRow) => [String(row['side']), toNumber(row['paid_amount'])] as const),
-  );
-  const rows = liability.map((row: DbRow) => ({
+  return liability.map((row: DbRow) => ({
     side: String(row['side']) as 'bride' | 'groom' | 'shared',
     committed_amount: toNumber(row['committed_amount']),
     paid_amount: toNumber(row['paid_amount']),
     outstanding_amount: toNumber(row['outstanding_amount']),
-    cash_paid_amount: cashBySide.get(String(row['side'])) ?? 0,
   }));
-
-  return [
-    ...rows,
-    {
-      side: 'shared',
-      committed_amount: 0,
-      paid_amount: 0,
-      outstanding_amount: 0,
-    },
-  ];
 }
 
 export async function getScheduledPayments(ownerId: string): Promise<PaymentRow[]> {

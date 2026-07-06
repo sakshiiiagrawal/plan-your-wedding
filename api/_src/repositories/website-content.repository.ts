@@ -27,7 +27,8 @@ export async function findSection(
 
   if (ownerId) query = query.eq('user_id', ownerId);
 
-  const { data, error } = await query.single();
+  // maybeSingle: a missing section is a normal state (callers decide 404 vs default)
+  const { data, error } = await query.maybeSingle();
   if (error) throw error;
   return data as WebsiteContentRow | null;
 }
@@ -40,7 +41,7 @@ export async function findSectionContent(
 
   if (ownerId) query = query.eq('user_id', ownerId);
 
-  const { data, error } = await query.single();
+  const { data, error } = await query.maybeSingle();
   if (error) throw error;
   return data?.content ?? {};
 }
@@ -49,12 +50,14 @@ export async function upsertSection(
   section: string,
   ownerId: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payload: Record<string, any>,
+  content: Record<string, any>,
 ): Promise<WebsiteContentRow> {
+  // The caller's payload is section content, not table columns — it must land
+  // in the `content` JSONB column, never be spread as columns.
   const { data, error } = await supabase
     .from('website_content')
     .upsert(
-      { ...payload, section_name: section, user_id: ownerId },
+      { section_name: section, user_id: ownerId, content },
       { onConflict: 'section_name,user_id' },
     )
     .select()

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/axios';
+import type { PublicEvent } from '../site/types';
 import type {
   HeroContent,
   GuestWithDetails,
@@ -84,15 +85,36 @@ export const useGalleryContent = (slug?: string | null) =>
     staleTime: 10 * 60 * 1000,
   });
 
-export interface PublicEvent {
-  name: string;
-  description?: string;
-  date?: string;
-  time?: string;
-  venue?: string;
-  color?: string;
-  dress?: string;
-}
+export const useUploadGalleryImage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return api
+        .post('/website-content/gallery/images', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        .then((res) => res.data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['website-content'] });
+    },
+  });
+};
+
+export const useDeleteGalleryImage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (url: string) =>
+      api.delete('/website-content/gallery/images', { data: { url } }).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['website-content'] });
+    },
+  });
+};
+
+export type { PublicEvent } from '../site/types';
 
 export const usePublicEvents = (slug?: string | null) =>
   useQuery<PublicEvent[]>({
@@ -101,6 +123,82 @@ export const usePublicEvents = (slug?: string | null) =>
     enabled: !!slug,
     staleTime: 5 * 60 * 1000,
   });
+
+// =====================================================
+// PUBLIC PAGES (multi-page site)
+// =====================================================
+
+export interface PublicPagePayload {
+  page_slug: string;
+  kind: 'website' | 'invite';
+  title: string;
+  template: string;
+  palette: string;
+   
+  config: Record<string, any>;
+}
+
+export interface PublicPageRecord extends PublicPagePayload {
+  id: string;
+  is_published: boolean;
+  display_order: number;
+}
+
+/** Published pages of a wedding, as seen by guests. */
+export const usePublicPages = (slug?: string | null) =>
+  useQuery<PublicPagePayload[]>({
+    queryKey: ['public-pages', slug],
+    queryFn: () => api.get(`/public/${slug}/pages`).then((res) => res.data),
+    enabled: !!slug,
+    staleTime: 60 * 1000,
+  });
+
+/** All pages of the authenticated wedding (Site Studio). */
+export const usePages = () =>
+  useQuery<PublicPageRecord[]>({
+    queryKey: ['pages'],
+    queryFn: () => api.get('/pages').then((res) => res.data),
+  });
+
+const invalidatePages = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({ queryKey: ['pages'] });
+  queryClient.invalidateQueries({ queryKey: ['public-pages'] });
+};
+
+export const useCreatePage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Partial<PublicPageRecord>) =>
+      api.post('/pages', payload).then((res) => res.data),
+    onSuccess: (created: PublicPageRecord) => {
+      // Seed the cache immediately so the newly created page is present
+      // before the invalidated refetch lands (avoids a stale-list render
+      // where the selection falls back to the home page).
+      queryClient.setQueryData<PublicPageRecord[]>(['pages'], (old) => [
+        ...(old ?? []),
+        created,
+      ]);
+      invalidatePages(queryClient);
+    },
+  });
+};
+
+export const useUpdatePage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...payload }: Partial<PublicPageRecord> & { id: string }) =>
+      api.put(`/pages/${id}`, payload).then((res) => res.data),
+    onSuccess: () => invalidatePages(queryClient),
+  });
+};
+
+export const useDeletePage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/pages/${id}`).then((res) => res.data),
+    onSuccess: () => invalidatePages(queryClient),
+  });
+};
 
 // =====================================================
 // DASHBOARD HOOKS
@@ -184,17 +282,6 @@ export const useRecentActivity = () =>
     queryKey: ['dashboard', 'activity'],
     queryFn: () => api.get('/dashboard/activity').then((res) => res.data),
     staleTime: 30 * 1000,
-  });
-
-export interface CountdownData {
-  weddingDate?: string;
-}
-
-export const useCountdown = () =>
-  useQuery<CountdownData>({
-    queryKey: ['dashboard', 'countdown'],
-    queryFn: () => api.get('/dashboard/countdown').then((res) => res.data),
-    refetchInterval: 60000,
   });
 
 // =====================================================
@@ -282,6 +369,38 @@ export const useDeleteGuest = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
+    },
+  });
+};
+
+export const useSetOverallRsvp = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; rsvp_status: string; plus_ones?: number }) =>
+      api.put(`/guests/${id}/rsvp`, data).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+export const useUpdateGuestRsvp = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      guestId,
+      eventId,
+      ...data
+    }: {
+      guestId: string;
+      eventId: string;
+      rsvp_status?: string;
+      plus_ones?: number;
+    }) => api.put(`/guests/${guestId}/rsvp/${eventId}`, data).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guests'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -1096,3 +1215,153 @@ export const useDeleteTask = () => {
     },
   });
 };
+
+// =====================================================
+// AUTH / ACCOUNT HOOKS
+// =====================================================
+
+export const useForgotPassword = () =>
+  useMutation({
+    mutationFn: (email: string) =>
+      api.post('/auth/forgot-password', { email }).then((res) => res.data),
+  });
+
+export const useResetPassword = () =>
+  useMutation({
+    mutationFn: ({ token, password }: { token: string; password: string }) =>
+      api.post('/auth/reset-password', { token, password }).then((res) => res.data),
+  });
+
+export const useVerifyEmail = () =>
+  useMutation({
+    mutationFn: (token: string) => api.post('/auth/verify-email', { token }).then((res) => res.data),
+  });
+
+export const useResendVerification = () =>
+  useMutation({
+    mutationFn: () => api.post('/auth/resend-verification').then((res) => res.data),
+  });
+
+export const useUpdateProfile = () =>
+  useMutation({
+    mutationFn: (updates: { name?: string; email?: string; slug?: string; currency?: string }) =>
+      api.patch('/auth/me', updates).then((res) => res.data),
+  });
+
+export const useChangePassword = () =>
+  useMutation({
+    mutationFn: (payload: { oldPassword: string; newPassword: string }) =>
+      api.post('/auth/change-password', payload).then((res) => res.data),
+  });
+
+export const useDeleteAccount = () =>
+  useMutation({
+    mutationFn: () => api.delete('/auth/me'),
+  });
+
+// =====================================================
+// MEMBERS / COLLABORATION HOOKS
+// =====================================================
+
+export interface WeddingMember {
+  id: string;
+  owner_id: string;
+  member_id: string | null;
+  invited_email: string;
+  role: 'admin' | 'editor' | 'viewer';
+  status: 'pending' | 'active';
+  created_at: string;
+}
+
+export const useMembers = () =>
+  useQuery<WeddingMember[]>({
+    queryKey: ['members'],
+    queryFn: () => api.get('/members').then((res) => res.data),
+  });
+
+export const useInviteMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { email: string; role: string }) =>
+      api.post('/members/invite', payload).then((res) => res.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members'] }),
+  });
+};
+
+export const useAcceptInvite = () =>
+  useMutation({
+    mutationFn: (token: string) =>
+      api.post('/members/accept', { token }).then((res) => res.data),
+  });
+
+export const useUpdateMemberRole = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, role }: { id: string; role: string }) =>
+      api.patch(`/members/${id}`, { role }).then((res) => res.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members'] }),
+  });
+};
+
+// =====================================================
+// EXPORT HOOKS
+// =====================================================
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function useExport(path: string, filename: string) {
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.get(path, { responseType: 'blob' });
+      downloadBlob(res.data, filename);
+    },
+  });
+}
+
+export const useExportGuests = () => useExport('/guests/export', 'guests.xlsx');
+export const useExportBudget = () => useExport('/expense/export', 'budget.xlsx');
+export const useExportVendors = () => useExport('/vendors/export', 'vendors.xlsx');
+export const useExportAllocations = () =>
+  useExport('/venues/allocations/export', 'accommodations.xlsx');
+
+export const useRemoveMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/members/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members'] }),
+  });
+};
+
+// =====================================================
+// WEDDING SWITCHER HOOKS
+// =====================================================
+
+export interface WeddingOption {
+  ownerId: string;
+  label: string;
+  role: 'admin' | 'editor' | 'viewer';
+  isOwn: boolean;
+}
+
+export const useWeddings = () =>
+  useQuery<{ activeOwnerId: string; weddings: WeddingOption[] }>({
+    queryKey: ['weddings'],
+    queryFn: () => api.get('/auth/weddings').then((res) => res.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
+export const useSetActiveWedding = () =>
+  useMutation({
+    mutationFn: (ownerId: string) =>
+      api.post('/auth/active-wedding', { ownerId }).then((res) => res.data),
+    // Switching changes every scoped query, the slug and the currency; a full
+    // reload re-resolves the auth context and refetches everything cleanly.
+    onSuccess: () => window.location.reload(),
+  });

@@ -30,6 +30,7 @@ export const createVenueSchema = z.object({
   place_id: z.string().optional().nullable(),
   latitude: z.coerce.number().min(-90).max(90).optional().nullable(),
   longitude: z.coerce.number().min(-180).max(180).optional().nullable(),
+  photo_url: z.string().optional().nullable(),
   contact_person: z.string().optional().nullable(),
   contact_phone: z.string().optional().nullable(),
   capacity: z.coerce.number().int().nonnegative().optional().nullable(),

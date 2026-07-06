@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   useDashboardStats,
@@ -14,13 +14,14 @@ import {
 import {
   HiOutlineUserGroup,
   HiOutlineCurrencyRupee,
-  HiOutlineBell,
   HiOutlineHome,
   HiOutlineGlobe,
   HiOutlinePhotograph,
   HiOutlineChevronRight,
 } from 'react-icons/hi';
 import { CornerFlourish, Ornament, ProgressRing, KPICard } from '../../components/ui';
+import { formatDate, parseLocalDate } from '../../utils/date';
+import { formatCurrencyCompact } from '../../utils/currency';
 
 interface Countdown {
   days: number;
@@ -31,17 +32,12 @@ interface Countdown {
 
 const EVENT_COLORS = ['#8B0000', '#B8860B', '#5C6BC0', '#2E7D32', '#6A1B9A', '#0277BD'];
 
-function fmtLakh(n: number) {
-  if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
-  if (n >= 1000) return `₹${(n / 1000).toFixed(0)}K`;
-  return `₹${n}`;
-}
+const fmtLakh = formatCurrencyCompact;
 
 const QUICK_ACTIONS = [
   { label: 'Add guest', icon: HiOutlineUserGroup, path: '/guests' },
-  { label: 'Send RSVP reminder', icon: HiOutlineBell, path: '/guests' },
   { label: 'Assign rooms', icon: HiOutlineHome, path: '/accommodations' },
-  { label: 'Log expense', icon: HiOutlineCurrencyRupee, path: '/expense' },
+  { label: 'Log expense', icon: HiOutlineCurrencyRupee, path: '/budget' },
   { label: 'Upload to gallery', icon: HiOutlinePhotograph, path: '/gallery' },
   { label: 'Publish website', icon: HiOutlineGlobe, path: '/website' },
 ];
@@ -49,15 +45,25 @@ const QUICK_ACTIONS = [
 export default function Dashboard() {
   const { slug } = useParams<{ slug: string }>();
   const [cd, setCd] = useState<Countdown>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [cdPhase, setCdPhase] = useState<'counting' | 'today' | 'past'>('counting');
 
-  const { data: stats } = useDashboardStats();
-  const { data: summary } = useDashboardSummary();
-  const { data: heroContent } = useHeroContent(slug);
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
+  const { data: summary, isLoading: summaryLoading } = useDashboardSummary();
+  const { data: heroContent, isLoading: heroLoading } = useHeroContent(slug);
   const { data: expenseOverview = [] } = useExpenseOverview();
-  const { data: upcomingTasks = [] } = useUpcomingTasks();
-  const { data: vendors = [] } = useVendors();
-  const { data: guestSummary } = useGuestSummary();
-  const { data: recentActivity = [] } = useRecentActivity();
+  const { data: upcomingTasks = [], isLoading: tasksLoading } = useUpcomingTasks();
+  const { data: vendors = [], isLoading: vendorsLoading } = useVendors();
+  const { data: guestSummary, isLoading: guestsLoading } = useGuestSummary();
+  const { data: recentActivity = [], isLoading: activityLoading } = useRecentActivity();
+
+  const isLoading =
+    statsLoading ||
+    summaryLoading ||
+    heroLoading ||
+    tasksLoading ||
+    vendorsLoading ||
+    guestsLoading ||
+    activityLoading;
 
   const brideName = heroContent?.bride_name || 'Bride';
   const groomName = heroContent?.groom_name || 'Groom';
@@ -66,16 +72,20 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!weddingDateStr) return;
-    const target = new Date(weddingDateStr).getTime();
+    const target = parseLocalDate(weddingDateStr).getTime();
     const tick = () => {
       const diff = target - Date.now();
       if (diff > 0) {
+        setCdPhase('counting');
         setCd({
           days: Math.floor(diff / 86400000),
           hours: Math.floor((diff % 86400000) / 3600000),
           minutes: Math.floor((diff % 3600000) / 60000),
           seconds: Math.floor((diff % 60000) / 1000),
         });
+      } else {
+        // The whole wedding day counts as "today"; only after it is it past.
+        setCdPhase(diff > -86400000 ? 'today' : 'past');
       }
     };
     tick();
@@ -99,8 +109,15 @@ export default function Dashboard() {
   const budgetPct = budgetTotal > 0 ? budgetPaid / budgetTotal : 0;
   const tasksPct = tasksTotal > 0 ? tasksCompleted / tasksTotal : 0;
 
+  const vendorsBooked = vendors.filter(
+    (v: any) => (v.finance_summary?.committed_amount ?? 0) > 0,
+  ).length;
+
+  const isFreshAccount =
+    totalGuests === 0 && tasksTotal === 0 && vendors.length === 0 && events.length === 0;
+
   const formattedDate = weddingDateStr
-    ? new Date(weddingDateStr).toLocaleDateString('en-US', {
+    ? formatDate(weddingDateStr, {
         month: 'long',
         day: 'numeric',
         year: 'numeric',
@@ -113,6 +130,25 @@ export default function Dashboard() {
     { value: cd.minutes, label: 'Minutes' },
     { value: cd.seconds, label: 'Seconds' },
   ];
+
+  if (isLoading) {
+    return (
+      <div
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '96px 0' }}
+      >
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: '50%',
+            border: '3px solid var(--line-soft)',
+            borderTopColor: 'var(--gold)',
+            animation: 'spin 0.8s linear infinite',
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto' }}>
@@ -211,46 +247,103 @@ export default function Dashboard() {
         )}
 
         {/* Countdown */}
+        {!weddingDateStr ? (
+          <div style={{ marginTop: 34 }}>
+            <Link
+              to={`/${slug}/dashboard/website`}
+              className="display"
+              style={{ fontSize: 18, fontStyle: 'italic', color: 'var(--gold-deep)' }}
+            >
+              Set your wedding date to start the countdown →
+            </Link>
+          </div>
+        ) : cdPhase === 'today' ? (
+          <div
+            className="display"
+            style={{ marginTop: 34, fontSize: 32, color: 'var(--gold-soft)' }}
+          >
+            Today is the day! 🎊
+          </div>
+        ) : cdPhase === 'past' ? (
+          <div
+            className="display"
+            style={{ marginTop: 34, fontSize: 32, color: 'var(--gold-soft)' }}
+          >
+            Just married! 🎉
+          </div>
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: 18,
+              marginTop: 34,
+              alignItems: 'center',
+              flexWrap: 'wrap',
+            }}
+          >
+            {cdUnits.map((u, i) => (
+              <Fragment key={u.label}>
+                <div style={{ textAlign: 'center', minWidth: 72 }}>
+                  <div
+                    className="display tnum"
+                    style={{
+                      fontSize: 44,
+                      lineHeight: 1,
+                      color: 'var(--gold-soft)',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {String(u.value).padStart(2, '0')}
+                  </div>
+                  <div
+                    className="uppercase-eyebrow"
+                    style={{ color: 'var(--ink-low)', fontSize: 10, marginTop: 4 }}
+                  >
+                    {u.label}
+                  </div>
+                </div>
+                {i < cdUnits.length - 1 && (
+                  <div className="display" style={{ color: 'var(--gold)', fontSize: 28 }}>
+                    ·
+                  </div>
+                )}
+              </Fragment>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── First-run guide ─────────────────────────────────────── */}
+      {isFreshAccount && (
         <div
+          className="card"
           style={{
+            marginBottom: 28,
             display: 'flex',
-            justifyContent: 'center',
-            gap: 18,
-            marginTop: 34,
             alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
             flexWrap: 'wrap',
           }}
         >
-          {cdUnits.map((u, i) => (
-            <>
-              <div key={u.label} style={{ textAlign: 'center', minWidth: 72 }}>
-                <div
-                  className="display tnum"
-                  style={{
-                    fontSize: 44,
-                    lineHeight: 1,
-                    color: 'var(--gold-soft)',
-                    fontWeight: 500,
-                  }}
-                >
-                  {String(u.value).padStart(2, '0')}
-                </div>
-                <div
-                  className="uppercase-eyebrow"
-                  style={{ color: 'var(--ink-low)', fontSize: 10, marginTop: 4 }}
-                >
-                  {u.label}
-                </div>
-              </div>
-              {i < cdUnits.length - 1 && (
-                <div className="display" style={{ color: 'var(--gold)', fontSize: 28 }}>
-                  ·
-                </div>
-              )}
-            </>
-          ))}
+          <div>
+            <div className="uppercase-eyebrow">Getting started</div>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--ink-mid)' }}>
+              Welcome! Start by adding your events and guest list — everything else builds on
+              them.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Link to={`/${slug}/dashboard/events`} className="btn-primary">
+              Add an event
+            </Link>
+            <Link to={`/${slug}/dashboard/guests`} className="btn-outline">
+              Add guests
+            </Link>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── KPI Strip ──────────────────────────────────────────────── */}
       <div
@@ -284,8 +377,8 @@ export default function Dashboard() {
         />
         <KPICard
           eyebrow="Vendors booked"
-          value={vendors.length}
-          suffix="total vendors"
+          value={vendorsBooked}
+          suffix={`of ${vendors.length}`}
           hint={`${vendors.filter((v: any) => (v.finance_summary?.paid_amount ?? 0) > 0).length} with payments logged`}
           accent
         />
@@ -360,8 +453,7 @@ export default function Dashboard() {
               <div>
                 {events.map((ev: any, i: number) => {
                   const color = EVENT_COLORS[i % EVENT_COLORS.length];
-                  const date = new Date(ev.event_date);
-                  const dayStr = date.toLocaleDateString('en-US', {
+                  const dayStr = formatDate(ev.event_date, {
                     weekday: 'short',
                     month: 'short',
                     day: 'numeric',
@@ -497,7 +589,17 @@ export default function Dashboard() {
                   padding: '16px 0',
                 }}
               >
-                All tasks done! 🎉
+                {tasksTotal === 0 ? (
+                  <>
+                    No tasks yet —{' '}
+                    <Link to={`/${slug}/dashboard/tasks`} style={{ color: 'var(--gold-deep)' }}>
+                      add your first task
+                    </Link>
+                    .
+                  </>
+                ) : (
+                  'All tasks done! 🎉'
+                )}
               </p>
             ) : (
               <div>
@@ -540,7 +642,7 @@ export default function Dashboard() {
                       </div>
                       {t.due_date && (
                         <span className="pill muted" style={{ fontSize: 10, flexShrink: 0 }}>
-                          {new Date(t.due_date).toLocaleDateString('en-US', {
+                          {formatDate(t.due_date, {
                             month: 'short',
                             day: 'numeric',
                           })}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { HiOutlinePlus } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineDownload } from 'react-icons/hi';
 import {
   useCreateExpense,
   useDeleteExpense,
@@ -10,6 +10,7 @@ import {
   useExpenseSummary,
   useExpenses,
   useUpdateExpense,
+  useExportBudget,
 } from '../../hooks/useApi';
 import ExpenseOverviewTab from './expense/ExpenseOverviewTab';
 import ExpenseExpensesTab, { type ExpenseListRow } from './expense/ExpenseExpensesTab';
@@ -20,7 +21,9 @@ import AddExpenseModal from './expense/AddExpenseModal';
 import EditExpenseModal from './expense/EditExpenseModal';
 import type { ExpenseRow } from './expense/EditExpenseModal';
 import toast from 'react-hot-toast';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import type { ExpenseWithDetails } from '@wedding-planner/shared';
+import { formatCurrency } from '../../utils/currency';
 
 interface Tab {
   id: string;
@@ -64,13 +67,6 @@ const TABS: Tab[] = [
   { id: 'payments', label: 'Payments' },
 ];
 
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount);
-
 function getSideMeta(expense: ExpenseWithDetails) {
   const uniqueSides = Array.from(new Set(expense.items.map((item) => item.side)));
   if (uniqueSides.length !== 1) {
@@ -102,6 +98,7 @@ export default function Expense() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const { data: expenseSummary, isLoading: loadingSummary } = useExpenseSummary();
   const { data: expenseOverview, isLoading: loadingOverview } = useExpenseOverview();
@@ -109,6 +106,7 @@ export default function Expense() {
   const { data: categories = [] } = useExpenseCategories();
   const { data: outstanding } = useExpenseOutstanding();
   const { data: alerts } = useExpenseAlerts();
+  const exportBudget = useExportBudget();
   const createExpenseMutation = useCreateExpense();
   const updateExpenseMutation = useUpdateExpense();
   const deleteExpenseMutation = useDeleteExpense();
@@ -275,10 +273,10 @@ export default function Expense() {
   };
 
   const handleExpenseDelete = async (id: string) => {
-    if (!window.confirm('Delete this manual expense? This cannot be undone.')) return;
     try {
       await deleteExpenseMutation.mutateAsync(id);
       toast.success('Expense deleted.');
+      setDeleteConfirm(null);
     } catch (error: unknown) {
       const apiError = error as ApiError;
       const message =
@@ -323,13 +321,23 @@ export default function Expense() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="page-title">Expense & Finance</h1>
-        <button
-          onClick={() => setShowExpenseModal(true)}
-          className="btn-primary flex items-center gap-2 self-start sm:self-auto"
-        >
-          <HiOutlinePlus className="w-4 h-4" />
-          Add Expense
-        </button>
+        <div className="flex gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => exportBudget.mutate()}
+            disabled={exportBudget.isPending}
+            className="btn-outline flex items-center gap-2"
+          >
+            <HiOutlineDownload className="w-4 h-4" />
+            Export Excel
+          </button>
+          <button
+            onClick={() => setShowExpenseModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <HiOutlinePlus className="w-4 h-4" />
+            Add Expense
+          </button>
+        </div>
       </div>
 
       {alerts &&
@@ -430,7 +438,7 @@ export default function Expense() {
                 setEditingExpense(expense);
               }
             }}
-            onDelete={handleExpenseDelete}
+            onDelete={(id) => setDeleteConfirm(id)}
           />
         )}
 
@@ -461,6 +469,15 @@ export default function Expense() {
         onClose={() => setEditingExpense(null)}
         onSubmit={handleExpenseUpdate}
         isPending={updateExpenseMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        title="Delete expense?"
+        message="This manual expense will be removed. This cannot be undone."
+        isPending={deleteExpenseMutation.isPending}
+        onConfirm={() => deleteConfirm && handleExpenseDelete(deleteConfirm)}
+        onCancel={() => setDeleteConfirm(null)}
       />
     </div>
   );

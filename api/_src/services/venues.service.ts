@@ -167,6 +167,7 @@ export async function createVenue(
           place_id,
           latitude,
           longitude,
+          photo_url,
           contact_person,
           contact_phone,
           capacity,
@@ -175,7 +176,7 @@ export async function createVenue(
           default_check_out_date,
           notes
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING *
       `,
       [
@@ -187,6 +188,7 @@ export async function createVenue(
         venuePayload.place_id ?? null,
         venuePayload.latitude ?? null,
         venuePayload.longitude ?? null,
+        venuePayload.photo_url ?? null,
         venuePayload.contact_person ?? null,
         venuePayload.contact_phone ?? null,
         venuePayload.capacity ?? null,
@@ -287,6 +289,7 @@ export async function updateVenue(
       place_id: venuePayload.place_id ?? existing.place_id,
       latitude: venuePayload.latitude ?? existing.latitude,
       longitude: venuePayload.longitude ?? existing.longitude,
+      photo_url: venuePayload.photo_url ?? existing.photo_url,
       contact_person: venuePayload.contact_person ?? existing.contact_person,
       contact_phone: venuePayload.contact_phone ?? existing.contact_phone,
       capacity: venuePayload.capacity ?? existing.capacity,
@@ -314,7 +317,8 @@ export async function updateVenue(
           has_accommodation = $13,
           default_check_in_date = $14,
           default_check_out_date = $15,
-          notes = $16
+          notes = $16,
+          photo_url = $17
         WHERE id = $1
           AND user_id = $2
         RETURNING *
@@ -336,6 +340,7 @@ export async function updateVenue(
         nextValues.default_check_in_date,
         nextValues.default_check_out_date,
         nextValues.notes,
+        nextValues.photo_url,
       ],
     );
     const venue = rows[0] as VenueRow | undefined;
@@ -536,29 +541,64 @@ export async function getAllocationMatrix(ownerId: string) {
   return repo.findAllocationMatrix(ownerId);
 }
 
-async function checkRoomCapacity(roomId: string, guestCount: number) {
+async function checkRoomCapacity(
+  roomId: string,
+  guestCount: number,
+  checkInDate: string,
+  checkOutDate: string,
+  excludeAllocationId?: string,
+) {
   const room = await repo.findRoomById(roomId);
   if (!room) throw new NotFoundError('Room not found');
   const capacity = room.capacity ?? 0;
-  if (guestCount > capacity) {
+
+  const overlapping = await repo.findOverlappingAllocations(
+    roomId,
+    checkInDate,
+    checkOutDate,
+    excludeAllocationId,
+  );
+  const existingOccupancy = overlapping.reduce(
+    (sum, a) => sum + ((a.guest_ids as string[])?.length ?? 0),
+    0,
+  );
+  const totalOccupancy = existingOccupancy + guestCount;
+
+  if (totalOccupancy > capacity) {
     throw new BadRequestError(
-      `Room ${room.room_number} has a capacity of ${capacity}. You tried to assign ${guestCount} guest${guestCount !== 1 ? 's' : ''}.`,
+      `Room ${room.room_number} has a capacity of ${capacity}. ${existingOccupancy} guest${existingOccupancy !== 1 ? 's are' : ' is'} already assigned for an overlapping stay, and this would add ${guestCount} more.`,
     );
   }
 }
 
 export async function createAllocation(payload: RoomAllocationInsert) {
-  await checkRoomCapacity(payload.room_id, (payload.guest_ids ?? []).length);
+  await checkRoomCapacity(
+    payload.room_id,
+    (payload.guest_ids ?? []).length,
+    payload.check_in_date,
+    payload.check_out_date,
+  );
   return repo.insertAllocation(payload);
 }
 
 export async function updateAllocation(id: string, payload: Partial<RoomAllocationInsert>) {
-  if (payload.room_id && payload.guest_ids) {
-    await checkRoomCapacity(payload.room_id, payload.guest_ids.length);
-  } else if (payload.guest_ids) {
-    // room_id not changing — fetch it from the existing allocation
+  const touchesCapacity =
+    payload.room_id !== undefined ||
+    payload.guest_ids !== undefined ||
+    payload.check_in_date !== undefined ||
+    payload.check_out_date !== undefined;
+
+  if (touchesCapacity) {
     const existing = await repo.findAllocationById(id);
-    if (existing) await checkRoomCapacity(existing.room_id, payload.guest_ids.length);
+    if (existing) {
+      const roomId = payload.room_id ?? existing.room_id;
+      const guestCount = payload.guest_ids
+        ? payload.guest_ids.length
+        : ((existing.guest_ids as string[])?.length ?? 0);
+      const checkInDate = payload.check_in_date ?? existing.check_in_date;
+      const checkOutDate = payload.check_out_date ?? existing.check_out_date;
+      await checkRoomCapacity(roomId, guestCount, checkInDate, checkOutDate, id);
+    }
   }
   return repo.updateAllocation(id, payload);
 }
@@ -635,6 +675,8 @@ interface RoomGroup {
   checkInDate: string;
   checkOutDate: string;
   guestIds: string[];
+  guestNames: string[];
+  firstRow: number;
 }
 
 async function processAllocations(
@@ -699,9 +741,13 @@ async function processAllocations(
         checkInDate: allocation.check_in_date,
         checkOutDate: allocation.check_out_date,
         guestIds: [],
+        guestNames: [],
+        firstRow: rowNum,
       });
     }
-    roomGroups.get(groupKey)!.guestIds.push(guest.id);
+    const roomGroup = roomGroups.get(groupKey)!;
+    roomGroup.guestIds.push(guest.id);
+    roomGroup.guestNames.push(allocation.guest_full_name);
   }
 
   // Resolve rooms and build allocation payloads
@@ -742,6 +788,18 @@ async function processAllocations(
     }
 
     const existing = await repo.findAllocationForRoom(room.id, group.checkInDate);
+    const finalCount = existing
+      ? new Set([...(existing.guest_ids ?? []), ...group.guestIds]).size
+      : group.guestIds.length;
+
+    if (finalCount > (room.capacity ?? 0)) {
+      errors.push({
+        row: group.firstRow,
+        guest: group.guestNames.join(', '),
+        error: `Room ${group.roomNumber} has a capacity of ${room.capacity ?? 0}, but this import would put ${finalCount} guest${finalCount !== 1 ? 's' : ''} in it for ${group.checkInDate}.`,
+      });
+      continue;
+    }
 
     if (existing) {
       // Merge guest IDs (avoid duplicates)

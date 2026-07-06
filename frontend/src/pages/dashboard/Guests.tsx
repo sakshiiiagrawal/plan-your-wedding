@@ -9,6 +9,8 @@ import {
   useUpdateGuest,
   useBulkDeleteGuests,
   useEvents,
+  useSetOverallRsvp,
+  useExportGuests,
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -26,6 +28,8 @@ import {
 } from 'react-icons/hi';
 import { SectionHeader, SegmentedControl, KPICard, DrawerPanel } from '../../components/ui';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
+import { formatDate } from '../../utils/date';
 
 interface GuestFormData {
   first_name: string;
@@ -40,6 +44,7 @@ interface GuestFormData {
   needs_pickup: boolean;
   is_vip: boolean;
   notes: string;
+  events: string[];
 }
 
 interface PendingRow extends GuestFormData {
@@ -59,6 +64,7 @@ const DEFAULT_FORM: GuestFormData = {
   needs_pickup: false,
   is_vip: false,
   notes: '',
+  events: [],
 };
 
 function getGuestFormState(guest?: any): GuestFormData {
@@ -76,6 +82,7 @@ function getGuestFormState(guest?: any): GuestFormData {
     needs_pickup: guest.needs_pickup || false,
     is_vip: guest.is_vip || false,
     notes: guest.notes || '',
+    events: (guest.guest_event_rsvp ?? []).map((r: any) => r.event_id),
   };
 }
 
@@ -94,9 +101,22 @@ function GuestDrawer({
 }) {
   const { data: detail } = useGuest(guest.id);
   const { data: allEvents = [] } = useEvents();
+  const setOverallRsvp = useSetOverallRsvp();
 
-  const rsvps: any[] = detail?.rsvps ?? guest.rsvps ?? [];
+  const rsvps: any[] = (detail as any)?.guest_event_rsvp ?? guest.guest_event_rsvp ?? [];
   const eventsMap = new Map((allEvents as any[]).map((e: any) => [e.id, e]));
+
+  // The list endpoint already aggregates per-event RSVPs into rsvp_status
+  const aggregateStatus = guest.rsvp_status ?? 'pending';
+
+  const handleSetRsvp = async (status: string) => {
+    try {
+      await setOverallRsvp.mutateAsync({ id: guest.id, rsvp_status: status });
+      toast.success(`RSVP set to ${status === 'declined' ? 'regret' : status}`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Failed to update RSVP');
+    }
+  };
 
   const rsvpColor = (status: string) => {
     if (status === 'confirmed')
@@ -168,11 +188,13 @@ function GuestDrawer({
                 ['declined', 'Regret'],
               ] as const
             ).map(([v, l]) => {
-              const isActive = guest.rsvp_status === v;
+              const isActive = aggregateStatus === v;
               const c = rsvpColor(v);
               return (
-                <div
+                <button
                   key={v}
+                  onClick={() => handleSetRsvp(v)}
+                  disabled={setOverallRsvp.isPending}
                   style={{
                     padding: '10px 8px',
                     borderRadius: 8,
@@ -182,10 +204,11 @@ function GuestDrawer({
                     fontSize: 12,
                     fontWeight: 500,
                     color: isActive ? c.color : 'var(--ink-low)',
+                    cursor: setOverallRsvp.isPending ? 'wait' : 'pointer',
                   }}
                 >
                   {l}
-                </div>
+                </button>
               );
             })}
           </div>
@@ -209,7 +232,7 @@ function GuestDrawer({
                 const c = rsvpColor(rsvp.rsvp_status);
                 return (
                   <div
-                    key={rsvp.id}
+                    key={rsvp.event_id}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -229,7 +252,7 @@ function GuestDrawer({
                           className="mono"
                           style={{ fontSize: 11, color: 'var(--ink-dim)', marginTop: 2 }}
                         >
-                          {new Date(event.date).toLocaleDateString('en-US', {
+                          {formatDate(event.date, {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
@@ -364,6 +387,8 @@ export default function Guests() {
     sideFilter !== 'all' ? { side: sideFilter } : {},
   );
   const { data: summary } = useGuestSummary();
+  const exportGuests = useExportGuests();
+  const { data: allEvents = [] } = useEvents();
   const bulkCreateMutation = useBulkCreateGuests();
   const updateMutation = useUpdateGuest();
   const bulkDeleteMutation = useBulkDeleteGuests();
@@ -381,6 +406,8 @@ export default function Guests() {
       },
       isSaving: updateMutation.isPending,
     });
+  useModalDismiss(showEditModal, attemptCloseGuestModal);
+  useModalDismiss(showImportModal, () => setShowImportModal(false));
 
   const resetForm = () => {
     setFormData(DEFAULT_FORM);
@@ -571,8 +598,8 @@ export default function Guests() {
         if (!matchesSearch) return false;
       }
 
-      if (rsvpFilter !== 'all' && guest.rsvp_status) {
-        if (guest.rsvp_status !== rsvpFilter) return false;
+      if (rsvpFilter !== 'all' && (guest.rsvp_status ?? 'pending') !== rsvpFilter) {
+        return false;
       }
 
       return true;
@@ -616,6 +643,14 @@ export default function Guests() {
             >
               <HiOutlineUpload className="w-4 h-4" />
               Import Excel
+            </button>
+            <button
+              onClick={() => exportGuests.mutate()}
+              disabled={exportGuests.isPending}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 transition-colors"
+            >
+              <HiOutlineDownload className="w-4 h-4" />
+              Export Excel
             </button>
             <button
               onClick={() => addPendingRow()}
@@ -844,7 +879,9 @@ export default function Guests() {
               {filteredGuests.length === 0 && pendingRows.length === 0 && (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-gray-500">
-                    No guests found
+                    {searchTerm || rsvpFilter !== 'all'
+                      ? 'No guests match your search.'
+                      : 'No guests yet — add your first guest.'}
                   </td>
                 </tr>
               )}
@@ -877,6 +914,7 @@ export default function Guests() {
                     >
                       <option value="bride">Bride</option>
                       <option value="groom">Groom</option>
+                      <option value="mutual">Mutual</option>
                     </select>
                   </td>
                   <td className="p-2 hidden sm:table-cell">
@@ -1149,6 +1187,7 @@ export default function Guests() {
                     >
                       <option value="bride">Bride Side</option>
                       <option value="groom">Groom Side</option>
+                      <option value="mutual">Mutual</option>
                     </select>
                   </div>
                   <div>
@@ -1224,6 +1263,51 @@ export default function Guests() {
                       {label}
                     </label>
                   ))}
+                </div>
+
+                <div>
+                  <label className="label">Events attending</label>
+                  {(allEvents as any[]).length === 0 ? (
+                    <p style={{ fontSize: 12, color: 'var(--ink-dim)', fontStyle: 'italic' }}>
+                      No events yet — create events first to link guests to them.
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px' }}>
+                      {(allEvents as any[]).map((event: any) => (
+                        <label
+                          key={event.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            fontSize: 13,
+                            color: 'var(--ink-mid)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.events.includes(event.id)}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                events: e.target.checked
+                                  ? [...formData.events, event.id]
+                                  : formData.events.filter((id) => id !== event.id),
+                              })
+                            }
+                            style={{
+                              width: 14,
+                              height: 14,
+                              cursor: 'pointer',
+                              accentColor: 'var(--gold)',
+                            }}
+                          />
+                          {event.name}
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1360,8 +1444,8 @@ export default function Guests() {
                         guests
                       </>,
                       <>
-                        <strong>Required fields:</strong> First Name and Side (must be
-                        &quot;Bride&quot; or &quot;Groom&quot;)
+                        <strong>Required fields:</strong> First Name and Side (&quot;Bride&quot;,
+                        &quot;Groom&quot;, or &quot;Mutual&quot;)
                       </>,
                       <>
                         <strong>Optional:</strong> Last Name, Phone, Relationship, Meal Preference,
