@@ -122,6 +122,43 @@ interface EditAllocationState {
   currentGuests: GuestOption[];
 }
 
+interface AccommodationGuest extends GuestOption {
+  is_vip?: boolean;
+}
+
+interface RoomAllocationSummary {
+  id: string;
+  guest_ids?: string[];
+  check_in_date?: string | null;
+  check_out_date?: string | null;
+  guests?: AccommodationGuest[];
+}
+
+interface VenueRoom {
+  id: string;
+  room_number: string;
+  room_type?: string;
+  capacity?: number;
+  room_allocations?: RoomAllocationSummary[];
+}
+
+interface AllocationVenue {
+  id: string;
+  name: string;
+  city?: string;
+  default_check_in_date?: string | null;
+  default_check_out_date?: string | null;
+  rooms?: VenueRoom[];
+  total_rooms_booked?: number;
+  [key: string]: unknown;
+}
+
+type EnrichedVenue = AllocationVenue & {
+  totalCapacity: number;
+  guestsAllocated: number;
+  roomsBooked: number;
+};
+
 function fuzzyMatch(query: string, text: string): boolean {
   if (!query.trim()) return true;
   const q = query.toLowerCase();
@@ -194,11 +231,13 @@ export default function Accommodations() {
     setAddingRoomsToHotelId(null);
   };
 
-  const buildRoomsPayload = (existingRooms: any[]) => {
+  const buildRoomsPayload = (existingRooms: VenueRoom[]) => {
     const validCategories = roomCategories.filter((c) => Number(c.count) > 0);
     if (validCategories.length === 0) return [];
-    const existingCountByType = existingRooms.reduce((acc: Record<string, number>, r: any) => {
-      acc[r.room_type] = (acc[r.room_type] || 0) + 1;
+    const existingCountByType = existingRooms.reduce((acc: Record<string, number>, r) => {
+      const roomType = r.room_type;
+      if (!roomType) return acc;
+      acc[roomType] = (acc[roomType] || 0) + 1;
       return acc;
     }, {});
     const rooms: Array<{
@@ -278,8 +317,8 @@ export default function Accommodations() {
 
   const handleRoomSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const hotel = enrichedHotels.find((h: any) => h.id === addingRoomsToHotelId);
-    const existingRooms = (hotel?.rooms || []) as any[];
+    const hotel = enrichedHotels.find((h: EnrichedVenue) => h.id === addingRoomsToHotelId);
+    const existingRooms = (hotel?.rooms || []) as VenueRoom[];
     const rooms = buildRoomsPayload(existingRooms);
     if (rooms.length === 0) {
       toast.error('Add at least one room category with a count');
@@ -414,37 +453,30 @@ export default function Accommodations() {
   };
 
   const enrichedHotels = useMemo(() => {
-    return allocationMatrix.map(
-      (hotel: {
-        id: string;
-        rooms?: Array<{ capacity?: number; room_allocations?: unknown[] }>;
-        total_rooms_booked?: number;
-        [key: string]: unknown;
-      }) => {
-        const rooms = hotel.rooms || [];
-        const totalCapacity = rooms.reduce((sum, room) => sum + (room.capacity || 0), 0);
-        const guestsAllocated = rooms.reduce((sum, room) => {
-          const allocs = (room.room_allocations || []) as Array<{ guest_ids?: string[] }>;
-          return sum + allocs.reduce((s, a) => s + (a.guest_ids?.length || 0), 0);
-        }, 0);
+    return allocationMatrix.map((hotel: AllocationVenue) => {
+      const rooms = hotel.rooms || [];
+      const totalCapacity = rooms.reduce((sum, room) => sum + (room.capacity || 0), 0);
+      const guestsAllocated = rooms.reduce((sum, room) => {
+        const allocs = (room.room_allocations || []) as Array<{ guest_ids?: string[] }>;
+        return sum + allocs.reduce((s, a) => s + (a.guest_ids?.length || 0), 0);
+      }, 0);
 
-        return {
-          ...hotel,
-          totalCapacity,
-          guestsAllocated,
-          roomsBooked: hotel.total_rooms_booked || rooms.length,
-        };
-      },
-    );
+      return {
+        ...hotel,
+        totalCapacity,
+        guestsAllocated,
+        roomsBooked: hotel.total_rooms_booked || rooms.length,
+      };
+    });
   }, [allocationMatrix]);
 
-  const { data: allGuests = [] } = useGuests();
+  const { data: allGuests = [] } = useGuests() as { data: AccommodationGuest[] };
 
   const assignedGuestIds = useMemo(() => {
     const ids = new Set<string>();
-    allocationMatrix.forEach((venue: any) => {
-      (venue.rooms || []).forEach((room: any) => {
-        (room.room_allocations || []).forEach((alloc: any) => {
+    (allocationMatrix as AllocationVenue[]).forEach((venue) => {
+      (venue.rooms || []).forEach((room) => {
+        (room.room_allocations || []).forEach((alloc) => {
           (alloc.guest_ids || []).forEach((id: string) => ids.add(id));
         });
       });
@@ -454,9 +486,9 @@ export default function Accommodations() {
 
   const roomLookup = useMemo(() => {
     const map = new Map<string, { room_number: string; venue_name: string }>();
-    allocationMatrix.forEach((venue: any) => {
-      (venue.rooms || []).forEach((room: any) => {
-        (room.room_allocations || []).forEach((alloc: any) => {
+    (allocationMatrix as AllocationVenue[]).forEach((venue) => {
+      (venue.rooms || []).forEach((room) => {
+        (room.room_allocations || []).forEach((alloc) => {
           (alloc.guest_ids || []).forEach((id: string) => {
             map.set(id, { room_number: room.room_number, venue_name: venue.name });
           });
@@ -469,17 +501,20 @@ export default function Accommodations() {
   const guestSegments = useMemo(
     () => ({
       unassigned: allGuests.filter(
-        (g: any) => g.needs_accommodation && !assignedGuestIds.has(g.id),
+        (g: AccommodationGuest) => g.needs_accommodation && !assignedGuestIds.has(g.id),
       ),
-      assigned: allGuests.filter((g: any) => g.needs_accommodation && assignedGuestIds.has(g.id)),
-      noRoomNeeded: allGuests.filter((g: any) => !g.needs_accommodation),
+      assigned: allGuests.filter(
+        (g: AccommodationGuest) => g.needs_accommodation && assignedGuestIds.has(g.id),
+      ),
+      noRoomNeeded: allGuests.filter((g: AccommodationGuest) => !g.needs_accommodation),
     }),
     [allGuests, assignedGuestIds],
   );
 
   const filteredGuestSegments = useMemo(() => {
     if (!guestPanelSearch.trim()) return guestSegments;
-    const filter = (g: any) => fuzzyMatch(guestPanelSearch, `${g.first_name} ${g.last_name ?? ''}`);
+    const filter = (g: AccommodationGuest) =>
+      fuzzyMatch(guestPanelSearch, `${g.first_name} ${g.last_name ?? ''}`);
     return {
       unassigned: guestSegments.unassigned.filter(filter),
       assigned: guestSegments.assigned.filter(filter),
@@ -504,7 +539,7 @@ export default function Accommodations() {
   }
 
   const renderGuestRow = (
-    guest: any,
+    guest: AccommodationGuest,
     roomInfo?: { room_number: string; venue_name: string },
     draggable = false,
   ) => (
@@ -544,14 +579,14 @@ export default function Accommodations() {
     </div>
   );
 
-  const handleDropOnRoom = async (room: any, hotel: any) => {
+  const handleDropOnRoom = async (room: VenueRoom, hotel: EnrichedVenue) => {
     setDropTargetRoomId(null);
     const guestId = draggingGuestId;
     setDraggingGuestId(null);
     if (!guestId) return;
 
     const existingAlloc = (room.room_allocations || [])[0] ?? null;
-    const existingGuests = (room.room_allocations || []).flatMap((a: any) => a.guests || []);
+    const existingGuests = (room.room_allocations || []).flatMap((a) => a.guests || []);
 
     if (existingAlloc?.guest_ids?.includes(guestId)) {
       toast('Guest is already in this room');
@@ -564,7 +599,7 @@ export default function Accommodations() {
       return;
     }
 
-    const guest = allGuests.find((g: any) => g.id === guestId);
+    const guest = allGuests.find((g: AccommodationGuest) => g.id === guestId);
 
     // Require default dates when no existing allocation to inherit from
     if (!existingAlloc && (!hotel.default_check_in_date || !hotel.default_check_out_date)) {
@@ -695,7 +730,7 @@ export default function Accommodations() {
                   )}
                 </div>
                 {filteredGuestSegments.unassigned.length > 0 ? (
-                  filteredGuestSegments.unassigned.map((g: any) =>
+                  filteredGuestSegments.unassigned.map((g: AccommodationGuest) =>
                     renderGuestRow(g, undefined, true),
                   )
                 ) : (
@@ -714,7 +749,7 @@ export default function Accommodations() {
                   </span>
                 </div>
                 {filteredGuestSegments.assigned.length > 0 ? (
-                  filteredGuestSegments.assigned.map((g: any) =>
+                  filteredGuestSegments.assigned.map((g: AccommodationGuest) =>
                     renderGuestRow(g, roomLookup.get(g.id)),
                   )
                 ) : (
@@ -741,14 +776,16 @@ export default function Accommodations() {
                   )}
                 </button>
                 {!noRoomNeededCollapsed &&
-                  filteredGuestSegments.noRoomNeeded.map((g: any) => renderGuestRow(g))}
+                  filteredGuestSegments.noRoomNeeded.map((g: AccommodationGuest) =>
+                    renderGuestRow(g),
+                  )}
               </div>
             </div>
           </div>
 
           {/* RIGHT PANEL - Venues & Rooms */}
           <div className="flex-1 space-y-4">
-            {enrichedHotels.map((hotel: any) => {
+            {enrichedHotels.map((hotel: EnrichedVenue) => {
               const handleHotelDateSave = async () => {
                 try {
                   await updateHotelMutation.mutateAsync({
@@ -906,11 +943,11 @@ export default function Accommodations() {
                         )}
                         {hotel.rooms && hotel.rooms.length > 0 ? (
                           <div className="space-y-2">
-                            {hotel.rooms.map((room: any) => {
+                            {hotel.rooms.map((room: VenueRoom) => {
                               const allocations = room.room_allocations || [];
                               const existingAlloc = allocations[0] ?? null;
                               const guests = allocations.flatMap(
-                                (alloc: any) => alloc.guests || [],
+                                (alloc: RoomAllocationSummary) => alloc.guests || [],
                               ) as Array<{
                                 id: string;
                                 first_name: string;
@@ -1155,11 +1192,13 @@ export default function Accommodations() {
       {/* Add Room Modal */}
       {showRoomModal &&
         (() => {
-          const hotel = enrichedHotels.find((h: any) => h.id === addingRoomsToHotelId);
-          const existingRooms = (hotel?.rooms || []) as any[];
+          const hotel = enrichedHotels.find((h: EnrichedVenue) => h.id === addingRoomsToHotelId);
+          const existingRooms = (hotel?.rooms || []) as VenueRoom[];
           const existingGroups: Record<string, number> = existingRooms.reduce(
-            (acc: Record<string, number>, r: any) => {
-              acc[r.room_type] = (acc[r.room_type] || 0) + 1;
+            (acc: Record<string, number>, r: VenueRoom) => {
+              const roomType = r.room_type;
+              if (!roomType) return acc;
+              acc[roomType] = (acc[roomType] || 0) + 1;
               return acc;
             },
             {},

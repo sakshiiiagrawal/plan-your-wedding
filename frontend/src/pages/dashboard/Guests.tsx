@@ -1452,8 +1452,8 @@ export default function Guests() {
                         Accommodation, Pickup
                       </>,
                       <>
-                        <strong>Boolean values:</strong> use &quot;Yes&quot; or &quot;No&quot; for Accommodation and
-                        Pickup columns
+                        <strong>Boolean values:</strong> use &quot;Yes&quot; or &quot;No&quot; for
+                        Accommodation and Pickup columns
                       </>,
                     ].map((item, i) => (
                       <li

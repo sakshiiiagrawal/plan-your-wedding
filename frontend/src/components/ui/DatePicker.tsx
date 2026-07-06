@@ -104,7 +104,7 @@ export default function DatePicker({
 
   useEffect(() => {
     if (selected) setViewMonth(selected);
-  }, [value]);
+  }, [selected]);
 
   const open = () => {
     if (disabled || !triggerRef.current) return;
