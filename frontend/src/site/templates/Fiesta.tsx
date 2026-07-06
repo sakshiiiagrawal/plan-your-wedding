@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Confetti from 'react-confetti';
@@ -10,6 +10,7 @@ import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
 import { fadeUp, inViewProps, scaleIn, stagger } from '../motion';
+import { siteVars } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
 import ScrollProgress from '../effects/ScrollProgress';
@@ -17,6 +18,39 @@ import TickerDigit from '../effects/TickerDigit';
 import MusicPlayer from '../effects/MusicPlayer';
 
 const { E } = makeEditable('fiesta', FIESTA_COPY);
+
+/** A hanging marigold garland (toran) — the festive signature. Beads dip in a
+ *  gentle swag and sway softly. Colors pull from the palette + warm festival hues. */
+function Garland({ accent, primary }: { accent: string; primary: string }) {
+  const beads = Array.from({ length: 21 }, (_, i) => i);
+  const hues = [accent, primary, '#FF8F00', '#E8570D'];
+  return (
+    <div className="flex justify-center items-start gap-[6px] sm:gap-2 w-full overflow-hidden px-2" aria-hidden>
+      {beads.map((i) => {
+        // Parabolic swag: middle beads hang lowest
+        const t = (i - (beads.length - 1) / 2) / ((beads.length - 1) / 2);
+        const dip = (1 - t * t) * 22;
+        const size = 8 + ((i % 3) * 3);
+        return (
+          <motion.span
+            key={i}
+            style={{
+              display: 'block',
+              width: size,
+              height: size,
+              borderRadius: '50%',
+              marginTop: dip,
+              background: `radial-gradient(circle at 35% 30%, #fff6, ${hues[i % hues.length]})`,
+              boxShadow: `0 0 0 2px color-mix(in srgb, ${hues[i % hues.length]} 55%, transparent)`,
+            }}
+            animate={{ y: [0, 3, 0] }}
+            transition={{ duration: 2.4 + (i % 4) * 0.3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.05 }}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 /**
  * "Shaadi Fiesta" — vibrant festival energy: a marigold-garland border, chunky
@@ -47,16 +81,11 @@ export default function Fiesta({ data }: TemplateProps) {
   const showEvents = hasSection('events') && data.events.length > 0;
   const invitePage = data.pages.find((pg) => pg.kind === 'invite');
 
-  const vars = {
-    '--site-bg': p.bg,
-    '--site-surface': p.surface,
-    '--site-ink': p.ink,
-    '--site-ink-soft': p.inkSoft,
-    '--site-line': p.line,
-    '--site-primary': p.primary,
-    '--site-accent': p.accent,
-    '--site-on-accent': p.onAccent,
-  } as CSSProperties;
+  const vars = siteVars(p);
+
+  // Festive tinted band — lively section rhythm without leaving the palette.
+  const band = (weight: number) =>
+    `color-mix(in srgb, ${p.accent} ${weight}%, ${p.bg})`;
 
   return (
     <div style={{ ...vars, background: p.bg, color: p.ink }} className="min-h-screen font-body relative">
@@ -94,8 +123,12 @@ export default function Fiesta({ data }: TemplateProps) {
       )}
 
       {showHero && (
-      <section className="min-h-screen flex flex-col items-center justify-center text-center pt-16 px-6" style={{ background: p.heroGradient }}>
-        <motion.div variants={stagger} initial="hidden" animate="visible">
+      <section className="min-h-screen flex flex-col items-center justify-center text-center pt-16 px-6 relative overflow-hidden" style={{ background: p.heroGradient }}>
+        {/* Garland strung across the top of the hero */}
+        <div className="absolute top-14 left-0 right-0 z-10">
+          <Garland accent={p.accent} primary={p.onHeroSoft} />
+        </div>
+        <motion.div variants={stagger} initial="hidden" animate="visible" className="relative z-10 pt-10">
           <motion.p variants={fadeUp} className="text-xs uppercase mb-6" style={{ color: p.onHeroSoft, letterSpacing: '0.3em' }}>
             <E k="hero.kicker" />
           </motion.p>
@@ -143,7 +176,7 @@ export default function Fiesta({ data }: TemplateProps) {
       {enabled.map((s) => {
         if (s.id === 'story') {
           return (
-            <section key="story" id="story" className="py-24 border-t text-center" style={{ borderColor: p.line }}>
+            <section key="story" id="story" className="py-24 text-center" style={{ background: band(7) }}>
               <div className="max-w-2xl mx-auto px-6">
                 <p className="text-xs uppercase mb-6" style={{ color: p.accent, letterSpacing: '0.25em' }}>
                   {SECTION_LABELS.story}
@@ -234,7 +267,7 @@ export default function Fiesta({ data }: TemplateProps) {
         }
         if (s.id === 'rsvp') {
           return (
-            <section key="rsvp" id="rsvp" className="py-24 border-t" style={{ borderColor: p.line }}>
+            <section key="rsvp" id="rsvp" className="py-24" style={{ background: band(10) }}>
               <div className="max-w-xl mx-auto px-6 text-center">
                 <p className="text-xs uppercase mb-6" style={{ color: p.accent, letterSpacing: '0.25em' }}>
                   {SECTION_LABELS.rsvp}

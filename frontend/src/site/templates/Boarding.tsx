@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { PartId, TemplateProps } from '../types';
@@ -8,6 +8,7 @@ import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
 import { fadeUp, inViewProps } from '../motion';
+import { siteVars } from '../theme';
 import RsvpForm from '../RsvpForm';
 import ShimmerText from '../effects/ShimmerText';
 import TickerDigit from '../effects/TickerDigit';
@@ -119,16 +120,7 @@ export default function Boarding({ data }: TemplateProps) {
   const websitePage = data.pages.find((pg) => pg.kind === 'website');
   const heroPhoto = data.galleryImages[0]?.url ?? null;
 
-  const cssVars = {
-    '--site-bg': p.bg,
-    '--site-surface': p.surface,
-    '--site-ink': p.ink,
-    '--site-ink-soft': p.inkSoft,
-    '--site-line': p.line,
-    '--site-primary': p.primary,
-    '--site-accent': p.accent,
-    '--site-on-accent': p.onAccent,
-  } as CSSProperties;
+  const cssVars = siteVars(p);
 
   // Keyed blocks rendered in the couple's saved order (Studio → Sections).
   const partBlocks: Partial<Record<PartId, React.ReactNode>> = {
@@ -229,8 +221,13 @@ export default function Boarding({ data }: TemplateProps) {
   };
 
   return (
-    <div style={{ background: '#062A26' }}>
-      <div className="relative w-full overflow-x-hidden font-serif-display" style={{ ...cssVars, background: p.bg, color: p.ink }}>
+    <div className="flex justify-center" style={{ background: '#062A26' }}>
+      {/* An invite is a phone-first experience — present it as a centered ticket
+          column on desktop (letterboxed) instead of stretching full-width. */}
+      <div
+        className="relative w-full max-w-[480px] overflow-x-hidden font-serif-display shadow-2xl"
+        style={{ ...cssVars, background: p.bg, color: p.ink }}
+      >
         {envelopeEnabled && !opened && (
           <TicketStub
             preview={data.preview}
@@ -250,7 +247,7 @@ export default function Boarding({ data }: TemplateProps) {
             ) : (
               <div className="absolute inset-0" style={{ background: p.heroGradient }} />
             )}
-            <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(6,42,38,0.3), rgba(6,42,38,0.7))' }} />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(4,20,18,0.5) 0%, rgba(4,20,18,0.45) 40%, rgba(4,20,18,0.78) 100%)' }} />
             <div className="relative z-10 flex flex-col flex-1 px-6 py-10 max-w-md sm:max-w-xl md:max-w-2xl mx-auto w-full">
               <div className="flex justify-between items-center font-mono text-[10px] uppercase" style={{ color: 'rgba(255,255,255,0.8)', letterSpacing: '0.15em' }}>
                 <span><E k="hero.passLabel" /></span>

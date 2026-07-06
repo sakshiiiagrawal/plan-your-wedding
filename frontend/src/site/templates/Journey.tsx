@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useScroll, useSpring } from 'framer-motion';
 import type { PartId, TemplateProps } from '../types';
@@ -8,6 +8,7 @@ import { JOURNEY_COPY } from '../copy/templates/journey';
 import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { fadeUp, inViewProps, stagger } from '../motion';
+import { siteVars } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
 import ScrollProgress from '../effects/ScrollProgress';
@@ -44,16 +45,7 @@ export default function Journey({ data }: TemplateProps) {
   const showEvents = hasSection('events') && data.events.length > 0;
   const invitePage = data.pages.find((pg) => pg.kind === 'invite');
 
-  const vars = {
-    '--site-bg': p.bg,
-    '--site-surface': p.surface,
-    '--site-ink': p.ink,
-    '--site-ink-soft': p.inkSoft,
-    '--site-line': p.line,
-    '--site-primary': p.primary,
-    '--site-accent': p.accent,
-    '--site-on-accent': p.onAccent,
-  } as CSSProperties;
+  const vars = siteVars(p);
 
   // Timeline items follow the couple's saved section order; 'rsvp' is a
   // marker slot rendered as the RSVP milestone, gallery photos are woven in.
@@ -85,6 +77,11 @@ export default function Journey({ data }: TemplateProps) {
       timeline.push('rsvp');
     }
   }
+
+  // The center spine only makes sense when photos anchor the two-column layout.
+  // With no photos every milestone would be centered *on* the line (text struck
+  // through), so we drop the spine and render a clean centered list instead.
+  const anyPhotos = timeline.some((it) => it !== 'rsvp' && Boolean(it.photo));
 
   return (
     <div style={{ ...vars, background: p.bg, color: p.ink }} className="min-h-screen font-body">
@@ -128,7 +125,7 @@ export default function Journey({ data }: TemplateProps) {
 
       {showHero && (
       <section
-        className="min-h-screen flex items-center justify-center text-center pt-14 px-6"
+        className="min-h-[82vh] flex items-center justify-center text-center pt-14 pb-16 px-6"
         style={{ background: p.heroGradient }}
       >
         <motion.div variants={stagger} initial="hidden" animate="visible">
@@ -166,21 +163,29 @@ export default function Journey({ data }: TemplateProps) {
       )}
 
       {/* Timeline */}
-      <section className="relative py-24 max-w-4xl mx-auto px-6">
-        <div className="absolute left-1/2 top-0 bottom-0 w-px hidden sm:block" style={{ background: p.line, transform: 'translateX(-50%)' }} />
-        <motion.div
-          className="absolute left-1/2 top-0 w-px hidden sm:block"
-          style={{ background: p.accent, transform: 'translateX(-50%)', height: '100%', scaleY: spineScale, transformOrigin: 'top' }}
-        />
-        <div className="space-y-20">
+      <section className="py-24 max-w-4xl mx-auto px-6">
+        {/* The spine lives inside the items wrapper so it spans exactly first→last
+            milestone — never bleeding into the section padding or the footer. */}
+        <div className="relative space-y-20">
+          {anyPhotos && (
+            <>
+              <div className="absolute left-1/2 top-2 bottom-2 w-px hidden sm:block" style={{ background: p.line, transform: 'translateX(-50%)' }} />
+              <motion.div
+                className="absolute left-1/2 top-2 w-px hidden sm:block"
+                style={{ background: p.accent, transform: 'translateX(-50%)', height: '100%', scaleY: spineScale, transformOrigin: 'top' }}
+              />
+            </>
+          )}
           {timeline.map((item, i) => {
             if (item === 'rsvp') {
               return (
-                <motion.div key="rsvp" id="rsvp" variants={fadeUp} {...inViewProps} className="relative pt-4 text-center">
-                  <div
-                    className="absolute left-1/2 hidden sm:flex items-center justify-center w-4 h-4 rounded-full"
-                    style={{ background: p.accent, transform: 'translate(-50%, 0)', top: 6, zIndex: 2 }}
-                  />
+                <motion.div key="rsvp" id="rsvp" variants={fadeUp} {...inViewProps} className="relative z-10 pt-10 text-center" style={{ background: p.bg }}>
+                  {anyPhotos && (
+                    <div
+                      className="absolute left-1/2 hidden sm:flex items-center justify-center w-4 h-4 rounded-full"
+                      style={{ background: p.accent, transform: 'translate(-50%, 0)', top: -8, zIndex: 2 }}
+                    />
+                  )}
                   <p className="text-xs uppercase mb-2" style={{ color: p.accent, letterSpacing: '0.2em' }}>
                     {SECTION_LABELS.rsvp}
                   </p>
@@ -194,13 +199,31 @@ export default function Journey({ data }: TemplateProps) {
               );
             }
             const m = item;
+            const hasPhoto = Boolean(m.photo);
             return (
-              <div key={m.key} className={`relative grid sm:grid-cols-2 gap-8 items-center ${i % 2 ? 'sm:[&>*:first-child]:order-2' : ''}`}>
-                <div
-                  className="absolute left-1/2 hidden sm:flex items-center justify-center w-4 h-4 rounded-full"
-                  style={{ background: p.accent, transform: 'translate(-50%, 0)', top: 6, zIndex: 2 }}
-                />
-                <motion.div variants={fadeUp} {...inViewProps} className={i % 2 ? 'sm:text-left' : 'sm:text-right'}>
+              <div
+                key={m.key}
+                className={`relative gap-x-14 gap-y-8 items-center ${
+                  anyPhotos ? 'grid sm:grid-cols-2' : 'max-w-2xl mx-auto text-center'
+                }`}
+              >
+                {anyPhotos && (
+                  <div
+                    className="absolute left-1/2 hidden sm:flex items-center justify-center w-4 h-4 rounded-full"
+                    style={{ background: p.accent, transform: 'translate(-50%, 0)', top: 6, zIndex: 2 }}
+                  />
+                )}
+                <motion.div
+                  variants={fadeUp}
+                  {...inViewProps}
+                  className={
+                    anyPhotos
+                      ? i % 2
+                        ? 'sm:order-2 sm:text-left'
+                        : 'sm:order-1 sm:text-right'
+                      : 'text-center'
+                  }
+                >
                   {m.subtitle && (
                     <p className="text-xs uppercase mb-2" style={{ color: p.accent, letterSpacing: '0.2em' }}>
                       {m.subtitle}
@@ -213,7 +236,7 @@ export default function Journey({ data }: TemplateProps) {
                     {m.body}
                   </p>
                   {m.cta && (
-                    <div className={`mt-4 flex gap-5 text-xs font-medium uppercase ${i % 2 ? 'justify-start' : 'sm:justify-end'}`} style={{ letterSpacing: '0.08em' }}>
+                    <div className={`mt-4 flex gap-5 text-xs font-medium uppercase ${anyPhotos ? (i % 2 ? 'sm:justify-start' : 'sm:justify-end') : 'justify-center'}`} style={{ letterSpacing: '0.08em' }}>
                       {m.cta.map((c) => (
                         <a
                           key={c.href}
@@ -230,21 +253,19 @@ export default function Journey({ data }: TemplateProps) {
                     </div>
                   )}
                 </motion.div>
-                {m.photo ? (
+                {hasPhoto && (
                   <motion.div
-                    initial={{ opacity: 0, rotate: i % 2 ? 3 : -3, scale: 0.94 }}
-                    whileInView={{ opacity: 1, rotate: i % 2 ? 2 : -2, scale: 1 }}
+                    initial={{ opacity: 0, rotate: i % 2 ? 2 : -2, scale: 0.94 }}
+                    whileInView={{ opacity: 1, rotate: i % 2 ? 1.2 : -1.2, scale: 1 }}
                     viewport={{ once: true, margin: '-80px' }}
                     transition={{ duration: 0.7 }}
-                    className="overflow-hidden"
+                    className={`overflow-hidden ${i % 2 ? 'sm:order-1' : 'sm:order-2'}`}
                     style={{ border: `4px solid ${p.surface}`, boxShadow: '0 12px 32px -12px rgba(0,0,0,0.3)' }}
                   >
                     <button onClick={() => setLightboxIndex(data.galleryImages.findIndex((g) => g.url === m.photo))} className="block w-full">
                       <img src={m.photo} alt="" loading="lazy" className="w-full object-cover" style={{ aspectRatio: '4/3' }} />
                     </button>
                   </motion.div>
-                ) : (
-                  <div />
                 )}
               </div>
             );

@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { PartId, TemplateProps } from '../types';
@@ -9,6 +9,7 @@ import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
 import { fadeUp, inViewProps, stagger } from '../motion';
+import { siteVars, heroShimmer } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
 import ShimmerText from '../effects/ShimmerText';
@@ -72,22 +73,11 @@ export default function Midnight({ data }: TemplateProps) {
   const showEvents = hasSection('events') && data.events.length > 0;
   const invitePage = data.pages.find((pg) => pg.kind === 'invite');
 
-  const shimmerColors: [string, string, string] = [
-    `color-mix(in srgb, ${p.primary} 55%, #000000)`,
-    p.primary,
-    `color-mix(in srgb, ${p.primary} 35%, #ffffff)`,
-  ];
+  // Names sweep between the palette's own on-hero tokens — always legible on
+  // this template's hero gradient, whatever palette the couple picks.
+  const shimmerColors = heroShimmer(p);
 
-  const vars = {
-    '--site-bg': p.bg,
-    '--site-surface': p.surface,
-    '--site-ink': p.ink,
-    '--site-ink-soft': p.inkSoft,
-    '--site-line': p.line,
-    '--site-primary': p.primary,
-    '--site-accent': p.accent,
-    '--site-on-accent': p.onAccent,
-  } as CSSProperties;
+  const vars = siteVars(p);
 
   const heading = (text: string) => (
     <motion.div variants={fadeUp} className="text-center mb-14">
@@ -313,12 +303,22 @@ export default function Midnight({ data }: TemplateProps) {
         className="min-h-screen flex items-center justify-center pt-14 px-6 relative overflow-hidden"
         style={{ background: p.heroGradient }}
       >
-        <StarField color={p.primary} />
+        <StarField color={p.onHeroSoft} />
+        {/* Cinematic vignette so the star field falls off toward the edges */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.45) 100%)' }}
+          aria-hidden
+        />
         <motion.div
           variants={stagger}
           initial="hidden"
           animate="visible"
-          className="text-center py-20 relative z-10"
+          className="text-center py-20 relative z-10 mx-auto max-w-3xl px-8"
+          style={{
+            borderTop: `1px solid color-mix(in srgb, ${p.onHeroSoft} 45%, transparent)`,
+            borderBottom: `1px solid color-mix(in srgb, ${p.onHeroSoft} 45%, transparent)`,
+          }}
         >
           <motion.p
             variants={fadeUp}
@@ -335,7 +335,7 @@ export default function Midnight({ data }: TemplateProps) {
             <ShimmerText colors={shimmerColors}>
               <EditableContent field="brideName" value={data.brideName} />
             </ShimmerText>
-            <span className="block text-3xl my-3" style={{ color: p.primary }}>
+            <span className="block text-2xl my-4" style={{ color: p.onHeroSoft }}>
               ✦
             </span>
             <ShimmerText colors={shimmerColors}>
@@ -369,7 +369,7 @@ export default function Midnight({ data }: TemplateProps) {
             <motion.div
               variants={fadeUp}
               className="inline-flex divide-x mb-12 flex-wrap w-full overflow-hidden px-2 sm:px-0"
-              style={{ border: `1px solid ${p.line}` }}
+              style={{ border: `1px solid color-mix(in srgb, ${p.onHeroSoft} 40%, transparent)` }}
             >
               {[
                 { value: countdown.days, k: 'countdown.days' as const },
@@ -380,12 +380,12 @@ export default function Midnight({ data }: TemplateProps) {
                 <div
                   key={item.k}
                   className="px-1 sm:px-2 md:px-4 lg:px-6 py-1.5 sm:py-2 md:py-4 text-center min-w-0"
-                  style={{ borderColor: p.line }}
+                  style={{ borderColor: `color-mix(in srgb, ${p.onHeroSoft} 40%, transparent)` }}
                 >
                   <TickerDigit
                     value={item.value}
                     className="font-serif-display"
-                    style={{ fontSize: 'clamp(14px, 3.5vw, 36px)', color: p.primary }}
+                    style={{ fontSize: 'clamp(14px, 3.5vw, 36px)', color: p.onHero }}
                   />
                   <p
                     className="uppercase mt-0.5 sm:mt-1"

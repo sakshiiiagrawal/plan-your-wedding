@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { TemplateProps } from '../types';
@@ -7,6 +7,7 @@ import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
 import { fadeUp, inViewProps } from '../motion';
+import { siteVars } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
 import ShimmerText from '../effects/ShimmerText';
@@ -32,16 +33,7 @@ export default function Reel({ data }: TemplateProps) {
   let photoIdx = 0;
   const nextPhoto = () => photos[photoIdx++ % Math.max(photos.length, 1)]?.url ?? null;
 
-  const cssVars = {
-    '--site-bg': p.bg,
-    '--site-surface': p.surface,
-    '--site-ink': p.ink,
-    '--site-ink-soft': p.inkSoft,
-    '--site-line': p.line,
-    '--site-primary': p.primary,
-    '--site-accent': p.accent,
-    '--site-on-accent': p.onAccent,
-  } as CSSProperties;
+  const cssVars = siteVars(p);
 
   const slide = (key: string, photo: string | null, children: React.ReactNode) => (
     <section
@@ -54,7 +46,9 @@ export default function Reel({ data }: TemplateProps) {
       ) : (
         <div className="absolute inset-0" style={{ background: p.heroGradient }} />
       )}
-      <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.55))' }} />
+      {/* Scrim strong enough that white text reads on any photo — and on the
+          palette-gradient fallback when a slide has no photo. */}
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.42) 45%, rgba(0,0,0,0.7) 100%)' }} />
       <div className="relative z-10">{children}</div>
     </section>
   );
@@ -239,9 +233,10 @@ export default function Reel({ data }: TemplateProps) {
   }
 
   return (
-    <div style={{ background: '#000' }}>
+    <div className="flex justify-center" style={{ background: '#000' }}>
+      {/* Phone-first photo-story reel — centered column with letterbox on desktop. */}
       <div
-        className="relative w-full overflow-x-hidden overflow-y-auto font-serif-display"
+        className="relative w-full max-w-[480px] overflow-x-hidden overflow-y-auto font-serif-display shadow-2xl"
         style={{ ...cssVars, background: p.bg, color: p.ink, scrollSnapType: 'y proximity' }}
       >
         {data.musicUrl && <MusicPlayer url={data.musicUrl} disabled={data.preview} startTime={data.musicStartTime} endTime={data.musicEndTime} />}

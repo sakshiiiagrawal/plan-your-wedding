@@ -26,7 +26,12 @@ export default function ShimmerText({
         backgroundSize: '200% auto',
         WebkitBackgroundClip: 'text',
         backgroundClip: 'text',
-        color: 'transparent',
+        // `-webkit-text-fill-color` is the reliable way to reveal a clipped
+        // background through glyphs; `color: transparent` alone drops the paint
+        // on large/animated text in some engines (names vanished on wide hero
+        // headlines). `mid` is the fallback ink if background-clip is unsupported.
+        color: mid,
+        WebkitTextFillColor: 'transparent',
         animation: 'site-shimmer 3s linear infinite',
         ...style,
       }}

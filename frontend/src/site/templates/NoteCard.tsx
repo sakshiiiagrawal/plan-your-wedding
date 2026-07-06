@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HiOutlineCalendar, HiOutlineLocationMarker } from 'react-icons/hi';
@@ -8,6 +8,7 @@ import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
 import { fadeUp, stagger } from '../motion';
+import { siteVars } from '../theme';
 import RsvpForm from '../RsvpForm';
 import MusicPlayer from '../effects/MusicPlayer';
 
@@ -32,16 +33,7 @@ export default function NoteCard({ data }: TemplateProps) {
   const coupleNames = `${data.brideName} & ${data.groomName}`;
   const websitePage = data.pages.find((pg) => pg.kind === 'website');
 
-  const cssVars = {
-    '--site-bg': p.bg,
-    '--site-surface': p.surface,
-    '--site-ink': p.ink,
-    '--site-ink-soft': p.inkSoft,
-    '--site-line': p.line,
-    '--site-primary': p.primary,
-    '--site-accent': p.accent,
-    '--site-on-accent': p.onAccent,
-  } as CSSProperties;
+  const cssVars = siteVars(p);
 
   return (
     <div style={{ background: p.heroGradient }}>
@@ -51,7 +43,14 @@ export default function NoteCard({ data }: TemplateProps) {
       >
         {data.musicUrl && <MusicPlayer url={data.musicUrl} disabled={data.preview} startTime={data.musicStartTime} endTime={data.musicEndTime} />}
 
-        <motion.div variants={stagger} initial="hidden" animate="visible" className="w-full">
+        {/* Inset hairline frame — the pressed-card detail */}
+        <div
+          className="absolute inset-3 sm:inset-5 pointer-events-none"
+          style={{ border: `1px solid ${p.accent}`, opacity: 0.35 }}
+          aria-hidden
+        />
+
+        <motion.div variants={stagger} initial="hidden" animate="visible" className="relative w-full">
           {showHero && (
             <>
               <motion.p variants={fadeUp} className="uppercase mb-4" style={{ fontSize: 10, letterSpacing: '0.35em', color: p.accent }}>

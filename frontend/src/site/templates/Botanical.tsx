@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { PartId, TemplateProps } from '../types';
@@ -9,6 +9,7 @@ import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
 import { fadeUp, inViewProps, stagger } from '../motion';
+import { siteVars } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
 import ScrollProgress from '../effects/ScrollProgress';
@@ -76,16 +77,7 @@ export default function Botanical({ data }: TemplateProps) {
   const showEvents = hasSection('events') && data.events.length > 0;
   const invitePage = data.pages.find((pg) => pg.kind === 'invite');
 
-  const vars = {
-    '--site-bg': p.bg,
-    '--site-surface': p.surface,
-    '--site-ink': p.ink,
-    '--site-ink-soft': p.inkSoft,
-    '--site-line': p.line,
-    '--site-primary': p.primary,
-    '--site-accent': p.accent,
-    '--site-on-accent': p.onAccent,
-  } as CSSProperties;
+  const vars = siteVars(p);
 
   const divider = (
     <div className="flex items-center justify-center gap-2 mb-10" aria-hidden>
@@ -359,6 +351,18 @@ export default function Botanical({ data }: TemplateProps) {
         style={{ background: p.heroGradient }}
       >
         <PetalDrift color={p.accent} />
+        {/* Arch outline echoing the portrait arches below — the template's motif */}
+        <div
+          className="absolute z-0 pointer-events-none hidden sm:block left-1/2 top-1/2"
+          style={{
+            width: 'min(360px, 70vw)',
+            height: 'min(480px, 84vh)',
+            transform: 'translate(-50%, -50%)',
+            border: `1px solid color-mix(in srgb, ${p.onHeroSoft} 45%, transparent)`,
+            borderRadius: '999px 999px 12px 12px',
+          }}
+          aria-hidden
+        />
         <motion.div
           variants={stagger}
           initial="hidden"

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -16,6 +16,7 @@ import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
 import { fadeUp, inViewProps, stagger } from '../motion';
+import { siteVars, heroShimmer } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
 import ShimmerText from '../effects/ShimmerText';
@@ -46,11 +47,9 @@ export default function Classic({ data }: TemplateProps) {
   const heroPhoto = data.galleryImages[0]?.url ?? null;
   const invitePage = data.pages.find((pg) => pg.kind === 'invite');
 
-  const shimmerColors: [string, string, string] = [
-    `color-mix(in srgb, ${p.accent} 60%, #201200)`,
-    p.accent,
-    `color-mix(in srgb, ${p.accent} 30%, #ffffff)`,
-  ];
+  // Palette-safe against this template's hero gradient (with or without a photo
+  // overlay) — the names never wash out when the couple changes the palette.
+  const shimmerColors = heroShimmer(p);
 
   const navLinks = enabled
     .filter(
@@ -65,18 +64,7 @@ export default function Classic({ data }: TemplateProps) {
 
   const navHref = (id: string) => (id.startsWith('page:') ? `/${data.slug}/${id.slice(5)}` : `#${id}`);
 
-  const vars = {
-    '--site-bg': p.bg,
-    '--site-surface': p.surface,
-    '--site-ink': p.ink,
-    '--site-ink-soft': p.inkSoft,
-    '--site-line': p.line,
-    '--site-primary': p.primary,
-    '--site-accent': p.accent,
-    '--site-on-accent': p.onAccent,
-    '--site-on-hero': p.onHero,
-    '--site-on-hero-soft': p.onHeroSoft,
-  } as CSSProperties;
+  const vars = siteVars(p);
 
   const sectionBlocks: Record<PartId, React.ReactNode> = {
     hero: null,
@@ -453,9 +441,17 @@ export default function Classic({ data }: TemplateProps) {
         />
         <div className="relative z-10 text-center px-4">
           <motion.div variants={stagger} initial="hidden" animate="visible">
-            <motion.p variants={fadeUp} className="text-lg mb-4" style={{ color: p.onHeroSoft }}>
-              <E k="hero.kicker" />
-            </motion.p>
+            <motion.div
+              variants={fadeUp}
+              className="flex items-center justify-center gap-3 mb-5"
+              style={{ color: p.onHeroSoft }}
+            >
+              <span className="h-px w-8 sm:w-12" style={{ background: 'currentColor', opacity: 0.6 }} />
+              <span className="text-sm sm:text-base uppercase" style={{ letterSpacing: '0.28em' }}>
+                <E k="hero.kicker" />
+              </span>
+              <span className="h-px w-8 sm:w-12" style={{ background: 'currentColor', opacity: 0.6 }} />
+            </motion.div>
             <motion.h1
               variants={fadeUp}
               className="font-script text-6xl sm:text-7xl md:text-8xl mb-4"

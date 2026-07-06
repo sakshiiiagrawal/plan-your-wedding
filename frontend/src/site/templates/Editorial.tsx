@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { PartId, PublicEvent, TemplateProps } from '../types';
@@ -9,6 +9,7 @@ import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
 import { drawLine, fadeUp, inViewProps, stagger } from '../motion';
+import { siteVars } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
 import ScrollProgress from '../effects/ScrollProgress';
@@ -49,16 +50,7 @@ export default function Editorial({ data }: TemplateProps) {
     return [...days.entries()];
   }, [data.events]);
 
-  const vars = {
-    '--site-bg': p.bg,
-    '--site-surface': p.surface,
-    '--site-ink': p.ink,
-    '--site-ink-soft': p.inkSoft,
-    '--site-line': p.line,
-    '--site-primary': p.primary,
-    '--site-accent': p.accent,
-    '--site-on-accent': p.onAccent,
-  } as CSSProperties;
+  const vars = siteVars(p);
 
   const eyebrow = (text: string) => (
     <p
@@ -416,18 +408,25 @@ export default function Editorial({ data }: TemplateProps) {
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-              className="hidden md:block overflow-hidden"
-              style={{ border: `1px solid ${p.line}` }}
+              className="hidden md:block relative"
             >
-              <img
-                src={heroPhoto}
-                alt=""
-                loading="eager"
-                fetchPriority="high"
-                decoding="async"
-                className="w-full h-full object-cover"
-                style={{ aspectRatio: '4 / 5', objectPosition: 'center 15%' }}
+              {/* Offset outline frame — the gallery-print signature */}
+              <div
+                className="absolute -inset-x-4 -inset-y-4 translate-x-4 translate-y-4 pointer-events-none"
+                style={{ border: `1px solid ${p.accent}`, opacity: 0.55 }}
+                aria-hidden
               />
+              <div className="relative overflow-hidden" style={{ border: `1px solid ${p.line}` }}>
+                <img
+                  src={heroPhoto}
+                  alt=""
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                  style={{ aspectRatio: '4 / 5', objectPosition: 'center 15%' }}
+                />
+              </div>
             </motion.div>
           )}
         </div>

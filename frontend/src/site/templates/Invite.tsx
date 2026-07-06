@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useScroll, useSpring } from 'framer-motion';
 import type { PartId, PublicEvent, TemplateProps } from '../types';
@@ -8,6 +8,7 @@ import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
 import { fadeUp, inViewProps, scaleIn, stagger } from '../motion';
+import { siteVars, heroShimmer, PHOTO_SHIMMER } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
 import ShimmerText from '../effects/ShimmerText';
@@ -263,9 +264,8 @@ export default function Invite({ data }: TemplateProps) {
   // it sits on the palette's hero gradient, so use its contrast tokens.
   const heroInk = heroPhoto ? '#fff' : p.onHero;
   const heroInkSoft = heroPhoto ? 'rgba(255,255,255,0.9)' : p.onHeroSoft;
-  const heroShimmer: [string, string, string] = heroPhoto
-    ? ['#8B6210', '#c9942a', '#ffe8a0']
-    : [p.onHeroSoft, p.onHero, p.onHero];
+  // Gold sheen over a photo scrim; palette-safe ramp when there's no photo.
+  const heroShimmerColors = heroPhoto ? PHOTO_SHIMMER : heroShimmer(p);
 
   useEffect(() => {
     if (heroPhoto) {
@@ -283,16 +283,7 @@ export default function Invite({ data }: TemplateProps) {
     textMedium: p.inkSoft,
   };
 
-  const cssVars = {
-    '--site-bg': p.bg,
-    '--site-surface': p.surface,
-    '--site-ink': p.ink,
-    '--site-ink-soft': p.inkSoft,
-    '--site-line': p.line,
-    '--site-primary': p.primary,
-    '--site-accent': p.accent,
-    '--site-on-accent': p.onAccent,
-  } as CSSProperties;
+  const cssVars = siteVars(p);
 
   const photoSlide = (photo: string | null, children: React.ReactNode) => (
     <div className="relative flex flex-col" style={{ minHeight: '100svh' }}>
@@ -509,10 +500,11 @@ export default function Invite({ data }: TemplateProps) {
   };
 
   return (
-    <div style={{ background: '#171310' }}>
-      {/* Full-width on desktop; phone-column reading measure preserved via inner max-w on each slide's text */}
+    <div className="flex justify-center" style={{ background: '#171310' }}>
+      {/* An invite is a phone-first experience — present it as a centered card
+          column on desktop (letterboxed) instead of stretching full-width. */}
       <div
-        className="relative w-full overflow-x-hidden font-serif-display"
+        className="relative w-full max-w-[480px] overflow-x-hidden font-serif-display shadow-2xl"
         style={{ ...cssVars, background: vars.cream, color: vars.textDark }}
       >
         {envelopeEnabled && !opened && (
@@ -583,7 +575,7 @@ export default function Invite({ data }: TemplateProps) {
                 }}
               >
                 <h1 className="font-script leading-tight" style={{ fontSize: 'clamp(44px, 7vw, 84px)' }}>
-                  <ShimmerText colors={heroShimmer}>
+                  <ShimmerText colors={heroShimmerColors}>
                     <EditableContent field="brideName" value={data.brideName} />
                   </ShimmerText>
                 </h1>
@@ -594,7 +586,7 @@ export default function Invite({ data }: TemplateProps) {
                   <E k="hero.and" />
                 </p>
                 <h1 className="font-script leading-tight mb-3" style={{ fontSize: 'clamp(44px, 7vw, 84px)' }}>
-                  <ShimmerText colors={heroShimmer}>
+                  <ShimmerText colors={heroShimmerColors}>
                     <EditableContent field="groomName" value={data.groomName} />
                   </ShimmerText>
                 </h1>
