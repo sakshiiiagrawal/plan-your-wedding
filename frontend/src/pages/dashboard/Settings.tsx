@@ -1,7 +1,16 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { WEDDING_SECTIONS, SECTION_LABELS, type WeddingSection } from '@wedding-planner/shared';
+import {
+  WEDDING_SECTIONS,
+  SECTION_LABELS,
+  MEMBER_PERMISSIONS,
+  PERMISSION_LABELS,
+  can,
+  canAccessSection,
+  type WeddingSection,
+  type MemberPermission,
+} from '@wedding-planner/shared';
 import { SectionHeader } from '../../components/ui';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { formatDate } from '../../utils/date';
@@ -24,11 +33,15 @@ type MemberRole = 'admin' | 'editor' | 'viewer';
 function SectionPicker({
   value,
   onChange,
+  disabledSections,
 }: {
   value: string[];
   onChange: (sections: string[]) => void;
+  /** Sections the acting user can't grant — rendered checked-off and disabled. */
+  disabledSections?: Set<string> | undefined;
 }) {
   const toggle = (section: WeddingSection) => {
+    if (disabledSections?.has(section)) return;
     onChange(
       value.includes(section) ? value.filter((s) => s !== section) : [...value, section],
     );
@@ -40,11 +53,16 @@ function SectionPicker({
         <label
           key={section}
           className="flex items-center gap-1.5"
-          style={{ fontSize: 12, color: 'var(--ink-mid)', cursor: 'pointer' }}
+          style={{
+            fontSize: 12,
+            color: disabledSections?.has(section) ? 'var(--ink-dim)' : 'var(--ink-mid)',
+            cursor: disabledSections?.has(section) ? 'not-allowed' : 'pointer',
+          }}
         >
           <input
             type="checkbox"
             checked={value.includes(section)}
+            disabled={disabledSections?.has(section)}
             onChange={() => toggle(section)}
           />
           {SECTION_LABELS[section]}
@@ -54,28 +72,99 @@ function SectionPicker({
   );
 }
 
+/** Checkbox grid for granting fine-grained permissions (budget:splits, members:manage). */
+function PermissionPicker({
+  value,
+  onChange,
+  disabledPermissions,
+  sectionsIncludeBudget,
+}: {
+  value: string[];
+  onChange: (permissions: string[]) => void;
+  /** Permissions the acting user can't grant — rendered checked-off and disabled. */
+  disabledPermissions?: Set<string> | undefined;
+  /** budget:splits is meaningless without budget section access. */
+  sectionsIncludeBudget: boolean;
+}) {
+  const toggle = (permission: MemberPermission) => {
+    if (disabledPermissions?.has(permission)) return;
+    if (permission === 'budget:splits' && !sectionsIncludeBudget) return;
+    onChange(
+      value.includes(permission)
+        ? value.filter((p) => p !== permission)
+        : [...value, permission],
+    );
+  };
+
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1">
+      {MEMBER_PERMISSIONS.map((permission) => {
+        const disabled =
+          disabledPermissions?.has(permission) ||
+          (permission === 'budget:splits' && !sectionsIncludeBudget);
+        return (
+          <label
+            key={permission}
+            className="flex items-center gap-1.5"
+            style={{
+              fontSize: 12,
+              color: disabled ? 'var(--ink-dim)' : 'var(--ink-mid)',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={value.includes(permission)}
+              disabled={disabled}
+              onChange={() => toggle(permission)}
+            />
+            {PERMISSION_LABELS[permission]}
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+const DEFAULT_INVITE_SECTIONS = WEDDING_SECTIONS.filter((s) => s !== 'budget');
+
 function MembersPanel() {
+  const { user } = useAuth();
+  const isActorAdmin = user?.role === 'admin';
+  // Non-admin manager: only offer controls within what they themselves hold —
+  // the server enforces this too, but hiding dead-end options avoids 403s.
+  const disabledSections = isActorAdmin
+    ? undefined
+    : new Set(WEDDING_SECTIONS.filter((s) => !canAccessSection(user, s)));
+  const disabledPermissions = isActorAdmin
+    ? undefined
+    : new Set(MEMBER_PERMISSIONS.filter((p) => !can(user, p)));
+
   const { data: members = [] } = useMembers();
   const inviteMember = useInviteMember();
   const updateMember = useUpdateMember();
   const removeMember = useRemoveMember();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<MemberRole>('viewer');
-  const [limitSections, setLimitSections] = useState(false);
-  const [sections, setSections] = useState<string[]>([]);
+  const [sections, setSections] = useState<string[]>(DEFAULT_INVITE_SECTIONS as unknown as string[]);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [memberToRemove, setMemberToRemove] = useState<{ id: string; email: string } | null>(null);
+
+  const normalizeSections = (list: string[]): string[] | null =>
+    list.length === WEDDING_SECTIONS.length ? null : list;
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (limitSections && role !== 'admin' && sections.length === 0) {
-      toast.error('Select at least one section, or turn off the section limit');
+    if (role !== 'admin' && sections.length === 0) {
+      toast.error('Select at least one section');
       return;
     }
     try {
       const created = (await inviteMember.mutateAsync({
         email,
         role,
-        sections: limitSections && role !== 'admin' ? sections : null,
+        sections: role === 'admin' ? null : normalizeSections(sections),
+        permissions: role === 'admin' ? [] : permissions,
       })) as { email_sent?: boolean };
       if (created.email_sent === false) {
         toast.error('Invite created, but the email failed to send — invite the same address again to resend.');
@@ -83,8 +172,8 @@ function MembersPanel() {
         toast.success('Invite sent');
       }
       setEmail('');
-      setLimitSections(false);
-      setSections([]);
+      setSections(DEFAULT_INVITE_SECTIONS as unknown as string[]);
+      setPermissions([]);
     } catch (error) {
       const err = error as { response?: { data?: { error?: string } } };
       toast.error(err?.response?.data?.error || 'Failed to send invite');
@@ -96,12 +185,14 @@ function MembersPanel() {
     invited_email: string;
     role: string;
     allowed_sections: string[] | null;
+    permissions: string[];
   }) => {
     try {
       const created = (await inviteMember.mutateAsync({
         email: m.invited_email,
         role: m.role,
         sections: m.allowed_sections,
+        permissions: m.permissions,
       })) as { email_sent?: boolean };
       if (created.email_sent === false) {
         toast.error('The invite email failed to send — try again in a moment.');
@@ -140,26 +231,35 @@ function MembersPanel() {
           >
             <option value="viewer">Viewer</option>
             <option value="editor">Editor</option>
-            <option value="admin">Admin</option>
+            {isActorAdmin && <option value="admin">Admin</option>}
           </select>
           <button type="submit" disabled={inviteMember.isPending} className="btn-primary">
             {inviteMember.isPending ? 'Sending...' : 'Invite'}
           </button>
         </div>
         {role !== 'admin' && (
-          <div className="space-y-2">
-            <label
-              className="flex items-center gap-1.5"
-              style={{ fontSize: 12, color: 'var(--ink-mid)', cursor: 'pointer' }}
-            >
-              <input
-                type="checkbox"
-                checked={limitSections}
-                onChange={(e) => setLimitSections(e.target.checked)}
+          <div className="space-y-3">
+            <div>
+              <p style={{ fontSize: 12, color: 'var(--ink-mid)', marginBottom: 4 }}>
+                Sections this person can access
+              </p>
+              <SectionPicker
+                value={sections}
+                onChange={setSections}
+                disabledSections={disabledSections}
               />
-              Limit access to specific sections
-            </label>
-            {limitSections && <SectionPicker value={sections} onChange={setSections} />}
+            </div>
+            <div>
+              <p style={{ fontSize: 12, color: 'var(--ink-mid)', marginBottom: 4 }}>
+                Extra permissions
+              </p>
+              <PermissionPicker
+                value={permissions}
+                onChange={setPermissions}
+                disabledPermissions={disabledPermissions}
+                sectionsIncludeBudget={sections.includes('budget')}
+              />
+            </div>
           </div>
         )}
       </form>
@@ -168,7 +268,11 @@ function MembersPanel() {
         {members.length === 0 && (
           <p style={{ color: 'var(--ink-low)', fontSize: 13 }}>No members invited yet.</p>
         )}
-        {members.map((m) => (
+        {members.map((m) => {
+          // A non-admin manager can't touch admin rows — the server 403s it,
+          // so don't offer edit/remove controls that would just fail.
+          const targetIsUntouchableAdmin = !isActorAdmin && m.role === 'admin';
+          return (
           <div
             key={m.id}
             style={{
@@ -186,35 +290,39 @@ function MembersPanel() {
                     : '(active)'}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                {m.status === 'pending' && (
+              {targetIsUntouchableAdmin ? (
+                <span style={{ fontSize: 12, color: 'var(--ink-dim)' }}>Admin</span>
+              ) : (
+                <div className="flex items-center gap-2">
+                  {m.status === 'pending' && (
+                    <button
+                      onClick={() => handleResendInvite(m)}
+                      disabled={inviteMember.isPending}
+                      className="btn-outline"
+                      style={{ padding: '4px 10px', fontSize: 12 }}
+                    >
+                      Resend
+                    </button>
+                  )}
+                  <select
+                    className="input"
+                    style={{ width: 110, padding: '4px 8px' }}
+                    value={m.role}
+                    onChange={(e) => updateMember.mutate({ id: m.id, role: e.target.value })}
+                  >
+                    <option value="viewer">Viewer</option>
+                    <option value="editor">Editor</option>
+                    {isActorAdmin && <option value="admin">Admin</option>}
+                  </select>
                   <button
-                    onClick={() => handleResendInvite(m)}
-                    disabled={inviteMember.isPending}
+                    onClick={() => setMemberToRemove({ id: m.id, email: m.invited_email })}
                     className="btn-outline"
                     style={{ padding: '4px 10px', fontSize: 12 }}
                   >
-                    Resend
+                    Remove
                   </button>
-                )}
-                <select
-                  className="input"
-                  style={{ width: 110, padding: '4px 8px' }}
-                  value={m.role}
-                  onChange={(e) => updateMember.mutate({ id: m.id, role: e.target.value })}
-                >
-                  <option value="viewer">Viewer</option>
-                  <option value="editor">Editor</option>
-                  <option value="admin">Admin</option>
-                </select>
-                <button
-                  onClick={() => setMemberToRemove({ id: m.id, email: m.invited_email })}
-                  className="btn-outline"
-                  style={{ padding: '4px 10px', fontSize: 12 }}
-                >
-                  Remove
-                </button>
-              </div>
+                </div>
+              )}
             </div>
             {m.role !== 'admin' && (
               <div style={{ marginTop: 8 }}>
@@ -244,12 +352,25 @@ function MembersPanel() {
                       }
                       updateMember.mutate({ id: m.id, sections: next });
                     }}
+                    disabledSections={disabledSections}
                   />
                 )}
+                <p style={{ fontSize: 12, color: 'var(--ink-mid)', margin: '10px 0 4px' }}>
+                  Extra permissions
+                </p>
+                <PermissionPicker
+                  value={m.permissions}
+                  onChange={(next) => updateMember.mutate({ id: m.id, permissions: next })}
+                  disabledPermissions={disabledPermissions}
+                  sectionsIncludeBudget={
+                    m.allowed_sections === null || m.allowed_sections.includes('budget')
+                  }
+                />
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <ConfirmDialog
@@ -295,7 +416,7 @@ export default function Settings() {
   // Working on someone else's wedding: the slug/currency shown belong to that
   // wedding, and member management is the owner's (admins') business.
   const onOwnWedding = !user?.ownerId || user.ownerId === user.id;
-  const isAdmin = (user?.role ?? 'admin') === 'admin';
+  const canManageMembers = can(user, 'members:manage');
 
   const [name, setName] = useState(user?.name ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
@@ -439,8 +560,8 @@ export default function Settings() {
         )}
       </Card>
 
-      {/* Member management is admin-only (the API enforces the same) */}
-      {isAdmin && <MembersPanel />}
+      {/* Member management needs members:manage (admins hold it implicitly); the API enforces the same */}
+      {canManageMembers && <MembersPanel />}
 
       <Card title="Change password">
         <form onSubmit={handleChangePassword} className="space-y-4">

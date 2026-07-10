@@ -40,11 +40,13 @@ import type {
   PaymentRow,
   VenueWithFinance,
 } from '@wedding-planner/shared';
+import { financeTier } from '@wedding-planner/shared';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { parseLocalDate } from '../../utils/date';
 import { currencySymbol, formatCurrency } from '../../utils/currency';
+import { useAuth } from '../../contexts/AuthContext';
 
 /** Bride / groom amounts for a payment marked paid_by shared, from allocations + line-item sides. */
 function sharedPaymentSideAmounts(
@@ -467,6 +469,11 @@ function VenueRoomsSection({ venueId }: { venueId: string }) {
 }
 
 export default function Venues() {
+  const { user } = useAuth();
+  const tier = financeTier(user);
+  const canSeeMoney = tier !== 'none';
+  const canSeeSplits = tier === 'full';
+
   const [showVenueModal, setShowVenueModal] = useState(false);
   const [formData, setFormData] = useState<VenueFormData>(DEFAULT_FORM);
   const [editingVenue, setEditingVenue] = useState<VenueWithFinance | null>(null);
@@ -553,13 +560,13 @@ export default function Venues() {
     : Math.max(0, Number((paymentMagnitude - committedForPayment).toFixed(2)));
   const isScheduled = paymentForm.payment_date > TODAY;
 
-  // Only show Rooms tab when venue has accommodation
+  // Only show Rooms tab when venue has accommodation; Payments tab needs money visibility
   const visibleTabs = useMemo(() => {
     const tabs = [{ id: 0, label: 'Details' }];
     if (formData.has_accommodation) tabs.push({ id: 1, label: 'Rooms' });
-    tabs.push({ id: 2, label: 'Payments' });
+    if (canSeeMoney) tabs.push({ id: 2, label: 'Payments' });
     return tabs;
-  }, [formData.has_accommodation]);
+  }, [formData.has_accommodation, canSeeMoney]);
 
   // Whether payment can be recorded right now
   const canRecordPayment = editingVenue
@@ -653,10 +660,12 @@ export default function Venues() {
     e.preventDefault();
     if (createMutation.isPending || updateMutation.isPending) return;
     const rooms = buildRoomsPayload();
+    const { side: _side, bride_share_percentage: _bsp, ...restFormData } = formData;
     const payload = {
-      ...formData,
+      ...restFormData,
       capacity: formData.capacity === '' ? null : Number(formData.capacity),
-      total_cost: formData.total_cost === '' ? 0 : Number(formData.total_cost),
+      ...(canSeeMoney ? { total_cost: formData.total_cost === '' ? 0 : Number(formData.total_cost) } : {}),
+      ...(canSeeSplits ? { side: formData.side, bride_share_percentage: formData.bride_share_percentage } : {}),
     };
     try {
       let savedVenue: any;
@@ -679,11 +688,15 @@ export default function Venues() {
             due_date: paymentForm.payment_date,
             paid_date: isScheduled ? null : paymentForm.payment_date,
             payment_method: isScheduled ? null : paymentForm.payment_method,
-            paid_by_side: paymentForm.paid_by_side,
-            paid_bride_share_percentage:
-              paymentForm.paid_by_side === 'shared'
-                ? paymentForm.paid_bride_share_percentage
-                : null,
+            ...(canSeeSplits
+              ? {
+                  paid_by_side: paymentForm.paid_by_side,
+                  paid_bride_share_percentage:
+                    paymentForm.paid_by_side === 'shared'
+                      ? paymentForm.paid_bride_share_percentage
+                      : null,
+                }
+              : {}),
             notes: paymentForm.notes || null,
           });
           toast.success(
@@ -742,9 +755,15 @@ export default function Venues() {
         due_date: paymentForm.payment_date,
         paid_date: isScheduled ? null : paymentForm.payment_date,
         payment_method: isScheduled ? null : paymentForm.payment_method,
-        paid_by_side: paymentForm.paid_by_side,
-        paid_bride_share_percentage:
-          paymentForm.paid_by_side === 'shared' ? paymentForm.paid_bride_share_percentage : null,
+        ...(canSeeSplits
+          ? {
+              paid_by_side: paymentForm.paid_by_side,
+              paid_bride_share_percentage:
+                paymentForm.paid_by_side === 'shared'
+                  ? paymentForm.paid_bride_share_percentage
+                  : null,
+            }
+          : {}),
         notes: paymentForm.notes || null,
         new_items:
           excessAmount > 0 && paymentForm.extra_category_id
@@ -753,11 +772,15 @@ export default function Venues() {
                   category_id: paymentForm.extra_category_id,
                   description: paymentForm.extra_description || 'Additional charge',
                   amount: excessAmount,
-                  side: paymentForm.extra_side,
-                  bride_share_percentage:
-                    paymentForm.extra_side === 'shared'
-                      ? paymentForm.extra_bride_share_percentage
-                      : null,
+                  ...(canSeeSplits
+                    ? {
+                        side: paymentForm.extra_side,
+                        bride_share_percentage:
+                          paymentForm.extra_side === 'shared'
+                            ? paymentForm.extra_bride_share_percentage
+                            : null,
+                      }
+                    : {}),
                 },
               ]
             : undefined,
@@ -1136,7 +1159,7 @@ export default function Venues() {
                   <div
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(4, 1fr)',
+                      gridTemplateColumns: `repeat(${canSeeMoney ? 4 : 1}, 1fr)`,
                       gap: 6,
                       padding: '7px 10px',
                       background: 'var(--bg-raised)',
@@ -1155,46 +1178,59 @@ export default function Venues() {
                         )}
                       </div>
                     </div>
-                    <div>
-                      <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
-                        Committed
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--ink-high)', fontWeight: 500 }}>
-                        {committed > 0 ? (
-                          formatCurrency(committed)
-                        ) : (
-                          <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>—</span>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
-                        Paid
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: paid > 0 ? '#16a34a' : 'var(--ink-dim)',
-                          fontWeight: 500,
-                        }}
-                      >
-                        {paid > 0 ? formatCurrency(paid) : '—'}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
-                        Due
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: outstanding > 0 ? '#ea580c' : 'var(--ink-dim)',
-                          fontWeight: 500,
-                        }}
-                      >
-                        {outstanding > 0 ? formatCurrency(outstanding) : '—'}
-                      </div>
-                    </div>
+                    {canSeeMoney && (
+                      <>
+                        <div>
+                          <div
+                            className="uppercase-eyebrow"
+                            style={{ marginBottom: 2, fontSize: 9 }}
+                          >
+                            Committed
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--ink-high)', fontWeight: 500 }}>
+                            {committed > 0 ? (
+                              formatCurrency(committed)
+                            ) : (
+                              <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>—</span>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <div
+                            className="uppercase-eyebrow"
+                            style={{ marginBottom: 2, fontSize: 9 }}
+                          >
+                            Paid
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: paid > 0 ? '#16a34a' : 'var(--ink-dim)',
+                              fontWeight: 500,
+                            }}
+                          >
+                            {paid > 0 ? formatCurrency(paid) : '—'}
+                          </div>
+                        </div>
+                        <div>
+                          <div
+                            className="uppercase-eyebrow"
+                            style={{ marginBottom: 2, fontSize: 9 }}
+                          >
+                            Due
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: outstanding > 0 ? '#ea580c' : 'var(--ink-dim)',
+                              fontWeight: 500,
+                            }}
+                          >
+                            {outstanding > 0 ? formatCurrency(outstanding) : '—'}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {(plannedPayments.length > 0 || hasContact) && (
@@ -1354,7 +1390,7 @@ export default function Venues() {
                     </div>
                   )}
 
-                  {v.expense_id && committed > 0 && (
+                  {canSeeMoney && v.expense_id && committed > 0 && (
                     <button
                       onClick={() => {
                         handleEdit(v);
@@ -1486,7 +1522,7 @@ export default function Venues() {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '1.4fr 1fr',
+                    gridTemplateColumns: canSeeMoney ? '1.4fr 1fr' : '1fr',
                     columnGap: 16,
                     alignItems: 'end',
                   }}
@@ -1503,17 +1539,19 @@ export default function Venues() {
                       form="venue-form"
                     />
                   </div>
-                  <div style={{ minWidth: 0 }}>
-                    <label className="label">Committed Amount</label>
-                    <input
-                      type="number"
-                      value={formData.total_cost}
-                      onChange={(e) => setFormData({ ...formData, total_cost: e.target.value })}
-                      className="input"
-                      placeholder="0"
-                      form="venue-form"
-                    />
-                  </div>
+                  {canSeeMoney && (
+                    <div style={{ minWidth: 0 }}>
+                      <label className="label">Committed Amount</label>
+                      <input
+                        type="number"
+                        value={formData.total_cost}
+                        onChange={(e) => setFormData({ ...formData, total_cost: e.target.value })}
+                        className="input"
+                        placeholder="0"
+                        form="venue-form"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1585,7 +1623,7 @@ export default function Venues() {
                         overflowY: 'auto',
                         padding: 24,
                         display: 'grid',
-                        gridTemplateColumns: '1fr 300px',
+                        gridTemplateColumns: canSeeMoney ? '1fr 300px' : '1fr',
                         gap: 24,
                         alignContent: 'start',
                       }}
@@ -1770,6 +1808,7 @@ export default function Venues() {
                       </div>
 
                       {/* Right: Financial details */}
+                      {canSeeMoney && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                         <p
                           style={{
@@ -1793,6 +1832,7 @@ export default function Venues() {
                           />
                         </div>
 
+                        {canSeeSplits && (
                         <div>
                           <label className="label">Liability Side</label>
                           <div style={{ display: 'flex', gap: 6 }}>
@@ -1841,8 +1881,9 @@ export default function Venues() {
                             })}
                           </div>
                         </div>
+                        )}
 
-                        {formData.side === 'shared' && (
+                        {canSeeSplits && formData.side === 'shared' && (
                           <SplitShare
                             total={Number(formData.total_cost) || 0}
                             bridePercentage={formData.bride_share_percentage}
@@ -1941,6 +1982,7 @@ export default function Venues() {
                           </div>
                         )}
                       </div>
+                      )}
                     </div>
                   )}
 
@@ -2600,7 +2642,13 @@ export default function Venues() {
                           </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: canSeeSplits ? '1fr 1fr' : '1fr',
+                            gap: 12,
+                          }}
+                        >
                           <div>
                             <label className="label">Method</label>
                             <select
@@ -2618,26 +2666,28 @@ export default function Venues() {
                               ))}
                             </select>
                           </div>
-                          <div>
-                            <label className="label">Paid By</label>
-                            <select
-                              value={paymentForm.paid_by_side}
-                              onChange={(e) =>
-                                setPaymentForm((p) => ({
-                                  ...p,
-                                  paid_by_side: e.target.value as 'bride' | 'groom' | 'shared',
-                                }))
-                              }
-                              className="input"
-                            >
-                              <option value="bride">Bride</option>
-                              <option value="groom">Groom</option>
-                              <option value="shared">Shared</option>
-                            </select>
-                          </div>
+                          {canSeeSplits && (
+                            <div>
+                              <label className="label">Paid By</label>
+                              <select
+                                value={paymentForm.paid_by_side}
+                                onChange={(e) =>
+                                  setPaymentForm((p) => ({
+                                    ...p,
+                                    paid_by_side: e.target.value as 'bride' | 'groom' | 'shared',
+                                  }))
+                                }
+                                className="input"
+                              >
+                                <option value="bride">Bride</option>
+                                <option value="groom">Groom</option>
+                                <option value="shared">Shared</option>
+                              </select>
+                            </div>
+                          )}
                         </div>
 
-                        {paymentForm.paid_by_side === 'shared' && (
+                        {canSeeSplits && paymentForm.paid_by_side === 'shared' && (
                           <SplitShare
                             total={paymentMagnitude}
                             bridePercentage={paymentForm.paid_bride_share_percentage}
@@ -2724,7 +2774,11 @@ export default function Venues() {
                               />
                             </div>
                             <div
-                              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: canSeeSplits ? '1fr 1fr' : '1fr',
+                                gap: 10,
+                              }}
                             >
                               <div>
                                 <label className="label">Label</label>
@@ -2741,25 +2795,27 @@ export default function Venues() {
                                   placeholder="Tip, late fee…"
                                 />
                               </div>
-                              <div>
-                                <label className="label">Side</label>
-                                <select
-                                  value={paymentForm.extra_side}
-                                  onChange={(e) =>
-                                    setPaymentForm((p) => ({
-                                      ...p,
-                                      extra_side: e.target.value as 'bride' | 'groom' | 'shared',
-                                    }))
-                                  }
-                                  className="input"
-                                >
-                                  <option value="bride">Bride</option>
-                                  <option value="groom">Groom</option>
-                                  <option value="shared">Shared</option>
-                                </select>
-                              </div>
+                              {canSeeSplits && (
+                                <div>
+                                  <label className="label">Side</label>
+                                  <select
+                                    value={paymentForm.extra_side}
+                                    onChange={(e) =>
+                                      setPaymentForm((p) => ({
+                                        ...p,
+                                        extra_side: e.target.value as 'bride' | 'groom' | 'shared',
+                                      }))
+                                    }
+                                    className="input"
+                                  >
+                                    <option value="bride">Bride</option>
+                                    <option value="groom">Groom</option>
+                                    <option value="shared">Shared</option>
+                                  </select>
+                                </div>
+                              )}
                             </div>
-                            {paymentForm.extra_side === 'shared' && (
+                            {canSeeSplits && paymentForm.extra_side === 'shared' && (
                               <SplitShare
                                 total={excessAmount}
                                 bridePercentage={paymentForm.extra_bride_share_percentage}

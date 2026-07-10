@@ -1,5 +1,5 @@
 import { supabase } from '../config/database';
-import type { TaskInsert, TaskRow } from '@wedding-planner/shared';
+import type { TaskInsert, TaskRow } from '../../../shared/src';
 
 export interface TaskFilters {
   status?: string | undefined;

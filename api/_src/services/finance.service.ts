@@ -18,7 +18,7 @@ import type {
   PaymentInsert,
   PaymentRow,
   PaymentMethod,
-} from '@wedding-planner/shared';
+} from '../../../shared/src';
 import type { PoolClient } from 'pg';
 
 type SourceType = FinanceSourceType;
@@ -97,6 +97,10 @@ function fromCents(value: number): number {
 }
 
 function ensureSharedPercentage(item: ExpenseItemInput): ExpenseItemInput {
+  // Absent side means a money-tier editor's body had it stripped —
+  // syncExpenseItems resolves the real value (existing row, or 'shared' for
+  // a brand-new item) once it knows whether this is an update or an insert.
+  if (item.side === undefined) return item;
   if (item.side !== 'shared') {
     return { ...item, bride_share_percentage: null };
   }
@@ -530,6 +534,9 @@ function normalizePaymentStatus(input: PaymentMutationInput): PaymentMutationInp
 }
 
 function ensureSharedPaidByPercentage(input: PaymentMutationInput): PaymentMutationInput {
+  // Absent paid_by_side means a money-tier editor's body had it stripped —
+  // the update branch below keeps the row's existing values in that case.
+  if (input.paid_by_side === undefined) return input;
   if (input.paid_by_side !== 'shared') {
     return { ...input, paid_bride_share_percentage: null };
   }
@@ -546,16 +553,22 @@ function buildFlatSourceItem(input: {
   side?: 'bride' | 'groom' | 'shared' | 'mutual' | null | undefined;
   bride_share_percentage?: number | null | undefined;
 }): ExpenseItemInput {
+  // `undefined` (money-tier body had it stripped) is left as-is so
+  // syncExpenseItems can preserve the existing item's side on update, or
+  // default a brand-new item to 'shared'. An explicit `null`/'mutual' means
+  // "no side preference" and resolves to 'shared' immediately.
   const side =
-    input.side === 'mutual' || input.side == null
-      ? 'shared'
-      : (input.side as ExpenseItemRow['side']);
+    input.side === undefined
+      ? undefined
+      : input.side === 'mutual' || input.side === null
+        ? 'shared'
+        : (input.side as ExpenseItemRow['side']);
   return ensureSharedPercentage({
     category_id: input.category_id,
     description: input.description,
     amount: normalizeMoney(input.amount),
     side,
-    bride_share_percentage: side === 'shared' ? (input.bride_share_percentage ?? 50) : null,
+    bride_share_percentage: input.bride_share_percentage ?? null,
   });
 }
 
@@ -653,6 +666,16 @@ async function syncExpenseItems(
     const item = { ...rawItem, display_order: rawItem.display_order ?? index + 1 };
     if (item.id && existingById.has(item.id)) {
       const before = existingById.get(item.id)!;
+      // A money-tier editor's body never carries side/bride_share_percentage
+      // (stripped by applyFinanceTier) — keep the row's existing values
+      // rather than let their save silently wipe the split.
+      const side = item.side ?? before.side;
+      const bridePct =
+        item.side === undefined
+          ? before.bride_share_percentage
+          : side === 'shared'
+            ? (item.bride_share_percentage ?? 50)
+            : null;
       const { rows } = await client.query<DbRow>(
         `
           UPDATE expense_items
@@ -673,8 +696,8 @@ async function syncExpenseItems(
           item.event_id ?? null,
           item.description,
           normalizeMoney(item.amount),
-          item.side,
-          item.side === 'shared' ? (item.bride_share_percentage ?? 50) : null,
+          side,
+          bridePct,
           item.display_order,
         ],
       );
@@ -694,6 +717,9 @@ async function syncExpenseItems(
       continue;
     }
 
+    // New item, no side supplied (money-tier create): default to 'shared'.
+    const side = item.side ?? 'shared';
+    const bridePct = side === 'shared' ? (item.bride_share_percentage ?? 50) : null;
     const { rows } = await client.query<DbRow>(
       `
         INSERT INTO expense_items (
@@ -715,8 +741,8 @@ async function syncExpenseItems(
         item.event_id ?? null,
         item.description,
         normalizeMoney(item.amount),
-        item.side,
-        item.side === 'shared' ? (item.bride_share_percentage ?? 50) : null,
+        side,
+        bridePct,
         item.display_order,
       ],
     );
@@ -1004,6 +1030,15 @@ export async function createPaymentRecordTx(
   let payment: PaymentRow;
   if (lockedCurrentPayment) {
     const before = lockedCurrentPayment;
+    // A money-tier editor's body never carries paid_by_side/
+    // paid_bride_share_percentage (stripped by applyFinanceTier) — keep the
+    // row's existing values rather than let their save wipe the split.
+    const paidBySide =
+      normalized.paid_by_side !== undefined ? normalized.paid_by_side : before.paid_by_side;
+    const paidBridePct =
+      normalized.paid_by_side !== undefined
+        ? (normalized.paid_bride_share_percentage ?? null)
+        : before.paid_bride_share_percentage;
     const { rows } = await client.query<DbRow>(
       `
         UPDATE payments
@@ -1030,8 +1065,8 @@ export async function createPaymentRecordTx(
         normalized.due_date ?? null,
         normalized.paid_date ?? null,
         normalized.payment_method ?? null,
-        normalized.paid_by_side ?? null,
-        normalized.paid_bride_share_percentage ?? null,
+        paidBySide ?? null,
+        paidBridePct ?? null,
         normalized.transaction_reference ?? null,
         normalized.notes ?? null,
         normalized.reverses_payment_id ?? null,

@@ -27,8 +27,22 @@ export type {
 
 export type { UserRow, UserInsert, AuthenticatedUser } from './domain/user.types';
 
-export { MEMBER_ROLES, WEDDING_SECTIONS, SECTION_LABELS } from './domain/member.types';
-export type { MemberRole, WeddingSection } from './domain/member.types';
+export {
+  MEMBER_ROLES,
+  WEDDING_SECTIONS,
+  SECTION_LABELS,
+  MEMBER_PERMISSIONS,
+  PERMISSION_LABELS,
+  can,
+  canAccessSection,
+  financeTier,
+} from './domain/member.types';
+export type {
+  MemberRole,
+  WeddingSection,
+  MemberPermission,
+  FinanceTier,
+} from './domain/member.types';
 
 export type {
   GuestRow,

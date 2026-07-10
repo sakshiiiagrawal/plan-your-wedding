@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { financeTier } from '../../../shared/src';
 import { getAuthUser, getWeddingOwnerId } from '../shared/utils/auth.utils';
 import * as service from '../services/vendors.service';
 
@@ -103,8 +104,16 @@ export const update = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const { id: userId } = getAuthUser(req);
-    res.json(await service.updateVendor(req.params.id, getWeddingOwnerId(req), req.body, userId));
+    const user = getAuthUser(req);
+    res.json(
+      await service.updateVendor(
+        req.params.id,
+        getWeddingOwnerId(req),
+        req.body,
+        user.id,
+        financeTier(user),
+      ),
+    );
   } catch (e) {
     next(e);
   }

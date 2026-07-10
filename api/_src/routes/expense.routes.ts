@@ -12,6 +12,7 @@ import {
 } from '../validators/expense.validator';
 import * as ctrl from '../controllers/expense.controller';
 import * as exportController from '../controllers/export.controller';
+import { requirePermission } from '../middleware/access.middleware';
 
 const router = Router();
 
@@ -19,8 +20,10 @@ const router = Router();
 router.get('/', ctrl.getSummary);
 router.get('/export', exportController.exportBudget);
 router.get('/overview', ctrl.getOverview);
-router.get('/by-side', ctrl.getBySide);
-router.get('/side-summary', ctrl.getSideSummary);
+// Side data IS the payload here — the finance-visibility deep-strip can't
+// help, so hard-403 for anyone without budget:splits.
+router.get('/by-side', requirePermission('budget:splits'), ctrl.getBySide);
+router.get('/side-summary', requirePermission('budget:splits'), ctrl.getSideSummary);
 router.put('/total', validateBody(updateTotalExpenseSchema), ctrl.updateTotalExpense);
 
 // Categories — specific paths before /:id
@@ -63,6 +66,6 @@ router.get('/alerts', ctrl.getAlerts);
 
 // Vendor expense tracking
 router.get('/vendors/summary', ctrl.getVendorExpenseSummary);
-router.get('/vendors/by-side', ctrl.getVendorsBySide);
+router.get('/vendors/by-side', requirePermission('budget:splits'), ctrl.getVendorsBySide);
 
 export default router;

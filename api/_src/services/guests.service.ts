@@ -1,5 +1,5 @@
 import { NotFoundError, BadRequestError } from '../shared/errors/HttpError';
-import type { GuestInsert, GuestGroupInsert } from '@wedding-planner/shared';
+import type { GuestInsert, GuestGroupInsert } from '../../../shared/src';
 import * as repo from '../repositories/guests.repository';
 import type { GuestFilters } from '../repositories/guests.repository';
 import * as eventsRepo from '../repositories/events.repository';

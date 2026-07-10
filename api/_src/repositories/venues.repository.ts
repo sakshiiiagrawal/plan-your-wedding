@@ -6,7 +6,7 @@ import type {
   RoomRow,
   RoomAllocationInsert,
   RoomAllocationRow,
-} from '@wedding-planner/shared';
+} from '../../../shared/src';
 
 // ---------------------------------------------------------------------------
 // Venues

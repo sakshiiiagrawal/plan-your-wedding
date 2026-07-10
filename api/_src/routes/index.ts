@@ -20,6 +20,8 @@ import geocodeRoutes from './geocode.routes';
 import membersRoutes from './members.routes';
 import pagesRoutes from './pages.routes';
 import { getPublicPages } from '../controllers/pages.controller';
+import { requireSection } from '../middleware/access.middleware';
+import { applyFinanceTier } from '../middleware/finance-visibility';
 
 const router = Router();
 
@@ -38,17 +40,18 @@ router.post('/public/:slug/rsvp', publicRsvpLimiter, validateBody(publicRsvpSche
 // Auth (login/register are public; /me uses global middleware)
 router.use('/auth', authRoutes);
 
-// Protected API routes
+// Protected API routes. geocode/dashboard/members stay unguarded by section
+// (dashboard is an overview, members gates itself via requirePermission).
 router.use('/geocode', geocodeRoutes);
 router.use('/dashboard', dashboardRoutes);
-router.use('/events', eventsRoutes);
-router.use('/guests', guestsRoutes);
-router.use('/venues', venuesRoutes);
-router.use('/vendors', vendorsRoutes);
-router.use('/expense', expenseRoutes);
-router.use('/tasks', tasksRoutes);
-router.use('/website-content', websiteContentRoutes);
+router.use('/events', requireSection('events'), eventsRoutes);
+router.use('/guests', requireSection('guests'), guestsRoutes);
+router.use('/venues', requireSection('venues'), applyFinanceTier, venuesRoutes);
+router.use('/vendors', requireSection('vendors'), applyFinanceTier, vendorsRoutes);
+router.use('/expense', requireSection('budget'), applyFinanceTier, expenseRoutes);
+router.use('/tasks', requireSection('tasks'), tasksRoutes);
+router.use('/website-content', requireSection('website'), websiteContentRoutes);
 router.use('/members', membersRoutes);
-router.use('/pages', pagesRoutes);
+router.use('/pages', requireSection('website'), pagesRoutes);
 
 export default router;

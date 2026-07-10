@@ -27,7 +27,7 @@ import { formatDate } from '../utils/date';
 
 // `section` is the access-control key (WEDDING_SECTIONS in shared); items
 // without one (overview, settings) are visible to every member. Must stay in
-// sync with SECTION_BY_PREFIX in api/_src/app.ts.
+// sync with the requireSection(...) mounts in api/_src/routes/index.ts.
 const NAV_ITEMS = [
   { path: '', label: 'Overview', icon: HiOutlineHome, end: true },
   { path: '/venues', label: 'Venues', icon: HiOutlineLocationMarker, section: 'venues' },

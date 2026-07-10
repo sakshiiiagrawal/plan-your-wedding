@@ -1286,6 +1286,8 @@ export interface WeddingMember {
   status: 'pending' | 'active';
   /** null = full access; a non-empty array limits the member to those sections */
   allowed_sections: string[] | null;
+  /** Fine-grained grants (e.g. 'budget:splits', 'members:manage'). Admins implicitly hold all. */
+  permissions: string[];
   created_at: string;
 }
 
@@ -1298,8 +1300,12 @@ export const useMembers = () =>
 export const useInviteMember = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { email: string; role: string; sections?: string[] | null }) =>
-      api.post('/members/invite', payload).then((res) => res.data),
+    mutationFn: (payload: {
+      email: string;
+      role: string;
+      sections?: string[] | null;
+      permissions?: string[];
+    }) => api.post('/members/invite', payload).then((res) => res.data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members'] }),
   });
 };
@@ -1354,15 +1360,18 @@ export const useUpdateMember = () => {
       id,
       role,
       sections,
+      permissions,
     }: {
       id: string;
       role?: string;
       sections?: string[] | null;
+      permissions?: string[];
     }) =>
       api
         .patch(`/members/${id}`, {
           ...(role !== undefined ? { role } : {}),
           ...(sections !== undefined ? { sections } : {}),
+          ...(permissions !== undefined ? { permissions } : {}),
         })
         .then((res) => res.data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members'] }),

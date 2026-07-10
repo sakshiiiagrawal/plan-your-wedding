@@ -1,5 +1,5 @@
 import { supabase } from '../config/database';
-import type { PublicPageRow } from '@wedding-planner/shared';
+import type { PublicPageRow } from '../../../shared/src';
 
 export async function findAllByOwner(ownerId: string): Promise<PublicPageRow[]> {
   const { data, error } = await supabase

@@ -57,6 +57,7 @@ export const verifyToken = async (
     let currency = user.currency ?? 'INR';
     let role: AuthenticatedUser['role'] = 'admin';
     let allowedSections: string[] | null = null;
+    let permissions: string[] = [];
 
     // Users default to their own wedding. A collaborator can switch into a
     // wedding they're an active member of (see setActiveWedding); that choice is
@@ -65,7 +66,7 @@ export const verifyToken = async (
     if (user.active_owner_id && user.active_owner_id !== user.id) {
       const { data: membership } = await supabase
         .from('wedding_members')
-        .select('role, allowed_sections, owner:users!owner_id(slug, currency)')
+        .select('role, allowed_sections, permissions, owner:users!owner_id(slug, currency)')
         .eq('member_id', user.id)
         .eq('owner_id', user.active_owner_id)
         .eq('status', 'active')
@@ -78,9 +79,10 @@ export const verifyToken = async (
         } | null;
         ownerId = user.active_owner_id;
         role = membership.role as AuthenticatedUser['role'];
-        // Admins always get every section, whatever the row says
+        // Admins always get every section/permission, whatever the row says
         allowedSections =
           role === 'admin' ? null : ((membership.allowed_sections as string[] | null) ?? null);
+        permissions = role === 'admin' ? [] : ((membership.permissions as string[] | null) ?? []);
         slug = owner?.slug ?? null;
         currency = owner?.currency ?? 'INR';
       }
@@ -96,6 +98,7 @@ export const verifyToken = async (
       currency,
       role,
       allowedSections,
+      permissions,
     };
     next();
   } catch (error) {

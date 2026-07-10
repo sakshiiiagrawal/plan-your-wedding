@@ -1,5 +1,10 @@
 import { ConflictError, NotFoundError } from '../shared/errors/HttpError';
-import type { VendorInsert, VendorRow, VendorWithFinance } from '@wedding-planner/shared';
+import type {
+  VendorInsert,
+  VendorRow,
+  VendorWithFinance,
+  FinanceTier,
+} from '../../../shared/src';
 import * as repo from '../repositories/vendors.repository';
 import { getCategoryTree } from './expense.service';
 import {
@@ -47,8 +52,8 @@ function extractVendorFinanceInput(
     category_id?: string | null;
     total_cost?: number | null;
     expense_date?: string | null;
-    side?: 'bride' | 'groom' | 'shared' | 'mutual' | null;
-    bride_share_percentage?: number | null;
+    side?: 'bride' | 'groom' | 'shared' | 'mutual' | null | undefined;
+    bride_share_percentage?: number | null | undefined;
     notes?: string | null;
     finance?: {
       expense_date: string;
@@ -71,13 +76,17 @@ function extractVendorFinanceInput(
     };
   }
 
+  // Leave side/bride_share_percentage undefined (not defaulted) when the
+  // caller didn't provide them — a money-tier body has them stripped, and
+  // syncExpenseItems needs to see `undefined` to preserve the existing
+  // item's side rather than clobber it with 'shared'.
   return buildVendorSourceItems(
     ownerId,
     payload.category_id ?? null,
     payload.name,
     payload.total_cost ?? null,
-    payload.side ?? 'shared',
-    payload.bride_share_percentage ?? null,
+    payload.side,
+    payload.bride_share_percentage,
   ).then((items) => {
     const itemsWithId =
       payload.existingItemId && items.length > 0
@@ -341,6 +350,7 @@ export async function updateVendor(
     } | null;
   },
   userId?: string,
+  tier: FinanceTier = 'full',
 ) {
   return withPgTransaction(async (client) => {
     const { rows: existingRows } = await client.query<Record<string, unknown>>(
@@ -426,13 +436,17 @@ export async function updateVendor(
       actorId: userId ?? ownerId,
     });
 
+    // A tier-'none' editor can't see finance at all — never touch it, even
+    // to "preserve" it, so a stripped body can never resync into an empty
+    // items array and wipe an existing costed vendor's finance rows.
     const shouldTouchFinance =
-      payload.finance !== undefined ||
-      payload.total_cost !== undefined ||
-      payload.expense_date !== undefined ||
-      payload.side !== undefined ||
-      payload.bride_share_percentage !== undefined ||
-      payload.name !== undefined;
+      tier !== 'none' &&
+      (payload.finance !== undefined ||
+        payload.total_cost !== undefined ||
+        payload.expense_date !== undefined ||
+        payload.side !== undefined ||
+        payload.bride_share_percentage !== undefined ||
+        payload.name !== undefined);
 
     let linkedExpense = null as Awaited<ReturnType<typeof getSourceExpense>>;
     const { rows: linkedRows } = await client.query<Record<string, unknown>>(
@@ -459,8 +473,11 @@ export async function updateVendor(
               category_id: vendor.category_id,
               total_cost: payload.total_cost ?? linkedExpense?.summary.committed_amount ?? null,
               expense_date: payload.expense_date ?? linkedExpense?.expense_date ?? null,
-              side: payload.side ?? 'shared',
-              bride_share_percentage: payload.bride_share_percentage ?? null,
+              // Leave undefined (not defaulted to 'shared') when the caller
+              // didn't send it — preserves the existing item's side via
+              // existingItemId below instead of clobbering it.
+              side: payload.side,
+              bride_share_percentage: payload.bride_share_percentage,
               notes: payload.notes ?? vendor.notes,
               finance: payload.finance ?? null,
               existingItemId: linkedExpense?.items?.[0]?.id ?? null,

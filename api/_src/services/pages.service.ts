@@ -1,5 +1,5 @@
 import { BadRequestError, NotFoundError } from '../shared/errors/HttpError';
-import type { PublicPagePayload, PublicPageRow } from '@wedding-planner/shared';
+import type { PublicPagePayload, PublicPageRow } from '../../../shared/src';
 import * as repo from '../repositories/pages.repository';
 import * as contentRepo from '../repositories/website-content.repository';
 

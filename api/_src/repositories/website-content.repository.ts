@@ -1,5 +1,5 @@
 import { supabase } from '../config/database';
-import type { WebsiteContentRow } from '@wedding-planner/shared';
+import type { WebsiteContentRow } from '../../../shared/src';
 
 export async function findOwnerBySlug(slug: string): Promise<string | null> {
   const { data } = await supabase.from('users').select('id').eq('slug', slug).maybeSingle();

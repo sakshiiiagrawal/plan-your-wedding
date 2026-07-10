@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { SECTION_LABELS, type WeddingSection } from '@wedding-planner/shared';
 import api from '../api/axios';
@@ -21,6 +21,8 @@ import {
 export default function PendingInvites() {
   const { user, isAuthenticated, loading, refresh, logout } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fromPartnerSignup = searchParams.get('partner') === '1';
   const { data: invites = [], isLoading, isFetching, refetch } = usePendingInvites(isAuthenticated);
   const { data: weddingData } = useWeddings();
   const acceptPending = useAcceptPendingInvite();
@@ -88,8 +90,17 @@ export default function PendingInvites() {
           <div className="text-center space-y-3">
             <p className="text-gray-600 text-sm">No invites yet.</p>
             <p className="text-gray-500 text-sm">
-              Ask the couple to invite <b>{user?.email}</b> from their dashboard (Settings →
-              Members).
+              {fromPartnerSignup ? (
+                <>
+                  Ask your partner to invite you from Settings → Members using{' '}
+                  <b>{user?.email}</b> — the invite will appear here.
+                </>
+              ) : (
+                <>
+                  Ask the couple to invite <b>{user?.email}</b> from their dashboard (Settings →
+                  Members).
+                </>
+              )}
             </p>
             <button
               onClick={() => refetch()}

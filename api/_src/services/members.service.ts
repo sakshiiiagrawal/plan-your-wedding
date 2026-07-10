@@ -1,11 +1,14 @@
 import { randomBytes } from 'crypto';
+import { can, canAccessSection, type WeddingSection, type MemberPermission } from '../../../shared/src';
 import { supabase } from '../config/database';
 import { env } from '../config/env';
 import { sendEmail } from './mailer';
-import { NotFoundError, ConflictError, BadRequestError } from '../shared/errors/HttpError';
+import { NotFoundError, ConflictError, BadRequestError, ForbiddenError } from '../shared/errors/HttpError';
 import { hashToken } from '../shared/utils/token.utils';
+import type { AuthenticatedUser } from '../types/express';
 
-const MEMBER_COLUMNS = 'id, owner_id, member_id, invited_email, role, status, allowed_sections, created_at';
+const MEMBER_COLUMNS =
+  'id, owner_id, member_id, invited_email, role, status, allowed_sections, permissions, created_at';
 
 export interface MemberRow {
   id: string;
@@ -16,7 +19,52 @@ export interface MemberRow {
   status: 'pending' | 'active';
   /** null = full access; a non-empty array limits the member to those sections */
   allowed_sections: string[] | null;
+  permissions: string[];
   created_at: string;
+}
+
+/**
+ * Blocks privilege escalation by a non-admin actor delegating member
+ * management (`members:manage`). Admins bypass every check here — they can
+ * already do all of this via their implicit role. Throws ForbiddenError on
+ * the first violation.
+ */
+function assertCanGrant(
+  actor: AuthenticatedUser,
+  request: {
+    role?: 'admin' | 'editor' | 'viewer' | undefined;
+    sections?: string[] | null | undefined;
+    permissions?: string[] | undefined;
+    target?: MemberRow | undefined;
+  },
+): void {
+  if (actor.role === 'admin') return;
+
+  if (request.role === 'admin') {
+    throw new ForbiddenError('Only admins can grant the admin role');
+  }
+
+  for (const permission of request.permissions ?? []) {
+    if (!can(actor, permission as MemberPermission)) {
+      throw new ForbiddenError(`You do not have permission to grant "${permission}"`);
+    }
+  }
+
+  if (request.sections === null) {
+    if (actor.allowedSections !== null) {
+      throw new ForbiddenError('You cannot grant full section access');
+    }
+  } else if (request.sections) {
+    for (const section of request.sections) {
+      if (!canAccessSection(actor, section as WeddingSection)) {
+        throw new ForbiddenError(`You do not have access to the "${section}" section`);
+      }
+    }
+  }
+
+  if (request.target && request.target.role === 'admin') {
+    throw new ForbiddenError('Only admins can modify admins');
+  }
 }
 
 export async function listMembers(ownerId: string): Promise<MemberRow[]> {
@@ -30,11 +78,15 @@ export async function listMembers(ownerId: string): Promise<MemberRow[]> {
 }
 
 export async function inviteMember(
-  ownerId: string,
+  actor: AuthenticatedUser,
   email: string,
   role: 'admin' | 'editor' | 'viewer',
   sections?: string[] | null,
+  permissions?: string[],
 ): Promise<MemberRow & { email_sent: boolean }> {
+  assertCanGrant(actor, { role, sections, permissions });
+
+  const ownerId = actor.ownerId;
   const invitedEmail = email.toLowerCase().trim();
 
   const { data: ownerRows } = await supabase
@@ -58,21 +110,28 @@ export async function inviteMember(
   }
 
   const token = randomBytes(32).toString('hex');
-  // Admins always have full access; sections only constrain editors/viewers
+  // Admins always have full access; sections/permissions only constrain editors/viewers
   const allowed_sections = role === 'admin' ? null : (sections ?? null);
+  const grantedPermissions = role === 'admin' ? [] : (permissions ?? []);
 
   // A still-pending invite gets a fresh token and a new email (resend) instead
   // of erroring — otherwise one failed/lost email leaves the invite stuck forever
   const query = existing
     ? supabase
         .from('wedding_members')
-        .update({ role, allowed_sections, token_hash: hashToken(token) })
+        .update({
+          role,
+          allowed_sections,
+          permissions: grantedPermissions,
+          token_hash: hashToken(token),
+        })
         .eq('id', existing.id)
     : supabase.from('wedding_members').insert({
         owner_id: ownerId,
         invited_email: invitedEmail,
         role,
         allowed_sections,
+        permissions: grantedPermissions,
         status: 'pending',
         token_hash: hashToken(token),
       });
@@ -231,16 +290,35 @@ export async function acceptInvite(userId: string, token: string): Promise<Membe
   return updated as MemberRow;
 }
 
+async function loadMemberRow(ownerId: string, memberRowId: string): Promise<MemberRow> {
+  const { data, error } = await supabase
+    .from('wedding_members')
+    .select(MEMBER_COLUMNS)
+    .eq('id', memberRowId)
+    .eq('owner_id', ownerId)
+    .maybeSingle();
+  if (error || !data) throw new NotFoundError('Member not found');
+  return data as MemberRow;
+}
+
 export async function updateMember(
-  ownerId: string,
+  actor: AuthenticatedUser,
   memberRowId: string,
-  updates: { role?: 'admin' | 'editor' | 'viewer'; sections?: string[] | null },
+  updates: { role?: 'admin' | 'editor' | 'viewer'; sections?: string[] | null; permissions?: string[] },
 ): Promise<MemberRow> {
+  const ownerId = actor.ownerId;
+  const target = await loadMemberRow(ownerId, memberRowId);
+  assertCanGrant(actor, { ...updates, target });
+
   const patch: Record<string, unknown> = {};
   if (updates.role !== undefined) patch.role = updates.role;
   if (updates.sections !== undefined) patch.allowed_sections = updates.sections;
-  // An admin role wipes any section restriction, whichever field changed
-  if (updates.role === 'admin') patch.allowed_sections = null;
+  if (updates.permissions !== undefined) patch.permissions = updates.permissions;
+  // An admin role wipes any section/permission restriction, whichever field changed
+  if (updates.role === 'admin') {
+    patch.allowed_sections = null;
+    patch.permissions = [];
+  }
 
   const { data, error } = await supabase
     .from('wedding_members')
@@ -253,7 +331,13 @@ export async function updateMember(
   return data as MemberRow;
 }
 
-export async function removeMember(ownerId: string, memberRowId: string): Promise<void> {
+export async function removeMember(actor: AuthenticatedUser, memberRowId: string): Promise<void> {
+  const ownerId = actor.ownerId;
+  if (actor.role !== 'admin') {
+    const target = await loadMemberRow(ownerId, memberRowId);
+    assertCanGrant(actor, { target });
+  }
+
   const { error } = await supabase
     .from('wedding_members')
     .delete()
