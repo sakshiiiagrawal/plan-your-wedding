@@ -23,7 +23,9 @@ import type { ExpenseRow } from './expense/EditExpenseModal';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import type { ExpenseWithDetails } from '@wedding-planner/shared';
+import { financeTier } from '@wedding-planner/shared';
 import { formatCurrency } from '../../utils/currency';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Tab {
   id: string;
@@ -95,6 +97,13 @@ function getSideMeta(expense: ExpenseWithDetails) {
 }
 
 export default function Expense() {
+  const { user } = useAuth();
+  const canSeeSplits = financeTier(user) === 'full';
+  const visibleTabs = useMemo(
+    () => (canSeeSplits ? TABS : TABS.filter((tab) => tab.id !== 'sidewise')),
+    [canSeeSplits],
+  );
+
   const [activeTab, setActiveTab] = useState('overview');
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null);
@@ -403,7 +412,7 @@ export default function Expense() {
 
       <div className="card">
         <div className="flex flex-wrap gap-2 mb-6">
-          {TABS.map((tab) => (
+          {visibleTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -439,10 +448,11 @@ export default function Expense() {
               }
             }}
             onDelete={(id) => setDeleteConfirm(id)}
+            showSides={canSeeSplits}
           />
         )}
 
-        {activeTab === 'sidewise' && (
+        {canSeeSplits && activeTab === 'sidewise' && (
           <ExpenseSideWiseTab sideWiseExpenses={sideWiseExpenses} formatCurrency={formatCurrency} />
         )}
 

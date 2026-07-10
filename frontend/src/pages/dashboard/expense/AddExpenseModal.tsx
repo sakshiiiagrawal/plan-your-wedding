@@ -8,6 +8,8 @@ import SplitShare from '../../../components/ui/SplitShare';
 import useUnsavedChangesPrompt from '../../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../../hooks/useModalDismiss';
 import { formatCurrency } from '../../../utils/currency';
+import { financeTier } from '@wedding-planner/shared';
+import { useAuth } from '../../../contexts/AuthContext';
 
 interface AddExpenseModalProps {
   show: boolean;
@@ -70,6 +72,8 @@ export default function AddExpenseModal({
   onSubmit,
   isPending,
 }: AddExpenseModalProps) {
+  const { user } = useAuth();
+  const canSeeSplits = financeTier(user) === 'full';
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM);
   const [showCustomCategoryModal, setShowCustomCategoryModal] = useState(false);
   const [customCategoryParentId, setCustomCategoryParentId] = useState<string | null>(null);
@@ -125,9 +129,13 @@ export default function AddExpenseModal({
         category_id: item.category_id,
         description: item.description,
         amount: Number(item.amount || 0),
-        side: item.side,
-        bride_share_percentage: item.side === 'shared' ? item.bride_share_percentage : null,
         display_order: index + 1,
+        ...(canSeeSplits
+          ? {
+              side: item.side,
+              bride_share_percentage: item.side === 'shared' ? item.bride_share_percentage : null,
+            }
+          : {}),
       })),
       payments: formData.record_payment_now
         ? [
@@ -138,9 +146,15 @@ export default function AddExpenseModal({
               due_date: formData.payment_date,
               paid_date: formData.payment_date > TODAY ? null : formData.payment_date,
               payment_method: formData.payment_date > TODAY ? null : formData.payment_method,
-              paid_by_side: formData.paid_by_side,
-              paid_bride_share_percentage:
-                formData.paid_by_side === 'shared' ? formData.paid_bride_share_percentage : null,
+              ...(canSeeSplits
+                ? {
+                    paid_by_side: formData.paid_by_side,
+                    paid_bride_share_percentage:
+                      formData.paid_by_side === 'shared'
+                        ? formData.paid_bride_share_percentage
+                        : null,
+                  }
+                : {}),
               notes: formData.payment_notes || null,
             },
           ]
@@ -355,6 +369,7 @@ export default function AddExpenseModal({
                         />
                       </div>
 
+                      {canSeeSplits && (
                       <div>
                         <label className="label">Liability Side</label>
                         <div style={{ display: 'flex', gap: 6 }}>
@@ -405,8 +420,9 @@ export default function AddExpenseModal({
                           })}
                         </div>
                       </div>
+                      )}
 
-                      {item.side === 'shared' && (
+                      {canSeeSplits && item.side === 'shared' && (
                         <SplitShare
                           total={Number(item.amount) || 0}
                           bridePercentage={item.bride_share_percentage}
@@ -498,7 +514,7 @@ export default function AddExpenseModal({
                       </div>
                     </div>
 
-                    <div className="grid sm:grid-cols-2 gap-4">
+                    <div className={canSeeSplits ? 'grid sm:grid-cols-2 gap-4' : undefined}>
                       <div>
                         <label className="label">Payment Method</label>
                         <select
@@ -519,26 +535,28 @@ export default function AddExpenseModal({
                           <option value="credit_card">Credit Card</option>
                         </select>
                       </div>
-                      <div>
-                        <label className="label">Paid By Side</label>
-                        <select
-                          value={formData.paid_by_side}
-                          onChange={(event) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              paid_by_side: event.target.value as 'bride' | 'groom' | 'shared',
-                            }))
-                          }
-                          className="input"
-                        >
-                          <option value="bride">Bride</option>
-                          <option value="groom">Groom</option>
-                          <option value="shared">Shared</option>
-                        </select>
-                      </div>
+                      {canSeeSplits && (
+                        <div>
+                          <label className="label">Paid By Side</label>
+                          <select
+                            value={formData.paid_by_side}
+                            onChange={(event) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                paid_by_side: event.target.value as 'bride' | 'groom' | 'shared',
+                              }))
+                            }
+                            className="input"
+                          >
+                            <option value="bride">Bride</option>
+                            <option value="groom">Groom</option>
+                            <option value="shared">Shared</option>
+                          </select>
+                        </div>
+                      )}
                     </div>
 
-                    {formData.paid_by_side === 'shared' && (
+                    {canSeeSplits && formData.paid_by_side === 'shared' && (
                       <SplitShare
                         total={paymentMagnitude}
                         bridePercentage={formData.paid_bride_share_percentage}

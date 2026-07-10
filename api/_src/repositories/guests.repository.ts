@@ -5,7 +5,7 @@ import type {
   GuestGroupInsert,
   GuestGroupRow,
   GuestEventRsvpInsert,
-} from '@wedding-planner/shared';
+} from '../../../shared/src';
 import type { ParsedGuest } from '../excel/guests.excel';
 
 // ---------------------------------------------------------------------------

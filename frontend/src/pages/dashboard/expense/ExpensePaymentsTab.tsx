@@ -1,5 +1,7 @@
 import { useExpenseOutstanding, useExpensePayments } from '../../../hooks/useApi';
 import { parseLocalDate } from '../../../utils/date';
+import { financeTier } from '@wedding-planner/shared';
+import { useAuth } from '../../../contexts/AuthContext';
 
 interface ExpensePaymentsTabProps {
   formatCurrency: (amount: number) => string;
@@ -37,6 +39,8 @@ function plannedBadge(paymentDate: string) {
 }
 
 export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTabProps) {
+  const { user } = useAuth();
+  const canSeeSplits = financeTier(user) === 'full';
   const { data: payments = [], isLoading: loadingPayments } = useExpensePayments();
   const { data: outstanding, isLoading: loadingOutstanding } = useExpenseOutstanding();
 
@@ -90,7 +94,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   <th className="text-left p-4">Expense</th>
                   <th className="text-left p-4">Source</th>
                   <th className="text-right p-4">Amount</th>
-                  <th className="text-left p-4">Paid By</th>
+                  {canSeeSplits && <th className="text-left p-4">Paid By</th>}
                   <th className="text-left p-4">Due Date</th>
                   <th className="text-left p-4">Status</th>
                 </tr>
@@ -114,12 +118,14 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                       >
                         {formatPaymentAmount(payment.amount, payment.direction, formatCurrency)}
                       </td>
-                      <td className="p-4 text-ink-mid capitalize">
-                        {payment.paid_by_side === 'shared' &&
-                        payment.paid_bride_share_percentage != null
-                          ? `Bride ${payment.paid_bride_share_percentage}% · Groom ${100 - payment.paid_bride_share_percentage}%`
-                          : payment.paid_by_side || '—'}
-                      </td>
+                      {canSeeSplits && (
+                        <td className="p-4 text-ink-mid capitalize">
+                          {payment.paid_by_side === 'shared' &&
+                          payment.paid_bride_share_percentage != null
+                            ? `Bride ${payment.paid_bride_share_percentage}% · Groom ${100 - payment.paid_bride_share_percentage}%`
+                            : payment.paid_by_side || '—'}
+                        </td>
+                      )}
                       <td className="p-4 text-ink-mid">
                         {parseLocalDate(payment.due_date ?? payment.created_at).toLocaleDateString(
                           'en-IN',
@@ -152,7 +158,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   <th className="text-left p-4">Expense</th>
                   <th className="text-left p-4">Source</th>
                   <th className="text-right p-4">Amount</th>
-                  <th className="text-left p-4">Paid By</th>
+                  {canSeeSplits && <th className="text-left p-4">Paid By</th>}
                   <th className="text-left p-4">Date</th>
                   <th className="text-left p-4">Method</th>
                   <th className="text-left p-4 hidden md:table-cell">Reference</th>
@@ -178,12 +184,14 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                       >
                         {formatPaymentAmount(payment.amount, payment.direction, formatCurrency)}
                       </td>
-                      <td className="p-4 text-ink-mid capitalize">
-                        {payment.paid_by_side === 'shared' &&
-                        payment.paid_bride_share_percentage != null
-                          ? `Bride ${payment.paid_bride_share_percentage}% · Groom ${100 - payment.paid_bride_share_percentage}%`
-                          : payment.paid_by_side || '—'}
-                      </td>
+                      {canSeeSplits && (
+                        <td className="p-4 text-ink-mid capitalize">
+                          {payment.paid_by_side === 'shared' &&
+                          payment.paid_bride_share_percentage != null
+                            ? `Bride ${payment.paid_bride_share_percentage}% · Groom ${100 - payment.paid_bride_share_percentage}%`
+                            : payment.paid_by_side || '—'}
+                        </td>
+                      )}
                       <td className="p-4 text-ink-mid">
                         {parseLocalDate(payment.paid_date ?? payment.created_at).toLocaleDateString(
                           'en-IN',

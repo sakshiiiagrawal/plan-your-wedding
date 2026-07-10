@@ -69,7 +69,8 @@ export interface ExpenseItemInput {
   event_id?: string | null;
   description: string;
   amount: number;
-  side: FinanceItemSide;
+  /** Optional: absent when a money-tier editor's request had this stripped. */
+  side?: FinanceItemSide | undefined;
   bride_share_percentage?: number | null;
   display_order?: number;
 }

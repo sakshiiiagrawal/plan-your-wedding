@@ -15,6 +15,8 @@ export interface AuthUser {
   role?: 'admin' | 'editor' | 'viewer';
   /** null/undefined = full access; a non-empty array limits nav + API to those sections */
   allowedSections?: string[] | null;
+  /** Fine-grained grants (e.g. 'budget:splits', 'members:manage'). Admins implicitly hold all. */
+  permissions?: string[] | null;
 }
 
 interface RegisterData {

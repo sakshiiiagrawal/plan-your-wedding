@@ -4,7 +4,7 @@ import type {
   ExpenseCategoryRow,
   ExpenseSummaryInsert,
   ExpenseSummaryRow,
-} from '@wedding-planner/shared';
+} from '../../../shared/src';
 
 // ---------------------------------------------------------------------------
 // Expense summary

@@ -7,25 +7,20 @@ import {
 } from '../validators/members.validator';
 import * as membersController from '../controllers/members.controller';
 import { inviteLimiter } from '../middleware/rate-limit.middleware';
+import { requirePermission } from '../middleware/access.middleware';
 
 const router = Router();
 
-const { requireAdmin } = membersController;
+const manage = requirePermission('members:manage');
 
 router.get('/', membersController.list);
-router.post(
-  '/invite',
-  requireAdmin,
-  inviteLimiter,
-  validateBody(inviteMemberSchema),
-  membersController.invite,
-);
+router.post('/invite', manage, inviteLimiter, validateBody(inviteMemberSchema), membersController.invite);
 router.post('/accept', validateBody(acceptInviteSchema), membersController.accept);
-// Self-scope: invites addressed to the logged-in user's email (no admin gate)
+// Self-scope: invites addressed to the logged-in user's email (no permission gate)
 router.get('/pending', membersController.listPending);
 router.post('/pending/:id/accept', membersController.acceptPending);
 router.delete('/pending/:id', membersController.declinePending);
-router.patch('/:id', requireAdmin, validateBody(updateMemberSchema), membersController.update);
-router.delete('/:id', requireAdmin, membersController.remove);
+router.patch('/:id', manage, validateBody(updateMemberSchema), membersController.update);
+router.delete('/:id', manage, membersController.remove);
 
 export default router;

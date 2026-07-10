@@ -3,9 +3,10 @@ import { motion } from 'framer-motion';
 interface Step1Props {
   onNext: () => void;
   onCollaborator: () => void;
+  onPartner: () => void;
 }
 
-export default function Step1_Welcome({ onNext, onCollaborator }: Step1Props) {
+export default function Step1_Welcome({ onNext, onCollaborator, onPartner }: Step1Props) {
   return (
     <motion.div
       initial={{ opacity: 0, x: 40 }}
@@ -28,6 +29,19 @@ export default function Step1_Welcome({ onNext, onCollaborator }: Step1Props) {
           <span className="block text-sm text-gray-500 mt-1">
             Create your wedding, its website, and your account. You can invite your partner,
             family, and planner afterwards — everyone works on the same wedding.
+          </span>
+        </button>
+
+        <button
+          onClick={onPartner}
+          className="w-full border-2 border-maroon-200 hover:border-maroon-700 rounded-xl p-4 transition-colors"
+        >
+          <span className="block font-display font-bold text-maroon-800">
+            My partner already started planning 💑
+          </span>
+          <span className="block text-sm text-gray-500 mt-1">
+            Create your account, then ask your partner to invite this email from Settings →
+            Members — you&apos;ll join their wedding.
           </span>
         </button>
 

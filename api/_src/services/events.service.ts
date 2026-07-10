@@ -4,7 +4,7 @@ import type {
   EventRow,
   EventWithVenue,
   PublicEventPayload,
-} from '@wedding-planner/shared';
+} from '../../../shared/src';
 import * as repo from '../repositories/events.repository';
 
 export async function listEvents(ownerId: string): Promise<EventWithVenue[]> {

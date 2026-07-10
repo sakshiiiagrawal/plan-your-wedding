@@ -31,7 +31,10 @@ export const financeItemSchema = z.object({
   event_id: z.string().uuid().optional().nullable(),
   description: z.string().min(1),
   amount: z.coerce.number().nonnegative(),
-  side: z.enum(['bride', 'groom', 'shared']),
+  // Optional: a money-tier editor's request body has this deep-stripped by
+  // applyFinanceTier. finance.service.ts fills it from the existing row
+  // (updates) or defaults to 'shared' (new items).
+  side: z.enum(['bride', 'groom', 'shared']).optional(),
   bride_share_percentage: z.coerce.number().min(0).max(100).optional().nullable(),
   display_order: z.coerce.number().int().positive().optional(),
 });

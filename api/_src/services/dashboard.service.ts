@@ -1,13 +1,13 @@
 import * as repo from '../repositories/dashboard.repository';
 import { getFinanceDashboardTotals, getScheduledPayments } from './finance.service';
 
-export async function getStats(ownerId: string) {
+export async function getStats(ownerId: string, includeExpense: boolean) {
   const [guests, rsvps, tasks, expense, finance] = await Promise.all([
     repo.findGuestSides(ownerId),
     repo.findRsvpStatuses(ownerId),
     repo.findTaskStatuses(ownerId),
-    repo.findExpenseSummary(ownerId),
-    getFinanceDashboardTotals(ownerId),
+    includeExpense ? repo.findExpenseSummary(ownerId) : Promise.resolve(null),
+    includeExpense ? getFinanceDashboardTotals(ownerId) : Promise.resolve(null),
   ]);
 
   const totalExpense = parseFloat(String(expense?.total_expense ?? 0));
@@ -26,13 +26,17 @@ export async function getStats(ownerId: string) {
       pending: tasks.filter((t) => t.status === 'pending').length,
       completed: tasks.filter((t) => t.status === 'completed').length,
     },
-    expense: {
-      total: totalExpense,
-      committed: finance.committed,
-      paid: finance.paid,
-      outstanding: finance.outstanding,
-      remaining: totalExpense - finance.committed,
-    },
+    ...(finance
+      ? {
+          expense: {
+            total: totalExpense,
+            committed: finance.committed,
+            paid: finance.paid,
+            outstanding: finance.outstanding,
+            remaining: totalExpense - finance.committed,
+          },
+        }
+      : {}),
   };
 }
 

@@ -1,16 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { getAuthUser, getWeddingOwnerId } from '../shared/utils/auth.utils';
-import { ForbiddenError } from '../shared/errors/HttpError';
 import * as membersService from '../services/members.service';
-
-/** Route middleware: member management is admin-only. */
-export function requireAdmin(req: Request, _res: Response, next: NextFunction): void {
-  if (getAuthUser(req).role !== 'admin') {
-    next(new ForbiddenError('Only admins can manage members'));
-    return;
-  }
-  next();
-}
 
 export const list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -23,9 +13,11 @@ export const list = async (req: Request, res: Response, next: NextFunction): Pro
 
 export const invite = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const ownerId = getWeddingOwnerId(req);
-    const { email, role, sections } = req.body;
-    res.status(201).json(await membersService.inviteMember(ownerId, email, role, sections));
+    const actor = getAuthUser(req);
+    const { email, role, sections, permissions } = req.body;
+    res
+      .status(201)
+      .json(await membersService.inviteMember(actor, email, role, sections, permissions));
   } catch (error) {
     next(error);
   }
@@ -86,9 +78,11 @@ export const update = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const ownerId = getWeddingOwnerId(req);
-    const { role, sections } = req.body;
-    res.json(await membersService.updateMember(ownerId, req.params.id, { role, sections }));
+    const actor = getAuthUser(req);
+    const { role, sections, permissions } = req.body;
+    res.json(
+      await membersService.updateMember(actor, req.params.id, { role, sections, permissions }),
+    );
   } catch (error) {
     next(error);
   }
@@ -100,8 +94,8 @@ export const remove = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const ownerId = getWeddingOwnerId(req);
-    await membersService.removeMember(ownerId, req.params.id);
+    const actor = getAuthUser(req);
+    await membersService.removeMember(actor, req.params.id);
     res.status(204).send();
   } catch (error) {
     next(error);

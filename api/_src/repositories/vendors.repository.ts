@@ -1,5 +1,5 @@
 import { supabase } from '../config/database';
-import type { VendorRow } from '@wedding-planner/shared';
+import type { VendorRow } from '../../../shared/src';
 
 export async function findAllByOwner(ownerId: string) {
   const { data, error } = await supabase

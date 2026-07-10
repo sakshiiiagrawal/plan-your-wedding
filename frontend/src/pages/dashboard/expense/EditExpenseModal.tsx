@@ -8,7 +8,9 @@ import SplitShare from '../../../components/ui/SplitShare';
 import useUnsavedChangesPrompt from '../../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../../hooks/useModalDismiss';
 import type { ExpenseWithDetails } from '@wedding-planner/shared';
+import { financeTier } from '@wedding-planner/shared';
 import { formatCurrency } from '../../../utils/currency';
+import { useAuth } from '../../../contexts/AuthContext';
 
 export type ExpenseRow = ExpenseWithDetails;
 
@@ -72,6 +74,8 @@ export default function EditExpenseModal({
   onSubmit,
   isPending,
 }: EditExpenseModalProps) {
+  const { user } = useAuth();
+  const canSeeSplits = financeTier(user) === 'full';
   const [formData, setFormData] = useState<FormData | null>(null);
   const [showCustomCategoryModal, setShowCustomCategoryModal] = useState(false);
   const [customCategoryParentId, setCustomCategoryParentId] = useState<string | null>(null);
@@ -134,9 +138,13 @@ export default function EditExpenseModal({
         category_id: item.category_id,
         description: item.description,
         amount: Number(item.amount || 0),
-        side: item.side,
-        bride_share_percentage: item.side === 'shared' ? item.bride_share_percentage : null,
         display_order: index + 1,
+        ...(canSeeSplits
+          ? {
+              side: item.side,
+              bride_share_percentage: item.side === 'shared' ? item.bride_share_percentage : null,
+            }
+          : {}),
       })),
     });
   };
@@ -347,6 +355,7 @@ export default function EditExpenseModal({
                         />
                       </div>
 
+                      {canSeeSplits && (
                       <div>
                         <label className="label">Liability Side</label>
                         <div style={{ display: 'flex', gap: 6 }}>
@@ -397,8 +406,9 @@ export default function EditExpenseModal({
                           })}
                         </div>
                       </div>
+                      )}
 
-                      {item.side === 'shared' && (
+                      {canSeeSplits && item.side === 'shared' && (
                         <SplitShare
                           total={Number(item.amount) || 0}
                           bridePercentage={item.bride_share_percentage}

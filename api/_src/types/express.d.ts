@@ -9,6 +9,8 @@ export interface AuthenticatedUser {
   role: 'admin' | 'editor' | 'viewer';
   /** null = full access; a non-empty array limits the member to those sections */
   allowedSections: string[] | null;
+  /** Fine-grained grants (e.g. 'budget:splits', 'members:manage'). Admins implicitly hold all. */
+  permissions: string[];
 }
 
 declare global {

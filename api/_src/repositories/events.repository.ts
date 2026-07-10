@@ -1,5 +1,5 @@
 import { supabase } from '../config/database';
-import type { EventInsert, EventRow, EventWithVenue } from '@wedding-planner/shared';
+import type { EventInsert, EventRow, EventWithVenue } from '../../../shared/src';
 
 // ---------------------------------------------------------------------------
 // Queries

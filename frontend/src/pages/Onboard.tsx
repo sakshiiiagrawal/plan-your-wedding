@@ -37,8 +37,11 @@ export default function Onboard() {
     navigate(slug ? `/${slug}/dashboard` : '/invites', { replace: true });
   }, [loading, isAuthenticated, slug, successSlug, submitting, navigate]);
   // 'couple' creates a wedding + website; 'collaborator' (planner / family /
-  // friend) creates just an account — they join weddings via invites.
-  const [mode, setMode] = useState<'couple' | 'collaborator'>('couple');
+  // friend) and 'partner' (spouse whose partner already started planning)
+  // both create an account-only signup — they join weddings via invites.
+  // 'partner' differs only in where it lands afterwards (a nudge to ask
+  // their partner for an invite, rather than the generic invites empty state).
+  const [mode, setMode] = useState<'couple' | 'collaborator' | 'partner'>('couple');
   const [formData, setFormData] = useState<FormData>({
     brideName: '',
     groomName: '',
@@ -88,7 +91,7 @@ export default function Onboard() {
         accountType: 'collaborator',
       });
       toast.success('Account created!');
-      navigate('/invites', { replace: true });
+      navigate(mode === 'partner' ? '/invites?partner=1' : '/invites', { replace: true });
     } catch (error) {
       const err = error as { response?: { data?: { error?: string } } };
       toast.error(err?.response?.data?.error || 'Setup failed. Please try again.');
@@ -97,7 +100,7 @@ export default function Onboard() {
     }
   };
 
-  const STEPS = mode === 'collaborator' ? 2 : 4;
+  const STEPS = mode === 'collaborator' || mode === 'partner' ? 2 : 4;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-maroon-800 via-maroon-700 to-gold-600 flex items-center justify-center p-4">
@@ -144,8 +147,12 @@ export default function Onboard() {
                   setMode('collaborator');
                   setStep(2);
                 }}
+                onPartner={() => {
+                  setMode('partner');
+                  setStep(2);
+                }}
               />
-            ) : mode === 'collaborator' ? (
+            ) : mode === 'collaborator' || mode === 'partner' ? (
               <Step3_Account
                 key="collab-account"
                 data={{

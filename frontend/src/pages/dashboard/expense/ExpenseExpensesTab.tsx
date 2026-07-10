@@ -23,6 +23,8 @@ interface ExpenseExpensesTabProps {
   formatCurrency: (amount: number) => string;
   onEdit: (row: ExpenseListRow) => void;
   onDelete: (id: string) => void;
+  /** Bride/groom liability side is only meaningful with budget:splits. */
+  showSides?: boolean;
 }
 
 export default function ExpenseExpensesTab({
@@ -31,6 +33,7 @@ export default function ExpenseExpensesTab({
   formatCurrency,
   onEdit,
   onDelete,
+  showSides = true,
 }: ExpenseExpensesTabProps) {
   const [filterType, setFilterType] = useState<'all' | 'manual' | 'vendor' | 'venue'>('all');
   const [filterSide, setFilterSide] = useState<'all' | 'bride' | 'groom' | 'shared' | 'mixed'>(
@@ -77,27 +80,29 @@ export default function ExpenseExpensesTab({
             </button>
           ))}
         </div>
-        <div className="flex gap-1 bg-surface-highest rounded-lg p-1">
-          {(['all', 'bride', 'groom', 'shared', 'mixed'] as const).map((side) => (
-            <button
-              key={side}
-              onClick={() => setFilterSide(side)}
-              style={{
-                padding: '4px 12px',
-                fontSize: 13,
-                borderRadius: 6,
-                cursor: 'pointer',
-                transition: 'all 150ms',
-                background: filterSide === side ? 'white' : 'transparent',
-                color: filterSide === side ? 'var(--gold-deep)' : 'var(--ink-low)',
-                fontWeight: filterSide === side ? 600 : 400,
-                boxShadow: filterSide === side ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              }}
-            >
-              {side === 'all' ? 'All Sides' : `${side.charAt(0).toUpperCase()}${side.slice(1)}`}
-            </button>
-          ))}
-        </div>
+        {showSides && (
+          <div className="flex gap-1 bg-surface-highest rounded-lg p-1">
+            {(['all', 'bride', 'groom', 'shared', 'mixed'] as const).map((side) => (
+              <button
+                key={side}
+                onClick={() => setFilterSide(side)}
+                style={{
+                  padding: '4px 12px',
+                  fontSize: 13,
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  transition: 'all 150ms',
+                  background: filterSide === side ? 'white' : 'transparent',
+                  color: filterSide === side ? 'var(--gold-deep)' : 'var(--ink-low)',
+                  fontWeight: filterSide === side ? 600 : 400,
+                  boxShadow: filterSide === side ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                }}
+              >
+                {side === 'all' ? 'All Sides' : `${side.charAt(0).toUpperCase()}${side.slice(1)}`}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -117,7 +122,7 @@ export default function ExpenseExpensesTab({
                   <th className="text-right p-4 hidden md:table-cell">Paid</th>
                   <th className="text-right p-4 hidden md:table-cell">Outstanding</th>
                   <th className="text-left p-4 hidden md:table-cell">Date</th>
-                  <th className="text-left p-4">Side</th>
+                  {showSides && <th className="text-left p-4">Side</th>}
                   <th className="p-4 w-20" />
                 </tr>
               </thead>
@@ -151,9 +156,13 @@ export default function ExpenseExpensesTab({
                     <td className="p-4 text-ink-mid hidden md:table-cell">
                       {new Date(row.expense_date).toLocaleDateString('en-IN')}
                     </td>
-                    <td className="p-4">
-                      <span className="badge bg-surface-highest text-ink-mid">{row.side_label}</span>
-                    </td>
+                    {showSides && (
+                      <td className="p-4">
+                        <span className="badge bg-surface-highest text-ink-mid">
+                          {row.side_label}
+                        </span>
+                      </td>
+                    )}
                     <td className="p-4">
                       {row.editable && (
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

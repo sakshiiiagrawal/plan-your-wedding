@@ -22,6 +22,8 @@ import {
 import { CornerFlourish, Ornament, ProgressRing, KPICard } from '../../components/ui';
 import { formatDate, parseLocalDate } from '../../utils/date';
 import { formatCurrencyCompact } from '../../utils/currency';
+import { useAuth } from '../../contexts/AuthContext';
+import { financeTier } from '@wedding-planner/shared';
 
 interface Countdown {
   days: number;
@@ -44,6 +46,8 @@ const QUICK_ACTIONS = [
 
 export default function Dashboard() {
   const { slug } = useParams<{ slug: string }>();
+  const { user } = useAuth();
+  const canSeeMoney = financeTier(user) !== 'none';
   const [cd, setCd] = useState<Countdown>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [cdPhase, setCdPhase] = useState<'counting' | 'today' | 'past'>('counting');
 
@@ -349,7 +353,7 @@ export default function Dashboard() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateColumns: `repeat(${canSeeMoney ? 4 : 3}, 1fr)`,
           gap: 16,
           marginBottom: 28,
         }}
@@ -361,14 +365,16 @@ export default function Dashboard() {
           hint={`${rsvpPending} pending · ${rsvpDeclined} regrets`}
           accent
         />
-        <KPICard
-          eyebrow="Budget spent"
-          value={fmtLakh(budgetPaid)}
-          {...(budgetTotal > 0 ? { suffix: `of ${fmtLakh(budgetTotal)}` } : {})}
-          hint={
-            budgetTotal > 0 ? `${Math.round(budgetPct * 100)}% of total budget` : 'No budget set'
-          }
-        />
+        {canSeeMoney && (
+          <KPICard
+            eyebrow="Budget spent"
+            value={fmtLakh(budgetPaid)}
+            {...(budgetTotal > 0 ? { suffix: `of ${fmtLakh(budgetTotal)}` } : {})}
+            hint={
+              budgetTotal > 0 ? `${Math.round(budgetPct * 100)}% of total budget` : 'No budget set'
+            }
+          />
+        )}
         <KPICard
           eyebrow="Tasks done"
           value={String(tasksCompleted)}
@@ -379,7 +385,11 @@ export default function Dashboard() {
           eyebrow="Vendors booked"
           value={vendorsBooked}
           suffix={`of ${vendors.length}`}
-          hint={`${vendors.filter((v: any) => (v.finance_summary?.paid_amount ?? 0) > 0).length} with payments logged`}
+          {...(canSeeMoney
+            ? {
+                hint: `${vendors.filter((v: any) => (v.finance_summary?.paid_amount ?? 0) > 0).length} with payments logged`,
+              }
+            : {})}
           accent
         />
       </div>
@@ -533,12 +543,14 @@ export default function Dashboard() {
                 label={`${Math.round(rsvpPct * 100)}%`}
                 sublabel="RSVP"
               />
-              <ProgressRing
-                value={budgetPct}
-                size={76}
-                label={`${Math.round(budgetPct * 100)}%`}
-                sublabel="Budget"
-              />
+              {canSeeMoney && (
+                <ProgressRing
+                  value={budgetPct}
+                  size={76}
+                  label={`${Math.round(budgetPct * 100)}%`}
+                  sublabel="Budget"
+                />
+              )}
               <ProgressRing
                 value={tasksPct}
                 size={76}

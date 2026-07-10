@@ -5,7 +5,7 @@ import type {
   ExpenseSummaryInsert,
   ExpenseWithDetails,
   PaymentRow,
-} from '@wedding-planner/shared';
+} from '../../../shared/src';
 import * as repo from '../repositories/expense.repository';
 import * as finance from './finance.service';
 import { ensureDefaultCategories } from './expense-categories.service';

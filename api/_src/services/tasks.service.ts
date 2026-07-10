@@ -1,5 +1,5 @@
 import { NotFoundError } from '../shared/errors/HttpError';
-import type { TaskInsert } from '@wedding-planner/shared';
+import type { TaskInsert } from '../../../shared/src';
 import * as repo from '../repositories/tasks.repository';
 import type { TaskFilters } from '../repositories/tasks.repository';
 

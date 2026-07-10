@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { WEDDING_SECTIONS } from '@wedding-planner/shared';
+import { WEDDING_SECTIONS, MEMBER_PERMISSIONS } from '../../../shared/src';
 
 const roleSchema = z.enum(['admin', 'editor', 'viewer']);
 
@@ -11,10 +11,15 @@ const sectionsSchema = z
   .nullable()
   .optional();
 
+// [] / omitted = no extra grants. Admins always get every permission — the
+// service normalises their permissions to [] (implicit) regardless of input.
+const permissionsSchema = z.array(z.enum(MEMBER_PERMISSIONS)).optional();
+
 export const inviteMemberSchema = z.object({
   email: z.string().email(),
   role: roleSchema,
   sections: sectionsSchema,
+  permissions: permissionsSchema,
 });
 
 export const acceptInviteSchema = z.object({
@@ -25,10 +30,12 @@ export const updateMemberSchema = z
   .object({
     role: roleSchema.optional(),
     sections: sectionsSchema,
+    permissions: permissionsSchema,
   })
-  .refine((v) => v.role !== undefined || v.sections !== undefined, {
-    message: 'Nothing to update',
-  });
+  .refine(
+    (v) => v.role !== undefined || v.sections !== undefined || v.permissions !== undefined,
+    { message: 'Nothing to update' },
+  );
 
 export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
 export type UpdateMemberInput = z.infer<typeof updateMemberSchema>;
