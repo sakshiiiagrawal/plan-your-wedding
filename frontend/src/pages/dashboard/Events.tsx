@@ -166,27 +166,27 @@ function EventTypeCombobox({ value, isOther, onSelect }: EventTypeComboboxProps)
         onClick={() => setOpen((o) => !o)}
         className="input flex items-center justify-between text-left w-full"
       >
-        <span className={displayLabel ? 'text-gray-900' : 'text-gray-400'}>
+        <span className={displayLabel ? 'text-ink-high' : 'text-ink-dim'}>
           {displayLabel || 'Select event type'}
         </span>
         <HiOutlineChevronDown
-          className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-ink-dim transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
       {open && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+        <div className="absolute z-50 w-full mt-1 bg-surface-panel border border-line rounded-xl shadow-lg overflow-hidden">
           {/* Search box */}
-          <div className="p-2 border-b border-gray-100">
+          <div className="p-2 border-b border-line-soft">
             <div className="relative">
-              <HiOutlineSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <HiOutlineSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-dim" />
               <input
                 autoFocus
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search event types..."
-                className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400"
+                className="w-full pl-8 pr-3 py-1.5 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400"
               />
             </div>
           </div>
@@ -261,7 +261,7 @@ function EventTypeCombobox({ value, isOther, onSelect }: EventTypeComboboxProps)
             )}
 
             {Object.keys(grouped).length === 0 && q && (
-              <div className="px-4 py-3 text-sm text-gray-500">
+              <div className="px-4 py-3 text-sm text-ink-low">
                 No match — select{' '}
                 <button
                   type="button"
@@ -317,7 +317,7 @@ const DEFAULT_FORM: EventFormData = {
   description: '',
   dress_code: '',
   estimated_guests: 0,
-  color_palette: { primary: '#8B0000' },
+  color_palette: { primary: '#6B1F2A' },
 };
 
 function getEventFormState(event?: any): EventFormData {
@@ -460,7 +460,7 @@ export default function Events() {
     );
   }
 
-  const EVENT_COLORS_LIST = ['#8B0000', '#B8860B', '#5C6BC0', '#2E7D32', '#6A1B9A', '#0277BD'];
+  const EVENT_COLORS_LIST = ['#6B1F2A', '#8C6D2F', '#5C6BC0', '#2E7D32', '#6A1B9A', '#0277BD'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -886,7 +886,7 @@ export default function Events() {
             typeof ev.color_palette === 'string'
               ? JSON.parse(ev.color_palette)
               : ev.color_palette || {};
-          const eventColor = (colorPalette as any).primary || '#8B0000';
+          const eventColor = (colorPalette as any).primary || '#6B1F2A';
           const startTime = formatTime(ev.start_time);
           const endTime = formatTime(ev.end_time);
           return (

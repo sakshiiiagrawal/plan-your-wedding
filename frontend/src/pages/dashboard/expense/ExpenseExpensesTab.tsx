@@ -38,7 +38,7 @@ export default function ExpenseExpensesTab({
   );
 
   if (loading) {
-    return <div className="card p-8 text-center text-gray-500">Loading expenses...</div>;
+    return <div className="card p-8 text-center text-ink-low">Loading expenses...</div>;
   }
 
   const filtered = rows.filter((row) => {
@@ -50,13 +50,13 @@ export default function ExpenseExpensesTab({
   const committedTotal = filtered.reduce((sum, row) => sum + row.committed, 0);
 
   if (!filtered.length && rows.length === 0) {
-    return <div className="card p-8 text-center text-gray-500">No expenses recorded yet.</div>;
+    return <div className="card p-8 text-center text-ink-low">No expenses recorded yet.</div>;
   }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-center">
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+        <div className="flex gap-1 bg-surface-highest rounded-lg p-1">
           {(['all', 'manual', 'vendor', 'venue'] as const).map((type) => (
             <button
               key={type}
@@ -77,7 +77,7 @@ export default function ExpenseExpensesTab({
             </button>
           ))}
         </div>
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+        <div className="flex gap-1 bg-surface-highest rounded-lg p-1">
           {(['all', 'bride', 'groom', 'shared', 'mixed'] as const).map((side) => (
             <button
               key={side}
@@ -101,7 +101,7 @@ export default function ExpenseExpensesTab({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="card p-8 text-center text-gray-500">
+        <div className="card p-8 text-center text-ink-low">
           No entries match the selected filters.
         </div>
       ) : (
@@ -126,13 +126,13 @@ export default function ExpenseExpensesTab({
                   <tr key={row.id} className="table-row group">
                     <td className="p-4 font-medium min-w-[140px]">
                       <div>{row.description}</div>
-                      <div className="text-xs text-gray-400">{row.item_count} line items</div>
+                      <div className="text-xs text-ink-low">{row.item_count} line items</div>
                     </td>
-                    <td className="p-4 text-gray-600 hidden sm:table-cell">
+                    <td className="p-4 text-ink-mid hidden sm:table-cell">
                       {row.category_summary}
                     </td>
                     <td className="p-4">
-                      <span className="badge text-xs bg-gray-100 text-gray-700 capitalize">
+                      <span className="badge text-xs bg-surface-highest text-ink-mid capitalize">
                         {row.source_type}
                       </span>
                     </td>
@@ -148,11 +148,11 @@ export default function ExpenseExpensesTab({
                     <td className="p-4 text-right text-orange-700 hidden md:table-cell">
                       {formatCurrency(row.outstanding)}
                     </td>
-                    <td className="p-4 text-gray-600 hidden md:table-cell">
+                    <td className="p-4 text-ink-mid hidden md:table-cell">
                       {new Date(row.expense_date).toLocaleDateString('en-IN')}
                     </td>
                     <td className="p-4">
-                      <span className="badge bg-gray-100 text-gray-700">{row.side_label}</span>
+                      <span className="badge bg-surface-highest text-ink-mid">{row.side_label}</span>
                     </td>
                     <td className="p-4">
                       {row.editable && (
@@ -181,7 +181,7 @@ export default function ExpenseExpensesTab({
                           </button>
                           <button
                             onClick={() => onDelete(row.id)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            className="p-1.5 rounded-lg text-ink-dim hover:text-red-600 hover:bg-red-50 transition-colors"
                             title="Delete expense"
                           >
                             <HiOutlineTrash className="w-4 h-4" />
@@ -192,7 +192,7 @@ export default function ExpenseExpensesTab({
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-gray-100 font-bold">
+              <tfoot className="bg-surface-highest font-bold">
                 <tr>
                   <td colSpan={3} className="p-4">
                     Total Committed

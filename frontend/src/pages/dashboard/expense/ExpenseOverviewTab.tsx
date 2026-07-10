@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
-const COLORS = ['#8B0000', '#D4AF37', '#228B22', '#1A237E', '#E91E63', '#FF6F00', '#607D8B'];
+const COLORS = ['#6B1F2A', '#B08D3E', '#228B22', '#1A237E', '#E91E63', '#FF6F00', '#607D8B'];
 
 interface ExpenseOverviewTabProps {
   expenseOverview: any[] | undefined;
@@ -286,7 +286,7 @@ export default function ExpenseOverviewTab({
                   background: sortBy === val ? 'var(--gold-glow)' : 'transparent',
                   color: sortBy === val ? 'var(--gold-deep)' : 'var(--ink-dim)',
                   border:
-                    sortBy === val ? '1px solid rgba(212,175,55,0.3)' : '1px solid transparent',
+                    sortBy === val ? '1px solid rgba(176,141,62,0.3)' : '1px solid transparent',
                   fontWeight: sortBy === val ? 600 : 400,
                 }}
               >

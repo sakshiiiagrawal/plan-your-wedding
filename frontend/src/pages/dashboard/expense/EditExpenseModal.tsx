@@ -248,7 +248,7 @@ export default function EditExpenseModal({
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="section-title">Line Items</h3>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-ink-low">
                       Keep the committed amount aligned with the real category breakdown.
                     </p>
                   </div>

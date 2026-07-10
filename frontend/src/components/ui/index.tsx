@@ -71,7 +71,7 @@ export function ProgressRing({
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="rgba(0,0,0,0.08)"
+          stroke="rgba(62,44,24,0.10)"
           strokeWidth={stroke}
         />
         <circle
@@ -79,7 +79,7 @@ export function ProgressRing({
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="#D4AF37"
+          stroke="var(--gold)"
           strokeWidth={stroke}
           strokeDasharray={c}
           strokeDashoffset={offset}
@@ -149,7 +149,8 @@ export function SectionHeader({
           style={{
             fontSize: 30,
             color: 'var(--ink-high)',
-            fontWeight: 500,
+            fontWeight: 600,
+            letterSpacing: '-0.015em',
             lineHeight: 1.1,
             margin: 0,
           }}
@@ -309,8 +310,8 @@ export function StarRating({ rating, max = 5 }: { rating: number; max?: number }
         <svg key={i} width={13} height={13} viewBox="0 0 24 24" aria-hidden="true">
           <polygon
             points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
-            fill={i < Math.round(rating) ? '#D4AF37' : 'none'}
-            stroke={i < Math.round(rating) ? '#D4AF37' : '#D1D5DB'}
+            fill={i < Math.round(rating) ? 'var(--gold)' : 'none'}
+            stroke={i < Math.round(rating) ? 'var(--gold)' : 'var(--line-strong)'}
             strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"

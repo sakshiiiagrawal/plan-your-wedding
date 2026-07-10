@@ -7,29 +7,29 @@ export default {
       colors: {
         // Primary - Deep Maroon/Burgundy (traditional wedding)
         maroon: {
-          50: '#fdf2f2',
-          100: '#fce4e4',
-          200: '#fbcdcd',
-          300: '#f7a3a3',
-          400: '#f06b6b',
-          500: '#e53e3e',
-          600: '#c53030',
-          700: '#9b2c2c',
-          800: '#8B0000',
-          900: '#5C0000',
+          50: '#faf0f0',
+          100: '#f3dede',
+          200: '#e5bfc2',
+          300: '#ce8f96',
+          400: '#b25e6a',
+          500: '#97404e',
+          600: '#7f2d3b',
+          700: '#74232f',
+          800: '#6b1f2a',
+          900: '#4a121a',
         },
         // Secondary - Gold (auspicious)
         gold: {
-          50: '#fffbeb',
-          100: '#fef3c7',
-          200: '#fde68a',
-          300: '#fcd34d',
-          400: '#fbbf24',
-          500: '#D4AF37',
-          600: '#B8860B',
-          700: '#92400e',
-          800: '#78350f',
-          900: '#451a03',
+          50: '#faf5e8',
+          100: '#f3ead1',
+          200: '#e7d6a8',
+          300: '#d6bc78',
+          400: '#c4a55a',
+          500: '#b08d3e',
+          600: '#8c6d2f',
+          700: '#6f551f',
+          800: '#5a4519',
+          900: '#3d2e10',
         },
         // Accent - Saffron Orange (holy)
         saffron: {
@@ -44,11 +44,29 @@ export default {
           700: '#C2185B',
         },
         // Neutral
-        cream: '#FFF8E7',
+        cream: '#FAF6EF',
         ivory: '#FFFFF0',
         brown: {
           500: '#5D4037',
           600: '#4E342E',
+        },
+        // Token-bound semantic colors (var()-backed — no opacity modifiers)
+        ink: {
+          high: 'var(--ink-high)',
+          mid: 'var(--ink-mid)',
+          low: 'var(--ink-low)',
+          dim: 'var(--ink-dim)',
+        },
+        surface: {
+          page: 'var(--bg-page)',
+          panel: 'var(--bg-panel)',
+          raised: 'var(--bg-raised)',
+          highest: 'var(--bg-highest)',
+        },
+        line: {
+          soft: 'var(--line-soft)',
+          DEFAULT: 'var(--line)',
+          strong: 'var(--line-strong)',
         },
       },
       borderRadius: {
@@ -60,6 +78,8 @@ export default {
         '2xl': '22px',
         full: '9999px',
       },
+      // Do not change — src/site/* templates depend on font-display/font-body.
+      // Admin panel headings use the CSS `--font-display` var (.display, .page-title, etc.) instead.
       fontFamily: {
         display: ['Playfair Display', 'serif'],
         'serif-display': ['Cormorant Garamond', 'serif'],

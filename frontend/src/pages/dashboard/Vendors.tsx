@@ -394,9 +394,9 @@ export default function Vendors() {
   ];
 
   const HEADER_GRADIENTS = [
-    'linear-gradient(135deg, rgba(212,175,55,0.15) 0%, rgba(212,175,55,0.3) 100%)',
+    'linear-gradient(135deg, rgba(176,141,62,0.15) 0%, rgba(176,141,62,0.3) 100%)',
     'linear-gradient(135deg, rgba(190,24,93,0.08) 0%, rgba(124,58,237,0.12) 100%)',
-    'linear-gradient(135deg, rgba(15,118,110,0.08) 0%, rgba(212,175,55,0.15) 100%)',
+    'linear-gradient(135deg, rgba(15,118,110,0.08) 0%, rgba(176,141,62,0.15) 100%)',
   ];
 
   const hasActiveFilters =
@@ -911,7 +911,7 @@ export default function Vendors() {
                                 minHeight: 36,
                                 padding: '8px 10px',
                                 borderRadius: 10,
-                                border: `1px solid ${checked ? 'rgba(212,175,55,0.35)' : 'var(--line-soft)'}`,
+                                border: `1px solid ${checked ? 'rgba(176,141,62,0.35)' : 'var(--line-soft)'}`,
                                 background: checked ? 'var(--gold-glow)' : 'var(--bg-raised)',
                                 cursor: 'pointer',
                                 fontSize: 12,
@@ -980,7 +980,7 @@ export default function Vendors() {
                               minHeight: 36,
                               padding: '8px 10px',
                               borderRadius: 10,
-                              border: `1px solid ${checked ? 'rgba(212,175,55,0.35)' : 'var(--line-soft)'}`,
+                              border: `1px solid ${checked ? 'rgba(176,141,62,0.35)' : 'var(--line-soft)'}`,
                               background: checked ? 'var(--gold-glow)' : 'var(--bg-raised)',
                               cursor: 'pointer',
                               fontSize: 12,
@@ -1220,7 +1220,7 @@ export default function Vendors() {
                               padding: '1px 6px',
                               borderRadius: 100,
                               fontWeight: 500,
-                              border: '1px solid rgba(212,175,55,0.25)',
+                              border: '1px solid rgba(176,141,62,0.25)',
                             }}
                           >
                             Team {vendor.team_size}
@@ -1257,7 +1257,7 @@ export default function Vendors() {
                         onMouseEnter={(e) => {
                           const el = e.currentTarget as HTMLElement;
                           el.style.background = 'var(--gold-glow)';
-                          el.style.borderColor = 'rgba(212,175,55,0.5)';
+                          el.style.borderColor = 'rgba(176,141,62,0.5)';
                           el.style.color = 'var(--gold-deep)';
                         }}
                         onMouseLeave={(e) => {
@@ -1433,7 +1433,7 @@ export default function Vendors() {
                               justifyContent: 'space-between',
                               padding: '4px 8px',
                               background: 'var(--gold-glow)',
-                              border: '1px solid rgba(212,175,55,0.2)',
+                              border: '1px solid rgba(176,141,62,0.2)',
                               borderRadius: 6,
                               fontSize: 11,
                             }}
@@ -1503,7 +1503,7 @@ export default function Vendors() {
                             color: 'var(--gold-deep)',
                             padding: '2px 8px',
                             borderRadius: 100,
-                            border: '1px solid rgba(212,175,55,0.25)',
+                            border: '1px solid rgba(176,141,62,0.25)',
                           }}
                         >
                           {vendor.team_size} team
@@ -1531,7 +1531,7 @@ export default function Vendors() {
                             color: 'var(--gold-deep)',
                             padding: '2px 8px',
                             borderRadius: 100,
-                            border: '1px solid rgba(212,175,55,0.25)',
+                            border: '1px solid rgba(176,141,62,0.25)',
                           }}
                         >
                           {event}

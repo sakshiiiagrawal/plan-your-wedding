@@ -385,7 +385,7 @@ export default function DashboardLayout() {
               background: 'transparent',
               transition: 'background 150ms',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(220,38,38,0.07)')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(179,55,47,0.08)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             <HiOutlineLogout style={{ width: 14, height: 14 }} />
@@ -415,7 +415,7 @@ export default function DashboardLayout() {
             gap: 16,
             padding: '14px 28px',
             borderBottom: '1px solid var(--line-soft)',
-            background: 'rgba(255,248,231,0.85)',
+            background: 'rgba(250,246,239,0.85)',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             position: 'sticky',

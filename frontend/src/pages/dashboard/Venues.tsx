@@ -313,7 +313,7 @@ function VenueRoomsSection({ venueId }: { venueId: string }) {
                     fontSize: 11,
                     fontWeight: 500,
                     lineHeight: 1.2,
-                    border: '1px solid rgba(212,175,55,0.25)',
+                    border: '1px solid rgba(176,141,62,0.25)',
                   }}
                 >
                   {info.type}
@@ -822,9 +822,9 @@ export default function Venues() {
   }
 
   const HEADER_GRADIENTS = [
-    'linear-gradient(135deg, rgba(212,175,55,0.15) 0%, rgba(212,175,55,0.3) 100%)',
+    'linear-gradient(135deg, rgba(176,141,62,0.15) 0%, rgba(176,141,62,0.3) 100%)',
     'linear-gradient(135deg, rgba(190,24,93,0.08) 0%, rgba(124,58,237,0.12) 100%)',
-    'linear-gradient(135deg, rgba(22,163,74,0.08) 0%, rgba(212,175,55,0.15) 100%)',
+    'linear-gradient(135deg, rgba(22,163,74,0.08) 0%, rgba(176,141,62,0.15) 100%)',
   ];
 
   return (
@@ -975,7 +975,7 @@ export default function Venues() {
                               padding: '1px 6px',
                               borderRadius: 100,
                               fontWeight: 500,
-                              border: '1px solid rgba(212,175,55,0.25)',
+                              border: '1px solid rgba(176,141,62,0.25)',
                             }}
                           >
                             Rooms
@@ -1083,7 +1083,7 @@ export default function Venues() {
                         onMouseEnter={(e) => {
                           const el = e.currentTarget as HTMLElement;
                           el.style.background = 'var(--gold-glow)';
-                          el.style.borderColor = 'rgba(212,175,55,0.5)';
+                          el.style.borderColor = 'rgba(176,141,62,0.5)';
                           el.style.color = 'var(--gold-deep)';
                         }}
                         onMouseLeave={(e) => {
@@ -1257,7 +1257,7 @@ export default function Venues() {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             background: 'var(--gold-glow)',
-                            border: '1px solid rgba(212,175,55,0.2)',
+                            border: '1px solid rgba(176,141,62,0.2)',
                             borderRadius: 6,
                             padding: '4px 8px',
                             fontSize: 11,
@@ -1345,7 +1345,7 @@ export default function Venues() {
                             color: 'var(--gold-deep)',
                             padding: '2px 8px',
                             borderRadius: 100,
-                            border: '1px solid rgba(212,175,55,0.25)',
+                            border: '1px solid rgba(176,141,62,0.25)',
                           }}
                         >
                           {event.name}
@@ -1638,9 +1638,9 @@ export default function Venues() {
                                 marginTop: 8,
                                 padding: '8px 12px',
                                 borderRadius: 8,
-                                border: `1px solid ${formData.has_accommodation ? 'rgba(212,175,55,0.4)' : 'var(--line)'}`,
+                                border: `1px solid ${formData.has_accommodation ? 'rgba(176,141,62,0.4)' : 'var(--line)'}`,
                                 background: formData.has_accommodation
-                                  ? 'rgba(212,175,55,0.15)'
+                                  ? 'rgba(176,141,62,0.15)'
                                   : '#ffffff',
                                 cursor: 'pointer',
                                 whiteSpace: 'nowrap',

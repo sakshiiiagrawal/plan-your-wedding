@@ -61,10 +61,10 @@ function SideCard({
             >
               {label}
             </div>
-            <div className="text-sm text-gray-500">{subtitle}</div>
+            <div className="text-sm text-ink-low">{subtitle}</div>
           </div>
         </div>
-        <div className="rounded-full bg-white/80 border border-black/5 px-3 py-1 text-xs font-medium text-gray-500">
+        <div className="rounded-full bg-surface-panel/80 border border-black/5 px-3 py-1 text-xs font-medium text-ink-low">
           {count} items
         </div>
       </div>
@@ -75,18 +75,18 @@ function SideCard({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl border border-black/5 bg-black/[0.02] px-4 py-3">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-gray-400">Direct</div>
-          <div className="mt-1 text-sm font-semibold text-gray-800">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-ink-dim">Direct</div>
+          <div className="mt-1 text-sm font-semibold text-ink-high">
             {formatCurrency(directTotal)}
           </div>
-          <div className="text-xs text-gray-500">{directCount} dedicated items</div>
+          <div className="text-xs text-ink-low">{directCount} dedicated items</div>
         </div>
         <div className="rounded-2xl border border-black/5 bg-black/[0.02] px-4 py-3">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-gray-400">Shared</div>
-          <div className="mt-1 text-sm font-semibold text-gray-800">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-ink-dim">Shared</div>
+          <div className="mt-1 text-sm font-semibold text-ink-high">
             {formatCurrency(sharedTotal)}
           </div>
-          <div className="text-xs text-gray-500">{sharedCount} shared allocations</div>
+          <div className="text-xs text-ink-low">{sharedCount} shared allocations</div>
         </div>
       </div>
     </div>
@@ -114,7 +114,7 @@ function SideSummaryCard({
 
   return (
     <div className="card relative overflow-hidden bg-[linear-gradient(135deg,rgba(236,72,153,0.07),rgba(255,255,255,0.96)_40%,rgba(59,130,246,0.08))]">
-      <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(236,72,153,0.4),rgba(212,175,55,0.5),rgba(59,130,246,0.4))]" />
+      <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,rgba(236,72,153,0.4),rgba(176,141,62,0.5),rgba(59,130,246,0.4))]" />
       <div className="uppercase-eyebrow">Side-wise Split</div>
       <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
@@ -124,7 +124,7 @@ function SideSummaryCard({
             reflects the amount it actually carries.
           </p>
         </div>
-        <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-sm">
+        <div className="rounded-2xl border border-white/70 bg-surface-panel/80 px-4 py-3 shadow-sm">
           <div className="text-[11px] uppercase tracking-[0.18em] text-stone-400">
             Combined view
           </div>
@@ -136,7 +136,7 @@ function SideSummaryCard({
           </div>
         </div>
       </div>
-      <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/80 ring-1 ring-black/5">
+      <div className="mt-5 h-3 overflow-hidden rounded-full bg-surface-panel/80 ring-1 ring-black/5">
         <div className="flex h-full">
           <div
             className="bg-gradient-to-r from-pink-400 to-pink-500"
@@ -209,22 +209,22 @@ function ExpenseList({
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className={`font-semibold text-base ${headerColor}`}>{title}</h3>
-            <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
+            <p className="mt-1 text-sm text-ink-low">{subtitle}</p>
           </div>
-          <div className="rounded-full border border-black/5 bg-white/80 px-3 py-1 text-xs font-medium text-gray-500">
+          <div className="rounded-full border border-black/5 bg-surface-panel/80 px-3 py-1 text-xs font-medium text-ink-low">
             {items.length} items
           </div>
         </div>
       </div>
       {items.length > 0 ? (
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-line-soft">
           {items.map((item) => (
             <div
               key={item.id}
               className="p-4 transition-colors hover:bg-black/[0.015] flex justify-between items-start gap-3"
             >
               <div className="min-w-0">
-                <div className="font-medium text-sm text-gray-800 flex flex-wrap items-center gap-2">
+                <div className="font-medium text-sm text-ink-high flex flex-wrap items-center gap-2">
                   <span>{item.description}</span>
                   {item.is_shared && (
                     <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
@@ -232,8 +232,8 @@ function ExpenseList({
                     </span>
                   )}
                 </div>
-                <div className="mt-1 text-xs text-gray-500">{item.category_name}</div>
-                <div className="mt-1 text-xs text-gray-400">
+                <div className="mt-1 text-xs text-ink-low">{item.category_name}</div>
+                <div className="mt-1 text-xs text-ink-low">
                   {item.expense_title} · {new Date(item.expense_date).toLocaleDateString('en-IN')}
                 </div>
                 {item.is_shared && (
@@ -274,8 +274,8 @@ function ExpenseList({
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-black/[0.03]">
             <div className="h-2.5 w-2.5 rounded-full bg-black/20" />
           </div>
-          <div className="text-sm font-medium text-gray-500">{emptyText}</div>
-          <div className="mt-1 text-xs text-gray-400">
+          <div className="text-sm font-medium text-ink-low">{emptyText}</div>
+          <div className="mt-1 text-xs text-ink-dim">
             New entries will appear here once they are assigned to this side.
           </div>
         </div>
