@@ -4,6 +4,7 @@ import * as ctrl from '../controllers/website-content.controller';
 import * as mediaCtrl from '../controllers/media.controller';
 import { validateBody } from '../middleware/validate.middleware';
 import { deleteGalleryImageSchema } from '../validators/media.validator';
+import { validateSectionUpdate } from '../validators/website-content.validator';
 
 const router = Router();
 const upload = multer({
@@ -30,6 +31,6 @@ router.delete(
 );
 router.get('/', ctrl.getAll);
 router.get('/:section', ctrl.getBySection);
-router.put('/:section', ctrl.update);
+router.put('/:section', validateSectionUpdate, ctrl.update);
 
 export default router;

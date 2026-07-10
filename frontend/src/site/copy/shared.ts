@@ -10,6 +10,7 @@ export const SHARED_COPY = {
   'rsvp.accept': 'Joyfully accept',
   'rsvp.decline': 'Regretfully decline',
   'rsvp.guests': 'Number of Guests (including you)',
+  'rsvp.events': 'Which events will you attend?',
   'rsvp.message': 'Message (Optional)',
   'rsvp.messagePlaceholder': 'Any special message or requirements...',
   'rsvp.submit': 'Submit RSVP',

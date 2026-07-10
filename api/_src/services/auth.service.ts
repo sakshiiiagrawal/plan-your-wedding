@@ -10,6 +10,7 @@ import {
   NotFoundError,
 } from '../shared/errors/HttpError';
 import { sendEmail } from './mailer';
+import { acceptInvite, findPendingInvite } from './members.service';
 import { hashToken } from '../shared/utils/token.utils';
 import type { RegisterInput, UpdateProfileInput } from '../validators/auth.validator';
 
@@ -19,6 +20,7 @@ export interface UserRow {
   name: string;
   slug: string | null;
   currency?: string;
+  email_verified?: boolean;
   password_hash?: string;
   created_at?: string;
 }
@@ -55,15 +57,19 @@ export async function listUserWeddings(
     .single();
   if (error || !me) throw new NotFoundError('User not found');
 
-  const weddings: WeddingOption[] = [
-    { ownerId: me.id, label: me.name || me.slug || 'My wedding', role: 'admin', isOwn: true },
-  ];
-
   const { data: memberships } = await supabase
     .from('wedding_members')
     .select('owner_id, role, owner:users!owner_id(name, slug)')
     .eq('member_id', userId)
     .eq('status', 'active');
+
+  // Collaborator-only accounts (registered via invite, never claimed a slug)
+  // have no wedding of their own worth switching to — hide the empty entry.
+  // It reappears as a fallback if every membership gets revoked.
+  const hasOwnWedding = me.slug !== null || (memberships ?? []).length === 0;
+  const weddings: WeddingOption[] = hasOwnWedding
+    ? [{ ownerId: me.id, label: me.name || me.slug || 'My wedding', role: 'admin', isOwn: true }]
+    : [];
 
   for (const m of memberships ?? []) {
     const owner = m.owner as unknown as { name: string | null; slug: string | null } | null;
@@ -125,28 +131,43 @@ export async function findUserById(id: string): Promise<UserRow | null> {
 }
 
 export async function createUser(input: RegisterInput): Promise<UserRow> {
-  const { name, email, password, slug, brideName, groomName, weddingDate } = input;
+  const { name, email, password, slug, inviteToken, brideName, groomName, weddingDate } = input;
 
-  // Check slug uniqueness
-  const { data: slugConflict } = await supabase
-    .from('users')
-    .select('id')
-    .eq('slug', slug)
-    .limit(1);
+  // Joining an existing wedding: validate the invite BEFORE creating the
+  // account so a dead link doesn't leave behind an orphaned, wedding-less user.
+  let pendingInvite: Awaited<ReturnType<typeof findPendingInvite>> = null;
+  if (inviteToken) {
+    pendingInvite = await findPendingInvite(inviteToken);
+    if (!pendingInvite) {
+      throw new BadRequestError('This invite link is invalid or has already been used');
+    }
+  }
 
-  if (slugConflict && slugConflict.length > 0) {
-    throw new ConflictError('That URL is already taken. Please choose another.');
+  if (slug) {
+    const { data: slugConflict } = await supabase
+      .from('users')
+      .select('id')
+      .eq('slug', slug)
+      .limit(1);
+
+    if (slugConflict && slugConflict.length > 0) {
+      throw new ConflictError('That URL is already taken. Please choose another.');
+    }
   }
 
   const password_hash = await hashPassword(password);
+  const normalizedEmail = email.toLowerCase().trim();
+  // The invite email proved inbox ownership — no separate verification needed
+  const verifiedViaInvite = pendingInvite?.invited_email === normalizedEmail;
 
   const { data: user, error: userError } = await supabase
     .from('users')
     .insert({
       name,
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       password_hash,
-      slug,
+      slug: slug ?? null,
+      ...(verifiedViaInvite ? { email_verified: true } : {}),
     })
     .select('id, email, name, slug')
     .single();
@@ -156,49 +177,61 @@ export async function createUser(input: RegisterInput): Promise<UserRow> {
 
   const newUser = user as UserRow;
 
-  // Seed every website-content section so fresh accounts never 404 on
-  // hero/couple/story/gallery reads (dashboard, editor, and public site all
-  // fetch them before the user has saved anything).
-  const heroContent =
-    (brideName ?? groomName ?? weddingDate)
-      ? {
-          bride_name: brideName ?? '',
-          groom_name: groomName ?? '',
-          wedding_date: weddingDate ?? null,
-          tagline: `${brideName ?? 'Bride'} & ${groomName ?? 'Groom'} are getting married!`,
-        }
-      : {};
-  const seedSections = [
-    { section_name: 'hero', content: heroContent, display_order: 1 },
-    { section_name: 'couple', content: {}, display_order: 2 },
-    { section_name: 'our_story', content: { story: '' }, display_order: 3 },
-    { section_name: 'gallery', content: { images: [] }, display_order: 4 },
-  ];
-  await supabase
-    .from('website_content')
-    .upsert(
-      seedSections.map((s) => ({ ...s, user_id: newUser.id })),
-      { onConflict: 'section_name,user_id' },
+  // Collaborator accounts (invite, no slug) don't get a wedding site of their
+  // own — they join the inviter's wedding instead. Everything below is
+  // per-wedding seeding, only meaningful when this account owns a site.
+  if (slug) {
+    // Seed every website-content section so fresh accounts never 404 on
+    // hero/couple/story/gallery reads (dashboard, editor, and public site all
+    // fetch them before the user has saved anything).
+    const heroContent =
+      (brideName ?? groomName ?? weddingDate)
+        ? {
+            bride_name: brideName ?? '',
+            groom_name: groomName ?? '',
+            wedding_date: weddingDate ?? null,
+            tagline: `${brideName ?? 'Bride'} & ${groomName ?? 'Groom'} are getting married!`,
+          }
+        : {};
+    const seedSections = [
+      { section_name: 'hero', content: heroContent, display_order: 1 },
+      { section_name: 'couple', content: {}, display_order: 2 },
+      { section_name: 'our_story', content: { story: '' }, display_order: 3 },
+      { section_name: 'gallery', content: { images: [] }, display_order: 4 },
+    ];
+    await supabase
+      .from('website_content')
+      .upsert(
+        seedSections.map((s) => ({ ...s, user_id: newUser.id })),
+        { onConflict: 'section_name,user_id' },
+      );
+
+    // Every wedding starts with a home page (the multi-page public site model);
+    // more pages (e.g. an invitation) are added from the Site Studio.
+    await supabase.from('public_pages').upsert(
+      {
+        user_id: newUser.id,
+        page_slug: '',
+        kind: 'website',
+        title: 'Main website',
+        template: 'classic',
+        palette: 'royal',
+        config: {},
+      },
+      { onConflict: 'user_id,page_slug' },
     );
+  }
 
-  // Every wedding starts with a home page (the multi-page public site model);
-  // more pages (e.g. an invitation) are added from the Site Studio.
-  await supabase.from('public_pages').upsert(
-    {
-      user_id: newUser.id,
-      page_slug: '',
-      kind: 'website',
-      title: 'Main website',
-      template: 'classic',
-      palette: 'royal',
-      config: {},
-    },
-    { onConflict: 'user_id,page_slug' },
-  );
+  if (inviteToken) {
+    // Membership activates + active wedding switches to the inviter's
+    await acceptInvite(newUser.id, inviteToken);
+  }
 
-  void requestEmailVerification(newUser).catch((err) =>
-    console.error('[mailer] verification email failed:', err),
-  );
+  if (!verifiedViaInvite) {
+    void requestEmailVerification(newUser).catch((err) =>
+      console.error('[mailer] verification email failed:', err),
+    );
+  }
 
   return newUser;
 }
@@ -277,29 +310,39 @@ export async function resetPassword(token: string, newPassword: string): Promise
   }
 
   const password_hash = await hashPassword(newPassword);
+  // password_changed_at invalidates every JWT issued before this moment —
+  // account recovery is exactly when a stolen session must stop working.
   const { error: updateError } = await supabase
     .from('users')
-    .update({ password_hash })
+    .update({ password_hash, password_changed_at: new Date().toISOString() })
     .eq('id', resetRow.user_id);
   if (updateError) throw updateError;
 
+  // Burn this token AND any other outstanding reset tokens for the user
   await supabase
     .from('password_resets')
     .update({ used_at: new Date().toISOString() })
-    .eq('id', resetRow.id);
+    .eq('user_id', resetRow.user_id)
+    .is('used_at', null);
 }
 
 export async function updateProfile(
   ownerId: string,
   updates: UpdateProfileInput,
-): Promise<UserRow> {
+): Promise<UserRow & { verification_email_sent?: boolean }> {
   const { name, email, slug, currency } = updates;
 
-  if (email) {
+  const current = await findUserById(ownerId);
+  if (!current) throw new UnauthorizedError('User not found');
+
+  const normalizedEmail = email?.toLowerCase().trim();
+  const emailChanged = normalizedEmail !== undefined && normalizedEmail !== current.email;
+
+  if (emailChanged) {
     const { data } = await supabase
       .from('users')
       .select('id')
-      .eq('email', email.toLowerCase().trim())
+      .eq('email', normalizedEmail)
       .neq('id', ownerId)
       .limit(1);
     if (data && data.length > 0) throw new ConflictError('That email is already in use');
@@ -310,16 +353,20 @@ export async function updateProfile(
     if (data && data.length > 0) throw new ConflictError('That URL is already taken');
   }
 
-  const patch: Record<string, string> = {};
+  const patch: Record<string, string | boolean> = {};
   if (name) patch.name = name;
-  if (email) patch.email = email.toLowerCase().trim();
+  if (emailChanged) {
+    patch.email = normalizedEmail;
+    // A changed address is unproven until re-verified — pending-invite
+    // acceptance authorises by (email + email_verified), so leaving the flag
+    // set would let anyone claim invites addressed to someone else's inbox.
+    patch.email_verified = false;
+  }
   if (slug) patch.slug = slug;
   if (currency) patch.currency = currency;
 
   // PostgREST rejects an empty update — treat "nothing to change" as a no-op
   if (Object.keys(patch).length === 0) {
-    const current = await findUserById(ownerId);
-    if (!current) throw new UnauthorizedError('User not found');
     return current;
   }
 
@@ -327,10 +374,25 @@ export async function updateProfile(
     .from('users')
     .update(patch)
     .eq('id', ownerId)
-    .select('id, email, name, slug, currency')
+    // email_verified included so the client sees the flag flip on email change
+    .select('id, email, name, slug, currency, email_verified')
     .single();
 
   if (error) throw error;
+
+  if (emailChanged) {
+    // Awaited so a failed send is reported, not swallowed — the user is now
+    // unverified and needs to know whether a link is actually in their inbox.
+    let verificationEmailSent = true;
+    try {
+      await requestEmailVerification({ id: ownerId, email: normalizedEmail });
+    } catch (err) {
+      console.error('[mailer] verification email failed:', err);
+      verificationEmailSent = false;
+    }
+    return { ...(user as UserRow), verification_email_sent: verificationEmailSent };
+  }
+
   return user as UserRow;
 }
 
@@ -350,9 +412,11 @@ export async function changePassword(
   if (!matches) throw new BadRequestError('Current password is incorrect');
 
   const password_hash = await hashPassword(newPassword);
+  // Invalidates all existing sessions; the controller issues the caller a
+  // fresh token so their own session survives the change.
   const { error: updateError } = await supabase
     .from('users')
-    .update({ password_hash })
+    .update({ password_hash, password_changed_at: new Date().toISOString() })
     .eq('id', userId);
   if (updateError) throw updateError;
 }

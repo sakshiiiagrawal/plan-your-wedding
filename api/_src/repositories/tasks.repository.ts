@@ -58,6 +58,25 @@ export async function findByIdAndOwner(id: string, ownerId: string) {
   return data;
 }
 
+export async function findRecentDuplicate(
+  ownerId: string,
+  title: string,
+  dueDate: string | null | undefined,
+  sinceIso: string,
+): Promise<TaskRow | null> {
+  let query = supabase
+    .from('tasks')
+    .select('*')
+    .eq('user_id', ownerId)
+    .eq('title', title)
+    .gte('created_at', sinceIso);
+  query = dueDate ? query.eq('due_date', dueDate) : query.is('due_date', null);
+
+  const { data, error } = await query.limit(1);
+  if (error) throw error;
+  return (data?.[0] as TaskRow | undefined) ?? null;
+}
+
 export async function insertTask(payload: TaskInsert): Promise<TaskRow> {
   const { data, error } = await supabase.from('tasks').insert([payload]).select().single();
   if (error) throw error;

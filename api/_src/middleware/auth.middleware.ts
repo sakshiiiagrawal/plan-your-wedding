@@ -25,11 +25,12 @@ export const verifyToken = async (
     const decoded = jwt.verify(token, env.JWT_SECRET) as {
       id: string;
       email: string;
+      iat?: number;
     };
 
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, email, name, slug, email_verified, currency, active_owner_id')
+      .select('id, email, name, slug, email_verified, currency, active_owner_id, password_changed_at')
       .eq('id', decoded.id)
       .single();
 
@@ -38,10 +39,24 @@ export const verifyToken = async (
       return;
     }
 
+    // Tokens issued before the last password change/reset are dead — that's
+    // the only way to cut off a stolen session on a 7-day JWT. iat is in whole
+    // seconds, so compare at second granularity (a token minted in the same
+    // second as the change must stay valid).
+    if (
+      user.password_changed_at &&
+      decoded.iat !== undefined &&
+      decoded.iat < Math.floor(new Date(user.password_changed_at).getTime() / 1000)
+    ) {
+      res.status(401).json({ error: 'Session expired. Please log in again.' });
+      return;
+    }
+
     let ownerId = user.id;
     let slug = user.slug;
     let currency = user.currency ?? 'INR';
     let role: AuthenticatedUser['role'] = 'admin';
+    let allowedSections: string[] | null = null;
 
     // Users default to their own wedding. A collaborator can switch into a
     // wedding they're an active member of (see setActiveWedding); that choice is
@@ -50,7 +65,7 @@ export const verifyToken = async (
     if (user.active_owner_id && user.active_owner_id !== user.id) {
       const { data: membership } = await supabase
         .from('wedding_members')
-        .select('role, owner:users!owner_id(slug, currency)')
+        .select('role, allowed_sections, owner:users!owner_id(slug, currency)')
         .eq('member_id', user.id)
         .eq('owner_id', user.active_owner_id)
         .eq('status', 'active')
@@ -63,6 +78,9 @@ export const verifyToken = async (
         } | null;
         ownerId = user.active_owner_id;
         role = membership.role as AuthenticatedUser['role'];
+        // Admins always get every section, whatever the row says
+        allowedSections =
+          role === 'admin' ? null : ((membership.allowed_sections as string[] | null) ?? null);
         slug = owner?.slug ?? null;
         currency = owner?.currency ?? 'INR';
       }
@@ -77,6 +95,7 @@ export const verifyToken = async (
       emailVerified: user.email_verified ?? false,
       currency,
       role,
+      allowedSections,
     };
     next();
   } catch (error) {

@@ -10,7 +10,7 @@ export interface SendEmailInput {
 export async function sendEmail({ to, subject, html }: SendEmailInput): Promise<void> {
   if (!env.SMTP_HOST) {
     // ponytail: dev fallback — no SMTP provider configured, print instead
-    console.log(`\n[mailer] (dev) email to ${to}: ${subject}\n${html.replace(/<[^>]+>/g, '')}\n`);
+    console.log(`\n[mailer] (dev) No SMTP provider configured. Email sending failed to ${to}: ${subject}\n${html.replace(/<[^>]+>/g, '')}\n`);
     return;
   }
 

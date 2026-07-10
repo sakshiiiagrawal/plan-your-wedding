@@ -16,6 +16,7 @@ import SlugGuard from './components/SlugGuard';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AcceptInvite from './pages/AcceptInvite';
+import PendingInvites from './pages/PendingInvites';
 import VerifyEmail from './pages/VerifyEmail';
 
 // Context
@@ -66,6 +67,7 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />
+            <Route path="/invites" element={<PendingInvites />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
 
             {/* Onboarding wizard */}

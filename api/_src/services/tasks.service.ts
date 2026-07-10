@@ -29,6 +29,18 @@ export async function createTask(
   ownerId: string,
   userId?: string,
 ) {
+  // Double-click double-submit guard: the client-side isPending check doesn't
+  // close the race, so an identical task created moments ago is treated as the
+  // same submission and returned instead of duplicated.
+  const fiveSecondsAgo = new Date(Date.now() - 5000).toISOString();
+  const duplicate = await repo.findRecentDuplicate(
+    ownerId,
+    payload.title,
+    payload.due_date,
+    fiveSecondsAgo,
+  );
+  if (duplicate) return duplicate;
+
   return repo.insertTask({ ...payload, user_id: ownerId, created_by: userId ?? ownerId });
 }
 

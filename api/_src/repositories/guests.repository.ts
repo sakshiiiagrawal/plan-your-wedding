@@ -168,7 +168,7 @@ export async function upsertRsvp(payload: GuestEventRsvpInsert) {
 export async function findRsvpsByGuest(guestId: string) {
   const { data, error } = await supabase
     .from('guest_event_rsvp')
-    .select('event_id, rsvp_status, plus_ones')
+    .select('event_id, rsvp_status, plus_ones, responded_via_public')
     .eq('guest_id', guestId);
 
   if (error) throw error;
@@ -184,10 +184,7 @@ export async function deleteRsvpsForGuestExcept(guestId: string, keepEventIds: s
   if (error) throw error;
 }
 
-export async function updateAllRsvpsForGuest(
-  guestId: string,
-  payload: Partial<GuestEventRsvpInsert>,
-) {
+export async function updateAllRsvpsForGuest(guestId: string, payload: Partial<GuestEventRsvpInsert>) {
   const { data, error } = await supabase
     .from('guest_event_rsvp')
     .update(payload)

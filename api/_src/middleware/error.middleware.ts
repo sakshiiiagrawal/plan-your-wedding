@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { AppError } from '../shared/errors/AppError';
+import { env } from '../config/env';
 
 interface SupabaseError {
   message: string;
@@ -88,6 +89,9 @@ function getUserFriendlyMessage(err: SupabaseError): string | null {
     message.includes('unique constraint') ||
     message.includes('duplicate key')
   ) {
+    if (message.includes('wedding_members')) {
+      return 'This person has already been invited or is already a member of this wedding.';
+    }
     if (message.includes('email')) {
       return 'This email address is already registered. Please use a different email.';
     }
@@ -198,12 +202,15 @@ export default function errorMiddleware(
       return;
     }
 
-    console.error('Unhandled database error - returning original message for debugging');
+    // Raw Postgres/Supabase messages leak table/column/constraint names —
+    // only expose them outside production (full details are logged above).
+    console.error('Unhandled database error');
     res.status(400).json({
       error: 'Database Error',
       message:
-        err.message ||
-        'An error occurred while processing your request. Please check your input and try again.',
+        env.NODE_ENV !== 'production' && err.message
+          ? err.message
+          : 'An error occurred while processing your request. Please check your input and try again.',
     });
     return;
   }
@@ -218,7 +225,9 @@ export default function errorMiddleware(
       : 500;
 
   const message =
-    err instanceof Error ? err.message : 'An unexpected error occurred. Please try again later.';
+    env.NODE_ENV !== 'production' && err instanceof Error
+      ? err.message
+      : 'An unexpected error occurred. Please try again later.';
 
   res.status(status).json({
     error: message,

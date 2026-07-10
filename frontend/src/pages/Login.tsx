@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useHeroContent } from '../hooks/useApi';
 import toast from 'react-hot-toast';
@@ -39,7 +39,8 @@ export default function Login() {
       } else if (targetSlug) {
         navigate(`/${targetSlug}/dashboard`);
       } else {
-        navigate('/');
+        // No wedding yet (collaborator account) — invites live here
+        navigate('/invites');
       }
     } catch (error) {
       const err = error as { response?: { data?: { error?: string } } };
@@ -108,21 +109,28 @@ export default function Login() {
           </form>
 
           <p className="mt-4 text-center text-sm">
-            <a href="/forgot-password" className="text-maroon-700 hover:underline">
+            <Link to="/forgot-password" className="text-maroon-700 hover:underline">
               Forgot password?
-            </a>
+            </Link>
+          </p>
+
+          <p className="mt-3 text-center text-sm text-gray-600">
+            New here?{' '}
+            <Link to="/onboard" className="text-maroon-700 font-medium hover:underline">
+              Start planning your wedding
+            </Link>
           </p>
         </div>
 
         <p className="mt-6 text-center text-cream/70 text-sm">
           {slug ? (
-            <a href={`/${slug}`} className="hover:text-gold-300">
+            <Link to={`/${slug}`} className="hover:text-gold-300">
               ← Back to Wedding Website
-            </a>
+            </Link>
           ) : (
-            <a href="/" className="hover:text-gold-300">
+            <Link to="/" className="hover:text-gold-300">
               ← Back to Home
-            </a>
+            </Link>
           )}
         </p>
       </div>

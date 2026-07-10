@@ -18,6 +18,7 @@ const RESERVED_SEGMENTS = new Set([
   'assets',
   'login',
   'onboard',
+  'invites',
   'forgot-password',
   'reset-password',
   'accept-invite',
