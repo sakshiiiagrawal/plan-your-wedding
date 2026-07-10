@@ -299,42 +299,6 @@ export default function DashboardLayout() {
               </select>
             </div>
           )}
-          <div
-            className="mono"
-            title={`${window.location.host}/${slug}`}
-            style={{
-              fontSize: 11,
-              color: 'var(--ink-dim)',
-              letterSpacing: '0.08em',
-              marginBottom: 10,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {window.location.host}/{slug}
-          </div>
-          {/* Working on someone else's wedding — show the granted role so
-              members understand why parts of the UI are trimmed or read-only */}
-          {user?.ownerId && user.ownerId !== user.id && user.role && (
-            <div
-              className="mono"
-              style={{
-                display: 'inline-block',
-                fontSize: 10,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: 'var(--gold-deep)',
-                background: 'var(--gold-glow)',
-                border: '1px solid var(--gold)',
-                borderRadius: 999,
-                padding: '2px 8px',
-                marginBottom: 10,
-              }}
-            >
-              {user.role === 'viewer' ? 'viewer · read-only' : user.role}
-            </div>
-          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <div
               className="avatar"
