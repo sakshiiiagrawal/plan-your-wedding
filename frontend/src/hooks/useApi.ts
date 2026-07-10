@@ -1245,13 +1245,27 @@ export const useResendVerification = () =>
 export const useUpdateProfile = () =>
   useMutation({
     mutationFn: (updates: { name?: string; email?: string; slug?: string; currency?: string }) =>
-      api.patch('/auth/me', updates).then((res) => res.data),
+      api
+        .patch<{
+          slug?: string | null;
+          currency?: string;
+          email_verified?: boolean;
+          verification_email_sent?: boolean;
+        }>('/auth/me', updates)
+        .then((res) => res.data),
   });
 
 export const useChangePassword = () =>
   useMutation({
     mutationFn: (payload: { oldPassword: string; newPassword: string }) =>
-      api.post('/auth/change-password', payload).then((res) => res.data),
+      api
+        .post<{ message: string; token?: string }>('/auth/change-password', payload)
+        .then((res) => res.data),
+    onSuccess: (data) => {
+      // Changing the password invalidates all previous tokens (including the
+      // one this request used) — swap in the fresh one the API returned.
+      if (data.token) localStorage.setItem('token', data.token);
+    },
   });
 
 export const useDeleteAccount = () =>
@@ -1270,6 +1284,8 @@ export interface WeddingMember {
   invited_email: string;
   role: 'admin' | 'editor' | 'viewer';
   status: 'pending' | 'active';
+  /** null = full access; a non-empty array limits the member to those sections */
+  allowed_sections: string[] | null;
   created_at: string;
 }
 
@@ -1282,7 +1298,7 @@ export const useMembers = () =>
 export const useInviteMember = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { email: string; role: string }) =>
+    mutationFn: (payload: { email: string; role: string; sections?: string[] | null }) =>
       api.post('/members/invite', payload).then((res) => res.data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members'] }),
   });
@@ -1294,11 +1310,61 @@ export const useAcceptInvite = () =>
       api.post('/members/accept', { token }).then((res) => res.data),
   });
 
-export const useUpdateMemberRole = () => {
+export interface PendingInvite {
+  id: string;
+  owner_id: string;
+  role: 'admin' | 'editor' | 'viewer';
+  allowed_sections: string[] | null;
+  created_at: string;
+  owner: { name: string | null; slug: string | null } | null;
+}
+
+/** Invites addressed to the logged-in user's email, not yet accepted. */
+export const usePendingInvites = (enabled = true) =>
+  useQuery<PendingInvite[]>({
+    queryKey: ['pending-invites'],
+    queryFn: () => api.get('/members/pending').then((res) => res.data),
+    enabled,
+  });
+
+export const useAcceptPendingInvite = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, role }: { id: string; role: string }) =>
-      api.patch(`/members/${id}`, { role }).then((res) => res.data),
+    mutationFn: (id: string) =>
+      api.post(`/members/pending/${id}/accept`).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-invites'] });
+      queryClient.invalidateQueries({ queryKey: ['weddings'] });
+    },
+  });
+};
+
+export const useDeclinePendingInvite = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/members/pending/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pending-invites'] }),
+  });
+};
+
+export const useUpdateMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      role,
+      sections,
+    }: {
+      id: string;
+      role?: string;
+      sections?: string[] | null;
+    }) =>
+      api
+        .patch(`/members/${id}`, {
+          ...(role !== undefined ? { role } : {}),
+          ...(sections !== undefined ? { sections } : {}),
+        })
+        .then((res) => res.data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members'] }),
   });
 };

@@ -92,7 +92,7 @@ const PRIORITY_PILL_STYLE: Record<string, React.CSSProperties> = {
   medium: {
     background: 'var(--gold-glow)',
     color: 'var(--gold-deep)',
-    border: '1px solid rgba(212,175,55,0.3)',
+    border: '1px solid rgba(176,141,62,0.3)',
   },
   low: { background: 'var(--bg-raised)', color: 'var(--ink-low)', border: '1px solid var(--line)' },
 };
@@ -305,7 +305,7 @@ function DroppableColumn({
     <div
       ref={setNodeRef}
       style={{
-        background: isOver ? 'rgba(212,175,55,0.06)' : 'var(--bg-raised)',
+        background: isOver ? 'rgba(176,141,62,0.06)' : 'var(--bg-raised)',
         borderRadius: 'var(--radius-lg)',
         padding: 12,
         display: 'flex',

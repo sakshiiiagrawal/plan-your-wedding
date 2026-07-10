@@ -16,6 +16,7 @@ import SlugGuard from './components/SlugGuard';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AcceptInvite from './pages/AcceptInvite';
+import PendingInvites from './pages/PendingInvites';
 import VerifyEmail from './pages/VerifyEmail';
 
 // Context
@@ -66,6 +67,7 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />
+            <Route path="/invites" element={<PendingInvites />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
 
             {/* Onboarding wizard */}
@@ -280,9 +282,9 @@ function App() {
           toastOptions={{
             duration: 3000,
             style: {
-              background: '#FFF8E7',
-              color: '#8B0000',
-              border: '1px solid #D4AF37',
+              background: 'var(--bg-panel)',
+              color: 'var(--primary)',
+              border: '1px solid var(--gold)',
             },
           }}
         />

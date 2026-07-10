@@ -1,23 +1,44 @@
 import { z } from 'zod';
+import { RESERVED_WEDDING_SLUGS } from '@wedding-planner/shared';
+
+const RESERVED = new Set<string>(RESERVED_WEDDING_SLUGS);
+
+const weddingSlugSchema = z
+  .string()
+  .min(3)
+  .max(50)
+  .regex(/^[a-z0-9-]+$/, 'Slug may only contain lowercase letters, numbers, and hyphens')
+  .refine((s) => !RESERVED.has(s), 'This URL is reserved');
 
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 });
 
-export const registerSchema = z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
-  password: z.string().min(8),
-  slug: z
-    .string()
-    .min(3)
-    .max(50)
-    .regex(/^[a-z0-9-]+$/, 'Slug may only contain lowercase letters, numbers, and hyphens'),
-  brideName: z.string().optional(),
-  groomName: z.string().optional(),
-  weddingDate: z.string().optional(),
-});
+export const registerSchema = z
+  .object({
+    name: z.string().min(1),
+    email: z.string().email(),
+    password: z.string().min(8),
+    // Optional when joining an existing wedding via invite — those accounts
+    // don't create a wedding site of their own until they claim a slug later.
+    slug: weddingSlugSchema.optional(),
+    inviteToken: z.string().min(1).optional(),
+    // 'collaborator' = planner / family / friend joining other people's
+    // weddings — no wedding site of their own, invites arrive by email.
+    accountType: z.enum(['couple', 'collaborator']).optional(),
+    brideName: z.string().optional(),
+    groomName: z.string().optional(),
+    weddingDate: z.string().optional(),
+  })
+  .refine(
+    (v) =>
+      v.slug !== undefined || v.inviteToken !== undefined || v.accountType === 'collaborator',
+    {
+      message: 'A wedding URL is required',
+      path: ['slug'],
+    },
+  );
 
 export const forgotPasswordSchema = z.object({
   email: z.string().email(),
@@ -37,12 +58,7 @@ export const CURRENCY_CODES = ['INR', 'USD', 'EUR', 'GBP', 'AED'] as const;
 export const updateProfileSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email().optional(),
-  slug: z
-    .string()
-    .min(3)
-    .max(50)
-    .regex(/^[a-z0-9-]+$/, 'Slug may only contain lowercase letters, numbers, and hyphens')
-    .optional(),
+  slug: weddingSlugSchema.optional(),
   currency: z.enum(CURRENCY_CODES).optional(),
 });
 

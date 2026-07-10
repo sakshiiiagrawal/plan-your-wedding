@@ -188,6 +188,8 @@ export async function updateRsvp(
     guest_id: guestId,
     event_id: eventId,
     responded_at: new Date().toISOString(),
+    // Dashboard-entered: authoritative over later public-form submissions
+    responded_via_public: false,
   };
   if (payload.rsvp_status !== undefined) {
     upsertPayload.rsvp_status = payload.rsvp_status as
@@ -223,6 +225,9 @@ export async function setOverallRsvp(
   const update: Record<string, unknown> = {
     rsvp_status: payload.rsvp_status,
     responded_at: new Date().toISOString(),
+    // Couple-entered responses are authoritative; a later public-form
+    // submission by the guest may not overwrite them.
+    responded_via_public: false,
   };
   if (payload.plus_ones !== undefined) update.plus_ones = payload.plus_ones;
   if (payload.notes !== undefined) update.notes = payload.notes;
@@ -247,6 +252,11 @@ export async function setOverallRsvp(
 /**
  * Public RSVP from the wedding website: matches an existing guest by name
  * (guests are pre-registered by the couple) and records their response.
+ *
+ * Rows the couple set explicitly in the dashboard are never overwritten, but
+ * rows the guest previously submitted through this form are — so a guest can
+ * correct their own mistake. `event_ids` (events the guest will attend) allows
+ * a per-event breakdown; omitted, the response applies to every event.
  */
 export async function submitPublicRsvp(
   slug: string,
@@ -254,6 +264,7 @@ export async function submitPublicRsvp(
     first_name: string;
     last_name?: string | null;
     attending: boolean;
+    event_ids?: string[];
     plus_ones?: number;
     notes?: string | null;
   },
@@ -268,21 +279,54 @@ export async function submitPublicRsvp(
     );
   }
 
-  const rsvpPayload: Parameters<typeof setOverallRsvp>[2] = {
-    rsvp_status: payload.attending ? 'confirmed' : 'declined',
+  const events = await eventsRepo.findAllByOwner(ownerId);
+  if (events.length === 0) {
+    throw new BadRequestError(
+      "The couple hasn't finished setting up their events yet. Please try again later or contact them directly.",
+    );
+  }
+
+  // Events the guest is attending; declining, or picking none valid (e.g. a
+  // stale form after an event was deleted), falls back to all-or-nothing.
+  const validIds = new Set(events.map((e) => e.id));
+  let attendingIds = new Set<string>();
+  if (payload.attending) {
+    const picked = (payload.event_ids ?? []).filter((id) => validIds.has(id));
+    attendingIds = picked.length > 0 ? new Set(picked) : validIds;
+  }
+
+  const existing = await repo.findRsvpsByGuest(guest.id);
+  const rowByEvent = new Map(existing.map((r) => [r.event_id, r]));
+  const base: Record<string, unknown> = {
+    responded_at: new Date().toISOString(),
+    responded_via_public: true,
   };
-  if (payload.plus_ones !== undefined) rsvpPayload.plus_ones = payload.plus_ones;
-  if (payload.notes != null && payload.notes.trim() !== '') rsvpPayload.notes = payload.notes;
-  try {
-    await setOverallRsvp(guest.id, ownerId, rsvpPayload);
-  } catch (error) {
-    // setOverallRsvp's "create an event first" message is couple-facing
-    if (error instanceof BadRequestError) {
-      throw new BadRequestError(
-        "The couple hasn't finished setting up their events yet. Please try again later or contact them directly.",
-      );
-    }
-    throw error;
+  if (payload.plus_ones !== undefined) base.plus_ones = payload.plus_ones;
+  if (payload.notes != null && payload.notes.trim() !== '') base.notes = payload.notes;
+
+  let recorded = 0;
+  for (const event of events) {
+    const row = rowByEvent.get(event.id);
+    // Couple-entered responses stay authoritative on the public path
+    if (row && row.rsvp_status !== 'pending' && !row.responded_via_public) continue;
+    // Don't spam declined rows onto events the couple never linked this guest
+    // to — but do record a self-declared "attending" so the couple sees it.
+    if (!row && existing.length > 0 && !attendingIds.has(event.id)) continue;
+    await repo.upsertRsvp({
+      guest_id: guest.id,
+      event_id: event.id,
+      rsvp_status: attendingIds.has(event.id) ? 'confirmed' : 'declined',
+      ...base,
+    } as Parameters<typeof repo.upsertRsvp>[0]);
+    recorded += 1;
+  }
+
+  // Every row was couple-entered — nothing changed, so don't claim it did
+  if (recorded === 0) {
+    return {
+      message:
+        'The couple has already recorded your RSVP. If anything changed, please contact them directly.',
+    };
   }
 
   return { message: 'RSVP recorded. Thank you!' };

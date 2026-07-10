@@ -256,7 +256,7 @@ export default function AddExpenseModal({
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="section-title">Line Items</h3>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-ink-low">
                       Categories, side splits, and committed totals come from these items.
                     </p>
                   </div>

@@ -30,7 +30,7 @@ interface Countdown {
   seconds: number;
 }
 
-const EVENT_COLORS = ['#8B0000', '#B8860B', '#5C6BC0', '#2E7D32', '#6A1B9A', '#0277BD'];
+const EVENT_COLORS = ['#6B1F2A', '#8C6D2F', '#5C6BC0', '#2E7D32', '#6A1B9A', '#0277BD'];
 
 const fmtLakh = formatCurrencyCompact;
 

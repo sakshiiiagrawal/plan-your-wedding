@@ -7,6 +7,8 @@ export interface AuthenticatedUser {
   emailVerified: boolean;
   currency: string;
   role: 'admin' | 'editor' | 'viewer';
+  /** null = full access; a non-empty array limits the member to those sections */
+  allowedSections: string[] | null;
 }
 
 declare global {

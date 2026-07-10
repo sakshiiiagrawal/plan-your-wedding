@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { RESERVED_PAGE_SLUGS } from '../../../shared/src/domain/page.types';
+import { RESERVED_PAGE_SLUGS } from '@wedding-planner/shared';
 
 const RESERVED = new Set<string>(RESERVED_PAGE_SLUGS);
 

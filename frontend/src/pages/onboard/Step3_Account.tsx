@@ -48,9 +48,18 @@ interface Step3Props {
   data: Step3Data;
   onNext: (values: Step3Data) => void;
   onBack: () => void;
+  /** collaborator signup submits from this step, so it needs a busy state */
+  submitting?: boolean;
+  nextLabel?: string;
 }
 
-export default function Step3_Account({ data, onNext, onBack }: Step3Props) {
+export default function Step3_Account({
+  data,
+  onNext,
+  onBack,
+  submitting = false,
+  nextLabel = 'Next →',
+}: Step3Props) {
   const {
     register,
     handleSubmit,
@@ -144,8 +153,8 @@ export default function Step3_Account({ data, onNext, onBack }: Step3Props) {
           <button type="button" onClick={onBack} className="btn-secondary flex-1 py-3">
             ← Back
           </button>
-          <button type="submit" className="btn-primary flex-1 py-3">
-            Next →
+          <button type="submit" disabled={submitting} className="btn-primary flex-1 py-3 disabled:opacity-50">
+            {submitting ? 'Creating...' : nextLabel}
           </button>
         </div>
       </form>

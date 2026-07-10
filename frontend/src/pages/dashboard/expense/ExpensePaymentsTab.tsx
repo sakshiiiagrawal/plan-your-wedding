@@ -41,7 +41,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
   const { data: outstanding, isLoading: loadingOutstanding } = useExpenseOutstanding();
 
   if (loadingPayments || loadingOutstanding) {
-    return <div className="card p-8 text-center text-gray-500">Loading payments...</div>;
+    return <div className="card p-8 text-center text-ink-low">Loading payments...</div>;
   }
 
   const postedPayments = payments.filter((payment) => payment.status === 'posted');
@@ -60,21 +60,21 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="card text-center">
           <div className="text-2xl font-bold text-green-600">{formatCurrency(paidTotal)}</div>
-          <div className="text-sm text-gray-500">Net Paid</div>
+          <div className="text-sm text-ink-low">Net Paid</div>
         </div>
         <div className="card text-center">
           <div className="text-2xl font-bold text-blue-600">{formatCurrency(plannedTotal)}</div>
-          <div className="text-sm text-gray-500">Scheduled</div>
+          <div className="text-sm text-ink-low">Scheduled</div>
         </div>
         <div className="card text-center">
           <div
             className={`text-2xl font-bold ${
-              (outstanding?.totalOutstanding ?? 0) > 0 ? 'text-orange-600' : 'text-gray-400'
+              (outstanding?.totalOutstanding ?? 0) > 0 ? 'text-orange-600' : 'text-ink-dim'
             }`}
           >
             {formatCurrency(outstanding?.totalOutstanding ?? 0)}
           </div>
-          <div className="text-sm text-gray-500">Outstanding</div>
+          <div className="text-sm text-ink-low">Outstanding</div>
         </div>
       </div>
 
@@ -105,7 +105,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   .map((payment) => (
                     <tr key={payment.id} className="table-row">
                       <td className="p-4 font-medium">{payment.expense.description}</td>
-                      <td className="p-4 text-gray-500 capitalize">
+                      <td className="p-4 text-ink-low capitalize">
                         {payment.expense.source_type}
                       </td>
                       <td
@@ -114,13 +114,13 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                       >
                         {formatPaymentAmount(payment.amount, payment.direction, formatCurrency)}
                       </td>
-                      <td className="p-4 text-gray-600 capitalize">
+                      <td className="p-4 text-ink-mid capitalize">
                         {payment.paid_by_side === 'shared' &&
                         payment.paid_bride_share_percentage != null
                           ? `Bride ${payment.paid_bride_share_percentage}% · Groom ${100 - payment.paid_bride_share_percentage}%`
                           : payment.paid_by_side || '—'}
                       </td>
-                      <td className="p-4 text-gray-600">
+                      <td className="p-4 text-ink-mid">
                         {parseLocalDate(payment.due_date ?? payment.created_at).toLocaleDateString(
                           'en-IN',
                         )}
@@ -143,7 +143,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
           </h3>
         </div>
         {postedPayments.length === 0 ? (
-          <div className="p-8 text-center text-gray-400 text-sm">No payments recorded yet.</div>
+          <div className="p-8 text-center text-ink-dim text-sm">No payments recorded yet.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -168,7 +168,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   .map((payment) => (
                     <tr key={payment.id} className="table-row">
                       <td className="p-4 font-medium">{payment.expense.description}</td>
-                      <td className="p-4 text-gray-500 capitalize">
+                      <td className="p-4 text-ink-low capitalize">
                         {payment.expense.source_type}
                       </td>
                       <td
@@ -178,21 +178,21 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                       >
                         {formatPaymentAmount(payment.amount, payment.direction, formatCurrency)}
                       </td>
-                      <td className="p-4 text-gray-600 capitalize">
+                      <td className="p-4 text-ink-mid capitalize">
                         {payment.paid_by_side === 'shared' &&
                         payment.paid_bride_share_percentage != null
                           ? `Bride ${payment.paid_bride_share_percentage}% · Groom ${100 - payment.paid_bride_share_percentage}%`
                           : payment.paid_by_side || '—'}
                       </td>
-                      <td className="p-4 text-gray-600">
+                      <td className="p-4 text-ink-mid">
                         {parseLocalDate(payment.paid_date ?? payment.created_at).toLocaleDateString(
                           'en-IN',
                         )}
                       </td>
-                      <td className="p-4 text-gray-600 capitalize">
+                      <td className="p-4 text-ink-mid capitalize">
                         {payment.payment_method?.replace('_', ' ') || '—'}
                       </td>
-                      <td className="p-4 text-gray-500 text-sm hidden md:table-cell">
+                      <td className="p-4 text-ink-low text-sm hidden md:table-cell">
                         {payment.transaction_reference || '—'}
                       </td>
                     </tr>
@@ -226,8 +226,8 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   .map((item) => (
                     <tr key={item.id} className="table-row">
                       <td className="p-4 font-medium">{item.name}</td>
-                      <td className="p-4 text-gray-500 capitalize">{item.type}</td>
-                      <td className="p-4 text-right text-gray-700">
+                      <td className="p-4 text-ink-low capitalize">{item.type}</td>
+                      <td className="p-4 text-right text-ink-mid">
                         {formatCurrency(item.totalCost)}
                       </td>
                       <td className="p-4 text-right text-green-700">{formatCurrency(item.paid)}</td>
@@ -237,7 +237,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                     </tr>
                   ))}
               </tbody>
-              <tfoot className="bg-gray-100 font-bold">
+              <tfoot className="bg-surface-highest font-bold">
                 <tr>
                   <td colSpan={4} className="p-4">
                     Total Outstanding

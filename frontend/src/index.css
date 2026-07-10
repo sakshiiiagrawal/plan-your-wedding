@@ -1,37 +1,43 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Great+Vibes&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Great+Vibes&family=Inter:wght@300..700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Poppins:wght@300;400;500;600;700&display=swap');
 @import 'tailwindcss';
 @config "../tailwind.config.ts";
 
 /* ── Design tokens (light-theme adaptation) ─────────────────────────────── */
 :root {
   /* Backgrounds */
-  --bg-page: #fff8e7; /* cream page bg */
-  --bg-panel: #ffffff; /* cards, sidebar */
-  --bg-raised: #f9f7f3; /* inputs, hover states, subtle elevation */
-  --bg-highest: #f3f0ea; /* more elevated surfaces */
+  --bg-page: #faf6ef;
+  --bg-panel: #fffdf9;
+  --bg-raised: #f4efe5;
+  --bg-highest: #ede6d8;
 
-  /* Borders */
-  --line-soft: rgba(0, 0, 0, 0.07);
-  --line: rgba(0, 0, 0, 0.12);
-  --line-strong: rgba(0, 0, 0, 0.2);
+  /* Borders — warm-tinted */
+  --line-soft: rgba(62, 44, 24, 0.08);
+  --line: rgba(62, 44, 24, 0.14);
+  --line-strong: rgba(62, 44, 24, 0.24);
 
   /* Text */
-  --ink-high: #1c1917; /* near-black for primary content */
-  --ink-mid: #44403c; /* medium emphasis */
-  --ink-low: #78716c; /* low emphasis */
-  --ink-dim: #a8a29e; /* very subtle */
+  --ink-high: #201a17; /* headings, 15.9:1 */
+  --ink-mid: #3e3732; /* body, 10.8:1 */
+  --ink-low: #6b6259; /* labels, 5.5:1 AA-safe */
+  --ink-dim: #8a7a6b; /* placeholders/decorative only (3.8:1) */
 
-  /* Gold accent */
-  --gold: #d4af37;
-  --gold-deep: #b8860b;
-  --gold-soft: #c9a94a;
-  --gold-glow: rgba(212, 175, 55, 0.15);
+  /* Antique gold */
+  --gold: #b08d3e; /* borders/icons/large glyphs ONLY — 2.9:1, never small text */
+  --gold-deep: #7e6227; /* the text-safe gold, 5.3:1 */
+  --gold-soft: #c2a45c;
+  --gold-glow: rgba(176, 141, 62, 0.16);
 
-  /* Semantic status */
-  --ok: #16a34a;
-  --warn: #d97706;
-  --err: #dc2626;
-  --info: #2563eb;
+  /* Primary (deep burgundy) — btn-primary stops hardcoding hex */
+  --primary: #6b1f2a;
+  --primary-hover: #55161f;
+  --primary-edge: #4a121a;
+  --primary-glow: rgba(107, 31, 42, 0.14);
+
+  /* Semantic status — desaturated, all ≥4.5:1 */
+  --ok: #256f44;
+  --warn: #a85f00;
+  --err: #b3372f;
+  --info: #2b5ea7;
 
   /* Type */
   --font-display: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
@@ -44,9 +50,10 @@
   --radius-lg: 14px;
   --radius-xl: 22px;
 
-  /* Shadows */
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  /* Shadows — warm-tinted */
+  --shadow-card: 0 1px 3px rgba(64, 48, 32, 0.07), 0 1px 2px rgba(64, 48, 32, 0.05);
   --shadow-gold: 0 0 0 1px var(--gold-glow), 0 4px 16px -4px var(--gold-glow);
+  --shadow-primary: 0 1px 2px rgba(107, 31, 42, 0.25), 0 3px 10px -4px rgba(107, 31, 42, 0.35);
 }
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
@@ -65,9 +72,10 @@
     padding: 0;
     height: 100%;
     background: var(--bg-page);
-    color: var(--ink-high);
+    color: var(--ink-mid);
     font-family: var(--font-sans);
     font-size: 14px;
+    font-weight: 450;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
@@ -93,8 +101,8 @@
 }
 
 ::selection {
-  background: var(--gold);
-  color: #3d2f00;
+  background: var(--gold-soft);
+  color: #201a17;
 }
 
 /* Keyboard focus: visible ring on anything interactive */
@@ -120,8 +128,8 @@ a:focus-visible,
 /* ── Typography utilities ────────────────────────────────────────────────── */
 .display {
   font-family: var(--font-display);
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .mono {
@@ -134,8 +142,8 @@ a:focus-visible,
   text-transform: uppercase;
   letter-spacing: 0.22em;
   font-size: 10px;
-  color: var(--gold);
-  font-weight: 500;
+  color: var(--gold-deep);
+  font-weight: 600;
   font-family: var(--font-sans);
 }
 
@@ -160,9 +168,11 @@ a:focus-visible,
   font-family: var(--font-display);
   font-size: 42px;
   line-height: 1;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--ink-high);
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 .kpi-num.gold-accent {
   color: var(--gold-soft);
@@ -269,18 +279,25 @@ a:focus-visible,
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  border: 1px solid #5c0000;
-  background: #8b0000;
+  border: 1px solid var(--primary-edge);
+  background: var(--primary);
   color: #fff;
+  box-shadow: var(--shadow-primary);
   transition: all 150ms ease;
   white-space: nowrap;
   cursor: pointer;
 }
 .btn-primary:hover {
-  background: #6b0000;
+  background: var(--primary-hover);
+}
+.btn-primary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--primary-glow);
 }
 .btn-primary:disabled {
   opacity: 0.5;
+  box-shadow: none;
   cursor: not-allowed;
 }
 
@@ -306,6 +323,11 @@ a:focus-visible,
   border-color: var(--line-strong);
 }
 
+.btn-outline:hover {
+  background: rgba(176, 141, 62, 0.07);
+  border-color: var(--gold);
+}
+
 @utility btn-outline {
   display: inline-flex;
   align-items: center;
@@ -323,11 +345,6 @@ a:focus-visible,
   white-space: nowrap;
   cursor: pointer;
 }
-.btn-outline:hover {
-  background: var(--bg-raised);
-  border-color: var(--line-strong);
-}
-
 /* ── Inputs ──────────────────────────────────────────────────────────────── */
 @utility input {
   width: 100%;
@@ -351,12 +368,12 @@ a:focus-visible,
 
 @utility label {
   display: block;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--ink-low);
   margin-bottom: 6px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 
 /* ── Table ───────────────────────────────────────────────────────────────── */
@@ -371,7 +388,7 @@ a:focus-visible,
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-low);
-  font-weight: 500;
+  font-weight: 600;
   font-family: var(--font-sans);
   border-bottom: 1px solid var(--line-soft);
   background: var(--bg-raised);
@@ -420,8 +437,8 @@ a:focus-visible,
 }
 .pill.gold {
   color: var(--gold-deep);
-  border-color: rgba(212, 175, 55, 0.3);
-  background: rgba(212, 175, 55, 0.08);
+  border-color: rgba(176, 141, 62, 0.3);
+  background: rgba(176, 141, 62, 0.08);
 }
 .pill.ok {
   color: var(--ok);
@@ -510,7 +527,7 @@ a:focus-visible,
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--gold-deep), #be185d);
+  background: linear-gradient(135deg, var(--primary), var(--gold-deep));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -550,10 +567,10 @@ a:focus-visible,
 @keyframes pulse-gold {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4);
+    box-shadow: 0 0 0 0 rgba(176, 141, 62, 0.4);
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(212, 175, 55, 0);
+    box-shadow: 0 0 0 8px rgba(176, 141, 62, 0);
   }
 }
 
@@ -633,7 +650,7 @@ a:focus-visible,
   padding: 9px 12px;
   border-radius: var(--radius-md);
   font-size: 13px;
-  background: rgba(212, 175, 55, 0.12);
+  background: var(--gold-glow);
   color: var(--gold-deep);
   border-left: 2px solid var(--gold);
   font-weight: 500;
@@ -642,16 +659,17 @@ a:focus-visible,
 @utility section-title {
   font-family: var(--font-display);
   font-size: 28px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink-high);
   margin-bottom: 20px;
+  letter-spacing: -0.01em;
 }
 @utility page-title {
   font-family: var(--font-display);
   font-size: 32px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink-high);
-  letter-spacing: 0.005em;
+  letter-spacing: -0.015em;
 }
 
 @utility stat-card {
@@ -664,7 +682,7 @@ a:focus-visible,
 @utility stat-value {
   font-family: var(--font-display);
   font-size: 36px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink-high);
 }
 @utility stat-label {
@@ -729,7 +747,7 @@ a:focus-visible,
   flex-direction: column;
   position: relative;
   background-color: var(--bg-highest);
-  background-image: radial-gradient(rgba(28, 25, 23, 0.07) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(62, 44, 24, 0.07) 1px, transparent 1px);
   background-size: 18px 18px;
 }
 .studio-panel {

@@ -66,7 +66,9 @@ export async function uploadMusic(ownerId: string, file: Express.Multer.File): P
     throw new BadRequestError('Only MP3 / M4A / AAC audio files are allowed');
   }
 
-  const ext = file.originalname.split('.').pop() || 'mp3';
+  // originalname is client-controlled — only accept a plain short extension
+  const rawExt = file.originalname.split('.').pop() ?? '';
+  const ext = /^[a-z0-9]{1,5}$/i.test(rawExt) ? rawExt.toLowerCase() : 'mp3';
   const path = `${ownerId}/music/${randomUUID()}.${ext}`;
 
   const { error: uploadError } = await supabase.storage

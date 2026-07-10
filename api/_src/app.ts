@@ -17,11 +17,17 @@ app.set('trust proxy', 1);
 // Security middleware
 app.use(helmet());
 
-// CORS configuration
+// CORS configuration. Frontend and API deploy as one Vercel project, so a
+// preview deployment's browser origin is the deployment's own URL — Vercel
+// exposes it via these env vars. Allowing all of *.vercel.app would admit
+// anyone's deployment as a trusted origin (CODEBASE_ISSUES C5).
 const allowedOrigins: string[] = [
   'http://localhost:5173',
   'http://localhost:3000',
   ...(env.FRONTEND_URL ? [env.FRONTEND_URL] : []),
+  ...[process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL]
+    .filter((host): host is string => Boolean(host))
+    .map((host) => `https://${host}`),
 ];
 
 app.use(
@@ -29,9 +35,6 @@ app.use(
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
       if (env.NODE_ENV === 'development') return callback(null, true);
-      // Vercel preview/PR deployments get a per-branch *.vercel.app origin that
-      // won't match FRONTEND_URL exactly, so allow the whole subdomain.
-      if (origin.endsWith('.vercel.app')) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
       return callback(new Error('Not allowed by CORS'));
     },
@@ -90,6 +93,22 @@ const PROTECTED_PREFIXES: string[] = [
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
+// Section-scoped access: which section each API prefix belongs to. Members
+// with a non-null allowedSections list may only touch prefixes whose section
+// is in their list. Unlisted prefixes (auth, dashboard overview, geocode,
+// members — itself admin-gated) stay open to every active member. Keys must
+// match WEDDING_SECTIONS in @wedding-planner/shared.
+const SECTION_BY_PREFIX: Record<string, string> = {
+  '/api/v1/venues': 'venues',
+  '/api/v1/events': 'events',
+  '/api/v1/guests': 'guests',
+  '/api/v1/vendors': 'vendors',
+  '/api/v1/expense': 'budget',
+  '/api/v1/tasks': 'tasks',
+  '/api/v1/website-content': 'website',
+  '/api/v1/pages': 'website',
+};
+
 // Global auth middleware — skips public paths and public GET website-content
 app.use((req, res, next) => {
   const path = req.path;
@@ -116,10 +135,22 @@ app.use((req, res, next) => {
       WRITE_METHODS.has(req.method) &&
       req.user?.role === 'viewer' &&
       !path.startsWith('/api/v1/auth/') &&
-      path !== '/api/v1/members/accept'
+      path !== '/api/v1/members/accept' &&
+      !path.startsWith('/api/v1/members/pending/')
     ) {
       res.status(403).json({ error: 'Viewers cannot make changes' });
       return;
+    }
+
+    // Section-restricted members (e.g. a planner granted vendors + budget
+    // only) are blocked from every other section's API, reads included.
+    const sections = req.user?.allowedSections;
+    if (sections) {
+      const section = Object.entries(SECTION_BY_PREFIX).find(([p]) => path.startsWith(p))?.[1];
+      if (section && !sections.includes(section)) {
+        res.status(403).json({ error: 'You do not have access to this section' });
+        return;
+      }
     }
     next();
   });

@@ -9,13 +9,24 @@ export interface AuthUser {
   slug?: string | null;
   emailVerified?: boolean;
   currency?: string;
+  /** id of the wedding owner the user is currently working on (self or a membership) */
+  ownerId?: string;
+  /** role within the active wedding; 'admin' on your own wedding */
+  role?: 'admin' | 'editor' | 'viewer';
+  /** null/undefined = full access; a non-empty array limits nav + API to those sections */
+  allowedSections?: string[] | null;
 }
 
 interface RegisterData {
   name: string;
   email: string;
   password: string;
-  slug: string;
+  /** required when creating a wedding; omitted when joining via invite */
+  slug?: string;
+  /** joining an existing wedding — activates the membership during signup */
+  inviteToken?: string;
+  /** 'collaborator' = planner/family account with no wedding of its own */
+  accountType?: 'couple' | 'collaborator';
   brideName?: string;
   groomName?: string;
   weddingDate?: string;
@@ -28,6 +39,8 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<{ user: AuthUser; slug: string | null }>;
   register: (data: RegisterData) => Promise<{ user: AuthUser; slug: string | null }>;
   logout: () => void;
+  /** Re-fetch /auth/me (e.g. after accepting an invite switches the active wedding). */
+  refresh: () => Promise<AuthUser | null>;
   isAuthenticated: boolean;
 }
 
@@ -42,11 +55,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     checkAuth();
   }, []);
 
-  const checkAuth = async () => {
+  const checkAuth = async (): Promise<AuthUser | null> => {
     const token = localStorage.getItem('token');
     if (!token) {
       setLoading(false);
-      return;
+      return null;
     }
 
     try {
@@ -59,13 +72,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         localStorage.setItem('slug', response.data.slug);
         setSlug(response.data.slug);
       }
+      return response.data;
     } catch {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       localStorage.removeItem('slug');
       setSlug(null);
+      return null;
     } finally {
       setLoading(false);
+    }
+  };
+
+  // After storing the token, resolve the session from /auth/me rather than the
+  // login/register payload: /me carries the active-wedding scope (role,
+  // ownerId, allowedSections) and resolves the slug through memberships — a
+  // collaborator's own slug is null, but their active wedding's isn't.
+  const resolveSession = async (
+    token: string,
+    fallback: { user: AuthUser; slug: string | null },
+  ): Promise<{ user: AuthUser; slug: string | null }> => {
+    localStorage.setItem('token', token);
+    try {
+      const me = (await api.get<AuthUser>('/auth/me')).data;
+      localStorage.setItem('user', JSON.stringify(me));
+      setActiveCurrency(me.currency);
+      if (me.slug) {
+        localStorage.setItem('slug', me.slug);
+        setSlug(me.slug);
+      }
+      setUser(me);
+      return { user: me, slug: me.slug ?? null };
+    } catch {
+      // /me hiccup right after auth — fall back to the auth payload
+      localStorage.setItem('user', JSON.stringify(fallback.user));
+      if (fallback.slug) {
+        localStorage.setItem('slug', fallback.slug);
+        setSlug(fallback.slug);
+      }
+      setUser(fallback.user);
+      return fallback;
     }
   };
 
@@ -78,14 +124,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       { email, password },
     );
     const { token, user: loggedInUser, slug: returnedSlug } = response.data;
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(loggedInUser));
-    if (returnedSlug) {
-      localStorage.setItem('slug', returnedSlug);
-      setSlug(returnedSlug);
-    }
-    setUser(loggedInUser);
-    return { user: loggedInUser, slug: returnedSlug };
+    return resolveSession(token, { user: loggedInUser, slug: returnedSlug });
   };
 
   const register = async (data: RegisterData): Promise<{ user: AuthUser; slug: string | null }> => {
@@ -94,14 +133,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       data,
     );
     const { token, user: registeredUser, slug: returnedSlug } = response.data;
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(registeredUser));
-    if (returnedSlug) {
-      localStorage.setItem('slug', returnedSlug);
-      setSlug(returnedSlug);
-    }
-    setUser(registeredUser);
-    return { user: registeredUser, slug: returnedSlug };
+    return resolveSession(token, { user: registeredUser, slug: returnedSlug });
   };
 
   const logout = () => {
@@ -122,6 +154,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         login,
         register,
         logout,
+        refresh: checkAuth,
         isAuthenticated: !!user,
       }}
     >

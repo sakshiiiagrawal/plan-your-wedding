@@ -306,7 +306,7 @@ export default function Expense() {
   if (loadingSummary || loadingOverview || loadingExpenses) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-gray-500">Loading expense data...</div>
+        <div className="text-ink-low">Loading expense data...</div>
       </div>
     );
   }
@@ -395,7 +395,7 @@ export default function Expense() {
         <div className="stat-card">
           <div className="stat-value text-orange-700">{formatCurrency(outstandingTotal)}</div>
           <div className="stat-label">Outstanding</div>
-          <div className="text-xs text-gray-400 mt-1">
+          <div className="text-xs text-ink-dim mt-1">
             {formatCurrency(remainingBudget)} budget remaining
           </div>
         </div>

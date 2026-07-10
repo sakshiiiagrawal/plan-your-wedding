@@ -26,14 +26,19 @@ export default function Onboard() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
 
-  useEffect(() => {
-    if (!loading && isAuthenticated && slug) {
-      navigate(`/${slug}/dashboard`, { replace: true });
-    }
-  }, [loading, isAuthenticated, slug, navigate]);
-
   const [submitting, setSubmitting] = useState(false);
   const [successSlug, setSuccessSlug] = useState<string | null>(null);
+
+  // Already signed in → leave the wizard (collaborators' home is /invites).
+  // Registering here sets the auth state too, so skip the redirect once the
+  // success screen is up — otherwise it would never be seen.
+  useEffect(() => {
+    if (loading || !isAuthenticated || successSlug || submitting) return;
+    navigate(slug ? `/${slug}/dashboard` : '/invites', { replace: true });
+  }, [loading, isAuthenticated, slug, successSlug, submitting, navigate]);
+  // 'couple' creates a wedding + website; 'collaborator' (planner / family /
+  // friend) creates just an account — they join weddings via invites.
+  const [mode, setMode] = useState<'couple' | 'collaborator'>('couple');
   const [formData, setFormData] = useState<FormData>({
     brideName: '',
     groomName: '',
@@ -69,7 +74,30 @@ export default function Onboard() {
     }
   };
 
-  const STEPS = 4;
+  const handleCollaboratorSubmit = async (values: {
+    name: string;
+    email: string;
+    password: string;
+  }) => {
+    setSubmitting(true);
+    try {
+      await register({
+        name: values.name,
+        email: values.email,
+        password: values.password,
+        accountType: 'collaborator',
+      });
+      toast.success('Account created!');
+      navigate('/invites', { replace: true });
+    } catch (error) {
+      const err = error as { response?: { data?: { error?: string } } };
+      toast.error(err?.response?.data?.error || 'Setup failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const STEPS = mode === 'collaborator' ? 2 : 4;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-maroon-800 via-maroon-700 to-gold-600 flex items-center justify-center p-4">
@@ -103,9 +131,37 @@ export default function Onboard() {
                 brideName={formData.brideName}
                 groomName={formData.groomName}
                 slug={successSlug}
+                email={formData.email}
               />
             ) : step === 1 ? (
-              <Step1_Welcome key="step1" onNext={() => setStep(2)} />
+              <Step1_Welcome
+                key="step1"
+                onNext={() => {
+                  setMode('couple');
+                  setStep(2);
+                }}
+                onCollaborator={() => {
+                  setMode('collaborator');
+                  setStep(2);
+                }}
+              />
+            ) : mode === 'collaborator' ? (
+              <Step3_Account
+                key="collab-account"
+                data={{
+                  name: formData.name,
+                  email: formData.email,
+                  password: formData.password,
+                  confirmPassword: formData.confirmPassword,
+                }}
+                submitting={submitting}
+                nextLabel="Create account →"
+                onNext={(v) => {
+                  mergeData(v);
+                  void handleCollaboratorSubmit(v);
+                }}
+                onBack={() => setStep(1)}
+              />
             ) : step === 2 ? (
               <Step2_WeddingDetails
                 key="step2"

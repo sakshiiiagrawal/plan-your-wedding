@@ -20,22 +20,32 @@ import {
   HiOutlinePrinter,
 } from 'react-icons/hi';
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { CornerFlourish } from '../components/ui';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { formatDate } from '../utils/date';
 
+// `section` is the access-control key (WEDDING_SECTIONS in shared); items
+// without one (overview, settings) are visible to every member. Must stay in
+// sync with SECTION_BY_PREFIX in api/_src/app.ts.
 const NAV_ITEMS = [
   { path: '', label: 'Overview', icon: HiOutlineHome, end: true },
-  { path: '/venues', label: 'Venues', icon: HiOutlineLocationMarker },
-  { path: '/events', label: 'Events', icon: HiOutlineCalendar },
+  { path: '/venues', label: 'Venues', icon: HiOutlineLocationMarker, section: 'venues' },
+  { path: '/events', label: 'Events', icon: HiOutlineCalendar, section: 'events' },
   // Grouped right after Venues — this is room allocation for the venues
   // marked "Has Accommodation" there, not a separate venue type.
-  { path: '/guests', label: 'Guests & RSVP', icon: HiOutlineUserGroup },
-  { path: '/vendors', label: 'Vendors', icon: HiOutlineBriefcase },
-  { path: '/accommodations', label: 'Room Allocation', icon: HiOutlineOfficeBuilding },
-  { path: '/budget', label: 'Budget', icon: HiOutlineCurrencyRupee },
-  { path: '/tasks', label: 'Tasks', icon: HiOutlineClipboardList },
-  { path: '/gallery', label: 'Gallery', icon: HiOutlinePhotograph },
-  { path: '/website', label: 'Public Site', icon: HiOutlineGlobe },
+  { path: '/guests', label: 'Guests & RSVP', icon: HiOutlineUserGroup, section: 'guests' },
+  { path: '/vendors', label: 'Vendors', icon: HiOutlineBriefcase, section: 'vendors' },
+  {
+    path: '/accommodations',
+    label: 'Room Allocation',
+    icon: HiOutlineOfficeBuilding,
+    section: 'venues',
+  },
+  { path: '/budget', label: 'Budget', icon: HiOutlineCurrencyRupee, section: 'budget' },
+  { path: '/tasks', label: 'Tasks', icon: HiOutlineClipboardList, section: 'tasks' },
+  { path: '/gallery', label: 'Gallery', icon: HiOutlinePhotograph, section: 'website' },
+  { path: '/website', label: 'Public Site', icon: HiOutlineGlobe, section: 'website' },
   { path: '/settings', label: 'Settings', icon: HiOutlineCog },
 ];
 
@@ -88,6 +98,35 @@ export default function DashboardLayout() {
   const subPath = location.pathname.replace(basePath, '') || '';
   const currentCrumb = CRUMB_MAP[subPath] ?? subPath.replace('/', '');
 
+  // Section-restricted members (planners granted only some sections) see a
+  // trimmed nav; the API enforces the same list, this just keeps UI honest.
+  const allowedSections = user?.allowedSections ?? null;
+  const visibleNavItems = allowedSections
+    ? NAV_ITEMS.filter((item) => !item.section || allowedSections.includes(item.section))
+    : NAV_ITEMS;
+  const currentNavItem = NAV_ITEMS.find((item) => item.path === subPath);
+  const currentSectionBlocked =
+    allowedSections !== null &&
+    currentNavItem?.section !== undefined &&
+    !allowedSections.includes(currentNavItem.section);
+
+  // Deep links into blocked sections bounce to Overview (below) — say why,
+  // or the shared link just looks broken.
+  useEffect(() => {
+    if (currentSectionBlocked) {
+      toast.error(
+        `You don't have access to ${currentNavItem?.label ?? 'that section'} on this wedding. Ask the couple to widen your access.`,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSectionBlocked]);
+
+  // Switching weddings hard-reloads the app — confirm so mid-edit work isn't
+  // silently discarded by a stray dropdown change.
+  const [pendingSwitch, setPendingSwitch] = useState<{ ownerId: string; label: string } | null>(
+    null,
+  );
+
   const handleLogout = () => {
     logout();
     navigate(`/${slug}/login`, { replace: true });
@@ -112,6 +151,11 @@ export default function DashboardLayout() {
 
   if (!isAuthenticated) {
     return <Navigate to={`/${slug}/login`} replace />;
+  }
+
+  // Deep link into a section this member can't access → back to Overview
+  if (currentSectionBlocked) {
+    return <Navigate to={basePath} replace />;
   }
 
   return (
@@ -184,7 +228,7 @@ export default function DashboardLayout() {
 
         {/* Navigation */}
         <nav style={{ padding: '16px 12px', flex: 1, overflowY: 'auto' }}>
-          {NAV_ITEMS.map((item) => {
+          {visibleNavItems.map((item) => {
             const fullPath = `${basePath}${item.path}`;
             return (
               <NavLink
@@ -232,7 +276,10 @@ export default function DashboardLayout() {
               <select
                 value={weddingData?.activeOwnerId ?? ''}
                 disabled={setActiveWedding.isPending}
-                onChange={(e) => setActiveWedding.mutate(e.target.value)}
+                onChange={(e) => {
+                  const target = weddings.find((w) => w.ownerId === e.target.value);
+                  if (target) setPendingSwitch({ ownerId: target.ownerId, label: target.label });
+                }}
                 style={{
                   width: '100%',
                   fontSize: 12,
@@ -267,6 +314,27 @@ export default function DashboardLayout() {
           >
             {window.location.host}/{slug}
           </div>
+          {/* Working on someone else's wedding — show the granted role so
+              members understand why parts of the UI are trimmed or read-only */}
+          {user?.ownerId && user.ownerId !== user.id && user.role && (
+            <div
+              className="mono"
+              style={{
+                display: 'inline-block',
+                fontSize: 10,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: 'var(--gold-deep)',
+                background: 'var(--gold-glow)',
+                border: '1px solid var(--gold)',
+                borderRadius: 999,
+                padding: '2px 8px',
+                marginBottom: 10,
+              }}
+            >
+              {user.role === 'viewer' ? 'viewer · read-only' : user.role}
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <div
               className="avatar"
@@ -317,7 +385,7 @@ export default function DashboardLayout() {
               background: 'transparent',
               transition: 'background 150ms',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(220,38,38,0.07)')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(179,55,47,0.08)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             <HiOutlineLogout style={{ width: 14, height: 14 }} />
@@ -347,7 +415,7 @@ export default function DashboardLayout() {
             gap: 16,
             padding: '14px 28px',
             borderBottom: '1px solid var(--line-soft)',
-            background: 'rgba(255,248,231,0.85)',
+            background: 'rgba(250,246,239,0.85)',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             position: 'sticky',
@@ -449,6 +517,18 @@ export default function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+
+      <ConfirmDialog
+        open={pendingSwitch !== null}
+        title="Switch wedding?"
+        message={`Open ${pendingSwitch?.label ?? ''}? The page will reload and any unsaved changes here will be lost.`}
+        confirmLabel="Switch"
+        isPending={setActiveWedding.isPending}
+        onConfirm={() => {
+          if (pendingSwitch) setActiveWedding.mutate(pendingSwitch.ownerId);
+        }}
+        onCancel={() => setPendingSwitch(null)}
+      />
     </div>
   );
 }

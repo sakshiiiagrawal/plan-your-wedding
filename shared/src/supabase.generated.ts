@@ -383,6 +383,7 @@ export interface Database {
           event_id: string;
           rsvp_status: DbRsvpStatus;
           responded_at: string | null;
+          responded_via_public: boolean;
           plus_ones: number;
           plus_one_names: string[] | null;
           notes: string | null;
@@ -395,6 +396,7 @@ export interface Database {
           event_id: string;
           rsvp_status?: DbRsvpStatus;
           responded_at?: string | null;
+          responded_via_public?: boolean;
           plus_ones?: number;
           plus_one_names?: string[] | null;
           notes?: string | null;
@@ -407,6 +409,7 @@ export interface Database {
           event_id?: string;
           rsvp_status?: DbRsvpStatus;
           responded_at?: string | null;
+          responded_via_public?: boolean;
           plus_ones?: number;
           plus_one_names?: string[] | null;
           notes?: string | null;

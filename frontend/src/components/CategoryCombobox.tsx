@@ -122,7 +122,7 @@ export default function CategoryCombobox({
   };
 
   if (isLoading) {
-    return <div className="input text-gray-400 text-sm">Loading categories…</div>;
+    return <div className="input text-ink-dim text-sm">Loading categories…</div>;
   }
 
   const dropdown =
@@ -130,10 +130,10 @@ export default function CategoryCombobox({
       <div
         ref={dropdownRef}
         style={dropdownStyle}
-        className="bg-white border border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto"
+        className="bg-surface-panel border border-line rounded-xl shadow-lg max-h-72 overflow-y-auto"
       >
         {filteredGroups.length === 0 ? (
-          <p className="px-4 py-3 text-sm text-gray-500">No categories found</p>
+          <p className="px-4 py-3 text-sm text-ink-low">No categories found</p>
         ) : (
           filteredGroups.map(({ parent, children }) => (
             <div key={parent.id}>
@@ -153,7 +153,7 @@ export default function CategoryCombobox({
                   {parent.name}
                 </button>
               ) : (
-                <div className="px-4 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400 bg-gray-50">
+                <div className="px-4 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-dim bg-surface-raised">
                   {parent.name}
                 </div>
               )}
@@ -167,7 +167,7 @@ export default function CategoryCombobox({
                     handleSelect(child.id);
                   }}
                   className={`w-full text-left px-4 py-2 pl-8 text-sm transition-colors hover:bg-gold-50 ${
-                    value === child.id ? 'bg-gold-100 text-maroon-800 font-medium' : 'text-gray-700'
+                    value === child.id ? 'bg-gold-100 text-maroon-800 font-medium' : 'text-ink-mid'
                   }`}
                 >
                   {child.name}
@@ -193,7 +193,7 @@ export default function CategoryCombobox({
         )}
 
         {allowCustom && onAddCustom && (
-          <div className="border-t border-gray-100">
+          <div className="border-t border-line-soft">
             <button
               type="button"
               onMouseDown={(e) => {
@@ -214,7 +214,7 @@ export default function CategoryCombobox({
   return (
     <>
       <div className="relative">
-        <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+        <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-dim w-4 h-4 pointer-events-none" />
         <input
           ref={inputRef}
           type="text"
@@ -234,7 +234,7 @@ export default function CategoryCombobox({
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-dim hover:text-ink-mid"
           >
             <HiOutlineX className="w-4 h-4" />
           </button>

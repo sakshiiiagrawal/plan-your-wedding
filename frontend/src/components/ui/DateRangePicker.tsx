@@ -366,7 +366,7 @@ export default function DateRangePicker({
         transform: animIn ? 'translateY(0)' : 'translateY(-4px)',
         transition: 'opacity 140ms ease, transform 140ms ease',
       }}
-      className="bg-white rounded-xl overflow-hidden"
+      className="bg-surface-panel rounded-xl overflow-hidden"
       onMouseDown={(e) => e.stopPropagation()}
     >
       <div
@@ -381,7 +381,7 @@ export default function DateRangePicker({
         <div
           className="grid grid-cols-[1fr_auto_1fr] items-center gap-1 px-3 py-2.5"
           style={{
-            background: 'linear-gradient(180deg, rgba(212,175,55,0.08), rgba(212,175,55,0.02))',
+            background: 'linear-gradient(180deg, rgba(176,141,62,0.08), rgba(176,141,62,0.02))',
             borderBottom: '1px solid var(--line-soft)',
           }}
         >

@@ -76,7 +76,7 @@ export default function CategorySelector({
   };
 
   if (isLoading) {
-    return <div className="text-gray-500 text-sm">Loading categories...</div>;
+    return <div className="text-ink-low text-sm">Loading categories...</div>;
   }
 
   return (
@@ -146,7 +146,7 @@ export default function CategorySelector({
       )}
 
       {selectedCategory && (
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-ink-low">
           Selected:{' '}
           <span className="font-medium text-maroon-800">
             {selectedCategory.parent.name}

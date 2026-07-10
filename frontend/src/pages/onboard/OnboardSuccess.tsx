@@ -5,9 +5,10 @@ interface OnboardSuccessProps {
   brideName: string;
   groomName: string;
   slug: string;
+  email: string;
 }
 
-export default function OnboardSuccess({ brideName, groomName, slug }: OnboardSuccessProps) {
+export default function OnboardSuccess({ brideName, groomName, slug, email }: OnboardSuccessProps) {
   const navigate = useNavigate();
 
   return (
@@ -34,6 +35,22 @@ export default function OnboardSuccess({ brideName, groomName, slug }: OnboardSu
       <p className="text-gray-500">
         Your account has been created and your wedding website is live. What would you like to do
         first?
+      </p>
+
+      <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-4 py-3 max-w-sm mx-auto">
+        We&apos;ve sent a verification link to <b>{email}</b> — please click it to secure your
+        account. (Check spam if it doesn&apos;t arrive; you can resend it from Settings.)
+      </p>
+
+      <p className="text-sm text-gray-400 max-w-sm mx-auto">
+        Planning together? Invite your partner (as an admin), family, or wedding planner from{' '}
+        <button
+          onClick={() => navigate(`/${slug}/dashboard/settings`)}
+          className="text-maroon-700 underline"
+        >
+          Settings → Members
+        </button>{' '}
+        — everyone works on this same wedding.
       </p>
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">

@@ -144,9 +144,12 @@ export const changePassword = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const { id } = getAuthUser(req);
+    const { id, email } = getAuthUser(req);
     await authService.changePassword(id, req.body.oldPassword, req.body.newPassword);
-    res.json({ message: 'Password changed successfully' });
+    // The change invalidated every token issued before it, including the one
+    // used for this request — hand back a fresh one so this session survives.
+    const token = authService.signToken({ id, email });
+    res.json({ message: 'Password changed successfully', token });
   } catch (error) {
     next(error);
   }

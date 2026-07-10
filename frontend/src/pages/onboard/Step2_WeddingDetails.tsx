@@ -1,8 +1,11 @@
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
+import { RESERVED_WEDDING_SLUGS } from '@wedding-planner/shared';
 import api from '../../api/axios';
 import DatePicker from '../../components/ui/DatePicker';
+
+const RESERVED = new Set<string>(RESERVED_WEDDING_SLUGS);
 
 interface SlugCheck {
   exists: boolean;
@@ -41,13 +44,15 @@ export default function Step2_WeddingDetails({ data, onNext, onBack }: Step2Prop
   });
 
   const slugValue = useWatch({ control, name: 'slug', defaultValue: data.slug || '' });
-  const slugValid = slugValue && slugValue.length >= 3 && /^[a-z0-9-]+$/.test(slugValue);
+  const slugReserved = RESERVED.has(slugValue);
+  const slugValid =
+    slugValue && slugValue.length >= 3 && /^[a-z0-9-]+$/.test(slugValue) && !slugReserved;
   const { data: slugCheck, isFetching: slugChecking } = useSlugAvailability(slugValue);
   const slugTaken = slugValid && !slugChecking && slugCheck?.exists === true;
   const slugAvailable = slugValid && !slugChecking && slugCheck?.exists === false;
 
   const onSubmit = (values: Step2Data) => {
-    if (slugTaken) return;
+    if (slugTaken || slugReserved) return;
     onNext(values);
   };
 
@@ -125,6 +130,9 @@ export default function Step2_WeddingDetails({ data, onNext, onBack }: Step2Prop
             </p>
           )}
           {errors.slug && <p className="text-red-500 text-xs mt-1">{errors.slug.message}</p>}
+          {slugReserved && !errors.slug && (
+            <p className="text-red-500 text-xs mt-1">That URL is reserved. Try another.</p>
+          )}
           {slugValid &&
             !errors.slug &&
             (slugChecking ? (
@@ -142,7 +150,7 @@ export default function Step2_WeddingDetails({ data, onNext, onBack }: Step2Prop
           </button>
           <button
             type="submit"
-            disabled={slugTaken || slugChecking}
+            disabled={slugTaken || slugReserved || slugChecking}
             className="btn-primary flex-1 py-3 disabled:opacity-50"
           >
             Next

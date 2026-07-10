@@ -525,7 +525,7 @@ export default function Accommodations() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-gray-500">Loading accommodations...</div>
+        <div className="text-ink-low">Loading accommodations...</div>
       </div>
     );
   }
@@ -556,13 +556,13 @@ export default function Accommodations() {
           : undefined
       }
       onDragEnd={draggable ? () => setDraggingGuestId(null) : undefined}
-      className={`flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-opacity ${
+      className={`flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-raised transition-opacity ${
         draggable ? 'cursor-grab active:cursor-grabbing' : ''
       } ${draggingGuestId === guest.id ? 'opacity-40' : ''}`}
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-sm font-medium text-gray-800 truncate">
+          <span className="text-sm font-medium text-ink-high truncate">
             {[guest.first_name, guest.last_name].filter(Boolean).join(' ')}
           </span>
           {guest.side === 'bride' && <span className="badge-bride text-xs">Bride</span>}
@@ -570,12 +570,12 @@ export default function Accommodations() {
           {guest.is_vip && <span className="badge bg-gold-100 text-gold-800 text-xs">VIP</span>}
         </div>
         {roomInfo && (
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-xs text-ink-dim mt-0.5">
             Room {roomInfo.room_number} · {roomInfo.venue_name}
           </p>
         )}
       </div>
-      {draggable && <span className="text-gray-300 text-xs select-none">⠿</span>}
+      {draggable && <span className="text-ink-dim text-xs select-none">⠿</span>}
     </div>
   );
 
@@ -673,10 +673,10 @@ export default function Accommodations() {
             <HiOutlineOfficeBuilding className="w-10 h-10 text-gold-600" />
           </div>
           <div>
-            <h2 className="text-xl font-display font-bold text-maroon-800 mb-2">
+            <h2 className="text-xl display font-bold text-maroon-800 mb-2">
               No accommodation venues yet
             </h2>
-            <p className="text-gray-500 text-sm max-w-sm">
+            <p className="text-ink-low text-sm max-w-sm">
               Add a venue in the Venues page and enable &quot;Has Accommodation&quot; to start
               managing room allocations here.
             </p>
@@ -700,7 +700,7 @@ export default function Accommodations() {
 
               {/* Search */}
               <div className="relative mb-4">
-                <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-dim" />
                 <input
                   type="text"
                   placeholder="Search guests..."
@@ -711,7 +711,7 @@ export default function Accommodations() {
                 {guestPanelSearch && (
                   <button
                     onClick={() => setGuestPanelSearch('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-dim hover:text-ink-mid"
                   >
                     <HiOutlineX className="w-4 h-4" />
                   </button>
@@ -722,11 +722,11 @@ export default function Accommodations() {
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
-                  <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                  <span className="text-xs font-semibold text-ink-mid uppercase tracking-wide">
                     Unassigned ({filteredGuestSegments.unassigned.length})
                   </span>
                   {filteredGuestSegments.unassigned.length > 0 && (
-                    <span className="ml-auto text-xs text-gray-400 italic">drag to assign</span>
+                    <span className="ml-auto text-xs text-ink-dim italic">drag to assign</span>
                   )}
                 </div>
                 {filteredGuestSegments.unassigned.length > 0 ? (
@@ -734,7 +734,7 @@ export default function Accommodations() {
                     renderGuestRow(g, undefined, true),
                   )
                 ) : (
-                  <p className="text-xs italic text-gray-400 px-2">
+                  <p className="text-xs italic text-ink-dim px-2">
                     {guestPanelSearch ? 'No matches' : 'All guests assigned'}
                   </p>
                 )}
@@ -744,7 +744,7 @@ export default function Accommodations() {
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                  <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                  <span className="text-xs font-semibold text-ink-mid uppercase tracking-wide">
                     Assigned ({filteredGuestSegments.assigned.length})
                   </span>
                 </div>
@@ -753,7 +753,7 @@ export default function Accommodations() {
                     renderGuestRow(g, roomLookup.get(g.id)),
                   )
                 ) : (
-                  <p className="text-xs italic text-gray-400 px-2">
+                  <p className="text-xs italic text-ink-dim px-2">
                     {guestPanelSearch ? 'No matches' : 'No guests assigned yet'}
                   </p>
                 )}
@@ -765,14 +765,14 @@ export default function Accommodations() {
                   onClick={() => setNoRoomNeededCollapsed(!noRoomNeededCollapsed)}
                   className="flex items-center gap-2 w-full mb-2 hover:opacity-80"
                 >
-                  <span className="w-2 h-2 rounded-full bg-gray-300 flex-shrink-0" />
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex-1 text-left">
+                  <span className="w-2 h-2 rounded-full bg-ink-dim flex-shrink-0" />
+                  <span className="text-xs font-semibold text-ink-low uppercase tracking-wide flex-1 text-left">
                     No Room Needed ({filteredGuestSegments.noRoomNeeded.length})
                   </span>
                   {noRoomNeededCollapsed ? (
-                    <HiOutlineChevronDown className="w-4 h-4 text-gray-400" />
+                    <HiOutlineChevronDown className="w-4 h-4 text-ink-dim" />
                   ) : (
-                    <HiOutlineChevronUp className="w-4 h-4 text-gray-400" />
+                    <HiOutlineChevronUp className="w-4 h-4 text-ink-dim" />
                   )}
                 </button>
                 {!noRoomNeededCollapsed &&
@@ -820,7 +820,7 @@ export default function Accommodations() {
                       <button
                         type="button"
                         onClick={toggleHotelCollapsed}
-                        className="mt-0.5 p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 flex-shrink-0"
+                        className="mt-0.5 p-1.5 rounded-lg hover:bg-surface-highest text-ink-low flex-shrink-0"
                         aria-expanded={!isHotelCollapsed}
                         title={isHotelCollapsed ? 'Expand' : 'Collapse'}
                       >
@@ -836,12 +836,12 @@ export default function Accommodations() {
                         </div>
                         <div className="min-w-0">
                           <h3 className="font-semibold text-maroon-800">{hotel.name}</h3>
-                          {hotel.city && <p className="text-xs text-gray-500">{hotel.city}</p>}
+                          {hotel.city && <p className="text-xs text-ink-low">{hotel.city}</p>}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-wrap sm:justify-end">
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-ink-low">
                         {hotel.rooms?.length || 0} rooms · {hotel.guestsAllocated}/
                         {hotel.totalCapacity} guests
                       </span>
@@ -890,26 +890,26 @@ export default function Accommodations() {
                           </button>
                           <button
                             onClick={() => setEditingHotelId(null)}
-                            className="text-xs text-gray-500 hover:text-gray-700"
+                            className="text-xs text-ink-low hover:text-ink-mid"
                           >
                             Cancel
                           </button>
                         </div>
                       ) : (
                         <div className="flex flex-wrap items-center gap-4 group/dates">
-                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                          <div className="flex items-center gap-1.5 text-xs text-ink-low">
                             <span>Default check-in:</span>
-                            <span className="font-medium text-gray-700">
+                            <span className="font-medium text-ink-mid">
                               {hotel.default_check_in_date ?? (
-                                <span className="italic text-gray-400">not set</span>
+                                <span className="italic text-ink-low">not set</span>
                               )}
                             </span>
                           </div>
-                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                          <div className="flex items-center gap-1.5 text-xs text-ink-low">
                             <span>Check-out:</span>
-                            <span className="font-medium text-gray-700">
+                            <span className="font-medium text-ink-mid">
                               {hotel.default_check_out_date ?? (
-                                <span className="italic text-gray-400">not set</span>
+                                <span className="italic text-ink-low">not set</span>
                               )}
                             </span>
                           </div>
@@ -926,7 +926,7 @@ export default function Accommodations() {
                                 return next;
                               });
                             }}
-                            className="opacity-0 group-hover/dates:opacity-100 transition-opacity text-gray-400 hover:text-gray-600"
+                            className="opacity-0 group-hover/dates:opacity-100 transition-opacity text-ink-dim hover:text-ink-mid"
                             title="Edit default dates"
                           >
                             <HiOutlinePencil className="w-3.5 h-3.5" />
@@ -1011,7 +1011,7 @@ export default function Accommodations() {
                                       ? isFull
                                         ? 'bg-red-50 ring-2 ring-red-300'
                                         : 'bg-green-50 ring-2 ring-green-300'
-                                      : 'bg-gray-50'
+                                      : 'bg-surface-raised'
                                   }`}
                                 >
                                   {/* Room number + type */}
@@ -1033,7 +1033,7 @@ export default function Accommodations() {
                                         autoFocus
                                       />
                                     ) : (
-                                      <span className="inline-flex items-center gap-1.5 font-medium text-sm text-gray-800">
+                                      <span className="inline-flex items-center gap-1.5 font-medium text-sm text-ink-high">
                                         Room {room.room_number}
                                         <button
                                           onClick={() => {
@@ -1043,7 +1043,7 @@ export default function Accommodations() {
                                               capacity: room.capacity ?? 0,
                                             });
                                           }}
-                                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 transition-opacity"
+                                          className="opacity-0 group-hover:opacity-100 text-ink-dim hover:text-ink-mid transition-opacity"
                                           title="Edit room"
                                         >
                                           <HiOutlinePencil className="w-3.5 h-3.5" />
@@ -1051,11 +1051,11 @@ export default function Accommodations() {
                                       </span>
                                     )}
                                     {room.room_type && (
-                                      <span className="badge bg-gray-100 text-gray-600 text-xs capitalize">
+                                      <span className="badge bg-surface-highest text-ink-mid text-xs capitalize">
                                         {room.room_type}
                                       </span>
                                     )}
-                                    <span className="text-xs text-gray-400">
+                                    <span className="text-xs text-ink-low">
                                       {isEditingRoom ? (
                                         <input
                                           type="number"
@@ -1090,14 +1090,14 @@ export default function Accommodations() {
                                               ? 'bg-pink-100 text-pink-800'
                                               : g.side === 'groom'
                                                 ? 'bg-blue-100 text-blue-800'
-                                                : 'bg-gray-100 text-gray-700'
+                                                : 'bg-surface-highest text-ink-mid'
                                           }`}
                                         >
                                           {[g.first_name, g.last_name].filter(Boolean).join(' ')}
                                         </span>
                                       ))
                                     ) : (
-                                      <span className="text-xs italic text-gray-400">
+                                      <span className="text-xs italic text-ink-dim">
                                         Available
                                       </span>
                                     )}
@@ -1116,7 +1116,7 @@ export default function Accommodations() {
                                         </button>
                                         <button
                                           onClick={() => setEditingRoomId(null)}
-                                          className="text-xs text-gray-500 hover:text-gray-700"
+                                          className="text-xs text-ink-low hover:text-ink-mid"
                                         >
                                           Cancel
                                         </button>
@@ -1170,7 +1170,7 @@ export default function Accommodations() {
                           </div>
                         ) : (
                           <div className="flex items-center justify-between py-3">
-                            <p className="text-sm text-gray-400 italic">No rooms added yet</p>
+                            <p className="text-sm text-ink-dim italic">No rooms added yet</p>
                             <button
                               onClick={() => navigate('../venues')}
                               className="text-xs text-gold-700 hover:text-gold-900 font-medium"
@@ -1212,17 +1212,17 @@ export default function Accommodations() {
                 onClick={attemptCloseRoomModal}
               >
                 <div
-                  className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+                  className="bg-surface-panel rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-between p-6 border-b border-gold-200">
                     <div>
-                      <h2 className="text-xl font-display font-bold text-maroon-800">Add Rooms</h2>
-                      {hotel && <p className="text-sm text-gray-500 mt-0.5">{hotel.name}</p>}
+                      <h2 className="text-xl display font-bold text-maroon-800">Add Rooms</h2>
+                      {hotel && <p className="text-sm text-ink-low mt-0.5">{hotel.name}</p>}
                     </div>
                     <button
                       onClick={attemptCloseRoomModal}
-                      className="p-2 hover:bg-gray-100 rounded-lg"
+                      className="p-2 hover:bg-surface-highest rounded-lg"
                     >
                       <HiOutlineX className="w-5 h-5" />
                     </button>
@@ -1233,7 +1233,7 @@ export default function Accommodations() {
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="text-sm font-semibold text-maroon-800">Room Categories</h3>
-                          <p className="text-xs text-gray-400 mt-0.5">
+                          <p className="text-xs text-ink-dim mt-0.5">
                             Rooms auto-numbered per category (e.g. STD-1, STD-2…)
                           </p>
                         </div>
@@ -1250,10 +1250,10 @@ export default function Accommodations() {
 
                       {existingRooms.length > 0 && (
                         <div className="space-y-1">
-                          <p className="text-xs text-gray-500">Already added rooms:</p>
+                          <p className="text-xs text-ink-low">Already added rooms:</p>
                           <div className="flex flex-wrap gap-1.5">
                             {Object.entries(existingGroups).map(([type, count]) => (
-                              <span key={type} className="badge bg-gray-100 text-gray-600 text-xs">
+                              <span key={type} className="badge bg-surface-highest text-ink-mid text-xs">
                                 {type} × {count}
                               </span>
                             ))}
@@ -1262,7 +1262,7 @@ export default function Accommodations() {
                       )}
 
                       {roomCategories.length === 0 && (
-                        <p className="text-xs text-gray-400 text-center py-2">
+                        <p className="text-xs text-ink-dim text-center py-2">
                           No categories yet. Click &quot;+ Add Category&quot; to bulk-add rooms.
                         </p>
                       )}
@@ -1270,10 +1270,10 @@ export default function Accommodations() {
                       {roomCategories.length > 0 && (
                         <div className="space-y-2">
                           <div className="grid grid-cols-[1fr_72px_72px_100px_32px] gap-2">
-                            <span className="text-xs text-gray-500 font-medium">Category</span>
-                            <span className="text-xs text-gray-500 font-medium">Count</span>
-                            <span className="text-xs text-gray-500 font-medium">Occupancy</span>
-                            <span className="text-xs text-gray-500 font-medium">Rate / night</span>
+                            <span className="text-xs text-ink-low font-medium">Category</span>
+                            <span className="text-xs text-ink-low font-medium">Count</span>
+                            <span className="text-xs text-ink-low font-medium">Occupancy</span>
+                            <span className="text-xs text-ink-low font-medium">Rate / night</span>
                             <span />
                           </div>
                           {roomCategories.map((cat, idx) => (
@@ -1387,7 +1387,7 @@ export default function Accommodations() {
                               </button>
                             </div>
                           ))}
-                          <p className="text-xs text-gray-400 pt-1">
+                          <p className="text-xs text-ink-dim pt-1">
                             Total rooms to add:{' '}
                             <span className="font-medium text-maroon-700">{totalToAdd}</span>
                           </p>
@@ -1472,16 +1472,16 @@ export default function Accommodations() {
                 onClick={attemptCloseAllocationModal}
               >
                 <div
-                  className="bg-white rounded-2xl w-full max-w-2xl flex flex-col max-h-[92vh]"
+                  className="bg-surface-panel rounded-2xl w-full max-w-2xl flex flex-col max-h-[92vh]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* Header */}
                   <div className="flex items-center justify-between p-6 border-b border-gold-200 flex-shrink-0">
                     <div>
-                      <h2 className="text-xl font-display font-bold text-maroon-800">
+                      <h2 className="text-xl display font-bold text-maroon-800">
                         {isEditing ? 'Edit Room Assignment' : 'Assign Guests to Room'}
                       </h2>
-                      <p className="text-sm text-gray-500 mt-0.5">
+                      <p className="text-sm text-ink-low mt-0.5">
                         {isEditing
                           ? 'Update guests or dates — uncheck guests to remove them'
                           : 'Select guests to assign, then set their stay dates'}
@@ -1503,7 +1503,7 @@ export default function Accommodations() {
                     </div>
                     <button
                       onClick={attemptCloseAllocationModal}
-                      className="p-2 hover:bg-gray-100 rounded-lg"
+                      className="p-2 hover:bg-surface-highest rounded-lg"
                     >
                       <HiOutlineX className="w-5 h-5" />
                     </button>
@@ -1523,10 +1523,10 @@ export default function Accommodations() {
                           <div className="flex flex-col items-center justify-center min-h-[140px] border border-gold-200 rounded-xl bg-gold-50 p-6 text-center gap-3">
                             <HiOutlineUserGroup className="w-8 h-8 text-gold-400" />
                             <div>
-                              <p className="text-sm font-medium text-gray-700">
+                              <p className="text-sm font-medium text-ink-mid">
                                 No guests added yet
                               </p>
-                              <p className="text-xs text-gray-500 mt-1">
+                              <p className="text-xs text-ink-low mt-1">
                                 Add guests before assigning them to a room
                               </p>
                             </div>
@@ -1557,7 +1557,7 @@ export default function Accommodations() {
 
                             {/* Search bar */}
                             <div className="relative mb-3">
-                              <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                              <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-dim" />
                               <input
                                 ref={searchInputRef}
                                 type="text"
@@ -1571,7 +1571,7 @@ export default function Accommodations() {
                                 <button
                                   type="button"
                                   onClick={() => setGuestSearchQuery('')}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-dim hover:text-ink-mid"
                                 >
                                   <HiOutlineX className="w-4 h-4" />
                                 </button>
@@ -1612,7 +1612,7 @@ export default function Accommodations() {
                                             ? 'opacity-40 cursor-not-allowed'
                                             : isSelected
                                               ? 'bg-maroon-50 cursor-pointer'
-                                              : 'hover:bg-gray-50 cursor-pointer'
+                                              : 'hover:bg-surface-raised cursor-pointer'
                                         }`}
                                       >
                                         <input
@@ -1622,8 +1622,8 @@ export default function Accommodations() {
                                           disabled={isDisabled}
                                           className="w-4 h-4 accent-maroon-700 rounded"
                                         />
-                                        <HiOutlineUser className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                                        <span className="text-sm text-gray-800 flex-1">
+                                        <HiOutlineUser className="w-4 h-4 text-ink-dim flex-shrink-0" />
+                                        <span className="text-sm text-ink-high flex-1">
                                           {[guest.first_name, guest.last_name]
                                             .filter(Boolean)
                                             .join(' ')}
@@ -1668,7 +1668,7 @@ export default function Accommodations() {
                                             ? 'opacity-40 cursor-not-allowed'
                                             : isSelected
                                               ? 'bg-maroon-50 cursor-pointer'
-                                              : 'hover:bg-gray-50 cursor-pointer'
+                                              : 'hover:bg-surface-raised cursor-pointer'
                                         }`}
                                       >
                                         <input
@@ -1678,8 +1678,8 @@ export default function Accommodations() {
                                           disabled={isDisabled}
                                           className="w-4 h-4 accent-maroon-700 rounded"
                                         />
-                                        <HiOutlineUser className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                                        <span className="text-sm text-gray-800 flex-1">
+                                        <HiOutlineUser className="w-4 h-4 text-ink-dim flex-shrink-0" />
+                                        <span className="text-sm text-ink-high flex-1">
                                           {[guest.first_name, guest.last_name]
                                             .filter(Boolean)
                                             .join(' ')}
@@ -1696,7 +1696,7 @@ export default function Accommodations() {
                               )}
 
                               {filteredNeedsAccomm.length === 0 && filteredOther.length === 0 && (
-                                <div className="px-4 py-6 text-center text-sm text-gray-500">
+                                <div className="px-4 py-6 text-center text-sm text-ink-low">
                                   No guests match &quot;{guestSearchQuery}&quot;
                                 </div>
                               )}
@@ -1793,16 +1793,16 @@ export default function Accommodations() {
             onClick={() => setShowImportModal(false)}
           >
             <div
-              className="bg-white rounded-2xl w-full max-w-2xl"
+              className="bg-surface-panel rounded-2xl w-full max-w-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-6 border-b border-gold-200">
-                <h2 className="text-xl font-display font-bold text-maroon-800">
+                <h2 className="text-xl display font-bold text-maroon-800">
                   Import Room Allocations from Excel
                 </h2>
                 <button
                   onClick={() => setShowImportModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
+                  className="p-2 hover:bg-surface-highest rounded-lg"
                 >
                   <HiOutlineX className="w-5 h-5" />
                 </button>
@@ -1811,7 +1811,7 @@ export default function Accommodations() {
               <div className="p-6 space-y-4">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h3 className="font-semibold text-blue-900 mb-3">Import Instructions</h3>
-                  <ol className="list-decimal ml-5 space-y-2 text-sm text-gray-700">
+                  <ol className="list-decimal ml-5 space-y-2 text-sm text-ink-mid">
                     <li>
                       <strong>Download the sample template</strong> - It contains separate sheets
                       for each venue with example room allocations
@@ -1881,17 +1881,17 @@ export default function Accommodations() {
             }}
           >
             <div
-              className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+              className="bg-surface-panel rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-6 border-b border-gold-200">
-                <h2 className="text-xl font-display font-bold text-maroon-800">Import Results</h2>
+                <h2 className="text-xl display font-bold text-maroon-800">Import Results</h2>
                 <button
                   onClick={() => {
                     setShowImportResultsModal(false);
                     setImportResults(null);
                   }}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
+                  className="p-2 hover:bg-surface-highest rounded-lg"
                 >
                   <HiOutlineX className="w-5 h-5" />
                 </button>
@@ -1919,7 +1919,7 @@ export default function Accommodations() {
                       <span className="text-xl">✓</span>
                       Successfully Imported
                     </h3>
-                    <div className="text-sm text-gray-700 space-y-3">
+                    <div className="text-sm text-ink-mid space-y-3">
                       <div className="flex gap-4">
                         <p>
                           <strong>{importResults.count} room allocations</strong> processed
@@ -1939,7 +1939,7 @@ export default function Accommodations() {
                             {importResults.allocations.map((allocation, idx) => (
                               <div
                                 key={idx}
-                                className={`bg-white border rounded p-2 text-xs ${
+                                className={`bg-surface-panel border rounded p-2 text-xs ${
                                   allocation.action === 'updated'
                                     ? 'border-blue-200 bg-blue-50'
                                     : 'border-green-200'
@@ -1947,18 +1947,18 @@ export default function Accommodations() {
                               >
                                 <div className="flex items-center justify-between">
                                   <div className="flex-1 flex items-center gap-2">
-                                    <span className="font-medium text-gray-800">
+                                    <span className="font-medium text-ink-high">
                                       {allocation.guest}
                                     </span>
-                                    <span className="text-gray-500">→</span>
-                                    <span className="text-gray-600">Room {allocation.room}</span>
+                                    <span className="text-ink-low">→</span>
+                                    <span className="text-ink-mid">Room {allocation.room}</span>
                                     {allocation.action === 'updated' && (
                                       <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
                                         Updated
                                       </span>
                                     )}
                                   </div>
-                                  <div className="text-gray-500 text-right">{allocation.venue}</div>
+                                  <div className="text-ink-low text-right">{allocation.venue}</div>
                                 </div>
                               </div>
                             ))}
@@ -2000,13 +2000,13 @@ export default function Accommodations() {
 
                     <div className="space-y-3 max-h-96 overflow-y-auto">
                       {importResults.errors?.map((err, idx) => (
-                        <div key={idx} className="bg-white border border-red-200 rounded-lg p-3">
+                        <div key={idx} className="bg-surface-panel border border-red-200 rounded-lg p-3">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
-                              <div className="font-medium text-gray-800">
+                              <div className="font-medium text-ink-high">
                                 {err.guest || `Row ${err.row}`}
                               </div>
-                              <div className="text-xs text-gray-500 mt-1">
+                              <div className="text-xs text-ink-low mt-1">
                                 Sheet: {err.sheet} • Row: {err.row}
                               </div>
                             </div>

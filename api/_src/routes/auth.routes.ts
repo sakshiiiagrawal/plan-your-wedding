@@ -11,7 +11,7 @@ import {
   changePasswordSchema,
   setActiveWeddingSchema,
 } from '../validators/auth.validator';
-import { authLimiter } from '../middleware/rate-limit.middleware';
+import { authLimiter, resendVerificationLimiter } from '../middleware/rate-limit.middleware';
 
 const router = Router();
 
@@ -32,7 +32,7 @@ router.post(
   authController.resetPassword,
 );
 router.post('/verify-email', validateBody(verifyEmailSchema), authController.verifyEmail);
-router.post('/resend-verification', authController.resendVerification);
+router.post('/resend-verification', resendVerificationLimiter, authController.resendVerification);
 router.patch('/me', validateBody(updateProfileSchema), authController.updateProfile);
 router.post(
   '/change-password',

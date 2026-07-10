@@ -639,7 +639,7 @@ export default function Guests() {
           <div className="flex gap-2">
             <button
               onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm border border-line-strong rounded-lg hover:bg-surface-raised text-ink-mid transition-colors"
             >
               <HiOutlineUpload className="w-4 h-4" />
               Import Excel
@@ -647,7 +647,7 @@ export default function Guests() {
             <button
               onClick={() => exportGuests.mutate()}
               disabled={exportGuests.isPending}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm border border-line-strong rounded-lg hover:bg-surface-raised text-ink-mid transition-colors"
             >
               <HiOutlineDownload className="w-4 h-4" />
               Export Excel
@@ -691,7 +691,7 @@ export default function Guests() {
         }}
       >
         <div className="relative flex-1 min-w-[200px] max-w-xs">
-          <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-dim" />
           <input
             type="text"
             placeholder="Search guests…"
@@ -864,7 +864,7 @@ export default function Guests() {
                         ) : (
                           <button
                             onClick={() => unmarkForDelete(guest.id)}
-                            className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500"
+                            className="p-1.5 hover:bg-surface-highest rounded-lg text-ink-low"
                             title="Undo deletion"
                           >
                             <HiOutlineX className="w-4 h-4" />
@@ -878,7 +878,7 @@ export default function Guests() {
 
               {filteredGuests.length === 0 && pendingRows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-gray-500">
+                  <td colSpan={6} className="p-8 text-center text-ink-low">
                     {searchTerm || rsvpFilter !== 'all'
                       ? 'No guests match your search.'
                       : 'No guests yet — add your first guest.'}

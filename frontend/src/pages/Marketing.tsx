@@ -7,9 +7,9 @@ export default function Marketing() {
   const { isAuthenticated, slug, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && isAuthenticated && slug) {
-      navigate(`/${slug}/dashboard`, { replace: true });
-    }
+    if (loading || !isAuthenticated) return;
+    // Collaborator accounts have no wedding of their own — their home is /invites
+    navigate(slug ? `/${slug}/dashboard` : '/invites', { replace: true });
   }, [loading, isAuthenticated, slug, navigate]);
 
   return (

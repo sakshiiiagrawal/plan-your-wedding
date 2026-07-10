@@ -13,6 +13,29 @@ export const RESERVED_PAGE_SLUGS = [
   'settings',
 ] as const;
 
+/** First URL segments that can never be wedding slugs — top-level app routes
+ *  (App.tsx) and infrastructure paths (Vercel rewrites, static assets) win
+ *  over /:slug, so a wedding registered under one would be unreachable.
+ *  Shared so onboarding validates the same list the API enforces. */
+export const RESERVED_WEDDING_SLUGS = [
+  'login',
+  'logout',
+  'onboard',
+  'invites',
+  'accept-invite',
+  'verify-email',
+  'forgot-password',
+  'reset-password',
+  'dashboard',
+  'settings',
+  'rsvp',
+  'admin',
+  'api',
+  'assets',
+  'health',
+  'p',
+] as const;
+
 export interface PublicPageRow {
   id: string;
   user_id: string;

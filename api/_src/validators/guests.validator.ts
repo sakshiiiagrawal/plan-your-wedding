@@ -61,6 +61,8 @@ export const publicRsvpSchema = z.object({
   first_name: z.string().min(1),
   last_name: emptyStringToNull,
   attending: z.boolean(),
+  // Per-event breakdown: the events the guest will attend (others decline)
+  event_ids: z.array(z.string().uuid()).max(50).optional(),
   plus_ones: z.number().int().nonnegative().max(10).optional(),
   notes: z.preprocess(
     (value) => (value === '' ? null : value),

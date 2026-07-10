@@ -39,9 +39,9 @@ function GalleryCard({
 
       <button
         onClick={onDelete}
-        className="absolute top-2 right-2 p-1.5 bg-white/80 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute top-2 right-2 p-1.5 bg-surface-panel/80 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
       >
-        <HiOutlineTrash className="w-4 h-4 text-gray-700" />
+        <HiOutlineTrash className="w-4 h-4 text-ink-mid" />
       </button>
     </div>
   );
@@ -108,11 +108,11 @@ export default function Gallery() {
           style={{ minHeight: 180 }}
         >
           {uploadImage.isPending ? (
-            <p className="text-xs text-gray-400">Uploading...</p>
+            <p className="text-xs text-ink-dim">Uploading...</p>
           ) : (
             <>
               <HiOutlinePlus className="w-8 h-8 text-gold-300" />
-              <p className="text-xs text-gray-400">Add photos</p>
+              <p className="text-xs text-ink-dim">Add photos</p>
             </>
           )}
         </div>
@@ -128,7 +128,7 @@ export default function Gallery() {
       />
 
       {images.length === 0 && (
-        <div className="text-center text-gray-400 text-sm py-8">
+        <div className="text-center text-ink-dim text-sm py-8">
           No photos yet — upload your first one above.
         </div>
       )}

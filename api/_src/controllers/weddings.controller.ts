@@ -8,11 +8,9 @@ export const getWeddingBySlug = async (
 ): Promise<void> => {
   try {
     const data = await repo.findBySlug(req.params.slug);
-    if (!data) {
-      res.json({ exists: false });
-      return;
-    }
-    res.json({ exists: true, userId: data.id });
+    // Existence is all the public callers (SlugGuard, onboarding availability
+    // check) need — the owner's UUID stays private.
+    res.json({ exists: Boolean(data) });
   } catch (error) {
     next(error);
   }
