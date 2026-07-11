@@ -260,6 +260,7 @@ export default function Midnight({ data }: TemplateProps) {
             {enabled
               .filter(
                 (s) =>
+                  s.id !== 'hero' &&
                   SECTION_LABELS[s.id] &&
                   (s.id !== 'gallery' || showGallery) &&
                   (s.id !== 'events' || showEvents),

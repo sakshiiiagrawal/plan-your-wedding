@@ -689,7 +689,7 @@ export default function Accommodations() {
         <div className="flex flex-col lg:flex-row gap-6 items-start">
           {/* LEFT PANEL - Guest Panel */}
           <div className="lg:w-2/5 w-full">
-            <div className="card max-h-[calc(100vh-14rem)] overflow-y-auto">
+            <div className="card print-expand max-h-[calc(100vh-14rem)] overflow-y-auto">
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <h2 className="section-title">Guests</h2>

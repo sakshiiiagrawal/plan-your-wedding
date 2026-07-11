@@ -54,6 +54,7 @@ export default function Classic({ data }: TemplateProps) {
   const navLinks = enabled
     .filter(
       (s) =>
+        s.id !== 'hero' &&
         s.id !== 'rsvp' &&
         SECTION_LABELS[s.id] &&
         (s.id !== 'gallery' || showGallery) &&

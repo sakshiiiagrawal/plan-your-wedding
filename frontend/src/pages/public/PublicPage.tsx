@@ -13,7 +13,6 @@ import { SiteCopyContext } from '../../site/copy/context';
 import { resolvePartSettings, resolveSiteConfig } from '../../site/config';
 import { getPalette, getTemplate } from '../../site/registry';
 import QrCodeBlock from '../../site/QrCodeBlock';
-import PrintButton from '../../site/PrintButton';
 import { DEFAULT_QR_DESIGN_ID } from '../../site/qrDesigns';
 import type { SiteData } from '../../site/types';
 import { parseLocalDate } from '../../utils/date';
@@ -134,7 +133,6 @@ export default function PublicPage() {
         <Template key={`${page.page_slug}:${template.id}`} data={data} />
       </Suspense>
       <QrCodeBlock data={data} />
-      <PrintButton />
     </SiteCopyContext.Provider>
   );
 }

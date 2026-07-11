@@ -800,9 +800,22 @@ a:focus-visible,
   }
 }
 
-/* Print: hide dashboard chrome, print a clean list */
+/* Print: hide dashboard chrome, print a clean list. The dashboard shell pins
+   itself to 100vh with overflow:hidden (and several pages clip long lists into
+   internal scrollers), which would clip printing to a single screenful —
+   .print-expand unlocks those containers so the full content paginates. */
 @media print {
   .no-print {
     display: none !important;
+  }
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .print-expand {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 }

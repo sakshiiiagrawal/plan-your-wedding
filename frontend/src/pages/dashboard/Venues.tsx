@@ -390,6 +390,7 @@ function VenueRoomsSection({ venueId }: { venueId: string }) {
       </div>
       {expanded && (
         <div
+          className="print-expand"
           style={{
             borderRadius: 8,
             border: '1px solid var(--line-soft)',
