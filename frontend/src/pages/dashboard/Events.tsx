@@ -683,7 +683,10 @@ export default function Events() {
           });
           return (
             <div style={{ padding: 0 }}>
-              <div style={{ overflowY: 'auto', overflowX: 'hidden', maxHeight: viewportH }}>
+              <div
+                className="print-expand"
+                style={{ overflowY: 'auto', overflowX: 'hidden', maxHeight: viewportH }}
+              >
                 <div
                   style={{
                     position: 'relative',

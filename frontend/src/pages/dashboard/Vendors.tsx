@@ -36,6 +36,9 @@ import { financeTier } from '@wedding-planner/shared';
 import { SectionHeader } from '../../components/ui';
 import DatePicker from '../../components/ui/DatePicker';
 import SplitShare from '../../components/ui/SplitShare';
+import InstallmentsEditor, {
+  type InstallmentFormRow,
+} from '../../components/finance/InstallmentsEditor';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import { useAuth } from '../../contexts/AuthContext';
@@ -266,6 +269,7 @@ export default function Vendors() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [paymentForm, setPaymentForm] = useState<PaymentFormState>(DEFAULT_PAYMENT_FORM);
+  const [installments, setInstallments] = useState<InstallmentFormRow[]>([]);
 
   const { data: categoryTree = [], isLoading: loadingCategories } = useCategoryTree() as {
     data: Array<{ id: string; name: string; children?: Array<{ id: string }> }>;
@@ -460,6 +464,7 @@ export default function Vendors() {
     setEditingVendor(null);
     setActiveTab(0);
     setPaymentForm(DEFAULT_PAYMENT_FORM);
+    setInstallments([]);
   };
 
   const closeVendorModal = () => {
@@ -467,10 +472,11 @@ export default function Vendors() {
     resetForm();
   };
   const isVendorModalDirty =
-    JSON.stringify({ formData, paymentForm }) !==
+    JSON.stringify({ formData, paymentForm, installments }) !==
     JSON.stringify({
       formData: getVendorFormState(editingVendor),
       paymentForm: getVendorPaymentFormState(editingVendor),
+      installments: [],
     });
   const { attemptClose: attemptCloseVendorModal, dialog: vendorUnsavedDialog } =
     useUnsavedChangesPrompt({
@@ -532,39 +538,38 @@ export default function Vendors() {
         const savedVendor = await createMutation.mutateAsync(payload);
         toast.success('Vendor added successfully.');
 
-        if (enteredAmount !== 0 && savedVendor?.id && savedVendor?.expense_id) {
+        const rowsToRecord = installments.filter((row) => Number(row.amount || 0) !== 0);
+        if (rowsToRecord.length > 0 && savedVendor?.id && savedVendor?.expense_id) {
           try {
-            await createVendorPayment.mutateAsync({
-              sourceId: savedVendor.id,
-              amount: paymentMagnitude,
-              direction: paymentDirection,
-              status: isScheduled ? 'scheduled' : 'posted',
-              due_date: paymentForm.payment_date,
-              paid_date: isScheduled ? null : paymentForm.payment_date,
-              payment_method: isScheduled ? null : paymentForm.payment_method,
-              ...(canSeeSplits
-                ? {
-                    paid_by_side: paymentForm.paid_by_side,
-                    paid_bride_share_percentage:
-                      paymentForm.paid_by_side === 'shared'
-                        ? paymentForm.paid_bride_share_percentage
-                        : null,
-                  }
-                : {}),
-              notes: paymentForm.notes || null,
-            });
+            for (const row of rowsToRecord) {
+              const amount = Number(row.amount || 0);
+              const direction = amount < 0 ? 'inflow' : 'outflow';
+              const magnitude = Math.abs(amount);
+              const scheduled = row.payment_date > TODAY;
+              await createVendorPayment.mutateAsync({
+                sourceId: savedVendor.id,
+                amount: magnitude,
+                direction,
+                status: scheduled ? 'scheduled' : 'posted',
+                due_date: row.payment_date,
+                paid_date: scheduled ? null : row.payment_date,
+                payment_method: scheduled ? null : row.payment_method,
+                ...(canSeeSplits
+                  ? {
+                      paid_by_side: row.paid_by_side,
+                      paid_bride_share_percentage:
+                        row.paid_by_side === 'shared' ? row.paid_bride_share_percentage : null,
+                    }
+                  : {}),
+                notes: row.notes || null,
+              });
+            }
             toast.success(
-              isScheduled
-                ? isReversal
-                  ? 'Planned reversal saved.'
-                  : 'Planned payment saved.'
-                : isReversal
-                  ? 'Reversal recorded.'
-                  : 'Payment recorded.',
+              rowsToRecord.length > 1 ? 'Installments recorded.' : 'Payment recorded.',
             );
           } catch {
             toast.error(
-              'Vendor saved but failed to record payment. You can add it from the Payments tab.',
+              'Vendor saved but failed to record all payments. You can add the rest from the Payments tab.',
             );
           }
         }
@@ -2566,225 +2571,90 @@ export default function Vendors() {
                           gap: 14,
                         }}
                       >
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: 10,
-                            fontWeight: 600,
-                            color: 'var(--ink-dim)',
-                            letterSpacing: '0.08em',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          {editingVendor
-                            ? isScheduled
-                              ? 'Schedule Payment'
-                              : 'Record Payment'
-                            : 'Initial Payment (Optional)'}
-                        </p>
-
-                        {!editingVendor && (
-                          <p style={{ margin: 0, fontSize: 12, color: 'var(--ink-low)' }}>
-                            Optionally record a token or advance payment alongside the vendor. Leave
-                            blank to skip.
-                          </p>
-                        )}
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                          <div>
-                            <label className="label">Amount</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={paymentForm.amount}
-                              onChange={(e) =>
-                                setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))
-                              }
-                              className="input"
-                              placeholder="Enter amount"
-                            />
-                          </div>
-                          <div>
-                            <label className="label">
-                              {isScheduled ? 'Due Date' : 'Payment Date'}
-                            </label>
-                            <DatePicker
-                              value={paymentForm.payment_date}
-                              onChange={(value) =>
-                                setPaymentForm((prev) => ({ ...prev, payment_date: value }))
-                              }
-                              placeholder={isScheduled ? 'Due date' : 'Payment date'}
-                            />
-                          </div>
-                        </div>
-
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: canSeeSplits ? '1fr 1fr' : '1fr',
-                            gap: 12,
-                          }}
-                        >
-                          <div>
-                            <label className="label">Method</label>
-                            <select
-                              value={paymentForm.payment_method}
-                              onChange={(e) =>
-                                setPaymentForm((prev) => ({
-                                  ...prev,
-                                  payment_method: e.target.value,
-                                }))
-                              }
-                              className="input"
-                              disabled={isScheduled}
+                        {editingVendor ? (
+                          <>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: 10,
+                                fontWeight: 600,
+                                color: 'var(--ink-dim)',
+                                letterSpacing: '0.08em',
+                                textTransform: 'uppercase',
+                              }}
                             >
-                              {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
-                                <option key={value} value={value}>
-                                  {label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          {canSeeSplits && (
-                            <div>
-                              <label className="label">Paid By</label>
-                              <select
-                                value={paymentForm.paid_by_side}
-                                onChange={(e) =>
-                                  setPaymentForm((prev) => ({
-                                    ...prev,
-                                    paid_by_side: e.target.value as 'bride' | 'groom' | 'shared',
-                                  }))
-                                }
-                                className="input"
-                              >
-                                <option value="bride">Bride</option>
-                                <option value="groom">Groom</option>
-                                <option value="shared">Shared</option>
-                              </select>
+                              {isScheduled ? 'Schedule Payment' : 'Record Payment'}
+                            </p>
+
+                            <div
+                              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}
+                            >
+                              <div>
+                                <label className="label">Amount</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={paymentForm.amount}
+                                  onChange={(e) =>
+                                    setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))
+                                  }
+                                  className="input"
+                                  placeholder="Enter amount"
+                                />
+                              </div>
+                              <div>
+                                <label className="label">
+                                  {isScheduled ? 'Due Date' : 'Payment Date'}
+                                </label>
+                                <DatePicker
+                                  value={paymentForm.payment_date}
+                                  onChange={(value) =>
+                                    setPaymentForm((prev) => ({ ...prev, payment_date: value }))
+                                  }
+                                  placeholder={isScheduled ? 'Due date' : 'Payment date'}
+                                />
+                              </div>
                             </div>
-                          )}
-                        </div>
 
-                        {canSeeSplits && paymentForm.paid_by_side === 'shared' && (
-                          <SplitShare
-                            total={paymentMagnitude}
-                            bridePercentage={paymentForm.paid_bride_share_percentage}
-                            onChange={(percentage) =>
-                              setPaymentForm((prev) => ({
-                                ...prev,
-                                paid_bride_share_percentage: percentage,
-                              }))
-                            }
-                          />
-                        )}
-
-                        <div>
-                          <label className="label">Notes</label>
-                          <textarea
-                            value={paymentForm.notes}
-                            onChange={(e) =>
-                              setPaymentForm((prev) => ({ ...prev, notes: e.target.value }))
-                            }
-                            className="input"
-                            style={{ minHeight: 60 }}
-                            placeholder={
-                              isScheduled
-                                ? 'Optional reminder note'
-                                : 'Reference, cheque no., or note'
-                            }
-                          />
-                        </div>
-
-                        {isScheduled && (
-                          <div
-                            style={{
-                              border: '1px solid rgba(217,119,6,0.25)',
-                              background: 'rgba(217,119,6,0.06)',
-                              borderRadius: 8,
-                              padding: '10px 14px',
-                              fontSize: 12,
-                              color: 'var(--warn)',
-                            }}
-                          >
-                            Future date — will be saved as a scheduled reminder.
-                          </div>
-                        )}
-
-                        {isReversal && (
-                          <div
-                            style={{
-                              border: '1px solid rgba(3,105,161,0.22)',
-                              background: 'rgba(3,105,161,0.06)',
-                              borderRadius: 8,
-                              padding: '10px 14px',
-                              fontSize: 12,
-                              color: '#0c4a6e',
-                            }}
-                          >
-                            Negative amounts are recorded as payment reversals and reduce the paid
-                            total.
-                          </div>
-                        )}
-
-                        {editingVendor && excessAmount > 0 && (
-                          <div
-                            style={{
-                              border: '1px solid rgba(234,88,12,0.25)',
-                              background: 'rgba(234,88,12,0.05)',
-                              borderRadius: 8,
-                              padding: 14,
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: 12,
-                            }}
-                          >
-                            <div style={{ fontSize: 12, color: '#9a3412' }}>
-                              {formatCurrency(excessAmount)} over outstanding — classify the extra
-                              amount.
-                            </div>
-                            <div>
-                              <label className="label">Category</label>
-                              <CategoryCombobox
-                                value={paymentForm.extra_category_id}
-                                onChange={(id) =>
-                                  setPaymentForm((prev) => ({ ...prev, extra_category_id: id }))
-                                }
-                                level="subcategory"
-                                placeholder="Select category"
-                              />
-                            </div>
                             <div
                               style={{
                                 display: 'grid',
                                 gridTemplateColumns: canSeeSplits ? '1fr 1fr' : '1fr',
-                                gap: 10,
+                                gap: 12,
                               }}
                             >
                               <div>
-                                <label className="label">Label</label>
-                                <input
-                                  type="text"
-                                  value={paymentForm.extra_description}
+                                <label className="label">Method</label>
+                                <select
+                                  value={paymentForm.payment_method}
                                   onChange={(e) =>
                                     setPaymentForm((prev) => ({
                                       ...prev,
-                                      extra_description: e.target.value,
+                                      payment_method: e.target.value,
                                     }))
                                   }
                                   className="input"
-                                  placeholder="Tip, late fee…"
-                                />
+                                  disabled={isScheduled}
+                                >
+                                  {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                                    <option key={value} value={value}>
+                                      {label}
+                                    </option>
+                                  ))}
+                                </select>
                               </div>
                               {canSeeSplits && (
                                 <div>
-                                  <label className="label">Side</label>
+                                  <label className="label">Paid By</label>
                                   <select
-                                    value={paymentForm.extra_side}
+                                    value={paymentForm.paid_by_side}
                                     onChange={(e) =>
                                       setPaymentForm((prev) => ({
                                         ...prev,
-                                        extra_side: e.target.value as 'bride' | 'groom' | 'shared',
+                                        paid_by_side: e.target.value as
+                                          | 'bride'
+                                          | 'groom'
+                                          | 'shared',
                                       }))
                                     }
                                     className="input"
@@ -2796,40 +2666,202 @@ export default function Vendors() {
                                 </div>
                               )}
                             </div>
-                            {canSeeSplits && paymentForm.extra_side === 'shared' && (
+
+                            {canSeeSplits && paymentForm.paid_by_side === 'shared' && (
                               <SplitShare
-                                total={excessAmount}
-                                bridePercentage={paymentForm.extra_bride_share_percentage}
+                                total={paymentMagnitude}
+                                bridePercentage={paymentForm.paid_bride_share_percentage}
                                 onChange={(percentage) =>
                                   setPaymentForm((prev) => ({
                                     ...prev,
-                                    extra_bride_share_percentage: percentage,
+                                    paid_bride_share_percentage: percentage,
                                   }))
                                 }
                               />
                             )}
-                          </div>
-                        )}
 
-                        {editingVendor && (
-                          <button
-                            type="button"
-                            onClick={handlePaymentSave}
-                            disabled={createVendorPayment.isPending || !editingVendor.expense_id}
-                            className="btn-primary"
-                            style={{
-                              opacity:
-                                createVendorPayment.isPending || !editingVendor.expense_id
-                                  ? 0.5
-                                  : 1,
-                            }}
-                          >
-                            {createVendorPayment.isPending
-                              ? 'Saving…'
-                              : isScheduled
-                                ? 'Save Planned Payment'
-                                : 'Record Payment'}
-                          </button>
+                            <div>
+                              <label className="label">Notes</label>
+                              <textarea
+                                value={paymentForm.notes}
+                                onChange={(e) =>
+                                  setPaymentForm((prev) => ({ ...prev, notes: e.target.value }))
+                                }
+                                className="input"
+                                style={{ minHeight: 60 }}
+                                placeholder={
+                                  isScheduled
+                                    ? 'Optional reminder note'
+                                    : 'Reference, cheque no., or note'
+                                }
+                              />
+                            </div>
+
+                            {isScheduled && (
+                              <div
+                                style={{
+                                  border: '1px solid rgba(217,119,6,0.25)',
+                                  background: 'rgba(217,119,6,0.06)',
+                                  borderRadius: 8,
+                                  padding: '10px 14px',
+                                  fontSize: 12,
+                                  color: 'var(--warn)',
+                                }}
+                              >
+                                Future date — will be saved as a scheduled reminder.
+                              </div>
+                            )}
+
+                            {isReversal && (
+                              <div
+                                style={{
+                                  border: '1px solid rgba(3,105,161,0.22)',
+                                  background: 'rgba(3,105,161,0.06)',
+                                  borderRadius: 8,
+                                  padding: '10px 14px',
+                                  fontSize: 12,
+                                  color: '#0c4a6e',
+                                }}
+                              >
+                                Negative amounts are recorded as payment reversals and reduce the
+                                paid total.
+                              </div>
+                            )}
+
+                            {excessAmount > 0 && (
+                              <div
+                                style={{
+                                  border: '1px solid rgba(234,88,12,0.25)',
+                                  background: 'rgba(234,88,12,0.05)',
+                                  borderRadius: 8,
+                                  padding: 14,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: 12,
+                                }}
+                              >
+                                <div style={{ fontSize: 12, color: '#9a3412' }}>
+                                  {formatCurrency(excessAmount)} over outstanding — classify the
+                                  extra amount.
+                                </div>
+                                <div>
+                                  <label className="label">Category</label>
+                                  <CategoryCombobox
+                                    value={paymentForm.extra_category_id}
+                                    onChange={(id) =>
+                                      setPaymentForm((prev) => ({
+                                        ...prev,
+                                        extra_category_id: id,
+                                      }))
+                                    }
+                                    level="subcategory"
+                                    placeholder="Select category"
+                                  />
+                                </div>
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: canSeeSplits ? '1fr 1fr' : '1fr',
+                                    gap: 10,
+                                  }}
+                                >
+                                  <div>
+                                    <label className="label">Label</label>
+                                    <input
+                                      type="text"
+                                      value={paymentForm.extra_description}
+                                      onChange={(e) =>
+                                        setPaymentForm((prev) => ({
+                                          ...prev,
+                                          extra_description: e.target.value,
+                                        }))
+                                      }
+                                      className="input"
+                                      placeholder="Tip, late fee…"
+                                    />
+                                  </div>
+                                  {canSeeSplits && (
+                                    <div>
+                                      <label className="label">Side</label>
+                                      <select
+                                        value={paymentForm.extra_side}
+                                        onChange={(e) =>
+                                          setPaymentForm((prev) => ({
+                                            ...prev,
+                                            extra_side: e.target.value as
+                                              | 'bride'
+                                              | 'groom'
+                                              | 'shared',
+                                          }))
+                                        }
+                                        className="input"
+                                      >
+                                        <option value="bride">Bride</option>
+                                        <option value="groom">Groom</option>
+                                        <option value="shared">Shared</option>
+                                      </select>
+                                    </div>
+                                  )}
+                                </div>
+                                {canSeeSplits && paymentForm.extra_side === 'shared' && (
+                                  <SplitShare
+                                    total={excessAmount}
+                                    bridePercentage={paymentForm.extra_bride_share_percentage}
+                                    onChange={(percentage) =>
+                                      setPaymentForm((prev) => ({
+                                        ...prev,
+                                        extra_bride_share_percentage: percentage,
+                                      }))
+                                    }
+                                  />
+                                )}
+                              </div>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={handlePaymentSave}
+                              disabled={createVendorPayment.isPending || !editingVendor.expense_id}
+                              className="btn-primary"
+                              style={{
+                                opacity:
+                                  createVendorPayment.isPending || !editingVendor.expense_id
+                                    ? 0.5
+                                    : 1,
+                              }}
+                            >
+                              {createVendorPayment.isPending
+                                ? 'Saving…'
+                                : isScheduled
+                                  ? 'Save Planned Payment'
+                                  : 'Record Payment'}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: 10,
+                                fontWeight: 600,
+                                color: 'var(--ink-dim)',
+                                letterSpacing: '0.08em',
+                                textTransform: 'uppercase',
+                              }}
+                            >
+                              Initial Payments (Optional)
+                            </p>
+                            <p style={{ margin: 0, fontSize: 12, color: 'var(--ink-low)' }}>
+                              Optionally record advance, milestone, or final payments alongside the
+                              vendor. Leave empty to skip.
+                            </p>
+                            <InstallmentsEditor
+                              installments={installments}
+                              onChange={setInstallments}
+                              committedTotal={Number(formData.total_cost || 0)}
+                              canSeeSplits={canSeeSplits}
+                            />
+                          </>
                         )}
                       </div>
                     </div>
@@ -2866,8 +2898,8 @@ export default function Vendors() {
                       ? 'Saving…'
                       : editingVendor
                         ? 'Update vendor'
-                        : enteredAmount !== 0
-                          ? 'Add vendor & record payment'
+                        : installments.some((row) => Number(row.amount || 0) !== 0)
+                          ? 'Add vendor & record payments'
                           : 'Add vendor'}
                   </button>
                 </div>

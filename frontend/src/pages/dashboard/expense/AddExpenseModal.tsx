@@ -5,6 +5,10 @@ import CategoryCombobox from '../../../components/CategoryCombobox';
 import CustomCategoryModal from '../../../components/CustomCategoryModal';
 import DatePicker from '../../../components/ui/DatePicker';
 import SplitShare from '../../../components/ui/SplitShare';
+import InstallmentsEditor, {
+  installmentsExceedTotal,
+  type InstallmentFormRow,
+} from '../../../components/finance/InstallmentsEditor';
 import useUnsavedChangesPrompt from '../../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../../hooks/useModalDismiss';
 import { formatCurrency } from '../../../utils/currency';
@@ -32,13 +36,7 @@ interface FormData {
   expense_date: string;
   notes: string;
   items: ExpenseItemForm[];
-  record_payment_now: boolean;
-  payment_amount: string;
-  payment_date: string;
-  payment_method: string;
-  paid_by_side: 'bride' | 'groom' | 'shared';
-  paid_bride_share_percentage: number;
-  payment_notes: string;
+  installments: InstallmentFormRow[];
 }
 
 const TODAY = new Date().toISOString().split('T')[0] ?? '';
@@ -57,13 +55,7 @@ const INITIAL_FORM: FormData = {
   expense_date: TODAY,
   notes: '',
   items: [createItem()],
-  record_payment_now: false,
-  payment_amount: '',
-  payment_date: TODAY,
-  payment_method: 'cash',
-  paid_by_side: 'shared',
-  paid_bride_share_percentage: 50,
-  payment_notes: '',
+  installments: [],
 };
 
 export default function AddExpenseModal({
@@ -82,12 +74,7 @@ export default function AddExpenseModal({
     () => formData.items.reduce((sum, item) => sum + Number(item.amount || 0), 0),
     [formData.items],
   );
-  const paymentAmount = Number(formData.payment_amount || 0);
-  const paymentDirection = paymentAmount < 0 ? 'inflow' : 'outflow';
-  const paymentMagnitude = Math.abs(paymentAmount);
-  const isPaymentReversal = paymentDirection === 'inflow';
-  const paymentExceedsTotal =
-    formData.record_payment_now && !isPaymentReversal && paymentMagnitude > totalCommitted;
+  const paymentExceedsTotal = installmentsExceedTotal(formData.installments, totalCommitted);
 
   const handleClose = () => {
     setFormData(INITIAL_FORM);
@@ -137,28 +124,30 @@ export default function AddExpenseModal({
             }
           : {}),
       })),
-      payments: formData.record_payment_now
-        ? [
-            {
-              amount: paymentMagnitude,
-              direction: paymentDirection,
-              status: formData.payment_date > TODAY ? 'scheduled' : 'posted',
-              due_date: formData.payment_date,
-              paid_date: formData.payment_date > TODAY ? null : formData.payment_date,
-              payment_method: formData.payment_date > TODAY ? null : formData.payment_method,
-              ...(canSeeSplits
-                ? {
-                    paid_by_side: formData.paid_by_side,
-                    paid_bride_share_percentage:
-                      formData.paid_by_side === 'shared'
-                        ? formData.paid_bride_share_percentage
-                        : null,
-                  }
-                : {}),
-              notes: formData.payment_notes || null,
-            },
-          ]
-        : [],
+      payments: formData.installments.map((installment) => {
+        const amount = Number(installment.amount || 0);
+        const direction = amount < 0 ? 'inflow' : 'outflow';
+        const magnitude = Math.abs(amount);
+        const isScheduled = installment.payment_date > TODAY;
+        return {
+          amount: magnitude,
+          direction,
+          status: isScheduled ? 'scheduled' : 'posted',
+          due_date: installment.payment_date,
+          paid_date: isScheduled ? null : installment.payment_date,
+          payment_method: isScheduled ? null : installment.payment_method,
+          ...(canSeeSplits
+            ? {
+                paid_by_side: installment.paid_by_side,
+                paid_bride_share_percentage:
+                  installment.paid_by_side === 'shared'
+                    ? installment.paid_bride_share_percentage
+                    : null,
+              }
+            : {}),
+          notes: installment.notes || null,
+        };
+      }),
     });
 
     setFormData(INITIAL_FORM);
@@ -451,164 +440,12 @@ export default function AddExpenseModal({
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <label className="flex items-center gap-3 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={formData.record_payment_now}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        record_payment_now: event.target.checked,
-                      }))
-                    }
-                    style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--gold)' }}
-                  />
-                  <span className="label mb-0">Record payment now</span>
-                </label>
-
-                {formData.record_payment_now && (
-                  <div
-                    style={{
-                      borderRadius: 10,
-                      border: '1px solid var(--line-soft)',
-                      padding: 16,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 14,
-                    }}
-                  >
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="label">Payment Amount *</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.payment_amount}
-                          onChange={(event) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              payment_amount: event.target.value,
-                            }))
-                          }
-                          className="input"
-                          placeholder="Enter amount"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="label">
-                          {formData.payment_date > TODAY ? 'Due Date' : 'Payment Date'}
-                        </label>
-                        <DatePicker
-                          value={formData.payment_date}
-                          onChange={(v) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              payment_date: v,
-                            }))
-                          }
-                          required
-                          placeholder={formData.payment_date > TODAY ? 'Due date' : 'Payment date'}
-                        />
-                      </div>
-                    </div>
-
-                    <div className={canSeeSplits ? 'grid sm:grid-cols-2 gap-4' : undefined}>
-                      <div>
-                        <label className="label">Payment Method</label>
-                        <select
-                          value={formData.payment_method}
-                          onChange={(event) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              payment_method: event.target.value,
-                            }))
-                          }
-                          className="input"
-                          disabled={formData.payment_date > TODAY}
-                        >
-                          <option value="cash">Cash</option>
-                          <option value="bank_transfer">Bank Transfer</option>
-                          <option value="upi">UPI</option>
-                          <option value="cheque">Cheque</option>
-                          <option value="credit_card">Credit Card</option>
-                        </select>
-                      </div>
-                      {canSeeSplits && (
-                        <div>
-                          <label className="label">Paid By Side</label>
-                          <select
-                            value={formData.paid_by_side}
-                            onChange={(event) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                paid_by_side: event.target.value as 'bride' | 'groom' | 'shared',
-                              }))
-                            }
-                            className="input"
-                          >
-                            <option value="bride">Bride</option>
-                            <option value="groom">Groom</option>
-                            <option value="shared">Shared</option>
-                          </select>
-                        </div>
-                      )}
-                    </div>
-
-                    {canSeeSplits && formData.paid_by_side === 'shared' && (
-                      <SplitShare
-                        total={paymentMagnitude}
-                        bridePercentage={formData.paid_bride_share_percentage}
-                        onChange={(pct) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            paid_bride_share_percentage: pct,
-                          }))
-                        }
-                      />
-                    )}
-
-                    {isPaymentReversal && (
-                      <div
-                        style={{
-                          border: '1px solid rgba(3,105,161,0.22)',
-                          background: 'rgba(3,105,161,0.06)',
-                          borderRadius: 8,
-                          padding: '10px 14px',
-                          fontSize: 13,
-                          color: '#0c4a6e',
-                        }}
-                      >
-                        Negative amounts are recorded as payment reversals and reduce the paid
-                        total.
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="label">Payment Notes</label>
-                      <textarea
-                        value={formData.payment_notes}
-                        onChange={(event) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            payment_notes: event.target.value,
-                          }))
-                        }
-                        className="input min-h-[88px]"
-                        placeholder="Optional notes or reference"
-                      />
-                    </div>
-
-                    {paymentExceedsTotal && (
-                      <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
-                        Payment amount is higher than the committed total. Add more line items above
-                        before saving.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              <InstallmentsEditor
+                installments={formData.installments}
+                onChange={(installments) => setFormData((prev) => ({ ...prev, installments }))}
+                committedTotal={totalCommitted}
+                canSeeSplits={canSeeSplits}
+              />
 
               <div
                 style={{

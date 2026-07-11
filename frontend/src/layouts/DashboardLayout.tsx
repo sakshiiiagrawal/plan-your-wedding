@@ -49,6 +49,19 @@ const NAV_ITEMS = [
   { path: '/settings', label: 'Settings', icon: HiOutlineCog },
 ];
 
+// Pages where printing yields a useful document (lists/schedules). Overview,
+// Gallery, Settings and the Site Studio print as meaningless chrome, so the
+// topbar Print button is hidden there.
+const PRINTABLE_PATHS = new Set([
+  '/guests',
+  '/events',
+  '/venues',
+  '/accommodations',
+  '/vendors',
+  '/budget',
+  '/tasks',
+]);
+
 const CRUMB_MAP: Record<string, string> = {
   '': 'overview',
   '/guests': 'guests & rsvp',
@@ -160,7 +173,7 @@ export default function DashboardLayout() {
 
   return (
     <div
-      className="flex"
+      className="flex print-expand"
       style={{ background: 'var(--bg-page)', height: '100vh', overflow: 'hidden' }}
     >
       {/* Backdrop */}
@@ -360,6 +373,7 @@ export default function DashboardLayout() {
 
       {/* ── Main ───────────────────────────────────────────────────── */}
       <div
+        className="print-expand"
         style={{
           flex: 1,
           minWidth: 0,
@@ -413,9 +427,10 @@ export default function DashboardLayout() {
 
           {/* Right actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Print — list pages only; the Site Studio's zoomed live preview
-                prints as a clipped mess, so hide it there */}
-            {subPath !== '/website' && (
+            {/* Print — only where the page is a printable document (see
+                PRINTABLE_PATHS); Overview/Gallery/Settings/Site Studio would
+                just print dashboard chrome */}
+            {PRINTABLE_PATHS.has(subPath) && (
               <button
                 onClick={() => window.print()}
                 style={{
@@ -436,7 +451,9 @@ export default function DashboardLayout() {
                 Print
               </button>
             )}
-            {/* View site */}
+            {/* View site — Overview only; on other tabs it's noise, and the
+                Site Studio has its own per-page "Open live" control */}
+            {subPath === '' && (
             <NavLink
               to={`/${slug}`}
               style={{
@@ -466,11 +483,13 @@ export default function DashboardLayout() {
               <HiOutlineExternalLink style={{ width: 13, height: 13 }} />
               View site
             </NavLink>
+            )}
           </div>
         </header>
 
         {/* Page content — the Site Studio manages its own full-height chrome */}
         <main
+          className="print-expand"
           style={{
             flex: 1,
             padding: subPath === '/website' ? 0 : '32px 40px',

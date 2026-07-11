@@ -12,6 +12,72 @@ import type {
   VendorWithFinance,
   VenueWithFinance,
 } from '@wedding-planner/shared';
+import type { QueryClient } from '@tanstack/react-query';
+
+// =====================================================
+// OPTIMISTIC UPDATE HELPERS
+// =====================================================
+
+/** Rollback snapshot returned by the optimistic helpers, consumed in onError. */
+type OptimisticContext = { snapshots: [readonly unknown[], unknown][] };
+
+/**
+ * Optimistically patch a single row (matched by `id`) across every cached query
+ * under `keyPrefix` whose data is an array of rows — so toggles/inline edits
+ * reflect instantly instead of waiting for the PATCH + refetch round-trips.
+ * Non-array caches (summaries, stats, single-entity detail objects) are left
+ * untouched and reconciled by the onSettled invalidation. Returns a snapshot so
+ * onError can roll every touched cache back if the request fails.
+ */
+async function optimisticPatchRow(
+  queryClient: QueryClient,
+  keyPrefix: unknown[],
+  id: string,
+  patch: Record<string, unknown>,
+): Promise<OptimisticContext> {
+  await queryClient.cancelQueries({ queryKey: keyPrefix });
+  const snapshots = queryClient.getQueriesData({ queryKey: keyPrefix });
+  for (const [key, data] of snapshots) {
+    if (Array.isArray(data)) {
+      queryClient.setQueryData(
+        key,
+        data.map((row: any) => (row?.id === id ? { ...row, ...patch } : row)),
+      );
+    }
+  }
+  return { snapshots };
+}
+
+/**
+ * Optimistically drop a row (matched by `id`) from every array-shaped cache
+ * under `keyPrefix`, so deletes disappear immediately. Same snapshot/rollback
+ * contract as {@link optimisticPatchRow}.
+ */
+async function optimisticRemoveRow(
+  queryClient: QueryClient,
+  keyPrefix: unknown[],
+  id: string,
+): Promise<OptimisticContext> {
+  await queryClient.cancelQueries({ queryKey: keyPrefix });
+  const snapshots = queryClient.getQueriesData({ queryKey: keyPrefix });
+  for (const [key, data] of snapshots) {
+    if (Array.isArray(data)) {
+      queryClient.setQueryData(
+        key,
+        data.filter((row: any) => row?.id !== id),
+      );
+    }
+  }
+  return { snapshots };
+}
+
+/** Restore every cache captured by the optimistic helpers (use in onError). */
+function rollbackOptimistic(
+  queryClient: QueryClient,
+  context: OptimisticContext | undefined,
+) {
+  context?.snapshots.forEach(([key, data]) => queryClient.setQueryData(key, data));
+}
 
 // =====================================================
 // SETUP HOOKS
@@ -188,7 +254,10 @@ export const useUpdatePage = () => {
   return useMutation({
     mutationFn: ({ id, ...payload }: Partial<PublicPageRecord> & { id: string }) =>
       api.put(`/pages/${id}`, payload).then((res) => res.data),
-    onSuccess: () => invalidatePages(queryClient),
+    // Publish/unpublish toggle and inline edits flip instantly in the page list.
+    onMutate: ({ id, ...payload }) => optimisticPatchRow(queryClient, ['pages'], id, payload),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => invalidatePages(queryClient),
   });
 };
 
@@ -196,7 +265,9 @@ export const useDeletePage = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete(`/pages/${id}`).then((res) => res.data),
-    onSuccess: () => invalidatePages(queryClient),
+    onMutate: (id) => optimisticRemoveRow(queryClient, ['pages'], id),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => invalidatePages(queryClient),
   });
 };
 
@@ -355,7 +426,9 @@ export const useUpdateGuest = () => {
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Record<string, any>) =>
       api.put(`/guests/${id}`, data).then((res) => res.data),
-    onSuccess: () => {
+    onMutate: ({ id, ...data }) => optimisticPatchRow(queryClient, ['guests'], id, data),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
     },
@@ -366,7 +439,9 @@ export const useDeleteGuest = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete(`/guests/${id}`),
-    onSuccess: () => {
+    onMutate: (id) => optimisticRemoveRow(queryClient, ['guests'], id),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
     },
@@ -378,7 +453,10 @@ export const useSetOverallRsvp = () => {
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string; rsvp_status: string; plus_ones?: number }) =>
       api.put(`/guests/${id}/rsvp`, data).then((res) => res.data),
-    onSuccess: () => {
+    // The RSVP pill updates instantly; per-event breakdown reconciles on settle.
+    onMutate: ({ id, ...data }) => optimisticPatchRow(queryClient, ['guests'], id, data),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['guests'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
@@ -463,7 +541,9 @@ export const useUpdateEvent = () => {
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Record<string, any>) =>
       api.put(`/events/${id}`, data).then((res) => res.data),
-    onSuccess: () => {
+    onMutate: ({ id, ...data }) => optimisticPatchRow(queryClient, ['events'], id, data),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
@@ -474,7 +554,9 @@ export const useDeleteEvent = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete(`/events/${id}`),
-    onSuccess: () => {
+    onMutate: (id) => optimisticRemoveRow(queryClient, ['events'], id),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
@@ -516,7 +598,9 @@ export const useUpdateVenue = () => {
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Record<string, any>) =>
       api.put(`/venues/${id}`, data).then((res) => res.data),
-    onSuccess: () => {
+    onMutate: ({ id, ...data }) => optimisticPatchRow(queryClient, ['venues'], id, data),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] });
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
       queryClient.invalidateQueries({ queryKey: ['expense'] });
@@ -529,7 +613,9 @@ export const useDeleteVenue = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete(`/venues/${id}`),
-    onSuccess: () => {
+    onMutate: (id) => optimisticRemoveRow(queryClient, ['venues'], id),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['venues'] });
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
       queryClient.invalidateQueries({ queryKey: ['expense'] });
@@ -591,7 +677,9 @@ export const useUpdateAccommodation = () => {
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Record<string, any>) =>
       api.put(`/venues/${id}`, data).then((res) => res.data),
-    onSuccess: () => {
+    onMutate: ({ id, ...data }) => optimisticPatchRow(queryClient, ['accommodations'], id, data),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
       queryClient.invalidateQueries({ queryKey: ['venues'] });
     },
@@ -602,7 +690,9 @@ export const useDeleteAccommodation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete(`/venues/${id}`),
-    onSuccess: () => {
+    onMutate: (id) => optimisticRemoveRow(queryClient, ['accommodations'], id),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
       queryClient.invalidateQueries({ queryKey: ['venues'] });
     },
@@ -827,7 +917,9 @@ export const useUpdateVendor = () => {
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Record<string, any>) =>
       api.put(`/vendors/${id}`, data).then((res) => res.data),
-    onSuccess: () => {
+    onMutate: ({ id, ...data }) => optimisticPatchRow(queryClient, ['vendors'], id, data),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
       queryClient.invalidateQueries({ queryKey: ['expense'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
@@ -839,7 +931,9 @@ export const useDeleteVendor = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete(`/vendors/${id}`),
-    onSuccess: () => {
+    onMutate: (id) => optimisticRemoveRow(queryClient, ['vendors'], id),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
       queryClient.invalidateQueries({ queryKey: ['expense'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
@@ -892,7 +986,10 @@ export const useUpdateExpenseCategory = () => {
   return useMutation({
     mutationFn: ({ id, allocated_amount }: { id: string; allocated_amount: number }) =>
       api.put(`/expense/categories/${id}`, { allocated_amount }).then((res) => res.data),
-    onSuccess: () => {
+    onMutate: ({ id, allocated_amount }) =>
+      optimisticPatchRow(queryClient, ['expense', 'categories'], id, { allocated_amount }),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['expense'] });
     },
   });
@@ -964,7 +1061,13 @@ export const useUpdateExpense = () => {
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Record<string, any>) =>
       api.put(`/expense/expenses/${id}`, data).then((res) => res.data),
-    onSuccess: () => {
+    // Narrow prefix so only the expense *list* caches are patched — the many
+    // aggregate caches under ['expense'] (summaries, by-category) are left to
+    // the onSettled invalidation, since their rows aren't keyed by expense id.
+    onMutate: ({ id, ...data }) =>
+      optimisticPatchRow(queryClient, ['expense', 'expenses'], id, data),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['expense'] });
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
       queryClient.invalidateQueries({ queryKey: ['venues'] });
@@ -977,7 +1080,9 @@ export const useDeleteExpense = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete(`/expense/expenses/${id}`),
-    onSuccess: () => {
+    onMutate: (id) => optimisticRemoveRow(queryClient, ['expense', 'expenses'], id),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['expense'] });
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
       queryClient.invalidateQueries({ queryKey: ['venues'] });
@@ -1122,6 +1227,63 @@ export const useDeleteSourcePayment = (sourceType: 'vendor' | 'venue') => {
   });
 };
 
+export const useExpensePaymentsForExpense = (expenseId?: string | null) =>
+  useQuery<PaymentRow[]>({
+    queryKey: ['expense', expenseId, 'payments'],
+    queryFn: () => api.get(`/expense/expenses/${expenseId}/payments`).then((res) => res.data),
+    enabled: !!expenseId,
+  });
+
+export const useCreateExpensePayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ expenseId, ...data }: { expenseId: string } & Record<string, any>) =>
+      api.post(`/expense/expenses/${expenseId}/payments`, data).then((res) => res.data),
+    onSuccess: (data, variables) => {
+      if (variables?.expenseId && data) {
+        queryClient.setQueryData(
+          ['expense', variables.expenseId, 'payments'],
+          (data as ExpenseWithDetails).payments ?? [],
+        );
+      }
+      if (variables?.expenseId) {
+        queryClient.invalidateQueries({ queryKey: ['expense', variables.expenseId, 'payments'] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+export const useDeleteExpensePayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ paymentId }: { expenseId: string; paymentId: string }) =>
+      api.delete(`/expense/payments/${paymentId}`),
+    onMutate: async ({ expenseId, paymentId }) => {
+      await queryClient.cancelQueries({ queryKey: ['expense', expenseId, 'payments'] });
+      const previousPayments = queryClient.getQueryData<PaymentRow[]>([
+        'expense',
+        expenseId,
+        'payments',
+      ]);
+      queryClient.setQueryData<PaymentRow[]>(['expense', expenseId, 'payments'], (current = []) =>
+        current.filter((payment) => payment.id !== paymentId),
+      );
+      return { previousPayments, expenseId };
+    },
+    onError: (_error, _variables, context) => {
+      if (!context?.expenseId) return;
+      queryClient.setQueryData(['expense', context.expenseId, 'payments'], context.previousPayments);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['expense', variables.expenseId, 'payments'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
 // =====================================================
 // TASKS HOOKS
 // =====================================================
@@ -1186,7 +1348,9 @@ export const useUpdateTask = () => {
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string } & Record<string, any>) =>
       api.put(`/tasks/${id}`, data).then((res) => res.data),
-    onSuccess: () => {
+    onMutate: ({ id, ...data }) => optimisticPatchRow(queryClient, ['tasks'], id, data),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
@@ -1198,7 +1362,11 @@ export const useUpdateTaskStatus = () => {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.put(`/tasks/${id}/status`, { status }).then((res) => res.data),
-    onSuccess: () => {
+    // The status dot / kanban drag flips instantly; the board doesn't wait for
+    // the round-trip before the card moves column or the checkmark fills in.
+    onMutate: ({ id, status }) => optimisticPatchRow(queryClient, ['tasks'], id, { status }),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
@@ -1209,7 +1377,9 @@ export const useDeleteTask = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete(`/tasks/${id}`),
-    onSuccess: () => {
+    onMutate: (id) => optimisticRemoveRow(queryClient, ['tasks'], id),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
@@ -1374,7 +1544,17 @@ export const useUpdateMember = () => {
           ...(permissions !== undefined ? { permissions } : {}),
         })
         .then((res) => res.data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members'] }),
+    // Flip the UI immediately — otherwise each checkbox toggle waits for the
+    // PATCH *and* the refetch before the box reflects the change, which reads
+    // as a laggy, unresponsive control.
+    onMutate: ({ id, role, sections, permissions }) =>
+      optimisticPatchRow(queryClient, ['members'], id, {
+        ...(role !== undefined ? { role } : {}),
+        ...(sections !== undefined ? { allowed_sections: sections } : {}),
+        ...(permissions !== undefined ? { permissions } : {}),
+      }),
+    onError: (_err, _vars, context) => rollbackOptimistic(queryClient, context),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['members'] }),
   });
 };
 
