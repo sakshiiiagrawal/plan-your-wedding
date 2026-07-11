@@ -5,12 +5,18 @@ import CategoryCombobox from '../../../components/CategoryCombobox';
 import CustomCategoryModal from '../../../components/CustomCategoryModal';
 import DatePicker from '../../../components/ui/DatePicker';
 import SplitShare from '../../../components/ui/SplitShare';
+import PaymentTimelinePanel from '../../../components/finance/PaymentTimelinePanel';
 import useUnsavedChangesPrompt from '../../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../../hooks/useModalDismiss';
 import type { ExpenseWithDetails } from '@wedding-planner/shared';
 import { financeTier } from '@wedding-planner/shared';
 import { formatCurrency } from '../../../utils/currency';
 import { useAuth } from '../../../contexts/AuthContext';
+import {
+  useCreateExpensePayment,
+  useDeleteExpensePayment,
+  useExpensePaymentsForExpense,
+} from '../../../hooks/useApi';
 
 export type ExpenseRow = ExpenseWithDetails;
 
@@ -84,6 +90,10 @@ export default function EditExpenseModal({
     if (!expense) return;
     setFormData(getExpenseFormState(expense));
   }, [expense]);
+
+  const { data: payments = [] } = useExpensePaymentsForExpense(expense?.id);
+  const createExpensePayment = useCreateExpensePayment();
+  const deleteExpensePayment = useDeleteExpensePayment();
 
   const totalCommitted = useMemo(
     () => formData?.items.reduce((sum, item) => sum + Number(item.amount || 0), 0) ?? 0,
@@ -437,6 +447,36 @@ export default function EditExpenseModal({
                     {formatCurrency(totalCommitted)}
                   </span>
                 </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h3 className="section-title">Payments</h3>
+                  <p className="text-sm text-ink-low">
+                    Record advance, milestone, and final payments against this expense.
+                  </p>
+                </div>
+                <PaymentTimelinePanel
+                  payments={payments}
+                  committed={expense.summary?.committed_amount ?? totalCommitted}
+                  paid={expense.summary?.paid_amount ?? 0}
+                  outstanding={expense.summary?.outstanding_amount ?? totalCommitted}
+                  onCreate={(payload) =>
+                    createExpensePayment.mutateAsync({ expenseId: expense.id, ...payload })
+                  }
+                  onDelete={(paymentId) =>
+                    deleteExpensePayment.mutateAsync({ expenseId: expense.id, paymentId })
+                  }
+                  isCreating={createExpensePayment.isPending}
+                  isDeleting={deleteExpensePayment.isPending}
+                  defaultSplit={{
+                    side: expense.items[0]?.side ?? 'shared',
+                    bridePercentage: expense.items[0]?.bride_share_percentage ?? 50,
+                  }}
+                  canSeeSplits={canSeeSplits}
+                  canRecordPayment={expense.items.length > 0}
+                  disabledReason="Add a line item first before recording payments."
+                />
               </div>
             </form>
 

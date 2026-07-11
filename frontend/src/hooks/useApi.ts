@@ -1122,6 +1122,63 @@ export const useDeleteSourcePayment = (sourceType: 'vendor' | 'venue') => {
   });
 };
 
+export const useExpensePaymentsForExpense = (expenseId?: string | null) =>
+  useQuery<PaymentRow[]>({
+    queryKey: ['expense', expenseId, 'payments'],
+    queryFn: () => api.get(`/expense/expenses/${expenseId}/payments`).then((res) => res.data),
+    enabled: !!expenseId,
+  });
+
+export const useCreateExpensePayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ expenseId, ...data }: { expenseId: string } & Record<string, any>) =>
+      api.post(`/expense/expenses/${expenseId}/payments`, data).then((res) => res.data),
+    onSuccess: (data, variables) => {
+      if (variables?.expenseId && data) {
+        queryClient.setQueryData(
+          ['expense', variables.expenseId, 'payments'],
+          (data as ExpenseWithDetails).payments ?? [],
+        );
+      }
+      if (variables?.expenseId) {
+        queryClient.invalidateQueries({ queryKey: ['expense', variables.expenseId, 'payments'] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+export const useDeleteExpensePayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ paymentId }: { expenseId: string; paymentId: string }) =>
+      api.delete(`/expense/payments/${paymentId}`),
+    onMutate: async ({ expenseId, paymentId }) => {
+      await queryClient.cancelQueries({ queryKey: ['expense', expenseId, 'payments'] });
+      const previousPayments = queryClient.getQueryData<PaymentRow[]>([
+        'expense',
+        expenseId,
+        'payments',
+      ]);
+      queryClient.setQueryData<PaymentRow[]>(['expense', expenseId, 'payments'], (current = []) =>
+        current.filter((payment) => payment.id !== paymentId),
+      );
+      return { previousPayments, expenseId };
+    },
+    onError: (_error, _variables, context) => {
+      if (!context?.expenseId) return;
+      queryClient.setQueryData(['expense', context.expenseId, 'payments'], context.previousPayments);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['expense', variables.expenseId, 'payments'] });
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
 // =====================================================
 // TASKS HOOKS
 // =====================================================
