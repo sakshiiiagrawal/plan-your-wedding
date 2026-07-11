@@ -490,6 +490,8 @@ export interface Database {
           id: string;
           room_id: string;
           guest_ids: string[];
+          checked_in_guest_ids: string[];
+          checked_out_guest_ids: string[];
           check_in_date: string;
           check_out_date: string;
           notes: string | null;
@@ -500,6 +502,8 @@ export interface Database {
           id?: string;
           room_id: string;
           guest_ids: string[];
+          checked_in_guest_ids?: string[];
+          checked_out_guest_ids?: string[];
           check_in_date: string;
           check_out_date: string;
           notes?: string | null;
@@ -510,6 +514,8 @@ export interface Database {
           id?: string;
           room_id?: string;
           guest_ids?: string[];
+          checked_in_guest_ids?: string[];
+          checked_out_guest_ids?: string[];
           check_in_date?: string;
           check_out_date?: string;
           notes?: string | null;

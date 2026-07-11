@@ -824,6 +824,25 @@ export const useDeleteAllocation = () => {
   });
 };
 
+export const useSetGuestStayStatus = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      allocationId,
+      guestId,
+      status,
+    }: {
+      allocationId: string;
+      guestId: string;
+      status: 'expected' | 'checked_in' | 'checked_out';
+    }) =>
+      api
+        .put(`/venues/allocations/${allocationId}/guest-status`, { guest_id: guestId, status })
+        .then((res) => res.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['accommodations'] }),
+  });
+};
+
 // =====================================================
 // VENUE PAYMENTS HOOKS
 // =====================================================

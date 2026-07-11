@@ -170,6 +170,7 @@ interface VenueFormData {
   has_accommodation: boolean;
   contact_person: string;
   contact_phone: string;
+  notes: string;
   place_id: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -204,6 +205,7 @@ const DEFAULT_FORM: VenueFormData = {
   has_accommodation: false,
   contact_person: '',
   contact_phone: '',
+  notes: '',
   place_id: null,
   latitude: null,
   longitude: null,
@@ -523,6 +525,7 @@ export default function Venues() {
       has_accommodation: venue.has_accommodation ?? false,
       contact_person: venue.contact_person || '',
       contact_phone: venue.contact_phone || '',
+      notes: (venue as any).notes || '',
       place_id: (venue as any).place_id ?? null,
       latitude: (venue as any).latitude ?? null,
       longitude: (venue as any).longitude ?? null,
@@ -1808,6 +1811,19 @@ export default function Venues() {
                               placeholder="Phone number"
                             />
                           </div>
+                        </div>
+                        <div>
+                          <label className="label">Notes</label>
+                          <textarea
+                            value={formData.notes}
+                            onChange={(e) =>
+                              setFormData({ ...formData, notes: e.target.value })
+                            }
+                            className="input"
+                            rows={3}
+                            placeholder="Any details about this venue…"
+                            style={{ resize: 'vertical' }}
+                          />
                         </div>
                       </div>
 

@@ -4,7 +4,7 @@ import { financeItemSchema, financePaymentSchema } from './expense.validator';
 const roomInputSchema = z.object({
   room_number: z.string().min(1),
   room_type: z.string().min(1),
-  capacity: z.coerce.number().int().nonnegative().optional(),
+  capacity: z.coerce.number().int().min(1).optional(),
   rate_per_night: z.coerce.number().nonnegative().optional(),
   includes_breakfast: z.boolean().optional(),
   check_in_date: z
@@ -66,7 +66,7 @@ export const updateVenueSchema = createVenueSchema.partial();
 export const addRoomSchema = z.object({
   room_number: z.string().min(1),
   room_type: z.string().min(1),
-  capacity: z.coerce.number().int().nonnegative().optional(),
+  capacity: z.coerce.number().int().min(1).optional(),
   rate_per_night: z.coerce.number().nonnegative().optional(),
   includes_breakfast: z.boolean().optional(),
   check_in_date: z
@@ -85,7 +85,7 @@ export const addRoomSchema = z.object({
 export const updateRoomSchema = z.object({
   room_number: z.string().min(1).optional(),
   room_type: z.string().min(1).optional(),
-  capacity: z.coerce.number().int().nonnegative().optional(),
+  capacity: z.coerce.number().int().min(1).optional(),
   rate_per_night: z.coerce.number().nonnegative().optional(),
   includes_breakfast: z.boolean().optional(),
   check_in_date: z
@@ -101,15 +101,30 @@ export const updateRoomSchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
-export const createAllocationSchema = z.object({
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+const allocationBaseSchema = z.object({
   room_id: z.string().uuid(),
   guest_ids: z.array(z.string().uuid()).min(1),
-  check_in_date: z.string().min(1),
-  check_out_date: z.string().min(1),
+  check_in_date: z.string().regex(ISO_DATE, 'Check-in date must be YYYY-MM-DD'),
+  check_out_date: z.string().regex(ISO_DATE, 'Check-out date must be YYYY-MM-DD'),
   notes: z.string().optional().nullable(),
 });
 
-export const updateAllocationSchema = createAllocationSchema.partial();
+export const createAllocationSchema = allocationBaseSchema.refine(
+  (d) => d.check_out_date > d.check_in_date,
+  { message: 'Check-out date must be after check-in date', path: ['check_out_date'] },
+);
+
+export const updateAllocationSchema = allocationBaseSchema.partial().refine(
+  (d) => !d.check_in_date || !d.check_out_date || d.check_out_date > d.check_in_date,
+  { message: 'Check-out date must be after check-in date', path: ['check_out_date'] },
+);
+
+export const guestStayStatusSchema = z.object({
+  guest_id: z.string().uuid(),
+  status: z.enum(['expected', 'checked_in', 'checked_out']),
+});
 
 export const createPaymentSchema = financePaymentSchema;
 

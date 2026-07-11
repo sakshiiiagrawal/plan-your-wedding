@@ -15,6 +15,8 @@ export interface VenueForTemplate {
   name: string;
 }
 
+export const MAX_ALLOCATION_GUESTS = 6;
+
 export interface ParsedAllocation {
   hotel_name: string;
   room_number: string;
@@ -23,6 +25,8 @@ export interface ParsedAllocation {
   guest_full_name: string;
   check_in_date: string;
   check_out_date: string;
+  room_type?: string;
+  capacity?: number;
 }
 
 export interface ParsedMultiVenueAllocation extends ParsedAllocation {
@@ -94,26 +98,37 @@ export function findSimilarGuests(
 // Template generation — single hotel
 // ---------------------------------------------------------------------------
 
+const GUEST_HEADERS = Array.from({ length: MAX_ALLOCATION_GUESTS }, (_, i) => `Guest ${i + 1}`);
 const ALLOCATION_HEADERS = [
   'Room Number*',
-  'Guest 1',
-  'Guest 2',
-  'Guest 3',
+  ...GUEST_HEADERS,
   'Check-in Date*',
   'Check-out Date*',
+  'Room Type',
+  'Capacity',
 ];
+// Rows are positional; pad guest cells to MAX_ALLOCATION_GUESTS.
+const guestCells = (...names: string[]) =>
+  Array.from({ length: MAX_ALLOCATION_GUESTS }, (_, i) => names[i] ?? '');
 const ALLOCATION_SAMPLE = [
-  ['101', 'John Doe', 'Jane Doe', '', '2024-12-15', '2024-12-17'],
-  ['102', 'Raj Kumar', '', '', '2024-12-15', '2024-12-18'],
-  ['103', 'Khushi Sharma', 'Amit Sharma', 'Ravi Sharma', '2024-12-14', '2024-12-19'],
+  ['101', ...guestCells('John Doe', 'Jane Doe'), '2024-12-15', '2024-12-17', 'Standard Room', '2'],
+  ['102', ...guestCells('Raj Kumar'), '2024-12-15', '2024-12-18', 'Standard Room', '2'],
+  [
+    '103',
+    ...guestCells('Khushi Sharma', 'Amit Sharma', 'Ravi Sharma', 'Priya Sharma'),
+    '2024-12-14',
+    '2024-12-19',
+    'Suite',
+    '4',
+  ],
 ];
 const ALLOCATION_COL_WIDTHS = [
   { wch: 18 },
-  { wch: 25 },
-  { wch: 25 },
-  { wch: 25 },
+  ...GUEST_HEADERS.map(() => ({ wch: 25 })),
   { wch: 18 },
   { wch: 18 },
+  { wch: 18 },
+  { wch: 10 },
 ];
 const GUEST_LIST_HEADERS = [
   'Full Name (Copy This)',
@@ -266,11 +281,11 @@ export function parseRoomAllocationExcel(buffer: Buffer, hotelName: string): Par
         row['check_out_date'],
     );
 
-    const guestNames = [
-      getString(row['Guest 1'] ?? row['guest_1']),
-      getString(row['Guest 2'] ?? row['guest_2']),
-      getString(row['Guest 3'] ?? row['guest_3']),
-    ].filter((g) => g !== '');
+    const guestNames = Array.from({ length: MAX_ALLOCATION_GUESTS }, (_, i) =>
+      getString(row[`Guest ${i + 1}`] ?? row[`guest_${i + 1}`]),
+    ).filter((g) => g !== '');
+    const roomType = getString(row['Room Type'] ?? row['room_type']);
+    const capacity = Number(getString(row['Capacity'] ?? row['capacity'])) || undefined;
 
     guestNames.forEach((guestFullName) => {
       const { first_name, last_name } = splitName(guestFullName);
@@ -282,6 +297,8 @@ export function parseRoomAllocationExcel(buffer: Buffer, hotelName: string): Par
         guest_full_name: guestFullName,
         check_in_date: checkInDate,
         check_out_date: checkOutDate,
+        ...(roomType && { room_type: roomType }),
+        ...(capacity && { capacity }),
       });
     });
   });
@@ -345,11 +362,11 @@ export function parseMultiVenueAllocationExcel(
           row['check_out_date'],
       );
 
-      const guestNames = [
-        getString(row['Guest 1'] ?? row['guest_1']),
-        getString(row['Guest 2'] ?? row['guest_2']),
-        getString(row['Guest 3'] ?? row['guest_3']),
-      ].filter((g) => g !== '');
+      const guestNames = Array.from({ length: MAX_ALLOCATION_GUESTS }, (_, i) =>
+        getString(row[`Guest ${i + 1}`] ?? row[`guest_${i + 1}`]),
+      ).filter((g) => g !== '');
+      const roomType = getString(row['Room Type'] ?? row['room_type']);
+      const capacity = Number(getString(row['Capacity'] ?? row['capacity'])) || undefined;
 
       guestNames.forEach((guestFullName) => {
         const { first_name, last_name } = splitName(guestFullName);
@@ -362,6 +379,8 @@ export function parseMultiVenueAllocationExcel(
           guest_full_name: guestFullName,
           check_in_date: checkInDate,
           check_out_date: checkOutDate,
+          ...(roomType && { room_type: roomType }),
+          ...(capacity && { capacity }),
         });
       });
     });

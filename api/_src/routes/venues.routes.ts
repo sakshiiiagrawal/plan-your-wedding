@@ -8,6 +8,7 @@ import {
   updateRoomSchema,
   createAllocationSchema,
   updateAllocationSchema,
+  guestStayStatusSchema,
   createPaymentSchema,
 } from '../validators/venues.validator';
 import * as ctrl from '../controllers/venues.controller';
@@ -30,6 +31,11 @@ router.post(
   ctrl.importAllVenuesAllocations,
 );
 router.post('/allocations', validateBody(createAllocationSchema), ctrl.createAllocation);
+router.put(
+  '/allocations/:id/guest-status',
+  validateBody(guestStayStatusSchema),
+  ctrl.setGuestStayStatus,
+);
 router.put('/allocations/:id', validateBody(updateAllocationSchema), ctrl.updateAllocation);
 router.delete('/allocations/:id', ctrl.deleteAllocation);
 

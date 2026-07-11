@@ -1220,6 +1220,110 @@ async function normalizeTerminatedExpense(
   }
 }
 
+// Read-only detail loader for a *set* of already-fetched expense rows. The
+// per-expense getExpenseDetailsTx path is 5 round-trips each (1 redundant
+// header re-fetch + items/payments/allocations/summary); looping it over N
+// expenses on a single pooled pg connection serialized into 1 + N*5 sequential
+// round-trips (~10s for 20 expenses against remote Postgres). This collapses
+// the whole set into 4 batched queries keyed by expense_id = ANY(...), then
+// groups in memory. Ordering within each expense mirrors the single-row
+// loaders exactly (expense_id is only a grouping key, not a sort the caller
+// sees). getExpenseDetailsTx stays as-is for the single-expense / FOR UPDATE
+// mutation paths.
+async function loadExpenseDetailsForRows(
+  client: PoolClient,
+  ownerId: string,
+  rows: DbRow[],
+): Promise<ExpenseWithDetails[]> {
+  if (rows.length === 0) return [];
+  const expenseIds = rows.map((row) => String(row['id']));
+
+  const [itemsRes, paymentsRes, allocationsRes, summaryRes] = await Promise.all([
+    client.query<DbRow>(
+      `
+        SELECT *
+        FROM expense_items
+        WHERE expense_id = ANY($1::uuid[])
+        ORDER BY expense_id, display_order ASC, id ASC
+      `,
+      [expenseIds],
+    ),
+    client.query<DbRow>(
+      `
+        SELECT *
+        FROM payments
+        WHERE expense_id = ANY($1::uuid[])
+        ORDER BY expense_id, COALESCE(paid_date, due_date) DESC NULLS LAST, created_at DESC
+      `,
+      [expenseIds],
+    ),
+    client.query<DbRow>(
+      `
+        SELECT pa.*, p.expense_id
+        FROM payment_allocations pa
+        JOIN payments p ON p.id = pa.payment_id
+        WHERE p.expense_id = ANY($1::uuid[])
+        ORDER BY p.expense_id, pa.created_at ASC, pa.id ASC
+      `,
+      [expenseIds],
+    ),
+    client.query<DbRow>(
+      `
+        SELECT
+          febv.expense_id,
+          febv.committed_amount,
+          febv.paid_amount,
+          febv.outstanding_amount,
+          COALESCE(sp.planned_amount, 0) AS planned_amount
+        FROM finance_expense_balances_v febv
+        LEFT JOIN (
+          SELECT expense_id, SUM(amount) AS planned_amount
+          FROM payments
+          WHERE expense_id = ANY($2::uuid[])
+            AND status = 'scheduled'
+          GROUP BY expense_id
+        ) sp ON sp.expense_id = febv.expense_id
+        WHERE febv.user_id = $1
+          AND febv.expense_id = ANY($2::uuid[])
+      `,
+      [ownerId, expenseIds],
+    ),
+  ]);
+
+  const groupBy = <T>(
+    dbRows: DbRow[],
+    map: (row: DbRow) => T,
+  ): Map<string, T[]> => {
+    const grouped = new Map<string, T[]>();
+    for (const row of dbRows) {
+      const key = String(row['expense_id']);
+      const bucket = grouped.get(key);
+      if (bucket) bucket.push(map(row));
+      else grouped.set(key, [map(row)]);
+    }
+    return grouped;
+  };
+
+  const itemsByExpense = groupBy(itemsRes.rows, mapExpenseItemRow);
+  const paymentsByExpense = groupBy(paymentsRes.rows, mapPaymentRow);
+  const allocationsByExpense = groupBy(allocationsRes.rows, mapAllocationRow);
+  const summaryByExpense = new Map(
+    summaryRes.rows.map((row) => [String(row['expense_id']), parseSummary(row)]),
+  );
+
+  return rows.map((row) => {
+    const id = String(row['id']);
+    return {
+      ...mapExpenseRow(row),
+      items: itemsByExpense.get(id) ?? [],
+      payments: paymentsByExpense.get(id) ?? [],
+      allocations: allocationsByExpense.get(id) ?? [],
+      summary: summaryByExpense.get(id) ?? parseSummary(undefined),
+      source_name: row['description'] ? String(row['description']) : null,
+    };
+  });
+}
+
 export async function listExpenses(
   ownerId: string,
   filters: ExpenseQueryFilters = {},
@@ -1259,11 +1363,7 @@ export async function listExpenses(
       values,
     );
 
-    const expenses = rows.map(mapExpenseRow);
-    const details = await Promise.all(
-      expenses.map((expense: ExpenseRow) => getExpenseDetailsTx(client, ownerId, expense.id)),
-    );
-    return details;
+    return loadExpenseDetailsForRows(client, ownerId, rows);
   });
 }
 

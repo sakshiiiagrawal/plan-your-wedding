@@ -41,6 +41,16 @@ function normalizeDate(value: string | null | undefined): string {
   return value && value.trim() !== '' ? value : new Date().toISOString().slice(0, 10);
 }
 
+function assertDateOrder(
+  checkIn: string | null | undefined,
+  checkOut: string | null | undefined,
+  label: string,
+): void {
+  if (checkIn && checkOut && checkOut <= checkIn) {
+    throw new BadRequestError(`${label}: check-out date must be after check-in date`);
+  }
+}
+
 async function extractVenueFinanceInput(
   ownerId: string,
   payload: {
@@ -152,6 +162,7 @@ export async function createVenue(
   },
   ownerId: string,
 ): Promise<VenueRow> {
+  assertDateOrder(payload.default_check_in_date, payload.default_check_out_date, 'Default dates');
   return withPgTransaction(async (client) => {
     const {
       rooms = [],
@@ -306,6 +317,17 @@ export async function updateVenue(
         venuePayload.default_check_out_date ?? existing.default_check_out_date,
       notes: venuePayload.notes ?? existing.notes,
     };
+
+    if (
+      venuePayload.default_check_in_date !== undefined ||
+      venuePayload.default_check_out_date !== undefined
+    ) {
+      assertDateOrder(
+        nextValues.default_check_in_date,
+        nextValues.default_check_out_date,
+        'Default dates',
+      );
+    }
 
     const { rows } = await client.query<Record<string, unknown>>(
       `
@@ -493,7 +515,22 @@ export async function deleteVenue(id: string, ownerId: string): Promise<void> {
 // Rooms
 // ---------------------------------------------------------------------------
 
-export async function getRooms(venueId: string) {
+async function assertRoomOwnership(roomId: string, ownerId: string): Promise<void> {
+  const owner = await repo.findRoomOwner(roomId);
+  if (owner !== ownerId) throw new NotFoundError('Room not found');
+}
+
+async function assertAllocationOwnership(
+  allocationId: string,
+  ownerId: string,
+): Promise<void> {
+  const owner = await repo.findAllocationOwner(allocationId);
+  if (owner !== ownerId) throw new NotFoundError('Allocation not found');
+}
+
+export async function getRooms(ownerId: string, venueId: string) {
+  const venue = await repo.findByIdOrNameAndOwner(ownerId, venueId);
+  if (!venue) throw new NotFoundError('Venue not found');
   return repo.findRoomsByVenue(venueId);
 }
 
@@ -511,11 +548,19 @@ export async function getPageData(ownerId: string) {
   return { venues, roomsByVenue };
 }
 
-export async function addRoom(venueId: string, payload: Omit<RoomInsert, 'venue_id'>) {
+export async function addRoom(
+  ownerId: string,
+  venueId: string,
+  payload: Omit<RoomInsert, 'venue_id'>,
+) {
+  const venue = await repo.findByIdOrNameAndOwner(ownerId, venueId);
+  if (!venue) throw new NotFoundError('Venue not found');
+  assertDateOrder(payload.check_in_date, payload.check_out_date, 'Room booked window');
   return repo.insertRoom({ ...payload, venue_id: venueId });
 }
 
-export async function deleteRoom(id: string) {
+export async function deleteRoom(ownerId: string, id: string) {
+  await assertRoomOwnership(id, ownerId);
   const allocs = await repo.findAllocationsByRoom(id);
   const hasGuests = allocs.some((a) => ((a.guest_ids as string[]) ?? []).length > 0);
   if (hasGuests) {
@@ -527,6 +572,7 @@ export async function deleteRoom(id: string) {
 }
 
 export async function updateRoom(
+  ownerId: string,
   id: string,
   payload: Partial<
     Pick<
@@ -542,20 +588,47 @@ export async function updateRoom(
     >
   >,
 ) {
+  await assertRoomOwnership(id, ownerId);
+  const existing = await repo.findRoomById(id);
+  const allocs =
+    payload.capacity !== undefined ||
+    payload.check_in_date !== undefined ||
+    payload.check_out_date !== undefined
+      ? await repo.findAllocationsByRoom(id)
+      : [];
+
   // If lowering capacity, make sure it doesn't go below current occupancy
-  if (payload.capacity !== undefined) {
-    const existing = await repo.findRoomById(id);
-    if (existing) {
-      const allocs = await repo.findAllocationsByRoom(id);
-      const occupancy = allocs.reduce(
-        (sum, a) => sum + ((a.guest_ids as string[])?.length ?? 0),
-        0,
+  if (payload.capacity !== undefined && existing) {
+    const occupancy = allocs.reduce(
+      (sum, a) => sum + ((a.guest_ids as string[])?.length ?? 0),
+      0,
+    );
+    if (payload.capacity < occupancy) {
+      throw new BadRequestError(
+        `Cannot set capacity to ${payload.capacity} — room currently has ${occupancy} guest${occupancy !== 1 ? 's' : ''} assigned.`,
       );
-      if (payload.capacity < occupancy) {
-        throw new BadRequestError(
-          `Cannot set capacity to ${payload.capacity} — room currently has ${occupancy} guest${occupancy !== 1 ? 's' : ''} assigned.`,
-        );
-      }
+    }
+  }
+
+  // If narrowing the booked window, every existing stay must still fit inside it.
+  if (
+    (payload.check_in_date !== undefined || payload.check_out_date !== undefined) &&
+    existing
+  ) {
+    const roomIn = payload.check_in_date ?? existing.check_in_date ?? null;
+    const roomOut = payload.check_out_date ?? existing.check_out_date ?? null;
+    assertDateOrder(roomIn, roomOut, 'Room booked window');
+    const offending = allocs
+      .filter((a) => ((a.guest_ids as string[]) ?? []).length > 0)
+      .filter(
+        (a) =>
+          (roomIn && a.check_in_date < roomIn) || (roomOut && a.check_out_date > roomOut),
+      )
+      .sort((a, b) => a.check_in_date.localeCompare(b.check_in_date))[0];
+    if (offending) {
+      throw new BadRequestError(
+        `A stay (${offending.check_in_date} → ${offending.check_out_date}) falls outside the new booked window ${roomIn ?? '…'} → ${roomOut ?? '…'}. Adjust that stay first.`,
+      );
     }
   }
   return repo.updateRoom(id, payload);
@@ -569,70 +642,229 @@ export async function getAllocationMatrix(ownerId: string) {
   return repo.findAllocationMatrix(ownerId);
 }
 
-async function checkRoomCapacity(
-  roomId: string,
-  guestCount: number,
-  checkInDate: string,
-  checkOutDate: string,
-  excludeAllocationId?: string,
-) {
-  const room = await repo.findRoomById(roomId);
-  if (!room) throw new NotFoundError('Room not found');
-  const capacity = room.capacity ?? 0;
+interface AllocationGuardInput {
+  roomId: string;
+  guestIds: string[];
+  checkIn: string;
+  checkOut: string;
+  excludeAllocationId?: string;
+}
 
-  const overlapping = await repo.findOverlappingAllocations(
-    roomId,
-    checkInDate,
-    checkOutDate,
-    excludeAllocationId,
-  );
-  const existingOccupancy = overlapping.reduce(
-    (sum, a) => sum + ((a.guest_ids as string[])?.length ?? 0),
-    0,
-  );
-  const totalOccupancy = existingOccupancy + guestCount;
+// Runs every business rule inside the caller's transaction. Locks the room row
+// (FOR UPDATE) so concurrent allocation writes against the same room serialize.
+// ponytail: a cross-room guest conflict between two simultaneous requests to
+// different rooms is not serialized by the room lock (two-collaborators-in-the-
+// same-millisecond edge); the guest-overlap SELECT catches all sequential cases.
+async function assertAllocationAllowed(
+  client: import('pg').PoolClient,
+  ownerId: string,
+  input: AllocationGuardInput,
+): Promise<void> {
+  const { roomId, guestIds, checkIn, checkOut, excludeAllocationId } = input;
 
-  if (totalOccupancy > capacity) {
+  if (checkOut <= checkIn) {
+    throw new BadRequestError('Check-out date must be after check-in date');
+  }
+
+  const { rows: roomRows } = await client.query<{
+    id: string;
+    capacity: number;
+    room_number: string;
+    user_id: string;
+    room_check_in: string | null;
+    room_check_out: string | null;
+  }>(
+    `SELECT r.id, r.capacity, r.room_number, v.user_id,
+            r.check_in_date AS room_check_in, r.check_out_date AS room_check_out
+       FROM rooms r
+       JOIN venues v ON v.id = r.venue_id
+      WHERE r.id = $1
+      FOR UPDATE OF r`,
+    [roomId],
+  );
+  const room = roomRows[0];
+  if (!room || room.user_id !== ownerId) throw new NotFoundError('Room not found');
+
+  const { rows: ownedRows } = await client.query<{ n: number }>(
+    `SELECT count(*)::int AS n FROM guests WHERE user_id = $1 AND id = ANY($2::uuid[])`,
+    [ownerId, guestIds],
+  );
+  if (Number(ownedRows[0]?.n ?? 0) !== new Set(guestIds).size) {
+    throw new BadRequestError('One or more guests do not belong to this wedding');
+  }
+
+  const { rows: occRows } = await client.query<{ occupancy: number }>(
+    `SELECT COALESCE(SUM(cardinality(guest_ids)), 0)::int AS occupancy
+       FROM room_allocations
+      WHERE room_id = $1
+        AND check_in_date < $3
+        AND check_out_date > $2
+        AND ($4::uuid IS NULL OR id <> $4::uuid)`,
+    [roomId, checkIn, checkOut, excludeAllocationId ?? null],
+  );
+  const existingOccupancy = Number(occRows[0]?.occupancy ?? 0);
+  if (existingOccupancy + guestIds.length > room.capacity) {
     throw new BadRequestError(
-      `Room ${room.room_number} has a capacity of ${capacity}. ${existingOccupancy} guest${existingOccupancy !== 1 ? 's are' : ' is'} already assigned for an overlapping stay, and this would add ${guestCount} more.`,
+      `Room ${room.room_number} has a capacity of ${room.capacity}. ${existingOccupancy} guest${existingOccupancy !== 1 ? 's are' : ' is'} already assigned for an overlapping stay, and this would add ${guestIds.length} more.`,
+    );
+  }
+
+  if (
+    (room.room_check_in && checkIn < room.room_check_in) ||
+    (room.room_check_out && checkOut > room.room_check_out)
+  ) {
+    throw new BadRequestError(
+      `Room ${room.room_number} is only booked ${room.room_check_in ?? '…'} → ${room.room_check_out ?? '…'}. Adjust the stay dates or extend the room's booking window.`,
+    );
+  }
+
+  const { rows: conflictRows } = await client.query<{
+    guest_ids: string[];
+    room_number: string;
+    check_in_date: string;
+    check_out_date: string;
+  }>(
+    `SELECT ra.guest_ids, r.room_number, ra.check_in_date, ra.check_out_date
+       FROM room_allocations ra
+       JOIN rooms r ON r.id = ra.room_id
+      WHERE ra.guest_ids && $1::uuid[]
+        AND ra.check_in_date < $3
+        AND ra.check_out_date > $2
+        AND ($4::uuid IS NULL OR ra.id <> $4::uuid)`,
+    [guestIds, checkIn, checkOut, excludeAllocationId ?? null],
+  );
+  if (conflictRows.length > 0) {
+    const conflictedIds = Array.from(
+      new Set(conflictRows.flatMap((c) => c.guest_ids.filter((id) => guestIds.includes(id)))),
+    );
+    const names = await repo.findGuestNamesByIds(conflictedIds);
+    const nameList = names
+      .map((g) => [g.first_name, g.last_name].filter(Boolean).join(' '))
+      .join(', ');
+    const first = conflictRows[0]!;
+    throw new BadRequestError(
+      `${nameList || 'A selected guest'} already has a stay in Room ${first.room_number} (${first.check_in_date} → ${first.check_out_date}) that overlaps these dates. A guest can't be in two rooms on the same night.`,
     );
   }
 }
 
-export async function createAllocation(payload: RoomAllocationInsert) {
-  await checkRoomCapacity(
-    payload.room_id,
-    (payload.guest_ids ?? []).length,
-    payload.check_in_date,
-    payload.check_out_date,
-  );
-  return repo.insertAllocation(payload);
+export async function createAllocation(ownerId: string, payload: RoomAllocationInsert) {
+  return withPgTransaction(async (client) => {
+    await assertAllocationAllowed(client, ownerId, {
+      roomId: payload.room_id,
+      guestIds: payload.guest_ids ?? [],
+      checkIn: payload.check_in_date,
+      checkOut: payload.check_out_date,
+    });
+    const { rows } = await client.query(
+      `INSERT INTO room_allocations (room_id, guest_ids, check_in_date, check_out_date, notes)
+       VALUES ($1, $2::uuid[], $3, $4, $5)
+       RETURNING *`,
+      [
+        payload.room_id,
+        payload.guest_ids ?? [],
+        payload.check_in_date,
+        payload.check_out_date,
+        payload.notes ?? null,
+      ],
+    );
+    return rows[0];
+  });
 }
 
-export async function updateAllocation(id: string, payload: Partial<RoomAllocationInsert>) {
-  const touchesCapacity =
-    payload.room_id !== undefined ||
-    payload.guest_ids !== undefined ||
-    payload.check_in_date !== undefined ||
-    payload.check_out_date !== undefined;
-
-  if (touchesCapacity) {
-    const existing = await repo.findAllocationById(id);
-    if (existing) {
-      const roomId = payload.room_id ?? existing.room_id;
-      const guestCount = payload.guest_ids
-        ? payload.guest_ids.length
-        : ((existing.guest_ids as string[])?.length ?? 0);
-      const checkInDate = payload.check_in_date ?? existing.check_in_date;
-      const checkOutDate = payload.check_out_date ?? existing.check_out_date;
-      await checkRoomCapacity(roomId, guestCount, checkInDate, checkOutDate, id);
+export async function updateAllocation(
+  ownerId: string,
+  id: string,
+  payload: Partial<RoomAllocationInsert>,
+) {
+  return withPgTransaction(async (client) => {
+    const { rows: existingRows } = await client.query<{
+      id: string;
+      room_id: string;
+      guest_ids: string[];
+      check_in_date: string;
+      check_out_date: string;
+      notes: string | null;
+      user_id: string;
+    }>(
+      `SELECT ra.*, v.user_id
+         FROM room_allocations ra
+         JOIN rooms r ON r.id = ra.room_id
+         JOIN venues v ON v.id = r.venue_id
+        WHERE ra.id = $1
+        FOR UPDATE OF ra`,
+      [id],
+    );
+    const existing = existingRows[0];
+    if (!existing || existing.user_id !== ownerId) {
+      throw new NotFoundError('Allocation not found');
     }
-  }
-  return repo.updateAllocation(id, payload);
+
+    const merged = {
+      room_id: payload.room_id ?? existing.room_id,
+      guest_ids: payload.guest_ids ?? existing.guest_ids ?? [],
+      check_in_date: payload.check_in_date ?? existing.check_in_date,
+      check_out_date: payload.check_out_date ?? existing.check_out_date,
+      notes: payload.notes !== undefined ? payload.notes : existing.notes,
+    };
+
+    await assertAllocationAllowed(client, ownerId, {
+      roomId: merged.room_id,
+      guestIds: merged.guest_ids,
+      checkIn: merged.check_in_date,
+      checkOut: merged.check_out_date,
+      excludeAllocationId: id,
+    });
+
+    const { rows } = await client.query(
+      `UPDATE room_allocations
+          SET room_id = $2, guest_ids = $3::uuid[], check_in_date = $4,
+              check_out_date = $5, notes = $6, updated_at = NOW()
+        WHERE id = $1
+        RETURNING *`,
+      [id, merged.room_id, merged.guest_ids, merged.check_in_date, merged.check_out_date, merged.notes],
+    );
+    return rows[0];
+  });
 }
 
-export async function deleteAllocation(id: string) {
+export async function deleteAllocation(ownerId: string, id: string) {
+  await assertAllocationOwnership(id, ownerId);
   return repo.deleteAllocation(id);
+}
+
+export async function setGuestStayStatus(
+  ownerId: string,
+  allocationId: string,
+  input: { guest_id: string; status: 'expected' | 'checked_in' | 'checked_out' },
+) {
+  await assertAllocationOwnership(allocationId, ownerId);
+  const alloc = await repo.findAllocationById(allocationId);
+  if (!alloc) throw new NotFoundError('Allocation not found');
+  const guestIds = (alloc.guest_ids as string[]) ?? [];
+  if (!guestIds.includes(input.guest_id)) {
+    throw new BadRequestError('Guest is not part of this stay');
+  }
+  const checkedIn = new Set(
+    ((alloc as Record<string, unknown>).checked_in_guest_ids as string[]) ?? [],
+  );
+  const checkedOut = new Set(
+    ((alloc as Record<string, unknown>).checked_out_guest_ids as string[]) ?? [],
+  );
+  if (input.status === 'expected') {
+    checkedIn.delete(input.guest_id);
+    checkedOut.delete(input.guest_id);
+  } else if (input.status === 'checked_in') {
+    checkedIn.add(input.guest_id);
+    checkedOut.delete(input.guest_id);
+  } else {
+    checkedIn.add(input.guest_id);
+    checkedOut.add(input.guest_id);
+  }
+  return repo.updateAllocation(allocationId, {
+    checked_in_guest_ids: Array.from(checkedIn),
+    checked_out_guest_ids: Array.from(checkedOut),
+  } as Partial<RoomAllocationInsert>);
 }
 
 export async function getUnassignedGuests(ownerId: string) {
@@ -715,6 +947,8 @@ interface RoomGroup {
   guestIds: string[];
   guestNames: string[];
   firstRow: number;
+  roomType?: string;
+  capacity?: number;
 }
 
 async function processAllocations(
@@ -781,6 +1015,8 @@ async function processAllocations(
         guestIds: [],
         guestNames: [],
         firstRow: rowNum,
+        ...(allocation.room_type && { roomType: allocation.room_type }),
+        ...(allocation.capacity && { capacity: allocation.capacity }),
       });
     }
     const roomGroup = roomGroups.get(groupKey)!;
@@ -797,7 +1033,30 @@ async function processAllocations(
     check_out_date: string;
   }[] = [];
   const createdRooms: { room_number: string }[] = [];
-  const roomCache = new Map<string, { id: string; capacity: number; room_number: string }>();
+  const roomCache = new Map<
+    string,
+    {
+      id: string;
+      capacity: number;
+      room_number: string;
+      check_in_date: string | null;
+      check_out_date: string | null;
+    }
+  >();
+
+  // windows already claimed by THIS import, per room and per guest
+  const pendingRoomWindows = new Map<
+    string,
+    { checkIn: string; checkOut: string; count: number }[]
+  >();
+  const pendingGuestWindows: {
+    guestId: string;
+    guestName: string;
+    checkIn: string;
+    checkOut: string;
+  }[] = [];
+  const overlaps = (aIn: string, aOut: string, bIn: string, bOut: string) =>
+    aIn < bOut && aOut > bIn;
 
   for (const [, group] of roomGroups) {
     const roomKey = `${group.venueId}_${group.roomNumber}`;
@@ -811,39 +1070,119 @@ async function processAllocations(
         const newRoom = await repo.insertRoom({
           venue_id: group.venueId,
           room_number: group.roomNumber,
-          room_type: 'Standard Room',
-          capacity: Math.max(group.guestIds.length, 2),
+          room_type: group.roomType || 'Standard Room',
+          capacity: Math.max(group.guestIds.length, group.capacity ?? 2),
           rate_per_night: 0,
         });
         room = {
           id: newRoom.id,
           capacity: newRoom.capacity ?? 2,
           room_number: newRoom.room_number,
+          check_in_date: newRoom.check_in_date ?? null,
+          check_out_date: newRoom.check_out_date ?? null,
         };
         createdRooms.push({ room_number: room.room_number });
       }
       roomCache.set(roomKey, room);
     }
 
-    const existing = await repo.findAllocationForRoom(room.id, group.checkInDate);
-    const finalCount = existing
-      ? new Set([...(existing.guest_ids ?? []), ...group.guestIds]).size
-      : group.guestIds.length;
+    // --- capacity: consider ALL allocations overlapping this window, not exact matches
+    const overlapping = await repo.findOverlappingAllocations(
+      room.id,
+      group.checkInDate,
+      group.checkOutDate,
+    );
+    const exact = overlapping.find(
+      (a) =>
+        a.check_in_date === group.checkInDate && a.check_out_date === group.checkOutDate,
+    );
+    const mergedIds = exact
+      ? Array.from(new Set([...((exact.guest_ids as string[]) ?? []), ...group.guestIds]))
+      : group.guestIds;
+    const othersOccupancy = overlapping
+      .filter((a) => a.id !== exact?.id)
+      .reduce((sum, a) => sum + ((a.guest_ids as string[]) ?? []).length, 0);
+    const pendingOccupancy = (pendingRoomWindows.get(room.id) ?? [])
+      .filter((w) => overlaps(w.checkIn, w.checkOut, group.checkInDate, group.checkOutDate))
+      .reduce((sum, w) => sum + w.count, 0);
+    const capacity = room.capacity ?? 2;
+    const finalCount = othersOccupancy + pendingOccupancy + mergedIds.length;
 
-    if (finalCount > (room.capacity ?? 0)) {
+    if (finalCount > capacity) {
       errors.push({
         row: group.firstRow,
         guest: group.guestNames.join(', '),
-        error: `Room ${group.roomNumber} has a capacity of ${room.capacity ?? 0}, but this import would put ${finalCount} guest${finalCount !== 1 ? 's' : ''} in it for ${group.checkInDate}.`,
+        error: `Room ${group.roomNumber} has a capacity of ${capacity}, but ${group.checkInDate} → ${group.checkOutDate} would have ${finalCount} guest${finalCount !== 1 ? 's' : ''} across overlapping stays.`,
       });
       continue;
     }
 
-    if (existing) {
-      // Merge guest IDs (avoid duplicates)
-      const mergedIds = Array.from(new Set([...(existing.guest_ids ?? []), ...group.guestIds]));
+    // --- booked window: the stay must fall inside the room's booked window
+    if (
+      (room.check_in_date && group.checkInDate < room.check_in_date) ||
+      (room.check_out_date && group.checkOutDate > room.check_out_date)
+    ) {
+      errors.push({
+        row: group.firstRow,
+        guest: group.guestNames.join(', '),
+        error: `Room ${group.roomNumber} is only booked ${room.check_in_date ?? '…'} → ${room.check_out_date ?? '…'}. Adjust the stay dates.`,
+      });
+      continue;
+    }
+
+    // --- guest double-booking: DB + earlier rows of this same import
+    const dbConflicts = await repo.findGuestOverlappingAllocations(
+      group.guestIds,
+      group.checkInDate,
+      group.checkOutDate,
+      exact?.id,
+    );
+    const conflictedIds = new Set(
+      dbConflicts.flatMap((c) =>
+        (c.guest_ids ?? []).filter((id) => group.guestIds.includes(id)),
+      ),
+    );
+    pendingGuestWindows
+      .filter(
+        (w) =>
+          group.guestIds.includes(w.guestId) &&
+          overlaps(w.checkIn, w.checkOut, group.checkInDate, group.checkOutDate),
+      )
+      .forEach((w) => conflictedIds.add(w.guestId));
+
+    if (conflictedIds.size > 0) {
+      const names = group.guestNames.filter((_, i) => conflictedIds.has(group.guestIds[i]!));
+      errors.push({
+        row: group.firstRow,
+        guest: names.join(', '),
+        error: `Guest${names.length !== 1 ? 's' : ''} ${names.join(', ')} already ${names.length !== 1 ? 'have' : 'has'} a stay overlapping ${group.checkInDate} → ${group.checkOutDate}. Remove the old stay first or change the dates.`,
+      });
+      continue;
+    }
+
+    // --- record what this import will occupy
+    const addedCount = exact
+      ? mergedIds.length - ((exact.guest_ids as string[]) ?? []).length
+      : mergedIds.length;
+    const roomWindows = pendingRoomWindows.get(room.id) ?? [];
+    roomWindows.push({
+      checkIn: group.checkInDate,
+      checkOut: group.checkOutDate,
+      count: addedCount,
+    });
+    pendingRoomWindows.set(room.id, roomWindows);
+    group.guestIds.forEach((gid, i) =>
+      pendingGuestWindows.push({
+        guestId: gid,
+        guestName: group.guestNames[i] ?? '',
+        checkIn: group.checkInDate,
+        checkOut: group.checkOutDate,
+      }),
+    );
+
+    if (exact) {
       allocationsToUpdate.push({
-        id: existing.id,
+        id: exact.id,
         guest_ids: mergedIds,
         check_in_date: group.checkInDate,
         check_out_date: group.checkOutDate,

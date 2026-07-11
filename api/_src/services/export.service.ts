@@ -52,16 +52,29 @@ export async function exportAllocations(ownerId: string): Promise<Buffer> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows = (matrix as any[]).flatMap((venue) =>
     (venue.rooms ?? []).flatMap((room: any) =>
-      (room.room_allocations ?? []).map((alloc: any) => ({
-        venue: venue.name,
-        room: room.room_number,
-        room_type: room.room_type,
-        guests: (alloc.guests ?? [])
-          .map((g: any) => `${g.first_name} ${g.last_name ?? ''}`.trim())
-          .join(', '),
-        check_in: alloc.check_in_date,
-        check_out: alloc.check_out_date,
-      })),
+      (room.room_allocations ?? []).map((alloc: any) => {
+        const nights =
+          alloc.check_in_date && alloc.check_out_date && alloc.check_out_date > alloc.check_in_date
+            ? Math.round(
+                (Date.parse(`${alloc.check_out_date}T00:00:00Z`) -
+                  Date.parse(`${alloc.check_in_date}T00:00:00Z`)) /
+                  86400000,
+              )
+            : 0;
+        const rate = room.rate_per_night ?? null;
+        return {
+          venue: venue.name,
+          room: room.room_number,
+          room_type: room.room_type,
+          guests: (alloc.guests ?? [])
+            .map((g: any) => `${g.first_name} ${g.last_name ?? ''}`.trim())
+            .join(', '),
+          check_in: alloc.check_in_date,
+          check_out: alloc.check_out_date,
+          nights,
+          est_cost: rate != null ? nights * rate : '',
+        };
+      }),
     ),
   );
   return toBuffer(rows, 'Accommodations');

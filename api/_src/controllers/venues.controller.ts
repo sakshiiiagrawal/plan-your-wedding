@@ -91,7 +91,7 @@ export const getRooms = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.json(await service.getRooms(req.params.id));
+    res.json(await service.getRooms(getWeddingOwnerId(req), req.params.id));
   } catch (e) {
     next(e);
   }
@@ -103,7 +103,7 @@ export const addRoom = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.status(201).json(await service.addRoom(req.params.id, req.body));
+    res.status(201).json(await service.addRoom(getWeddingOwnerId(req), req.params.id, req.body));
   } catch (e) {
     next(e);
   }
@@ -115,7 +115,7 @@ export const updateRoom = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.json(await service.updateRoom(req.params.id, req.body));
+    res.json(await service.updateRoom(getWeddingOwnerId(req), req.params.id, req.body));
   } catch (e) {
     next(e);
   }
@@ -127,7 +127,7 @@ export const deleteRoom = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    await service.deleteRoom(req.params.id);
+    await service.deleteRoom(getWeddingOwnerId(req), req.params.id);
     res.status(204).send();
   } catch (e) {
     next(e);
@@ -168,7 +168,7 @@ export const createAllocation = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.status(201).json(await service.createAllocation(req.body));
+    res.status(201).json(await service.createAllocation(getWeddingOwnerId(req), req.body));
   } catch (e) {
     next(e);
   }
@@ -180,7 +180,7 @@ export const updateAllocation = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.json(await service.updateAllocation(req.params.id, req.body));
+    res.json(await service.updateAllocation(getWeddingOwnerId(req), req.params.id, req.body));
   } catch (e) {
     next(e);
   }
@@ -192,8 +192,22 @@ export const deleteAllocation = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    await service.deleteAllocation(req.params.id);
+    await service.deleteAllocation(getWeddingOwnerId(req), req.params.id);
     res.status(204).send();
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const setGuestStayStatus = async (
+  req: Request<IdParam>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res.json(
+      await service.setGuestStayStatus(getWeddingOwnerId(req), req.params.id, req.body),
+    );
   } catch (e) {
     next(e);
   }

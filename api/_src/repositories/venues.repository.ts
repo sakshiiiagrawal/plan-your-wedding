@@ -141,10 +141,16 @@ export async function findRoomsByOwner(venueIds: string[]) {
 export async function findRoomByNumberAndVenue(
   venueId: string,
   roomNumber: string,
-): Promise<{ id: string; capacity: number; room_number: string } | null> {
+): Promise<{
+  id: string;
+  capacity: number;
+  room_number: string;
+  check_in_date: string | null;
+  check_out_date: string | null;
+} | null> {
   const { data, error } = await supabase
     .from('rooms')
-    .select('id, capacity, room_number')
+    .select('id, capacity, room_number, check_in_date, check_out_date')
     .eq('venue_id', venueId)
     .eq('room_number', roomNumber)
     .limit(1);
@@ -248,20 +254,6 @@ export async function findAllocationMatrix(ownerId: string) {
   }));
 }
 
-export async function findAllocationForRoom(
-  roomId: string,
-  checkInDate: string,
-): Promise<RoomAllocationRow | null> {
-  const { data, error } = await supabase
-    .from('room_allocations')
-    .select('*')
-    .eq('room_id', roomId)
-    .eq('check_in_date', checkInDate)
-    .limit(1);
-  if (error) throw error;
-  return ((data ?? [])[0] as RoomAllocationRow) ?? null;
-}
-
 export async function findAllocationsByRoom(roomId: string): Promise<RoomAllocationRow[]> {
   const { data, error } = await supabase.from('room_allocations').select('*').eq('room_id', roomId);
   if (error) throw error;
@@ -292,12 +284,16 @@ export async function findAllocationById(id: string): Promise<RoomAllocationRow 
   return ((data ?? [])[0] as RoomAllocationRow) ?? null;
 }
 
-export async function findRoomById(
-  roomId: string,
-): Promise<{ id: string; capacity: number | null; room_number: string } | null> {
+export async function findRoomById(roomId: string): Promise<{
+  id: string;
+  capacity: number | null;
+  room_number: string;
+  check_in_date: string | null;
+  check_out_date: string | null;
+} | null> {
   const { data, error } = await supabase
     .from('rooms')
-    .select('id, capacity, room_number')
+    .select('id, capacity, room_number, check_in_date, check_out_date')
     .eq('id', roomId)
     .limit(1);
   if (error) throw error;
@@ -357,14 +353,101 @@ export async function deleteAllocation(id: string): Promise<void> {
 }
 
 export async function findUnassignedGuests(ownerId: string) {
-  const [{ data: allGuests, error: guestError }, { data: allocations }] = await Promise.all([
-    supabase.from('guests').select('*').eq('user_id', ownerId),
-    supabase.from('room_allocations').select('guest_ids'),
-  ]);
+  const [{ data: allGuests, error: guestError }, { data: allocations, error: allocError }] =
+    await Promise.all([
+      supabase.from('guests').select('*').eq('user_id', ownerId),
+      supabase
+        .from('room_allocations')
+        .select('guest_ids, rooms!inner(venue_id, venues!inner(user_id))')
+        .eq('rooms.venues.user_id', ownerId),
+    ]);
   if (guestError) throw guestError;
-  // Flatten all guest_ids arrays
-  const allocatedIds = new Set((allocations ?? []).flatMap((a) => (a.guest_ids as string[]) ?? []));
+  if (allocError) throw allocError;
+  const allocatedIds = new Set(
+    (allocations ?? []).flatMap((a) => (a.guest_ids as string[]) ?? []),
+  );
   return (allGuests ?? []).filter((g) => !allocatedIds.has(g.id));
+}
+
+// --- Guest overlap + ownership lookups (Phase 0) ---
+
+export interface GuestOverlapRow {
+  id: string;
+  room_id: string;
+  guest_ids: string[];
+  check_in_date: string;
+  check_out_date: string;
+  rooms: { room_number: string; venues: { name: string } | null } | null;
+}
+
+export async function findGuestOverlappingAllocations(
+  guestIds: string[],
+  checkInDate: string,
+  checkOutDate: string,
+  excludeId?: string,
+): Promise<GuestOverlapRow[]> {
+  let query = supabase
+    .from('room_allocations')
+    .select(
+      'id, room_id, guest_ids, check_in_date, check_out_date, rooms(room_number, venues(name))',
+    )
+    .overlaps('guest_ids', guestIds)
+    .lt('check_in_date', checkOutDate)
+    .gt('check_out_date', checkInDate);
+  if (excludeId) query = query.neq('id', excludeId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as unknown as GuestOverlapRow[];
+}
+
+export async function findGuestNamesByIds(
+  ids: string[],
+): Promise<{ id: string; first_name: string; last_name: string | null }[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase
+    .from('guests')
+    .select('id, first_name, last_name')
+    .in('id', ids);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function findRoomOwner(roomId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('rooms')
+    .select('id, venues!inner(user_id)')
+    .eq('id', roomId)
+    .limit(1);
+  if (error) throw error;
+  const row = (data ?? [])[0] as unknown as { venues: { user_id: string } } | undefined;
+  return row?.venues?.user_id ?? null;
+}
+
+export async function findAllocationOwner(allocationId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('room_allocations')
+    .select('id, rooms!inner(venues!inner(user_id))')
+    .eq('id', allocationId)
+    .limit(1);
+  if (error) throw error;
+  const row = (data ?? [])[0] as unknown as
+    | { rooms: { venues: { user_id: string } } }
+    | undefined;
+  return row?.rooms?.venues?.user_id ?? null;
+}
+
+export async function countGuestsOwnedBy(
+  ownerId: string,
+  guestIds: string[],
+): Promise<number> {
+  if (guestIds.length === 0) return 0;
+  const { count, error } = await supabase
+    .from('guests')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', ownerId)
+    .in('id', guestIds);
+  if (error) throw error;
+  return count ?? 0;
 }
 
 // ---------------------------------------------------------------------------
