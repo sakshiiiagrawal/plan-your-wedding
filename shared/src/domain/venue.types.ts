@@ -18,6 +18,7 @@ export interface VenueRow {
   has_accommodation: boolean;
   default_check_in_date: string | null;
   default_check_out_date: string | null;
+  display_order: number | null;
   notes: string | null;
   created_at: string;
   updated_at: string;

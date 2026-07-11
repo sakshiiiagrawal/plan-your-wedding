@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { validateBody } from '../middleware/validate.middleware';
 import {
   updateTotalExpenseSchema,
@@ -15,6 +16,10 @@ import * as exportController from '../controllers/export.controller';
 import { requirePermission } from '../middleware/access.middleware';
 
 const router = Router();
+const receiptUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+});
 
 // Overview
 router.get('/', ctrl.getSummary);
@@ -59,6 +64,13 @@ router.patch(
   ctrl.updateExpensePayment,
 );
 router.delete('/payments/:paymentId', ctrl.deleteExpensePayment);
+router.get('/payments/:paymentId/attachments', ctrl.getPaymentAttachments);
+router.post(
+  '/payments/:paymentId/attachments',
+  receiptUpload.single('file'),
+  ctrl.uploadPaymentAttachment,
+);
+router.delete('/payments/attachments/:attachmentId', ctrl.deletePaymentAttachment);
 
 // Payments / outstanding / alerts
 router.get('/payments', ctrl.getPayments);

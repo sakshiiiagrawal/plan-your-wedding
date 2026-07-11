@@ -13,6 +13,8 @@ import {
 import toast from 'react-hot-toast';
 import Portal from '../../components/Portal';
 import CategoryCombobox from '../../components/CategoryCombobox';
+import PaymentAttachments from '../../components/finance/PaymentAttachments';
+import PaymentNotesEditor from '../../components/finance/PaymentNotesEditor';
 import { formatCurrency } from '../../utils/currency';
 import { parseLocalDate } from '../../utils/date';
 import {
@@ -2526,11 +2528,18 @@ export default function Vendors() {
                                         {parseLocalDate(dateLabel).toLocaleDateString('en-IN')}
                                         {payment.payment_method &&
                                           ` · ${PAYMENT_METHOD_LABELS[payment.payment_method] ?? payment.payment_method}`}
-                                        {payment.notes ? ` · ${payment.notes}` : ''}
+                                      </div>
+                                      <PaymentNotesEditor
+                                        paymentId={payment.id}
+                                        notes={payment.notes}
+                                      />
+                                      <div style={{ marginTop: 4 }}>
+                                        <PaymentAttachments paymentId={payment.id} />
                                       </div>
                                     </div>
                                     {isDeleteAllowed && (
                                       <button
+                                        type="button"
                                         onClick={() => handlePaymentDelete(payment.id)}
                                         disabled={deleteVendorPayment.isPending}
                                         style={{

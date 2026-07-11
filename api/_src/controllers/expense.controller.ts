@@ -4,6 +4,7 @@ import * as service from '../services/expense.service';
 
 type IdParam = { id: string };
 type PaymentParam = { paymentId: string };
+type AttachmentParam = { attachmentId: string };
 const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
 
 // ---------------------------------------------------------------------------
@@ -306,6 +307,52 @@ export const deleteExpensePayment = async (
 ): Promise<void> => {
   try {
     await service.deleteExpensePayment(req.params.paymentId, getWeddingOwnerId(req));
+    res.status(204).send();
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const getPaymentAttachments = async (
+  req: Request<PaymentParam>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res.json(await service.getPaymentAttachments(req.params.paymentId, getWeddingOwnerId(req)));
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const uploadPaymentAttachment = async (
+  req: Request<PaymentParam>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: 'No file uploaded' });
+      return;
+    }
+    const attachment = await service.uploadPaymentAttachment(
+      req.params.paymentId,
+      getWeddingOwnerId(req),
+      req.file,
+    );
+    res.status(201).json(attachment);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const deletePaymentAttachment = async (
+  req: Request<AttachmentParam>,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    await service.deletePaymentAttachment(req.params.attachmentId, getWeddingOwnerId(req));
     res.status(204).send();
   } catch (e) {
     next(e);

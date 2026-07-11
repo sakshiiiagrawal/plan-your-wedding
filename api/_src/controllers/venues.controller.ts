@@ -53,6 +53,16 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
+export const reorder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const ownerId = getWeddingOwnerId(req);
+    await service.reorderVenues(ownerId, req.body.orderedIds);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const update = async (
   req: Request<IdParam>,
   res: Response,

@@ -16,38 +16,55 @@ export interface VenueWithEventSummary extends VenueRow {
   events: { id: string; name: string; event_date: string }[];
 }
 
-export async function findAllByOwner(ownerId: string): Promise<VenueWithEventSummary[]> {
-  const { data, error } = await supabase
-    .from('venues')
-    .select('*, events(id, name, event_date)')
-    .eq('user_id', ownerId)
+// The single source of truth for venue order everywhere: user-defined
+// display_order, alphabetical as a stable tiebreaker for any un-ordered rows.
+function orderByDisplay<T extends { order: (col: string, opts: object) => T }>(query: T): T {
+  return query
+    .order('display_order', { ascending: true, nullsFirst: false })
     .order('name', { ascending: true });
+}
+
+export async function findAllByOwner(ownerId: string): Promise<VenueWithEventSummary[]> {
+  const { data, error } = await orderByDisplay(
+    supabase.from('venues').select('*, events(id, name, event_date)').eq('user_id', ownerId),
+  );
 
   if (error) throw error;
   return (data ?? []) as VenueWithEventSummary[];
 }
 
 export async function findAccommodationsByOwner(ownerId: string) {
-  const { data, error } = await supabase
-    .from('venues')
-    .select('*, rooms(count)')
-    .eq('user_id', ownerId)
-    .eq('has_accommodation', true)
-    .order('name', { ascending: true });
+  const { data, error } = await orderByDisplay(
+    supabase
+      .from('venues')
+      .select('*, rooms(count)')
+      .eq('user_id', ownerId)
+      .eq('has_accommodation', true),
+  );
 
   if (error) throw error;
   return data ?? [];
 }
 
 export async function findAllIdNameByOwner(ownerId: string) {
-  const { data, error } = await supabase
-    .from('venues')
-    .select('id, name')
-    .eq('user_id', ownerId)
-    .eq('has_accommodation', true)
-    .order('name', { ascending: true });
+  const { data, error } = await orderByDisplay(
+    supabase.from('venues').select('id, name').eq('user_id', ownerId).eq('has_accommodation', true),
+  );
   if (error) throw error;
   return data ?? [];
+}
+
+// Persist a new venue ordering. Small N (a handful of venues), so a per-row
+// update loop is fine. ponytail: loop update, batch upsert if this ever grows.
+export async function reorderVenues(ownerId: string, orderedIds: string[]): Promise<void> {
+  for (let i = 0; i < orderedIds.length; i++) {
+    const { error } = await supabase
+      .from('venues')
+      .update({ display_order: i + 1 })
+      .eq('id', orderedIds[i])
+      .eq('user_id', ownerId);
+    if (error) throw error;
+  }
 }
 
 export async function findByIdAndOwner(
@@ -206,12 +223,13 @@ export async function deleteRoom(id: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export async function findAllocationMatrix(ownerId: string) {
-  const { data: venues, error } = await supabase
-    .from('venues')
-    .select(`*, rooms(*, room_allocations(*))`)
-    .eq('user_id', ownerId)
-    .eq('has_accommodation', true)
-    .order('name', { ascending: true });
+  const { data: venues, error } = await orderByDisplay(
+    supabase
+      .from('venues')
+      .select(`*, rooms(*, room_allocations(*))`)
+      .eq('user_id', ownerId)
+      .eq('has_accommodation', true),
+  );
 
   if (error) throw error;
   if (!venues || venues.length === 0) return [];

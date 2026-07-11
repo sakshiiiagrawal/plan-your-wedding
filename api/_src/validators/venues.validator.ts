@@ -63,6 +63,10 @@ export const createVenueSchema = z.object({
 
 export const updateVenueSchema = createVenueSchema.partial();
 
+export const reorderVenuesSchema = z.object({
+  orderedIds: z.array(z.string().uuid()).min(1),
+});
+
 export const addRoomSchema = z.object({
   room_number: z.string().min(1),
   room_type: z.string().min(1),

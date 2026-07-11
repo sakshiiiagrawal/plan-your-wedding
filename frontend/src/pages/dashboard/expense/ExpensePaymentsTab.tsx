@@ -2,6 +2,7 @@ import { useExpenseOutstanding, useExpensePayments } from '../../../hooks/useApi
 import { parseLocalDate } from '../../../utils/date';
 import { financeTier } from '@wedding-planner/shared';
 import { useAuth } from '../../../contexts/AuthContext';
+import PaymentAttachments from '../../../components/finance/PaymentAttachments';
 
 interface ExpensePaymentsTabProps {
   formatCurrency: (amount: number) => string;
@@ -97,6 +98,8 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   {canSeeSplits && <th className="text-left p-4">Paid By</th>}
                   <th className="text-left p-4">Due Date</th>
                   <th className="text-left p-4">Status</th>
+                  <th className="text-left p-4 hidden md:table-cell">Notes</th>
+                  <th className="text-left p-4">Receipts</th>
                 </tr>
               </thead>
               <tbody>
@@ -134,6 +137,12 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                       <td className="p-4">
                         {plannedBadge(payment.due_date ?? payment.created_at)}
                       </td>
+                      <td className="p-4 text-ink-low text-sm hidden md:table-cell">
+                        {payment.notes || '—'}
+                      </td>
+                      <td className="p-4">
+                        <PaymentAttachments paymentId={payment.id} />
+                      </td>
                     </tr>
                   ))}
               </tbody>
@@ -162,6 +171,8 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   <th className="text-left p-4">Date</th>
                   <th className="text-left p-4">Method</th>
                   <th className="text-left p-4 hidden md:table-cell">Reference</th>
+                  <th className="text-left p-4 hidden md:table-cell">Notes</th>
+                  <th className="text-left p-4">Receipts</th>
                 </tr>
               </thead>
               <tbody>
@@ -202,6 +213,12 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                       </td>
                       <td className="p-4 text-ink-low text-sm hidden md:table-cell">
                         {payment.transaction_reference || '—'}
+                      </td>
+                      <td className="p-4 text-ink-low text-sm hidden md:table-cell">
+                        {payment.notes || '—'}
+                      </td>
+                      <td className="p-4">
+                        <PaymentAttachments paymentId={payment.id} />
                       </td>
                     </tr>
                   ))}

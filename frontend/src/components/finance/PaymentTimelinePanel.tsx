@@ -4,6 +4,8 @@ import toast from 'react-hot-toast';
 import CategoryCombobox from '../CategoryCombobox';
 import DatePicker from '../ui/DatePicker';
 import SplitShare from '../ui/SplitShare';
+import PaymentAttachments from './PaymentAttachments';
+import PaymentNotesEditor from './PaymentNotesEditor';
 import { formatCurrency } from '../../utils/currency';
 import { parseLocalDate } from '../../utils/date';
 import type { PaymentRow } from '@wedding-planner/shared';
@@ -226,111 +228,14 @@ export default function PaymentTimelinePanel({
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {sortedPayments.map((payment) => {
-              const dateLabel = payment.paid_date ?? payment.due_date ?? payment.created_at;
-              const isDeleteAllowed = payment.status === 'scheduled';
-              const isInflow = payment.direction === 'inflow';
-              const amtColor = isInflow
-                ? '#0369a1'
-                : payment.status === 'posted'
-                  ? 'var(--ok)'
-                  : 'var(--gold-deep)';
-              return (
-                <div
-                  key={payment.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    gap: 12,
-                    border: '1px solid var(--line-soft)',
-                    borderRadius: 10,
-                    padding: '10px 14px',
-                  }}
-                >
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontWeight: 600, fontSize: 14, color: amtColor }}>
-                        {formatPaymentAmount(payment.amount, payment.direction)}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 10,
-                          padding: '2px 7px',
-                          borderRadius: 100,
-                          background: 'var(--bg-raised)',
-                          color: 'var(--ink-low)',
-                          textTransform: 'capitalize',
-                        }}
-                      >
-                        {payment.status.replaceAll('_', ' ')}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 10,
-                          padding: '2px 7px',
-                          borderRadius: 100,
-                          background: 'var(--bg-raised)',
-                          color: 'var(--ink-low)',
-                          textTransform: 'capitalize',
-                        }}
-                      >
-                        {payment.direction}
-                      </span>
-                      {payment.paid_by_side && (
-                        <span
-                          style={{
-                            fontSize: 10,
-                            padding: '2px 7px',
-                            borderRadius: 100,
-                            background: 'var(--bg-raised)',
-                            color: 'var(--ink-low)',
-                            textTransform: 'capitalize',
-                          }}
-                        >
-                          {payment.paid_by_side}
-                        </span>
-                      )}
-                    </div>
-                    {payment.paid_by_side === 'shared' && payment.paid_bride_share_percentage != null && (
-                      <div style={{ fontSize: 11, color: 'var(--ink-low)', lineHeight: 1.35 }}>
-                        Bride {payment.paid_bride_share_percentage}% · Groom{' '}
-                        {100 - payment.paid_bride_share_percentage}%
-                      </div>
-                    )}
-                    <div className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>
-                      {parseLocalDate(dateLabel).toLocaleDateString('en-IN')}
-                      {payment.payment_method &&
-                        ` · ${PAYMENT_METHOD_LABELS[payment.payment_method] ?? payment.payment_method}`}
-                      {payment.notes ? ` · ${payment.notes}` : ''}
-                    </div>
-                  </div>
-                  {isDeleteAllowed && (
-                    <button
-                      onClick={() => handleDelete(payment.id)}
-                      disabled={isDeleting}
-                      style={{
-                        padding: '6px 8px',
-                        borderRadius: 6,
-                        color: 'var(--err)',
-                        background: 'transparent',
-                        cursor: 'pointer',
-                        flexShrink: 0,
-                        opacity: isDeleting ? 0.5 : 1,
-                      }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.08)';
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLElement).style.background = 'transparent';
-                      }}
-                    >
-                      <HiOutlineTrash style={{ width: 15, height: 15 }} />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+            {sortedPayments.map((payment) => (
+              <PaymentTimelineItem
+                key={payment.id}
+                payment={payment}
+                isDeleting={isDeleting}
+                onDelete={handleDelete}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -528,6 +433,120 @@ export default function PaymentTimelinePanel({
           {isCreating ? 'Saving…' : isScheduled ? 'Save Planned Payment' : 'Record Payment'}
         </button>
       </div>
+    </div>
+  );
+}
+
+interface PaymentTimelineItemProps {
+  payment: PaymentRow;
+  isDeleting: boolean;
+  onDelete: (paymentId: string) => void;
+}
+
+function PaymentTimelineItem({ payment, isDeleting, onDelete }: PaymentTimelineItemProps) {
+  const dateLabel = payment.paid_date ?? payment.due_date ?? payment.created_at;
+  const isDeleteAllowed = payment.status === 'scheduled';
+  const isInflow = payment.direction === 'inflow';
+  const amtColor = isInflow ? '#0369a1' : payment.status === 'posted' ? 'var(--ok)' : 'var(--gold-deep)';
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 12,
+        border: '1px solid var(--line-soft)',
+        borderRadius: 10,
+        padding: '10px 14px',
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, flex: 1 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontWeight: 600, fontSize: 14, color: amtColor }}>
+            {formatPaymentAmount(payment.amount, payment.direction)}
+          </span>
+          <span
+            style={{
+              fontSize: 10,
+              padding: '2px 7px',
+              borderRadius: 100,
+              background: 'var(--bg-raised)',
+              color: 'var(--ink-low)',
+              textTransform: 'capitalize',
+            }}
+          >
+            {payment.status.replaceAll('_', ' ')}
+          </span>
+          <span
+            style={{
+              fontSize: 10,
+              padding: '2px 7px',
+              borderRadius: 100,
+              background: 'var(--bg-raised)',
+              color: 'var(--ink-low)',
+              textTransform: 'capitalize',
+            }}
+          >
+            {payment.direction}
+          </span>
+          {payment.paid_by_side && (
+            <span
+              style={{
+                fontSize: 10,
+                padding: '2px 7px',
+                borderRadius: 100,
+                background: 'var(--bg-raised)',
+                color: 'var(--ink-low)',
+                textTransform: 'capitalize',
+              }}
+            >
+              {payment.paid_by_side}
+            </span>
+          )}
+        </div>
+        {payment.paid_by_side === 'shared' && payment.paid_bride_share_percentage != null && (
+          <div style={{ fontSize: 11, color: 'var(--ink-low)', lineHeight: 1.35 }}>
+            Bride {payment.paid_bride_share_percentage}% · Groom{' '}
+            {100 - payment.paid_bride_share_percentage}%
+          </div>
+        )}
+        <div className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>
+          {parseLocalDate(dateLabel).toLocaleDateString('en-IN')}
+          {payment.payment_method &&
+            ` · ${PAYMENT_METHOD_LABELS[payment.payment_method] ?? payment.payment_method}`}
+        </div>
+
+        <PaymentNotesEditor paymentId={payment.id} notes={payment.notes} />
+
+        <div style={{ marginTop: 4 }}>
+          <PaymentAttachments paymentId={payment.id} />
+        </div>
+      </div>
+      {isDeleteAllowed && (
+        <button
+          type="button"
+          onClick={() => onDelete(payment.id)}
+          disabled={isDeleting}
+          style={{
+            padding: '6px 8px',
+            borderRadius: 6,
+            color: 'var(--err)',
+            background: 'transparent',
+            cursor: 'pointer',
+            flexShrink: 0,
+            opacity: isDeleting ? 0.5 : 1,
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'rgba(220,38,38,0.08)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'transparent';
+          }}
+        >
+          <HiOutlineTrash style={{ width: 15, height: 15 }} />
+        </button>
+      )}
     </div>
   );
 }

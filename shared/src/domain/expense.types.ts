@@ -108,6 +108,16 @@ export interface PaymentInsert {
   reverses_payment_id?: string | null;
 }
 
+export interface PaymentAttachmentRow {
+  id: string;
+  payment_id: string;
+  url: string;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+  created_at: string;
+}
+
 export interface PaymentAllocationRow {
   id: string;
   payment_id: string;

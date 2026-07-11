@@ -136,6 +136,10 @@ export async function listVenues(
   return venues.map((venue) => mergeVenueWithFinance(venue, financeBySource.get(venue.id) ?? null));
 }
 
+export async function reorderVenues(ownerId: string, orderedIds: string[]): Promise<void> {
+  await repo.reorderVenues(ownerId, orderedIds);
+}
+
 export async function getVenue(
   id: string,
   ownerId: string,
@@ -191,9 +195,11 @@ export async function createVenue(
           has_accommodation,
           default_check_in_date,
           default_check_out_date,
-          notes
+          notes,
+          display_order
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+          COALESCE((SELECT MAX(display_order) FROM venues WHERE user_id = $1), 0) + 1)
         RETURNING *
       `,
       [

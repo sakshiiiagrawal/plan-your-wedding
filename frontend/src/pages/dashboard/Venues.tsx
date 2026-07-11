@@ -14,7 +14,18 @@ import {
   HiOutlineMap,
   HiOutlineTrash,
   HiOutlineInformationCircle,
+  HiOutlineDotsVertical,
 } from 'react-icons/hi';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import SortableItem from '../../components/SortableItem';
 import { SectionHeader } from '../../components/ui';
 import SplitShare from '../../components/ui/SplitShare';
 import AddressAutocomplete, { buildMapsUrl } from '../../components/AddressAutocomplete';
@@ -23,6 +34,7 @@ import {
   useCreateVenue,
   useUpdateVenue,
   useDeleteVenue,
+  useReorderVenues,
   useAccommodationRooms,
   useDeleteRoom,
   useSourcePayments,
@@ -34,6 +46,8 @@ import Portal from '../../components/Portal';
 import CategoryCombobox from '../../components/CategoryCombobox';
 import DatePicker from '../../components/ui/DatePicker';
 import DateRangePicker from '../../components/ui/DateRangePicker';
+import PaymentAttachments from '../../components/finance/PaymentAttachments';
+import PaymentNotesEditor from '../../components/finance/PaymentNotesEditor';
 import InstallmentsEditor, {
   type InstallmentFormRow,
 } from '../../components/finance/InstallmentsEditor';
@@ -493,6 +507,17 @@ export default function Venues() {
   const createMutation = useCreateVenue();
   const updateMutation = useUpdateVenue();
   const deleteMutation = useDeleteVenue();
+  const reorderMutation = useReorderVenues();
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const handleVenueDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const ids = venues.map((v) => v.id);
+    const oldIndex = ids.indexOf(active.id as string);
+    const newIndex = ids.indexOf(over.id as string);
+    if (oldIndex < 0 || newIndex < 0) return;
+    reorderMutation.mutate(arrayMove(ids, oldIndex, newIndex));
+  };
   const { data: existingRooms = [] } = useAccommodationRooms(editingVenue?.id);
   const deleteRoomMutation = useDeleteRoom();
   const { data: venuePayments = [] } = useSourcePayments('venue', editingVenue?.id ?? '');
@@ -880,14 +905,20 @@ export default function Venues() {
           </p>
         </div>
       ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: 16,
-          }}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleVenueDragEnd}
         >
-          {venues.map((venue, venueIndex) => {
+          <SortableContext items={venues.map((v) => v.id)} strategy={rectSortingStrategy}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: 16,
+              }}
+            >
+              {venues.map((venue, venueIndex) => {
             const v = venue as VenueWithFinance & { events?: Array<{ id: string; name: string }> };
             const venueTypeLabel = v.venue_type?.replace(/_/g, ' ') ?? '';
             const fullAddress = [v.address, v.city].filter(Boolean).join(', ');
@@ -907,8 +938,9 @@ export default function Venues() {
               v.finance?.payments?.filter((p) => p.status === 'scheduled') ?? [];
 
             return (
+              <SortableItem id={venue.id} key={venue.id}>
+                {({ handleProps }) => (
               <div
-                key={venue.id}
                 className="card"
                 style={{
                   padding: 0,
@@ -1028,6 +1060,25 @@ export default function Venues() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                      <button
+                        {...handleProps}
+                        type="button"
+                        style={{
+                          ...(handleProps.style as object),
+                          width: 30,
+                          height: 30,
+                          borderRadius: 8,
+                          border: '1px solid var(--line)',
+                          color: 'var(--ink-dim)',
+                          background: 'transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        aria-label="Drag to reorder venue"
+                      >
+                        <HiOutlineDotsVertical style={{ width: 14, height: 14 }} />
+                      </button>
                       {v.contact_phone && (
                         <a
                           href={`tel:${v.contact_phone}`}
@@ -1422,9 +1473,13 @@ export default function Venues() {
                   )}
                 </div>
               </div>
+                )}
+              </SortableItem>
             );
           })}
-        </div>
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* ── Venue Modal ── */}
@@ -2566,11 +2621,18 @@ export default function Venues() {
                                         {parseLocalDate(dateLabel).toLocaleDateString('en-IN')}
                                         {payment.payment_method &&
                                           ` · ${PAYMENT_METHOD_LABELS[payment.payment_method] ?? payment.payment_method}`}
-                                        {payment.notes ? ` · ${payment.notes}` : ''}
+                                      </div>
+                                      <PaymentNotesEditor
+                                        paymentId={payment.id}
+                                        notes={payment.notes}
+                                      />
+                                      <div style={{ marginTop: 4 }}>
+                                        <PaymentAttachments paymentId={payment.id} />
                                       </div>
                                     </div>
                                     {isDeleteAllowed && (
                                       <button
+                                        type="button"
                                         onClick={() => handlePaymentDelete(payment.id)}
                                         disabled={deleteVenuePayment.isPending}
                                         style={{

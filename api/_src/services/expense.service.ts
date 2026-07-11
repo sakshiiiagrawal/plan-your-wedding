@@ -5,9 +5,11 @@ import type {
   ExpenseSummaryInsert,
   ExpenseWithDetails,
   PaymentRow,
+  PaymentAttachmentRow,
 } from '../../../shared/src';
 import * as repo from '../repositories/expense.repository';
 import * as finance from './finance.service';
+import * as paymentAttachments from './payment-attachment.service';
 import { ensureDefaultCategories } from './expense-categories.service';
 
 const toFloat = (value: unknown) => parseFloat(String(value ?? 0));
@@ -500,6 +502,25 @@ export async function updateExpensePayment(
 
 export async function deleteExpensePayment(paymentId: string, ownerId: string) {
   return finance.deleteExpensePayment(ownerId, paymentId);
+}
+
+export async function getPaymentAttachments(
+  paymentId: string,
+  ownerId: string,
+): Promise<PaymentAttachmentRow[]> {
+  return paymentAttachments.listPaymentAttachments(ownerId, paymentId);
+}
+
+export async function uploadPaymentAttachment(
+  paymentId: string,
+  ownerId: string,
+  file: Express.Multer.File,
+): Promise<PaymentAttachmentRow> {
+  return paymentAttachments.uploadPaymentAttachment(ownerId, paymentId, file);
+}
+
+export async function deletePaymentAttachment(attachmentId: string, ownerId: string) {
+  return paymentAttachments.deletePaymentAttachment(ownerId, attachmentId);
 }
 
 // One round-trip for the Budget page (was 6 parallel calls). Unfiltered — the

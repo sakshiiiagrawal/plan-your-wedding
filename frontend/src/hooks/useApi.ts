@@ -9,6 +9,7 @@ import type {
   ExpenseBalanceSummary,
   ExpenseWithDetails,
   PaymentRow,
+  PaymentAttachmentRow,
   VendorWithFinance,
   VenueWithFinance,
 } from '@wedding-planner/shared';
@@ -665,6 +666,40 @@ export const useDeleteVenue = () => {
       queryClient.invalidateQueries({ queryKey: ['accommodations'] });
       queryClient.invalidateQueries({ queryKey: ['expense'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+// Reorder venues. display_order is the single source of truth for venue order
+// everywhere (venue list, dropdowns, room allocation), so we optimistically
+// re-sort every cache that lists venues by the new id order.
+const sortByIdOrder = <T extends { id: string }>(rows: T[], orderedIds: string[]): T[] => {
+  const rank = new Map(orderedIds.map((id, i) => [id, i]));
+  return [...rows].sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity));
+};
+
+export const useReorderVenues = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (orderedIds: string[]) =>
+      api.put('/venues/reorder', { orderedIds }).then((res) => res.data),
+    onMutate: (orderedIds: string[]) => {
+      queryClient.setQueryData<VenuesPageData>(['venues', 'page-data'], (prev) =>
+        prev ? { ...prev, venues: sortByIdOrder(prev.venues, orderedIds) } : prev,
+      );
+      queryClient.setQueryData<VenueWithFinance[]>(['venues'], (prev) =>
+        prev ? sortByIdOrder(prev, orderedIds) : prev,
+      );
+      queryClient.setQueryData<AccommodationsPageData>(['accommodations', 'page-data'], (prev) =>
+        prev ? { ...prev, matrix: sortByIdOrder(prev.matrix, orderedIds) } : prev,
+      );
+      queryClient.setQueryData<any[]>(['accommodations', 'allocation-matrix'], (prev) =>
+        prev ? sortByIdOrder(prev, orderedIds) : prev,
+      );
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
     },
   });
 };
@@ -1373,6 +1408,61 @@ export const useDeleteExpensePayment = () => {
       queryClient.invalidateQueries({ queryKey: ['expense', variables.expenseId, 'payments'] });
       queryClient.invalidateQueries({ queryKey: ['expense'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+// Payments are edited by paymentId alone (the row's expense_id/source is an
+// implementation detail on the backend), but this panel is reused across the
+// expense-owned flow and the vendor/venue-sourced flow, which cache payment
+// lists under different query-key prefixes — so on success we invalidate
+// every prefix that could hold this row rather than one specific list.
+export const useUpdateExpensePayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ paymentId, ...data }: { paymentId: string } & Record<string, any>) =>
+      api.patch(`/expense/payments/${paymentId}`, data).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['vendor'] });
+      queryClient.invalidateQueries({ queryKey: ['venue'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
+export const usePaymentAttachments = (paymentId?: string | null) =>
+  useQuery<PaymentAttachmentRow[]>({
+    queryKey: ['payment', paymentId, 'attachments'],
+    queryFn: () => api.get(`/expense/payments/${paymentId}/attachments`).then((res) => res.data),
+    enabled: !!paymentId,
+  });
+
+export const useUploadPaymentAttachment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ paymentId, file }: { paymentId: string; file: File }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return api
+        .post(`/expense/payments/${paymentId}/attachments`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        .then((res) => res.data);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['payment', variables.paymentId, 'attachments'] });
+    },
+  });
+};
+
+export const useDeletePaymentAttachment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ attachmentId }: { paymentId: string; attachmentId: string }) =>
+      api.delete(`/expense/payments/attachments/${attachmentId}`),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['payment', variables.paymentId, 'attachments'] });
     },
   });
 };

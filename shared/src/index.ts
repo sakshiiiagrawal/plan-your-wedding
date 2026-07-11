@@ -80,6 +80,7 @@ export type {
   ExpenseItemInput,
   PaymentRow,
   PaymentInsert,
+  PaymentAttachmentRow,
   PaymentAllocationRow,
   PaymentAllocationInput,
   FinanceActivityRow,

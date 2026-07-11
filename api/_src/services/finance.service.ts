@@ -1479,7 +1479,8 @@ export async function updateExpensePayment(
     if (payment.status === 'cancelled') {
       throw new ConflictError('Cancelled scheduled payments cannot be edited.');
     }
-    await createPaymentRecordTx(client, ownerId, payment.expense_id, payload, payment);
+    const merged: PaymentMutationInput = { ...payment, ...payload };
+    await createPaymentRecordTx(client, ownerId, payment.expense_id, merged, payment);
     return getExpenseDetailsTx(client, ownerId, payment.expense_id);
   });
 }

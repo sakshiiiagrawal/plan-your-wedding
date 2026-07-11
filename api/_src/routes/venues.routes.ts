@@ -10,6 +10,7 @@ import {
   updateAllocationSchema,
   guestStayStatusSchema,
   createPaymentSchema,
+  reorderVenuesSchema,
 } from '../validators/venues.validator';
 import * as ctrl from '../controllers/venues.controller';
 import * as exportController from '../controllers/export.controller';
@@ -42,6 +43,7 @@ router.delete('/allocations/:id', ctrl.deleteAllocation);
 // Venue CRUD
 router.get('/', ctrl.getAll);
 router.get('/page-data', ctrl.getPageData);
+router.put('/reorder', validateBody(reorderVenuesSchema), ctrl.reorder);
 router.get('/:id', ctrl.getById);
 router.post('/', validateBody(createVenueSchema), ctrl.create);
 router.put('/:id', validateBody(updateVenueSchema), ctrl.update);

@@ -13,7 +13,18 @@ import {
   HiOutlinePencil,
   HiOutlineChevronDown,
   HiOutlineChevronUp,
+  HiOutlineDotsVertical,
 } from 'react-icons/hi';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import SortableItem from '../../components/SortableItem';
 import {
   useAccommodationsPageData,
   useUpdateAccommodation,
@@ -24,6 +35,7 @@ import {
   useSetGuestStayStatus,
   useUpdateGuest,
   useExportAllocations,
+  useReorderVenues,
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -542,6 +554,20 @@ export default function Accommodations() {
       };
     });
   }, [allocationMatrix]);
+
+  const reorderMutation = useReorderVenues();
+  const dragSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
+  const handleHotelDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const ids = enrichedHotels.map((h: EnrichedVenue) => h.id);
+    const oldIndex = ids.indexOf(active.id as string);
+    const newIndex = ids.indexOf(over.id as string);
+    if (oldIndex < 0 || newIndex < 0) return;
+    reorderMutation.mutate(arrayMove(ids, oldIndex, newIndex));
+  };
 
   const allGuests = (pageData?.guests ?? []) as AccommodationGuest[];
 
@@ -1128,8 +1154,17 @@ export default function Accommodations() {
               </div>
             )}
 
-            {panelView === 'rooms' &&
-              enrichedHotels.map((hotel: EnrichedVenue) => {
+            {panelView === 'rooms' && (
+              <DndContext
+                sensors={dragSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleHotelDragEnd}
+              >
+                <SortableContext
+                  items={enrichedHotels.map((h: EnrichedVenue) => h.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {enrichedHotels.map((hotel: EnrichedVenue) => {
               const handleHotelDateSave = async () => {
                 try {
                   await updateHotelMutation.mutateAsync({
@@ -1185,10 +1220,20 @@ export default function Accommodations() {
               };
 
               return (
-                <div key={hotel.id} className="card space-y-4">
+                <SortableItem id={hotel.id} key={hotel.id}>
+                  {({ handleProps }) => (
+                <div className="card space-y-4">
                   {/* Venue header */}
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                     <div className="flex items-start gap-2 min-w-0 flex-1">
+                      <button
+                        {...handleProps}
+                        type="button"
+                        className="mt-0.5 p-1.5 rounded-lg hover:bg-surface-highest text-ink-dim flex-shrink-0"
+                        aria-label="Drag to reorder venue"
+                      >
+                        <HiOutlineDotsVertical className="w-5 h-5" />
+                      </button>
                       <button
                         type="button"
                         onClick={toggleHotelCollapsed}
@@ -1713,8 +1758,13 @@ export default function Accommodations() {
                     </>
                   )}
                 </div>
+                  )}
+                </SortableItem>
               );
-            })}
+                  })}
+                </SortableContext>
+              </DndContext>
+            )}
           </div>
         </div>
       )}
