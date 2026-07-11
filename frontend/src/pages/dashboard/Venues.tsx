@@ -19,7 +19,7 @@ import { SectionHeader } from '../../components/ui';
 import SplitShare from '../../components/ui/SplitShare';
 import AddressAutocomplete, { buildMapsUrl } from '../../components/AddressAutocomplete';
 import {
-  useVenues,
+  useVenuesPageData,
   useCreateVenue,
   useUpdateVenue,
   useDeleteVenue,
@@ -225,9 +225,8 @@ const DEFAULT_PAYMENT_FORM: PaymentFormState = {
   extra_bride_share_percentage: 50,
 };
 
-function VenueRoomsSection({ venueId }: { venueId: string }) {
+function VenueRoomsSection({ rooms = [] }: { rooms?: any[] }) {
   const [expanded, setExpanded] = useState(false);
-  const { data: rooms = [], isLoading } = useAccommodationRooms(venueId);
 
   const groupedByDay = useMemo(() => {
     // (check_in|check_out|type) → count, rate, capacity, breakfast. Then cluster by check-in and sort by date.
@@ -273,7 +272,6 @@ function VenueRoomsSection({ venueId }: { venueId: string }) {
 
   const totalRooms = (rooms as any[]).length;
 
-  if (isLoading) return <p style={{ fontSize: 12, color: 'var(--ink-dim)' }}>Loading rooms…</p>;
   if (totalRooms === 0)
     return (
       <p style={{ fontSize: 12, color: 'var(--ink-dim)', fontStyle: 'italic' }}>
@@ -487,7 +485,9 @@ export default function Venues() {
   const [paymentForm, setPaymentForm] = useState<PaymentFormState>(DEFAULT_PAYMENT_FORM);
   const [installments, setInstallments] = useState<InstallmentFormRow[]>([]);
 
-  const { data: venues = [], isLoading, error } = useVenues();
+  const { data: pageData, isLoading, error } = useVenuesPageData();
+  const venues = pageData?.venues ?? [];
+  const roomsByVenue = pageData?.roomsByVenue ?? {};
   const createMutation = useCreateVenue();
   const updateMutation = useUpdateVenue();
   const deleteMutation = useDeleteVenue();
@@ -1337,7 +1337,7 @@ export default function Venues() {
                       >
                         <HiOutlineHome style={{ width: 10, height: 10 }} /> Accommodation
                       </div>
-                      <VenueRoomsSection venueId={venue.id} />
+                      <VenueRoomsSection rooms={roomsByVenue[venue.id] ?? []} />
                       <Link
                         to="../accommodations"
                         style={{ fontSize: 11, color: 'var(--gold-deep)', fontWeight: 500 }}

@@ -19,6 +19,18 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
+export const getPageData = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res.json(await service.getPageData(getWeddingOwnerId(req)));
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getById = async (
   req: Request<IdParam>,
   res: Response,
@@ -133,6 +145,18 @@ export const getAllocationMatrix = async (
 ): Promise<void> => {
   try {
     res.json(await service.getAllocationMatrix(getWeddingOwnerId(req)));
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const getAllocationPageData = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res.json(await service.getAllocationPageData(getWeddingOwnerId(req)));
   } catch (e) {
     next(e);
   }

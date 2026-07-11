@@ -5,6 +5,7 @@ import { env } from '../config/env';
 import { sendEmail } from './mailer';
 import { NotFoundError, ConflictError, BadRequestError, ForbiddenError } from '../shared/errors/HttpError';
 import { hashToken } from '../shared/utils/token.utils';
+import { invalidateAuthCache } from '../middleware/auth.middleware';
 import type { AuthenticatedUser } from '../types/express';
 
 const MEMBER_COLUMNS =
@@ -222,6 +223,7 @@ export async function acceptPendingInvite(
   if (updateError) throw updateError;
 
   await supabase.from('users').update({ active_owner_id: row.owner_id }).eq('id', user.id);
+  invalidateAuthCache();
 
   return updated as MemberRow;
 }
@@ -286,6 +288,7 @@ export async function acceptInvite(userId: string, token: string): Promise<Membe
   // Accepting is an explicit "take me into this wedding" — switch their active
   // wedding to it. They can switch back to their own via the wedding switcher.
   await supabase.from('users').update({ active_owner_id: row.owner_id }).eq('id', userId);
+  invalidateAuthCache();
 
   return updated as MemberRow;
 }

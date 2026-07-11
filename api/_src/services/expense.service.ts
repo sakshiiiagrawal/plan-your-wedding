@@ -501,3 +501,17 @@ export async function updateExpensePayment(
 export async function deleteExpensePayment(paymentId: string, ownerId: string) {
   return finance.deleteExpensePayment(ownerId, paymentId);
 }
+
+// One round-trip for the Budget page (was 6 parallel calls). Unfiltered — the
+// page filters expenses client-side.
+export async function getPageData(ownerId: string) {
+  const [summary, overview, expenses, categories, outstanding, alerts] = await Promise.all([
+    getExpenseSummary(ownerId),
+    getExpenseOverview(ownerId),
+    listExpenses(ownerId, {}),
+    listCategories(ownerId),
+    getOutstanding(ownerId),
+    getAlerts(ownerId),
+  ]);
+  return { summary, overview, expenses, categories, outstanding, alerts };
+}

@@ -2,9 +2,8 @@
 import { useState, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  useGuests,
   useGuest,
-  useGuestSummary,
+  useGuestsPageData,
   useBulkCreateGuests,
   useUpdateGuest,
   useBulkDeleteGuests,
@@ -383,12 +382,19 @@ export default function Guests() {
   const [selectedGuest, setSelectedGuest] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: guests = [], isLoading: guestsLoading } = useGuests(
-    sideFilter !== 'all' ? { side: sideFilter } : {},
+  const { data: pageData, isLoading: guestsLoading } = useGuestsPageData();
+  const summary = pageData?.summary;
+  const allEvents = pageData?.events ?? [];
+  // Side filter is applied client-side (guest lists are small) so switching it
+  // doesn't trigger a refetch.
+  const guests = useMemo(
+    () =>
+      sideFilter === 'all'
+        ? (pageData?.guests ?? [])
+        : (pageData?.guests ?? []).filter((g) => g.side === sideFilter),
+    [pageData?.guests, sideFilter],
   );
-  const { data: summary } = useGuestSummary();
   const exportGuests = useExportGuests();
-  const { data: allEvents = [] } = useEvents();
   const bulkCreateMutation = useBulkCreateGuests();
   const updateMutation = useUpdateGuest();
   const bulkDeleteMutation = useBulkDeleteGuests();

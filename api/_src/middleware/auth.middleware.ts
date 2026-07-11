@@ -4,6 +4,40 @@ import { supabase } from '../config/database';
 import { env } from '../config/env';
 import type { AuthenticatedUser } from '../types/express';
 
+// Resolving req.user costs 1-2 DB round-trips (users + optional wedding_members)
+// on EVERY request. A single dashboard page fires ~8 concurrent requests with
+// the same token — without this each pays that ~185ms lookup, and navigating
+// between pages re-pays it. Cache the resolved user keyed by the exact token.
+// jwt.verify still runs on every request (cheap, no DB) so signature/expiry are
+// always enforced; the short TTL bounds how long a password change or revoked
+// membership takes to kick in.
+// ponytail: plain Map + TTL + size cap; swap for an LRU only if the live-token
+// working set ever outgrows the cap.
+const AUTH_CACHE_TTL_MS = 10_000;
+const authCache = new Map<string, { user: AuthenticatedUser; exp: number }>();
+
+function getCachedUser(token: string): AuthenticatedUser | null {
+  const hit = authCache.get(token);
+  if (!hit) return null;
+  if (hit.exp < Date.now()) {
+    authCache.delete(token);
+    return null;
+  }
+  return hit.user;
+}
+
+function setCachedUser(token: string, user: AuthenticatedUser): void {
+  if (authCache.size > 5000) authCache.clear();
+  authCache.set(token, { user, exp: Date.now() + AUTH_CACHE_TTL_MS });
+}
+
+// Switching the active wedding / accepting an invite / password change alters a
+// user's resolved scope. Tokens aren't reachable from those service functions,
+// so clear the whole cache — these events are rare and the map is small.
+export function invalidateAuthCache(): void {
+  authCache.clear();
+}
+
 export const verifyToken = async (
   req: Request,
   res: Response,
@@ -27,6 +61,13 @@ export const verifyToken = async (
       email: string;
       iat?: number;
     };
+
+    const cached = getCachedUser(token);
+    if (cached) {
+      req.user = cached;
+      next();
+      return;
+    }
 
     const { data: user, error } = await supabase
       .from('users')
@@ -100,6 +141,7 @@ export const verifyToken = async (
       allowedSections,
       permissions,
     };
+    setCachedUser(token, req.user);
     next();
   } catch (error) {
     if (

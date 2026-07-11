@@ -18,6 +18,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // Allocation sub-routes must come before /:id to avoid route conflicts
 router.get('/allocations/export', exportController.exportAllocations);
+router.get('/allocations/page-data', ctrl.getAllocationPageData);
 router.get('/allocations/matrix', ctrl.getAllocationMatrix);
 router.get('/allocations/unassigned', ctrl.getUnassignedGuests);
 router.get('/allocations/template/download', ctrl.downloadAllocationTemplate);
@@ -34,6 +35,7 @@ router.delete('/allocations/:id', ctrl.deleteAllocation);
 
 // Venue CRUD
 router.get('/', ctrl.getAll);
+router.get('/page-data', ctrl.getPageData);
 router.get('/:id', ctrl.getById);
 router.post('/', validateBody(createVenueSchema), ctrl.create);
 router.put('/:id', validateBody(updateVenueSchema), ctrl.update);

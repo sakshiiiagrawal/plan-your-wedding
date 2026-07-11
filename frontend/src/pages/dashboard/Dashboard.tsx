@@ -1,16 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Fragment, useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import {
-  useDashboardStats,
-  useDashboardSummary,
-  useHeroContent,
-  useExpenseOverview,
-  useUpcomingTasks,
-  useVendors,
-  useGuestSummary,
-  useRecentActivity,
-} from '../../hooks/useApi';
+import { useDashboardOverview } from '../../hooks/useApi';
 import {
   HiOutlineUserGroup,
   HiOutlineCurrencyRupee,
@@ -51,23 +42,14 @@ export default function Dashboard() {
   const [cd, setCd] = useState<Countdown>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [cdPhase, setCdPhase] = useState<'counting' | 'today' | 'past'>('counting');
 
-  const { data: stats, isLoading: statsLoading } = useDashboardStats();
-  const { data: summary, isLoading: summaryLoading } = useDashboardSummary();
-  const { data: heroContent, isLoading: heroLoading } = useHeroContent(slug);
-  const { data: expenseOverview = [] } = useExpenseOverview();
-  const { data: upcomingTasks = [], isLoading: tasksLoading } = useUpcomingTasks();
-  const { data: vendors = [], isLoading: vendorsLoading } = useVendors();
-  const { data: guestSummary, isLoading: guestsLoading } = useGuestSummary();
-  const { data: recentActivity = [], isLoading: activityLoading } = useRecentActivity();
-
-  const isLoading =
-    statsLoading ||
-    summaryLoading ||
-    heroLoading ||
-    tasksLoading ||
-    vendorsLoading ||
-    guestsLoading ||
-    activityLoading;
+  const { data: overview, isLoading } = useDashboardOverview();
+  const stats = overview?.stats;
+  const heroContent = overview?.hero;
+  const expenseOverview = overview?.expenseOverview ?? [];
+  const upcomingTasks = overview?.upcomingTasks ?? [];
+  const vendors = overview?.vendors ?? [];
+  const guestSummary = overview?.guestSummary;
+  const recentActivity = overview?.activity ?? [];
 
   const brideName = heroContent?.bride_name || 'Bride';
   const groomName = heroContent?.groom_name || 'Groom';
@@ -97,7 +79,7 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, [weddingDateStr]);
 
-  const events = summary?.events || [];
+  const events = overview?.events || [];
   const rsvpConfirmed = guestSummary?.confirmed ?? stats?.rsvp?.confirmed ?? 0;
   const rsvpPending = guestSummary?.pending ?? stats?.rsvp?.pending ?? 0;
   const rsvpDeclined = guestSummary?.declined ?? 0;

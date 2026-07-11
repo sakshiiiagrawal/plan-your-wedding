@@ -18,6 +18,7 @@ const router = Router();
 
 // Overview
 router.get('/', ctrl.getSummary);
+router.get('/page-data', ctrl.getPageData);
 router.get('/export', exportController.exportBudget);
 router.get('/overview', ctrl.getOverview);
 // Side data IS the payload here — the finance-visibility deep-strip can't

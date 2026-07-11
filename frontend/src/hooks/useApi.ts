@@ -325,6 +325,24 @@ export const useDashboardStats = () =>
     queryFn: () => api.get('/dashboard/stats').then((res) => res.data),
   });
 
+export interface DashboardOverview {
+  stats: DashboardStats;
+  events: DashboardSummary['events'];
+  upcomingTasks: any[];
+  activity: ActivityItem[];
+  hero: HeroContent;
+  guestSummary: GuestSummary;
+  vendors: VendorWithFinance[];
+  expenseOverview: any[];
+}
+
+// Single request backing the whole Dashboard page (was 8 parallel calls).
+export const useDashboardOverview = () =>
+  useQuery<DashboardOverview>({
+    queryKey: ['dashboard', 'overview'],
+    queryFn: () => api.get('/dashboard/overview').then((res) => res.data),
+  });
+
 export interface DashboardSummary {
   events: Array<{
     id: string;
@@ -384,6 +402,20 @@ export const useGuestSummary = () =>
   useQuery<GuestSummary>({
     queryKey: ['guests', 'summary'],
     queryFn: () => api.get('/guests/summary').then((res) => res.data),
+  });
+
+export interface GuestsPageData {
+  guests: GuestWithDetails[];
+  summary: GuestSummary;
+  events: EventWithVenue[];
+}
+
+// Single request backing the Guests page (was guests + summary + events).
+// Guests come unfiltered; the page filters by side client-side.
+export const useGuestsPageData = () =>
+  useQuery<GuestsPageData>({
+    queryKey: ['guests', 'page-data'],
+    queryFn: () => api.get('/guests/page-data').then((res) => res.data),
   });
 
 export const useGuestGroups = () =>
@@ -573,6 +605,19 @@ export const useVenues = () =>
     queryFn: () => api.get('/venues').then((res) => res.data),
   });
 
+export interface VenuesPageData {
+  venues: VenueWithFinance[];
+  roomsByVenue: Record<string, any[]>;
+}
+
+// Single request backing the Venues page: the venue list plus every venue's
+// rooms, replacing the previous one-/rooms-call-per-venue N+1.
+export const useVenuesPageData = () =>
+  useQuery<VenuesPageData>({
+    queryKey: ['venues', 'page-data'],
+    queryFn: () => api.get('/venues/page-data').then((res) => res.data),
+  });
+
 export const useVenue = (id?: string | null) =>
   useQuery<VenueWithFinance>({
     queryKey: ['venues', id],
@@ -652,6 +697,19 @@ export const useAllocationMatrix = () =>
   useQuery<any>({
     queryKey: ['accommodations', 'allocation-matrix'],
     queryFn: () => api.get('/venues/allocations/matrix').then((res) => res.data),
+  });
+
+export interface AccommodationsPageData {
+  matrix: any[];
+  unassignedGuests: any[];
+  guests: any[];
+}
+
+// Single request backing the Accommodations page (was matrix + unassigned + guests).
+export const useAccommodationsPageData = () =>
+  useQuery<AccommodationsPageData>({
+    queryKey: ['accommodations', 'page-data'],
+    queryFn: () => api.get('/venues/allocations/page-data').then((res) => res.data),
   });
 
 export const useUnassignedGuests = () =>
@@ -961,6 +1019,22 @@ export const useExpenseSummary = () =>
   useQuery<ExpenseSummary>({
     queryKey: ['expense', 'summary'],
     queryFn: () => api.get('/expense').then((res) => res.data),
+  });
+
+export interface BudgetPageData {
+  summary: ExpenseSummary;
+  overview: any[];
+  expenses: ExpenseWithDetails[];
+  categories: any[];
+  outstanding: { items: ExpenseOutstandingItem[]; totalOutstanding: number };
+  alerts: ExpenseAlerts;
+}
+
+// Single request backing the whole Budget page (was 6 parallel calls).
+export const useBudgetPageData = () =>
+  useQuery<BudgetPageData>({
+    queryKey: ['expense', 'page-data'],
+    queryFn: () => api.get('/expense/page-data').then((res) => res.data),
   });
 
 export const useExpenseOverview = () =>

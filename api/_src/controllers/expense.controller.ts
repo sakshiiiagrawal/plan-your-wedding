@@ -22,6 +22,18 @@ export const getSummary = async (
   }
 };
 
+export const getPageData = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    res.json(await service.getPageData(getWeddingOwnerId(req)));
+  } catch (e) {
+    next(e);
+  }
+};
+
 export const getOverview = async (
   req: Request,
   res: Response,

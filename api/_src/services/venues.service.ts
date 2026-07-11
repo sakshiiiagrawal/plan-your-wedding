@@ -20,6 +20,7 @@ import {
   type PaymentMutationInput,
   upsertSourceExpenseTx,
 } from './finance.service';
+import { listGuests } from './guests.service';
 import { withPgTransaction } from '../config/postgres';
 import {
   generateRoomAllocationTemplate,
@@ -496,6 +497,20 @@ export async function getRooms(venueId: string) {
   return repo.findRoomsByVenue(venueId);
 }
 
+// One round-trip for the Venues page: the venue list plus every venue's rooms
+// grouped by venue id, so the page renders room sections without an N+1 of
+// per-venue /rooms calls.
+export async function getPageData(ownerId: string) {
+  const venues = await listVenues(ownerId);
+  const rooms = await repo.findRoomsByOwner(venues.map((v) => v.id));
+  const roomsByVenue: Record<string, typeof rooms> = {};
+  for (const room of rooms) {
+    const venueId = String((room as { venue_id: string }).venue_id);
+    (roomsByVenue[venueId] ??= []).push(room);
+  }
+  return { venues, roomsByVenue };
+}
+
 export async function addRoom(venueId: string, payload: Omit<RoomInsert, 'venue_id'>) {
   return repo.insertRoom({ ...payload, venue_id: venueId });
 }
@@ -622,6 +637,16 @@ export async function deleteAllocation(id: string) {
 
 export async function getUnassignedGuests(ownerId: string) {
   return repo.findUnassignedGuests(ownerId);
+}
+
+// One round-trip for the Accommodations page (was matrix + unassigned + guests).
+export async function getAllocationPageData(ownerId: string) {
+  const [matrix, unassignedGuests, guests] = await Promise.all([
+    getAllocationMatrix(ownerId),
+    getUnassignedGuests(ownerId),
+    listGuests(ownerId, {}),
+  ]);
+  return { matrix, unassignedGuests, guests };
 }
 
 // ---------------------------------------------------------------------------

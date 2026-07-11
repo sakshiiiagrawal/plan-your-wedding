@@ -1,5 +1,9 @@
 import * as repo from '../repositories/dashboard.repository';
 import { getFinanceDashboardTotals, getScheduledPayments } from './finance.service';
+import { getExpenseOverview } from './expense.service';
+import { listVendors } from './vendors.service';
+import { getGuestSummary } from './guests.service';
+import { getSectionContent } from './website-content.service';
 
 export async function getStats(ownerId: string, includeExpense: boolean) {
   const [guests, rsvps, tasks, expense, finance] = await Promise.all([
@@ -107,4 +111,32 @@ export async function getRecentActivity(ownerId: string) {
   items.sort((a, b) => b.ts - a.ts);
 
   return items.slice(0, 8).map(({ what, when, actor_name }) => ({ what, when, actor_name }));
+}
+
+// One round-trip for the whole Dashboard page. Composes the calls the page used
+// to fire as 8 separate requests; getSummary already yields upcomingTasks +
+// events, so the page no longer needs a separate /tasks/upcoming fetch. Money
+// panels (expense overview) are omitted for no-finance users.
+export async function getOverview(ownerId: string, includeExpense: boolean) {
+  const [stats, summary, activity, hero, guestSummary, vendors, expenseOverview] =
+    await Promise.all([
+      getStats(ownerId, includeExpense),
+      getSummary(ownerId),
+      getRecentActivity(ownerId),
+      getSectionContent('hero', ownerId),
+      getGuestSummary(ownerId),
+      listVendors(ownerId),
+      includeExpense ? getExpenseOverview(ownerId) : Promise.resolve([]),
+    ]);
+
+  return {
+    stats,
+    events: summary.events,
+    upcomingTasks: summary.upcomingTasks,
+    activity,
+    hero,
+    guestSummary,
+    vendors,
+    expenseOverview,
+  };
 }

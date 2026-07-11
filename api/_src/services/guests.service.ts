@@ -3,6 +3,7 @@ import type { GuestInsert, GuestGroupInsert } from '../../../shared/src';
 import * as repo from '../repositories/guests.repository';
 import type { GuestFilters } from '../repositories/guests.repository';
 import * as eventsRepo from '../repositories/events.repository';
+import { listEvents } from './events.service';
 import { parseGuestExcel, validateGuest, generateGuestTemplate } from '../excel/guests.excel';
 
 /**
@@ -376,4 +377,15 @@ export async function importGuests(buffer: Buffer, ownerId: string) {
     count: created.length,
     guests: created,
   } as const;
+}
+
+// One round-trip for the Guests page (was guests + summary + events). Guests
+// are returned unfiltered; the page filters by side client-side.
+export async function getPageData(ownerId: string) {
+  const [guests, summary, events] = await Promise.all([
+    listGuests(ownerId, {}),
+    getGuestSummary(ownerId),
+    listEvents(ownerId),
+  ]);
+  return { guests, summary, events };
 }

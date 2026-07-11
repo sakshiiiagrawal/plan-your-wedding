@@ -12,6 +12,19 @@ export const getStats = async (req: Request, res: Response, next: NextFunction):
   }
 };
 
+export const getOverview = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const includeExpense = financeTier(getAuthUser(req)) !== 'none';
+    res.json(await service.getOverview(getWeddingOwnerId(req), includeExpense));
+  } catch (e) {
+    next(e);
+  }
+};
+
 export const getSummary = async (
   req: Request,
   res: Response,

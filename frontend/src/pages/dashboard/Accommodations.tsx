@@ -15,9 +15,7 @@ import {
   HiOutlineChevronUp,
 } from 'react-icons/hi';
 import {
-  useAllocationMatrix,
-  useUnassignedGuests,
-  useGuests,
+  useAccommodationsPageData,
   useUpdateAccommodation,
   useUpdateRoom,
   useCreateAllocation,
@@ -172,9 +170,10 @@ function fuzzyMatch(query: string, text: string): boolean {
 export default function Accommodations() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: allocationMatrix = [], isLoading, error } = useAllocationMatrix();
+  const { data: pageData, isLoading, error } = useAccommodationsPageData();
+  const allocationMatrix = pageData?.matrix ?? [];
+  const unassignedGuests = pageData?.unassignedGuests ?? [];
   const exportAllocations = useExportAllocations();
-  const { data: unassignedGuests = [] } = useUnassignedGuests();
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -470,7 +469,7 @@ export default function Accommodations() {
     });
   }, [allocationMatrix]);
 
-  const { data: allGuests = [] } = useGuests() as { data: AccommodationGuest[] };
+  const allGuests = (pageData?.guests ?? []) as AccommodationGuest[];
 
   const assignedGuestIds = useMemo(() => {
     const ids = new Set<string>();

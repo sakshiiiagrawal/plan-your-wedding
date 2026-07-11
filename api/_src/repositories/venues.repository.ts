@@ -125,6 +125,19 @@ export async function findRoomsByVenue(venueId: string) {
   return data ?? [];
 }
 
+// All rooms across every venue an owner has, in one query — backs the Venues
+// page so it doesn't fire one /rooms request per venue card.
+export async function findRoomsByOwner(venueIds: string[]) {
+  if (venueIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from('rooms')
+    .select('*, room_allocations(*)')
+    .in('venue_id', venueIds)
+    .order('room_number', { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function findRoomByNumberAndVenue(
   venueId: string,
   roomNumber: string,

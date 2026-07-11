@@ -3,12 +3,7 @@ import { HiOutlinePlus, HiOutlineDownload } from 'react-icons/hi';
 import {
   useCreateExpense,
   useDeleteExpense,
-  useExpenseAlerts,
-  useExpenseCategories,
-  useExpenseOutstanding,
-  useExpenseOverview,
-  useExpenseSummary,
-  useExpenses,
+  useBudgetPageData,
   useUpdateExpense,
   useExportBudget,
 } from '../../hooks/useApi';
@@ -109,12 +104,13 @@ export default function Expense() {
   const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const { data: expenseSummary, isLoading: loadingSummary } = useExpenseSummary();
-  const { data: expenseOverview, isLoading: loadingOverview } = useExpenseOverview();
-  const { data: expenses = [], isLoading: loadingExpenses } = useExpenses();
-  const { data: categories = [] } = useExpenseCategories();
-  const { data: outstanding } = useExpenseOutstanding();
-  const { data: alerts } = useExpenseAlerts();
+  const { data: pageData, isLoading } = useBudgetPageData();
+  const expenseSummary = pageData?.summary;
+  const expenseOverview = pageData?.overview;
+  const expenses = pageData?.expenses ?? [];
+  const categories = pageData?.categories ?? [];
+  const outstanding = pageData?.outstanding;
+  const alerts = pageData?.alerts;
   const exportBudget = useExportBudget();
   const createExpenseMutation = useCreateExpense();
   const updateExpenseMutation = useUpdateExpense();
@@ -312,7 +308,7 @@ export default function Expense() {
     }
   };
 
-  if (loadingSummary || loadingOverview || loadingExpenses) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-ink-low">Loading expense data...</div>
@@ -439,7 +435,7 @@ export default function Expense() {
         {activeTab === 'expenses' && (
           <ExpenseExpensesTab
             rows={expenseRows}
-            loading={loadingExpenses}
+            loading={isLoading}
             formatCurrency={formatCurrency}
             onEdit={(row) => {
               const expense = expensesById.get(row.id);
@@ -459,7 +455,7 @@ export default function Expense() {
         {activeTab === 'categories' && (
           <ExpenseCategoriesTab
             categoryAnalysis={categoryAnalysis}
-            loading={loadingOverview}
+            loading={isLoading}
             formatCurrency={formatCurrency}
           />
         )}

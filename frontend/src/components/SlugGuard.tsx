@@ -8,14 +8,17 @@ interface SlugGuardProps {
 
 export default function SlugGuard({ children }: SlugGuardProps) {
   const { slug } = useParams<{ slug: string }>();
-  const { data, isLoading } = useQuery<{ exists: boolean }>({
+  const { data } = useQuery<{ exists: boolean }>({
     queryKey: ['wedding', slug],
     queryFn: () => api.get(`/weddings/${slug}`).then((r) => r.data),
     enabled: !!slug,
   });
 
-  if (isLoading) return null;
-  if (!data?.exists) {
+  // Render children optimistically instead of blocking the whole page on this
+  // round-trip — for a valid slug (the common case) that saves ~one request of
+  // latency before the page can even start fetching. Only fall back to 404 once
+  // the check has actually confirmed the wedding doesn't exist.
+  if (data && !data.exists) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
         <div className="text-center">

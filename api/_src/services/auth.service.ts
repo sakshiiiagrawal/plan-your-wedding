@@ -12,6 +12,7 @@ import {
 import { sendEmail } from './mailer';
 import { acceptInvite, findPendingInvite } from './members.service';
 import { hashToken } from '../shared/utils/token.utils';
+import { invalidateAuthCache } from '../middleware/auth.middleware';
 import type { RegisterInput, UpdateProfileInput } from '../validators/auth.validator';
 
 export interface UserRow {
@@ -106,6 +107,7 @@ export async function setActiveWedding(userId: string, targetOwnerId: string): P
     .update({ active_owner_id: targetOwnerId === userId ? null : targetOwnerId })
     .eq('id', userId);
   if (error) throw error;
+  invalidateAuthCache();
 }
 
 export async function findUserByEmail(email: string): Promise<UserRow | null> {
@@ -317,6 +319,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
     .update({ password_hash, password_changed_at: new Date().toISOString() })
     .eq('id', resetRow.user_id);
   if (updateError) throw updateError;
+  invalidateAuthCache();
 
   // Burn this token AND any other outstanding reset tokens for the user
   await supabase
@@ -419,6 +422,7 @@ export async function changePassword(
     .update({ password_hash, password_changed_at: new Date().toISOString() })
     .eq('id', userId);
   if (updateError) throw updateError;
+  invalidateAuthCache();
 }
 
 export async function deleteAccount(userId: string): Promise<void> {
