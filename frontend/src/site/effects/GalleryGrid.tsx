@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import type { GalleryLayoutId, Palette } from '../types';
 import { fadeUp, flipIn, staggerTight, inViewProps } from '../motion';
+import { GALLERY_HOVER_CONTROL, useEffectValue } from './schema';
+import { hoverPreset } from './hover';
 
 /**
  * The shared, couple-configurable photo grid. The Studio stores the pick in
@@ -23,12 +25,18 @@ export default function GalleryGrid({
 }) {
   const p = palette;
 
+  // The shared `galleryHover` effect pick, from the template's provider
+  // (defaults to zoom — today's look — when the template hasn't adopted it).
+  const hoverStyle = useEffectValue(GALLERY_HOVER_CONTROL);
+  const hover = hoverPreset(hoverStyle);
+  const hoverWrap = reduced ? {} : hover.wrap;
+
   const photo = (url: string, className = '') => (
     <img
       src={url}
       alt=""
       loading="lazy"
-      className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${className}`}
+      className={`w-full h-full object-cover ${hover.imgClass} ${className}`}
     />
   );
 
@@ -47,6 +55,7 @@ export default function GalleryGrid({
           <motion.button
             key={image.url}
             variants={fadeUp}
+            {...hoverWrap}
             onClick={() => onOpen(i)}
             className="group relative block w-full mb-4 overflow-hidden rounded-xl break-inside-avoid"
           >
@@ -54,7 +63,7 @@ export default function GalleryGrid({
               src={image.url}
               alt=""
               loading="lazy"
-              className="w-full h-auto group-hover:scale-105 transition-transform duration-500"
+              className={`w-full h-auto ${hover.imgClass}`}
             />
             {goldInset}
           </motion.button>
@@ -79,6 +88,7 @@ export default function GalleryGrid({
           <motion.button
             key={image.url}
             variants={fadeUp}
+            {...hoverWrap}
             onClick={() => onOpen(i)}
             className="group relative shrink-0 snap-center overflow-hidden rounded-xl"
             style={{ height: 'clamp(240px, 42vw, 380px)', aspectRatio: '3 / 4' }}
@@ -103,7 +113,10 @@ export default function GalleryGrid({
             key={image.url}
             variants={fadeUp}
             onClick={() => onOpen(i)}
-            {...(reduced ? {} : { whileHover: { rotate: 0, scale: 1.04, zIndex: 1 } })}
+            {...(reduced || hoverStyle === 'none'
+              ? {}
+              : // Polaroid's native hover is the straighten — kept unless the couple picked None
+                { whileHover: { rotate: 0, scale: 1.04, zIndex: 1 } })}
             className="group relative p-3 pb-10 rounded-sm"
             style={{
               background: p.surface,
@@ -143,6 +156,7 @@ export default function GalleryGrid({
           <motion.button
             key={image.url}
             variants={reduced ? fadeUp : flipIn}
+            {...hoverWrap}
             onClick={() => onOpen(i)}
             className={`overflow-hidden rounded-xl group relative ${feature ? 'col-span-2 row-span-2' : ''}`}
             style={{ aspectRatio: '1 / 1' }}

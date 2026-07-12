@@ -32,6 +32,7 @@ import { resolvePartSettings } from '../../site/config';
 import { getPalette, getTemplate, templatesForKind } from '../../site/registry';
 import type { SiteEditController } from '../../site/copy/context';
 import { defaultForKey } from '../../site/copy/registry';
+import type { EffectControl } from '../../site/effects/schema';
 import { DEFAULT_QR_DESIGN_ID } from '../../site/qrDesigns';
 import {
   DEFAULT_GALLERY_LAYOUT,
@@ -97,6 +98,8 @@ export default function Website() {
   const [qrEnabled, setQrEnabled] = useState(false);
   const [qrStyle, setQrStyle] = useState(DEFAULT_QR_DESIGN_ID);
   const [galleryLayout, setGalleryLayout] = useState<GalleryLayoutId>(DEFAULT_GALLERY_LAYOUT);
+  // Sparse per-page animation picks (config.effects) — a default choice stores nothing
+  const [effects, setEffects] = useState<Record<string, string>>({});
   // Sparse per-page copy overrides (config.text_overrides), edited inline in the preview
   const [textOverrides, setTextOverrides] = useState<Record<string, string>>({});
   // Shared couple content drafts
@@ -140,6 +143,7 @@ export default function Website() {
     setQrEnabled(!!selectedPage.config?.qr_enabled);
     setQrStyle(selectedPage.config?.qr_style ?? DEFAULT_QR_DESIGN_ID);
     setGalleryLayout(selectedPage.config?.gallery_layout ?? DEFAULT_GALLERY_LAYOUT);
+    setEffects(selectedPage.config?.effects ?? {});
     setTextOverrides(selectedPage.config?.text_overrides ?? {});
   }
 
@@ -180,6 +184,18 @@ export default function Website() {
       });
       setIsDirty(true);
     },
+  };
+
+  // Sparse storage: picking a control's default deletes the key (same pattern
+  // as text_overrides), so config.effects stays empty until customized.
+  const setEffect = (control: EffectControl, choiceId: string) => {
+    setEffects((prev) => {
+      const next = { ...prev };
+      if (choiceId === control.defaultId) delete next[control.id];
+      else next[control.id] = choiceId;
+      return next;
+    });
+    setIsDirty(true);
   };
 
   const clearOverride = (key: string) => {
@@ -284,6 +300,7 @@ export default function Website() {
           qr_enabled: qrEnabled,
           qr_style: qrStyle,
           gallery_layout: galleryLayout,
+          effects,
           text_overrides: textOverrides,
         },
       }),
@@ -419,6 +436,7 @@ export default function Website() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     gallerySubtitle: (galleryContent as any)?.subtitle ?? '',
     galleryLayout,
+    effects,
     sections: previewSections,
     palette,
     pages: pages
@@ -860,6 +878,9 @@ export default function Website() {
                 galleryLayout={galleryLayout}
                 onGalleryLayout={markDirty(setGalleryLayout)}
                 showGalleryLayout={template.parts.some((part) => part.id === 'gallery')}
+                effectControls={template.effectControls ?? []}
+                effects={effects}
+                onEffect={setEffect}
               />
             )}
 

@@ -1,5 +1,6 @@
 import { lazy } from 'react';
 import type { PageKind, TemplateDefinition, TemplatePart } from './types';
+import { BOTANICAL_EFFECTS, CLASSIC_EFFECTS } from './effects/schema';
 
 export { getPalette, PALETTES, DEFAULT_PALETTE_ID } from './palettes';
 
@@ -39,6 +40,7 @@ export const TEMPLATES: Record<string, TemplateDefinition> = {
     parts: WEBSITE_PARTS,
     defaultPaletteId: 'royal',
     recommendedPaletteIds: ['royal', 'desert', 'mandala', 'heirloom'],
+    effectControls: CLASSIC_EFFECTS,
     component: lazy(() => import('./templates/Classic')),
   },
   editorial: {
@@ -59,6 +61,7 @@ export const TEMPLATES: Record<string, TemplateDefinition> = {
     parts: WEBSITE_PARTS,
     defaultPaletteId: 'blush',
     recommendedPaletteIds: ['blush', 'lavender', 'meadow', 'rosewood'],
+    effectControls: BOTANICAL_EFFECTS,
     component: lazy(() => import('./templates/Botanical')),
   },
   midnight: {

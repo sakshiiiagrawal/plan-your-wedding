@@ -1,4 +1,5 @@
 import type { ComponentType, LazyExoticComponent } from 'react';
+import type { EffectControl } from './effects/schema';
 
 /** Every togglable/reorderable building block any template can declare. */
 export type PartId =
@@ -128,6 +129,9 @@ export interface SiteData {
   gallerySubtitle: string;
   /** Per-page photo-grid arrangement (config.gallery_layout); templates with a grid honor it. */
   galleryLayout?: GalleryLayoutId;
+  /** Sparse per-page animation picks (config.effects) — resolved against the
+   *  template's `effectControls` by the template root. */
+  effects?: Record<string, string> | undefined;
   /** Ordered, validated against the active template's `parts`. */
   sections: SectionSetting[];
   palette: Palette;
@@ -161,6 +165,9 @@ export interface TemplateDefinition {
   defaultPaletteId: string;
   /** Curation only — shown first in the palette picker; all palettes remain usable. */
   recommendedPaletteIds: string[];
+  /** Animation controls this template honors — declaring them is all it takes
+   *  for the Studio to render the "Animations & effects" pickers. */
+  effectControls?: EffectControl[];
   component:
     | ComponentType<TemplateProps>
     | LazyExoticComponent<ComponentType<TemplateProps>>;

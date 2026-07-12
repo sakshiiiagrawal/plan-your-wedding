@@ -8,13 +8,17 @@ import { BOTANICAL_COPY } from '../copy/templates/botanical';
 import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
-import { fadeUp, inViewProps, stagger } from '../motion';
+import { motionPreset } from '../motion';
 import { siteVars } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
 import ScrollProgress from '../effects/ScrollProgress';
 import TickerDigit from '../effects/TickerDigit';
 import MusicPlayer from '../effects/MusicPlayer';
+import { BOTANICAL_EFFECTS, resolveEffects, SiteEffectsContext } from '../effects/schema';
+import { hoverPreset } from '../effects/hover';
+import { ParallaxLayer } from '../effects/MouseParallax';
+import { useMouseParallax } from '../effects/useMouseParallax';
 
 const { E } = makeEditable('botanical', BOTANICAL_COPY);
 
@@ -241,6 +245,11 @@ export default function Botanical({ data }: TemplateProps) {
   const countdown = useCountdown(data.weddingDate);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
+  const fx = resolveEffects(BOTANICAL_EFFECTS, data.effects);
+  const { fadeUp, stagger, inViewProps } = motionPreset(fx.scrollAnim!);
+  const galleryHover = hoverPreset(fx.galleryHover!);
+  const fallingOn = fx.falling !== 'none';
+
   const coupleNames = `${data.brideName} & ${data.groomName}`;
   const enabled = data.sections.filter((s) => s.enabled);
   const hasSection = (id: PartId) => enabled.some((s) => s.id === id);
@@ -253,7 +262,9 @@ export default function Botanical({ data }: TemplateProps) {
   const vars = siteVars(p);
 
   const reduced = useReducedMotion() ?? false;
-  const show3d = !reduced && !data.print;
+  // Everything off in the scene (no particles, no arch) → skip the 3D chunk.
+  const show3d = !reduced && !data.print && (fallingOn || fx.arch !== 'hidden');
+  const parallax = useMouseParallax(reduced || fx.heroParallax === 'off');
   const heroRef = useRef<HTMLElement | null>(null);
   const { scrollYProgress: heroProgress } = useScroll({
     target: heroRef,
@@ -448,7 +459,7 @@ export default function Botanical({ data }: TemplateProps) {
         className="py-24 relative overflow-hidden"
         style={{ background: p.heroGradient }}
       >
-        <PetalDrift color={p.accent} />
+        {fallingOn && <PetalDrift color={p.accent} />}
         <motion.div variants={stagger} {...inViewProps} className="relative max-w-2xl mx-auto px-6">
           <motion.h2
             variants={fadeUp}
@@ -478,7 +489,7 @@ export default function Botanical({ data }: TemplateProps) {
     gallery: showGallery ? (
       <section key="gallery" id="gallery" className="py-24 relative overflow-hidden">
         {/* One petal keeps falling across the grid — the gallery stays "outside" */}
-        {!reduced && (
+        {!reduced && fallingOn && (
           <motion.div
             aria-hidden
             className="absolute pointer-events-none"
@@ -518,6 +529,7 @@ export default function Botanical({ data }: TemplateProps) {
                 <motion.button
                   key={image.url}
                   variants={fadeUp}
+                  {...(reduced ? {} : galleryHover.wrap)}
                   onClick={() => setLightboxIndex(i)}
                   className="relative group"
                   style={{ rotate: reduced ? 0 : `${tilt}deg` }}
@@ -544,7 +556,7 @@ export default function Botanical({ data }: TemplateProps) {
                       src={image.url}
                       alt=""
                       loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className={`w-full h-full object-cover ${galleryHover.imgClass}`}
                     />
                   </span>
                 </motion.button>
@@ -557,6 +569,7 @@ export default function Botanical({ data }: TemplateProps) {
   };
 
   return (
+    <SiteEffectsContext.Provider value={fx}>
     <div style={{ ...vars, background: p.bg, color: p.ink }} className="min-h-screen font-body">
       <ScrollProgress color={p.accent} />
       {data.musicUrl && <MusicPlayer url={data.musicUrl} disabled={data.preview} startTime={data.musicStartTime} endTime={data.musicEndTime} />}
@@ -565,6 +578,7 @@ export default function Botanical({ data }: TemplateProps) {
       {showHero && (
       <section
         ref={heroRef}
+        {...parallax.bind}
         className="min-h-screen flex items-center justify-center pt-14 px-6 relative overflow-hidden"
         style={{ background: p.heroGradient }}
       >
@@ -616,23 +630,32 @@ export default function Botanical({ data }: TemplateProps) {
         )}
         {show3d ? (
           <Suspense fallback={null}>
-            <BotanicalHeroScene palette={p} progress={heroProgress} className="absolute inset-0" />
+            <BotanicalHeroScene
+              palette={p}
+              progress={heroProgress}
+              falling={fx.falling!}
+              density={fx.fallDensity!}
+              arch={fx.arch!}
+              className="absolute inset-0"
+            />
           </Suspense>
         ) : (
           <>
-            <PetalDrift color={p.accent} />
+            {fallingOn && <PetalDrift color={p.accent} />}
             {/* Flat arch outline — the pre-3D motif, kept as the fallback */}
-            <div
-              className="absolute z-0 pointer-events-none hidden sm:block left-1/2 top-1/2"
-              style={{
-                width: 'min(360px, 70vw)',
-                height: 'min(480px, 84vh)',
-                transform: 'translate(-50%, -50%)',
-                border: `1px solid color-mix(in srgb, ${p.onHeroSoft} 45%, transparent)`,
-                borderRadius: '999px 999px 12px 12px',
-              }}
-              aria-hidden
-            />
+            {fx.arch !== 'hidden' && (
+              <div
+                className="absolute z-0 pointer-events-none hidden sm:block left-1/2 top-1/2"
+                style={{
+                  width: 'min(360px, 70vw)',
+                  height: 'min(480px, 84vh)',
+                  transform: 'translate(-50%, -50%)',
+                  border: `1px solid color-mix(in srgb, ${p.onHeroSoft} 45%, transparent)`,
+                  borderRadius: '999px 999px 12px 12px',
+                }}
+                aria-hidden
+              />
+            )}
           </>
         )}
         {/* Hand-sketched branches grow in from opposite corners */}
@@ -647,11 +670,12 @@ export default function Botanical({ data }: TemplateProps) {
           delay={0.6}
           className="absolute bottom-6 right-3 sm:bottom-12 sm:right-10 rotate-180 z-10 pointer-events-none"
         />
+        <ParallaxLayer x={parallax.x} y={parallax.y} depth={7} className="relative z-10">
         <motion.div
           variants={stagger}
           initial="hidden"
           animate="visible"
-          className="text-center py-20 relative z-10"
+          className="text-center py-20"
           {...(show3d ? { style: { y: namesY } } : {})}
         >
           <motion.p
@@ -736,6 +760,7 @@ export default function Botanical({ data }: TemplateProps) {
             </motion.a>
           )}
         </motion.div>
+        </ParallaxLayer>
       </section>
       )}
 
@@ -765,5 +790,6 @@ export default function Botanical({ data }: TemplateProps) {
         />
       )}
     </div>
+    </SiteEffectsContext.Provider>
   );
 }

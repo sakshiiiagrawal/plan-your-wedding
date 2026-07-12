@@ -1,12 +1,21 @@
 import { HiOutlineSparkles } from 'react-icons/hi';
 import { PALETTES, templatesForKind } from '../../../site/registry';
+import type { EffectControl } from '../../../site/effects/schema';
 import { GALLERY_LAYOUTS, type GalleryLayoutId, type PageKind } from '../../../site/types';
 import PanelSection from './PanelSection';
 import TemplateRail from './TemplateRail';
 
-/** The Design tab: template rail + palette grid + gallery layout. Palette
- *  positions are stable across template switches — recommendation is a badge,
- *  not a reorder. */
+const EFFECT_GROUPS: { id: EffectControl['group']; title: string }[] = [
+  { id: 'atmosphere', title: 'Effects · Atmosphere' },
+  { id: 'motion', title: 'Effects · Motion' },
+  { id: 'interaction', title: 'Effects · Interactions' },
+];
+
+/** The Design tab: template rail + palette grid + gallery layout + the
+ *  template's declared animation controls (rendered generically — a template
+ *  that declares `effectControls` gets its pickers with zero Studio code).
+ *  Palette positions are stable across template switches — recommendation is
+ *  a badge, not a reorder. */
 export default function DesignPanel({
   kind,
   templateId,
@@ -17,6 +26,9 @@ export default function DesignPanel({
   galleryLayout,
   onGalleryLayout,
   showGalleryLayout,
+  effectControls,
+  effects,
+  onEffect,
 }: {
   kind: PageKind;
   templateId: string;
@@ -27,6 +39,9 @@ export default function DesignPanel({
   galleryLayout: GalleryLayoutId;
   onGalleryLayout: (id: GalleryLayoutId) => void;
   showGalleryLayout: boolean;
+  effectControls: EffectControl[];
+  effects: Record<string, string>;
+  onEffect: (control: EffectControl, choiceId: string) => void;
 }) {
   return (
     <>
@@ -168,6 +183,58 @@ export default function DesignPanel({
           </div>
         </PanelSection>
       )}
+
+      {EFFECT_GROUPS.map(({ id, title }) => {
+        const controls = effectControls.filter((c) => c.group === id);
+        if (controls.length === 0) return null;
+        return (
+          <PanelSection key={id} title={title}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {controls.map((control) => {
+                const value = effects[control.id] ?? control.defaultId;
+                return (
+                  <div key={control.id}>
+                    <div
+                      style={{ fontSize: 11.5, color: 'var(--ink-mid)', marginBottom: 6 }}
+                      title={control.hint}
+                    >
+                      {control.label}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                      {control.choices.map((choice) => {
+                        const active = value === choice.id;
+                        return (
+                          <button
+                            key={choice.id}
+                            onClick={() => onEffect(control, choice.id)}
+                            title={choice.hint}
+                            aria-pressed={active}
+                            style={{
+                              padding: '5px 11px',
+                              borderRadius: 999,
+                              fontSize: 11,
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                              border: active
+                                ? '1.5px solid var(--gold)'
+                                : '1px solid var(--line-soft)',
+                              background: active ? 'var(--gold-glow)' : 'var(--bg-raised)',
+                              color: 'var(--ink-high)',
+                              transition: 'all 150ms',
+                            }}
+                          >
+                            {choice.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </PanelSection>
+        );
+      })}
     </>
   );
 }

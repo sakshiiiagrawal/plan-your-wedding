@@ -15,7 +15,8 @@ import { CLASSIC_COPY } from '../copy/templates/classic';
 import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
-import { fadeUp, inViewProps, stagger } from '../motion';
+import { motionPreset } from '../motion';
+import { CLASSIC_EFFECTS, resolveEffects, SiteEffectsContext } from '../effects/schema';
 import { siteVars, heroShimmer } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
@@ -226,6 +227,11 @@ export default function Classic({ data }: TemplateProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [rsvpFocused, setRsvpFocused] = useState(false);
+
+  // Shared effect controls (scrollAnim / galleryHover) — GalleryGrid reads
+  // its preset from the provided context.
+  const fx = resolveEffects(CLASSIC_EFFECTS, data.effects);
+  const { fadeUp, stagger, inViewProps } = motionPreset(fx.scrollAnim!);
 
   const reduced = useReducedMotion() ?? false;
   const show3d = !reduced && !data.print;
@@ -564,6 +570,7 @@ export default function Classic({ data }: TemplateProps) {
   };
 
   return (
+    <SiteEffectsContext.Provider value={fx}>
     <div style={{ ...vars, background: p.bg, color: p.ink }} className="min-h-screen">
       <ScrollProgress color={p.accent} colorSoft={p.onHeroSoft} />
       {data.musicUrl && <MusicPlayer url={data.musicUrl} disabled={data.preview} startTime={data.musicStartTime} endTime={data.musicEndTime} />}
@@ -882,5 +889,6 @@ export default function Classic({ data }: TemplateProps) {
         />
       )}
     </div>
+    </SiteEffectsContext.Provider>
   );
 }

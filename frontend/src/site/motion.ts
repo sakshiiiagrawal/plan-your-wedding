@@ -3,6 +3,7 @@
  * speaks (ported from the original weddingplannerdesign invite guide).
  * Use with: <motion.div variants={fadeUp} {...inViewProps}>.
  */
+import type { Variants } from 'framer-motion';
 
 export const fadeUp = {
   hidden: { opacity: 0, y: 40 },
@@ -69,3 +70,40 @@ export const inViewProps = {
   whileInView: 'visible' as const,
   viewport: { once: true, margin: '-80px' },
 };
+
+/**
+ * Section-entrance intensity behind the shared `scrollAnim` effect control.
+ * `full` returns today's exports untouched; `gentle` shrinks offsets and
+ * durations; `off` makes both variant states identical, so everything is
+ * statically visible. Templates shadow their imports with the preset:
+ *   const { fadeUp, stagger, inViewProps } = motionPreset(value);
+ */
+export function motionPreset(intensity: string): {
+  fadeUp: Variants;
+  stagger: Variants;
+  inViewProps: typeof inViewProps;
+} {
+  if (intensity === 'off') {
+    const still = { opacity: 1, y: 0 };
+    return {
+      fadeUp: { hidden: still, visible: still },
+      stagger: { hidden: {}, visible: {} },
+      inViewProps,
+    };
+  }
+  if (intensity === 'gentle') {
+    return {
+      fadeUp: {
+        hidden: { opacity: 0, y: 14 },
+        visible: {
+          opacity: 1,
+          y: 0,
+          transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] as const },
+        },
+      },
+      stagger: { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } },
+      inViewProps,
+    };
+  }
+  return { fadeUp, stagger, inViewProps };
+}

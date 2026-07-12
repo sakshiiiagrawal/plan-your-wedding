@@ -110,6 +110,7 @@ export default function PublicPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     gallerySubtitle: (galleryContent as any)?.subtitle ?? '',
     galleryLayout: page.config?.gallery_layout ?? undefined,
+    effects: page.config?.effects ?? undefined,
     sections,
     palette,
     pages: (pages ?? [])
