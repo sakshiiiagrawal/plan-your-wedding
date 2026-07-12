@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useScroll, useSpring } from 'framer-motion';
+import { motion, useReducedMotion, useScroll, useSpring } from 'framer-motion';
 import type { PartId, TemplateProps } from '../types';
 import { SECTION_LABELS } from '../config';
 import { SharedE } from '../copy/shared';
 import { JOURNEY_COPY } from '../copy/templates/journey';
 import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
-import { fadeUp, inViewProps, stagger } from '../motion';
+import { motionPreset } from '../motion';
+import { JOURNEY_EFFECTS, resolveEffects, SiteEffectsContext } from '../effects/schema';
+import { hoverPreset } from '../effects/hover';
 import { siteVars } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
@@ -38,6 +40,13 @@ export default function Journey({ data }: TemplateProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const { scrollYProgress } = useScroll();
   const spineScale = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
+  const reduced = useReducedMotion() ?? false;
+
+  // Effect controls: scrollAnim shadows the motion imports, galleryHover
+  // styles the pasted polaroids.
+  const fx = resolveEffects(JOURNEY_EFFECTS, data.effects);
+  const { fadeUp, stagger, inViewProps, still } = motionPreset(fx.scrollAnim!);
+  const galleryHover = hoverPreset(fx.galleryHover!);
 
   const coupleNames = `${data.brideName} & ${data.groomName}`;
   const enabled = data.sections.filter((s) => s.enabled);
@@ -96,6 +105,7 @@ export default function Journey({ data }: TemplateProps) {
   );
 
   return (
+    <SiteEffectsContext.Provider value={fx}>
     <div style={{ ...vars, background: p.bg, color: p.ink }} className="min-h-screen font-body">
       <ScrollProgress color={p.accent} />
       {data.musicUrl && <MusicPlayer url={data.musicUrl} disabled={data.preview} startTime={data.musicStartTime} endTime={data.musicEndTime} />}
@@ -319,19 +329,26 @@ export default function Journey({ data }: TemplateProps) {
                 </motion.div>
                 {hasPhoto && (
                   <motion.div
-                    initial={{ opacity: 0, rotate: i % 2 ? 2 : -2, scale: 0.94 }}
-                    whileInView={{ opacity: 1, rotate: i % 2 ? 1.2 : -1.2, scale: 1 }}
-                    viewport={{ once: true, margin: '-80px' }}
-                    transition={{ duration: 0.7 }}
+                    {...(reduced || still
+                      ? {}
+                      : {
+                          initial: { opacity: 0, rotate: i % 2 ? 2 : -2, scale: 0.94 },
+                          whileInView: { opacity: 1, rotate: i % 2 ? 1.2 : -1.2, scale: 1 },
+                          viewport: { once: true, margin: '-80px' },
+                          transition: { duration: 0.7 },
+                        })}
+                    {...(reduced ? {} : galleryHover.wrap)}
                     className={`${i % 2 ? 'sm:order-1' : 'sm:order-2'}`}
                   >
                     {/* A polaroid pasted into the album, captioned by hand */}
                     <button
                       onClick={() => setLightboxIndex(data.galleryImages.findIndex((g) => g.url === m.photo))}
-                      className="block w-full p-3 pb-2"
+                      className="group block w-full p-3 pb-2"
                       style={{ background: p.surface, boxShadow: '0 16px 36px -16px rgba(0,0,0,0.35)', border: `1px solid ${p.line}` }}
                     >
-                      <img src={m.photo} alt="" loading="lazy" className="w-full object-cover" style={{ aspectRatio: '4/3' }} />
+                      <span className="block overflow-hidden">
+                        <img src={m.photo} alt="" loading="lazy" className={`w-full object-cover ${galleryHover.imgClass}`} style={{ aspectRatio: '4/3' }} />
+                      </span>
                       <span className="block font-script text-xl pt-2 pb-1 text-center" style={{ color: p.inkSoft }}>
                         {typeof m.title === 'string' ? m.title : coupleNames}
                       </span>
@@ -369,5 +386,6 @@ export default function Journey({ data }: TemplateProps) {
         />
       )}
     </div>
+    </SiteEffectsContext.Provider>
   );
 }

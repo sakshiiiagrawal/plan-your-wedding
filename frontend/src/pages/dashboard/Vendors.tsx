@@ -8,6 +8,8 @@ import {
   HiOutlineSelector,
   HiOutlineSearch,
   HiOutlineTrash,
+  HiOutlineViewGrid,
+  HiOutlineViewList,
   HiOutlineX,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
@@ -157,6 +159,157 @@ function plannedBadge(dateStr: string): { label: string; style: React.CSSPropert
   };
 }
 
+function VendorsListView({
+  vendors,
+  canSeeMoney,
+  onEdit,
+  onDelete,
+}: {
+  vendors: VendorWithFinance[];
+  canSeeMoney: boolean;
+  onEdit: (vendor: VendorWithFinance) => void;
+  onDelete: (id: string) => void;
+}) {
+  const th: React.CSSProperties = {
+    textAlign: 'left',
+    padding: '10px 12px',
+    fontSize: 10,
+    fontWeight: 600,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: 'var(--ink-low)',
+    whiteSpace: 'nowrap',
+  };
+  const td: React.CSSProperties = {
+    padding: '10px 12px',
+    fontSize: 12,
+    color: 'var(--ink-high)',
+    borderTop: '1px solid var(--line-soft)',
+    verticalAlign: 'middle',
+  };
+  const numTd: React.CSSProperties = { ...td, textAlign: 'right', whiteSpace: 'nowrap' };
+
+  return (
+    <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: canSeeMoney ? 760 : 520 }}>
+        <thead>
+          <tr>
+            <th style={th}>Vendor</th>
+            <th style={th}>Category</th>
+            <th style={th}>Status</th>
+            {canSeeMoney && (
+              <>
+                <th style={{ ...th, textAlign: 'right' }}>Committed</th>
+                <th style={{ ...th, textAlign: 'right' }}>Paid</th>
+                <th style={{ ...th, textAlign: 'right' }}>Due</th>
+              </>
+            )}
+            <th style={th}>Contact</th>
+            <th style={{ ...th, textAlign: 'right' }} aria-label="Actions" />
+          </tr>
+        </thead>
+        <tbody>
+          {vendors.map((vendor) => {
+            const committed = vendor.finance_summary?.committed_amount ?? 0;
+            const paid = vendor.finance_summary?.paid_amount ?? 0;
+            const outstanding = vendor.finance_summary?.outstanding_amount ?? 0;
+            const statusLabel =
+              paid >= committed && committed > 0 ? 'Confirmed' : paid > 0 ? 'Deposit paid' : 'Quoted';
+            const statusDotColor =
+              paid >= committed && committed > 0
+                ? '#16a34a'
+                : paid > 0
+                  ? 'var(--gold)'
+                  : 'var(--line-strong)';
+            return (
+              <tr
+                key={vendor.id}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--bg-raised)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <td style={td}>
+                  <button
+                    onClick={() => onEdit(vendor)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      fontWeight: 500,
+                      color: 'var(--ink-high)',
+                      textAlign: 'left',
+                    }}
+                  >
+                    {vendor.name}
+                  </button>
+                </td>
+                <td style={{ ...td, color: 'var(--ink-mid)' }}>
+                  {getVendorCategoryLabel(vendor) ?? '—'}
+                </td>
+                <td style={td}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: '50%',
+                        background: statusDotColor,
+                      }}
+                    />
+                    {statusLabel}
+                  </span>
+                </td>
+                {canSeeMoney && (
+                  <>
+                    <td style={numTd}>
+                      {committed > 0 ? formatCurrency(committed) : <span style={{ color: 'var(--ink-dim)' }}>—</span>}
+                    </td>
+                    <td style={{ ...numTd, color: paid > 0 ? '#16a34a' : 'var(--ink-dim)' }}>
+                      {paid > 0 ? formatCurrency(paid) : '—'}
+                    </td>
+                    <td style={{ ...numTd, color: outstanding > 0 ? '#ea580c' : 'var(--ink-dim)' }}>
+                      {outstanding > 0 ? formatCurrency(outstanding) : '—'}
+                    </td>
+                  </>
+                )}
+                <td style={{ ...td, color: 'var(--ink-mid)', whiteSpace: 'nowrap' }}>
+                  {vendor.phone ? (
+                    <a href={`tel:${vendor.phone}`} style={{ color: 'var(--gold-deep)', textDecoration: 'none' }}>
+                      {vendor.phone}
+                    </a>
+                  ) : (
+                    <span style={{ color: 'var(--ink-dim)' }}>—</span>
+                  )}
+                </td>
+                <td style={{ ...td, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                  <button
+                    onClick={() => onEdit(vendor)}
+                    title="Edit vendor"
+                    style={{ padding: '5px 7px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
+                  >
+                    <HiOutlinePencil style={{ width: 14, height: 14 }} />
+                  </button>
+                  <button
+                    onClick={() => onDelete(vendor.id)}
+                    title="Delete vendor"
+                    style={{ padding: '5px 7px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
+                  >
+                    <HiOutlineTrash style={{ width: 14, height: 14 }} />
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function Vendors() {
   const { user } = useAuth();
   const tier = financeTier(user);
@@ -169,6 +322,7 @@ export default function Vendors() {
   const [logisticsFilters, setLogisticsFilters] = useState<VendorLogisticsFilter[]>([]);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(12);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [formData, setFormData] = useState<VendorFormData>(createDefaultForm);
@@ -515,7 +669,35 @@ export default function Vendors() {
         eyebrow="Service providers"
         title="Vendors"
         action={
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div
+              style={{
+                display: 'flex',
+                border: '1px solid var(--line)',
+                borderRadius: 8,
+                overflow: 'hidden',
+              }}
+            >
+              {[
+                { mode: 'grid' as const, Icon: HiOutlineViewGrid, title: 'Grid view' },
+                { mode: 'list' as const, Icon: HiOutlineViewList, title: 'List view' },
+              ].map(({ mode, Icon, title }) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  title={title}
+                  style={{
+                    padding: '6px 10px',
+                    background: viewMode === mode ? 'var(--gold-glow)' : 'transparent',
+                    color: viewMode === mode ? 'var(--gold-deep)' : 'var(--ink-dim)',
+                    cursor: 'pointer',
+                    transition: 'all 150ms',
+                  }}
+                >
+                  <Icon style={{ width: 15, height: 15 }} />
+                </button>
+              ))}
+            </div>
             <button
               onClick={() => exportVendors.mutate()}
               disabled={exportVendors.isPending}
@@ -911,7 +1093,20 @@ export default function Vendors() {
         </div>
       </div>
 
-      {vendors.length > 0 ? (
+      {vendors.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: '48px 0' }}>
+          <p style={{ color: 'var(--ink-low)', fontSize: 13 }}>
+            {hasActiveFilters ? 'No vendors match the current filters.' : 'No vendors found.'}
+          </p>
+        </div>
+      ) : viewMode === 'list' ? (
+        <VendorsListView
+          vendors={vendors}
+          canSeeMoney={canSeeMoney}
+          onEdit={handleEdit}
+          onDelete={setDeleteConfirm}
+        />
+      ) : (
         <div
           style={{
             display: 'grid',
@@ -1437,12 +1632,6 @@ export default function Vendors() {
               </div>
             );
           })}
-        </div>
-      ) : (
-        <div className="card" style={{ textAlign: 'center', padding: '48px 0' }}>
-          <p style={{ color: 'var(--ink-low)', fontSize: 13 }}>
-            {hasActiveFilters ? 'No vendors match the current filters.' : 'No vendors found.'}
-          </p>
         </div>
       )}
 

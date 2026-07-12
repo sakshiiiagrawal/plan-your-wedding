@@ -80,15 +80,23 @@ export const inViewProps = {
  */
 export function motionPreset(intensity: string): {
   fadeUp: Variants;
+  scaleIn: Variants;
+  drawLine: Variants;
   stagger: Variants;
   inViewProps: typeof inViewProps;
+  /** True when the couple picked "Off" — for entrance animations that live
+   *  outside the variants system (SVG path draws, inline initial/animate). */
+  still: boolean;
 } {
   if (intensity === 'off') {
-    const still = { opacity: 1, y: 0 };
+    const flat = { opacity: 1, y: 0 };
     return {
-      fadeUp: { hidden: still, visible: still },
+      fadeUp: { hidden: flat, visible: flat },
+      scaleIn: { hidden: { opacity: 1, scale: 1 }, visible: { opacity: 1, scale: 1 } },
+      drawLine: { hidden: { scaleX: 1 }, visible: { scaleX: 1 } },
       stagger: { hidden: {}, visible: {} },
       inViewProps,
+      still: true,
     };
   }
   if (intensity === 'gentle') {
@@ -101,9 +109,18 @@ export function motionPreset(intensity: string): {
           transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] as const },
         },
       },
+      scaleIn: {
+        hidden: { opacity: 0, scale: 0.95 },
+        visible: { opacity: 1, scale: 1, transition: { duration: 0.3 } },
+      },
+      drawLine: {
+        hidden: { scaleX: 0 },
+        visible: { scaleX: 1, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const } },
+      },
       stagger: { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } },
       inViewProps,
+      still: false,
     };
   }
-  return { fadeUp, stagger, inViewProps };
+  return { fadeUp, scaleIn, drawLine, stagger, inViewProps, still: false };
 }

@@ -9,7 +9,9 @@ import { FIESTA_COPY } from '../copy/templates/fiesta';
 import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
-import { fadeUp, inViewProps, scaleIn, stagger } from '../motion';
+import { motionPreset } from '../motion';
+import { FIESTA_EFFECTS, resolveEffects, SiteEffectsContext } from '../effects/schema';
+import { hoverPreset } from '../effects/hover';
 import { siteVars } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
@@ -175,16 +177,30 @@ export default function Fiesta({ data }: TemplateProps) {
   const p = data.palette;
   const countdown = useCountdown(data.weddingDate);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // Effect controls: confetti gates the arrival burst, mandala picks the
+  // chakra's mode, scrollAnim shadows the motion imports, galleryHover the
+  // pinned prints.
+  const fx = resolveEffects(FIESTA_EFFECTS, data.effects);
+  const { fadeUp, scaleIn, stagger, inViewProps } = motionPreset(fx.scrollAnim!);
+  const galleryHover = hoverPreset(fx.galleryHover!);
+
   // Client-only app: the window is measurable on first render, so the burst
   // can start immediately — the effect only schedules its end.
-  const [confetti, setConfetti] = useState(true);
+  const [confetti, setConfetti] = useState(fx.confetti === 'burst');
   const [size] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }));
   const reduced = useReducedMotion() ?? false;
 
+  // Re-runs when the Studio pick changes, so toggling "Burst" replays it live.
   useEffect(() => {
+    if (fx.confetti !== 'burst') {
+      setConfetti(false);
+      return;
+    }
+    setConfetti(true);
     const t = setTimeout(() => setConfetti(false), 4500);
     return () => clearTimeout(t);
-  }, []);
+  }, [fx.confetti]);
 
   const coupleNames = `${data.brideName} & ${data.groomName}`;
   const enabled = data.sections.filter((s) => s.enabled);
@@ -204,10 +220,11 @@ export default function Fiesta({ data }: TemplateProps) {
   const festiveHues = [p.accent, '#FF8F00', '#E8570D', p.primary];
 
   return (
+    <SiteEffectsContext.Provider value={fx}>
     <div style={{ ...vars, background: p.bg, color: p.ink }} className="min-h-screen font-body relative">
       <ScrollProgress color={p.accent} />
       {data.musicUrl && <MusicPlayer url={data.musicUrl} disabled={data.preview} startTime={data.musicStartTime} endTime={data.musicEndTime} />}
-      {confetti && size.width > 0 && (
+      {confetti && !reduced && size.width > 0 && (
         <Confetti width={size.width} height={size.height} numberOfPieces={220} recycle={false} colors={[p.accent, p.primary, '#FF8F00', '#E91E63']} />
       )}
 
@@ -247,7 +264,9 @@ export default function Fiesta({ data }: TemplateProps) {
             <Garland accent={p.accent} primary={p.onHeroSoft} />
           </div>
         </div>
-        <Mandala color={p.onHeroSoft} reduced={reduced} />
+        {fx.mandala !== 'hidden' && (
+          <Mandala color={p.onHeroSoft} reduced={reduced || fx.mandala === 'still'} />
+        )}
         <motion.div variants={stagger} initial="hidden" animate="visible" className="relative z-10 pt-14">
           <motion.p variants={fadeUp} className="text-xs uppercase mb-6" style={{ color: p.onHeroSoft, letterSpacing: '0.3em' }}>
             <E k="hero.kicker" />
@@ -447,8 +466,8 @@ export default function Fiesta({ data }: TemplateProps) {
                         key={image.url}
                         variants={scaleIn}
                         onClick={() => setLightboxIndex(i)}
-                        className="block overflow-hidden"
-                        {...(reduced ? {} : { whileHover: { rotate: 0, scale: 1.04 } })}
+                        className="group block overflow-hidden"
+                        {...(reduced ? {} : galleryHover.wrap)}
                         style={{
                           rotate: reduced ? 0 : `${tilt}deg`,
                           width: 'min(42vw, 220px)',
@@ -458,7 +477,12 @@ export default function Fiesta({ data }: TemplateProps) {
                           boxShadow: '0 14px 28px -14px rgba(0,0,0,0.35)',
                         }}
                       >
-                        <img src={image.url} alt="" loading="lazy" className="w-full h-full object-cover" />
+                        <img
+                          src={image.url}
+                          alt=""
+                          loading="lazy"
+                          className={`w-full h-full object-cover ${galleryHover.imgClass}`}
+                        />
                       </motion.button>
                     );
                   })}
@@ -510,5 +534,6 @@ export default function Fiesta({ data }: TemplateProps) {
         <Lightbox images={data.galleryImages} index={lightboxIndex} onClose={() => setLightboxIndex(null)} onNavigate={setLightboxIndex} />
       )}
     </div>
+    </SiteEffectsContext.Provider>
   );
 }

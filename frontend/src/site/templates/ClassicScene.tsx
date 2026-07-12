@@ -306,12 +306,16 @@ function ParallaxRig({
   return <group ref={group}>{children}</group>;
 }
 
+/** The couple's `goldDust` effect pick → mote-count multiplier ('none' → 0). */
+const MOTE_FACTOR: Record<string, number> = { sparse: 0.45, normal: 1, lush: 1.7, none: 0 };
+
 export default function ClassicHeroScene({
   palette,
   photoUrl,
   progress,
   mouseX,
   mouseY,
+  motes = 'normal',
   className,
 }: {
   palette: Palette;
@@ -319,8 +323,10 @@ export default function ClassicHeroScene({
   progress: MotionValue<number>;
   mouseX?: MotionValue<number> | undefined;
   mouseY?: MotionValue<number> | undefined;
+  motes?: string;
   className?: string | undefined;
 }) {
+  const moteCount = Math.round(220 * (MOTE_FACTOR[motes] ?? 1));
   return (
     <SceneCanvas className={className}>
       {photoUrl && (
@@ -335,7 +341,17 @@ export default function ClassicHeroScene({
         <MirrorArch palette={palette} progress={progress} />
         {/* Fine gold dust, not petals: many small dim points beat few big
             blobs — the additive blend does the glow. */}
-        <GoldMotes palette={palette} count={220} area={[13, 8, 5]} size={16} speed={0.7} opacity={0.5} />
+        {moteCount > 0 && (
+          <GoldMotes
+            key={moteCount}
+            palette={palette}
+            count={moteCount}
+            area={[13, 8, 5]}
+            size={16}
+            speed={0.7}
+            opacity={0.5}
+          />
+        )}
       </ParallaxRig>
     </SceneCanvas>
   );
@@ -346,14 +362,26 @@ export function GoldVeil({
   palette,
   className,
   paused,
+  motes = 'normal',
 }: {
   palette: Palette;
   className?: string | undefined;
   paused?: boolean | undefined;
+  motes?: string;
 }) {
+  const moteCount = Math.round(90 * (MOTE_FACTOR[motes] ?? 1));
+  if (moteCount === 0) return null;
   return (
     <SceneCanvas className={className} paused={paused}>
-      <GoldMotes palette={palette} count={90} area={[15, 8, 4]} size={15} speed={0.5} opacity={0.4} />
+      <GoldMotes
+        key={moteCount}
+        palette={palette}
+        count={moteCount}
+        area={[15, 8, 4]}
+        size={15}
+        speed={0.5}
+        opacity={0.4}
+      />
     </SceneCanvas>
   );
 }

@@ -1,6 +1,17 @@
 import { lazy } from 'react';
 import type { PageKind, TemplateDefinition, TemplatePart } from './types';
-import { BOTANICAL_EFFECTS, CLASSIC_EFFECTS } from './effects/schema';
+import {
+  BOARDING_EFFECTS,
+  BOTANICAL_EFFECTS,
+  CARD_EFFECTS,
+  CLASSIC_EFFECTS,
+  EDITORIAL_EFFECTS,
+  FIESTA_EFFECTS,
+  INVITE_EFFECTS,
+  JOURNEY_EFFECTS,
+  MIDNIGHT_EFFECTS,
+  REEL_EFFECTS,
+} from './effects/schema';
 
 export { getPalette, PALETTES, DEFAULT_PALETTE_ID } from './palettes';
 
@@ -51,6 +62,7 @@ export const TEMPLATES: Record<string, TemplateDefinition> = {
     parts: WEBSITE_PARTS,
     defaultPaletteId: 'porcelain',
     recommendedPaletteIds: ['porcelain', 'sage', 'noir', 'regal-teal'],
+    effectControls: EDITORIAL_EFFECTS,
     component: lazy(() => import('./templates/Editorial')),
   },
   botanical: {
@@ -72,6 +84,7 @@ export const TEMPLATES: Record<string, TemplateDefinition> = {
     parts: WEBSITE_PARTS,
     defaultPaletteId: 'onyx',
     recommendedPaletteIds: ['onyx', 'emerald', 'bordeaux', 'mandala'],
+    effectControls: MIDNIGHT_EFFECTS,
     component: lazy(() => import('./templates/Midnight')),
   },
   invite: {
@@ -82,6 +95,7 @@ export const TEMPLATES: Record<string, TemplateDefinition> = {
     parts: INVITE_PARTS,
     defaultPaletteId: 'heirloom',
     recommendedPaletteIds: ['heirloom', 'rosewood', 'regal-teal', 'royal'],
+    effectControls: INVITE_EFFECTS,
     component: lazy(() => import('./templates/Invite')),
   },
   journey: {
@@ -98,6 +112,7 @@ export const TEMPLATES: Record<string, TemplateDefinition> = {
     ],
     defaultPaletteId: 'sage',
     recommendedPaletteIds: ['sage', 'meadow', 'porcelain', 'lavender'],
+    effectControls: JOURNEY_EFFECTS,
     component: lazy(() => import('./templates/Journey')),
   },
   fiesta: {
@@ -115,6 +130,7 @@ export const TEMPLATES: Record<string, TemplateDefinition> = {
     ],
     defaultPaletteId: 'desert',
     recommendedPaletteIds: ['desert', 'royal', 'mandala', 'rosewood'],
+    effectControls: FIESTA_EFFECTS,
     component: lazy(() => import('./templates/Fiesta')),
   },
   reel: {
@@ -133,6 +149,7 @@ export const TEMPLATES: Record<string, TemplateDefinition> = {
     ],
     defaultPaletteId: 'emerald',
     recommendedPaletteIds: ['emerald', 'onyx', 'bordeaux', 'regal-teal'],
+    effectControls: REEL_EFFECTS,
     component: lazy(() => import('./templates/Reel')),
   },
   boarding: {
@@ -151,6 +168,7 @@ export const TEMPLATES: Record<string, TemplateDefinition> = {
     ],
     defaultPaletteId: 'regal-teal',
     recommendedPaletteIds: ['regal-teal', 'onyx', 'noir', 'emerald'],
+    effectControls: BOARDING_EFFECTS,
     component: lazy(() => import('./templates/Boarding')),
   },
   card: {
@@ -167,6 +185,7 @@ export const TEMPLATES: Record<string, TemplateDefinition> = {
     ],
     defaultPaletteId: 'rosewood',
     recommendedPaletteIds: ['rosewood', 'blush', 'heirloom', 'lavender'],
+    effectControls: CARD_EFFECTS,
     component: lazy(() => import('./templates/NoteCard')),
   },
 };

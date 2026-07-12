@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useScroll, useSpring } from 'framer-motion';
+import { motion, useScroll, useSpring, type Variants } from 'framer-motion';
 import type { PartId, PublicEvent, TemplateProps } from '../types';
 import { SharedE } from '../copy/shared';
 import { INVITE_COPY } from '../copy/templates/invite';
 import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
-import { fadeUp, inViewProps, scaleIn, stagger } from '../motion';
+import { inViewProps, motionPreset } from '../motion';
+import { INVITE_EFFECTS, resolveEffects, SiteEffectsContext } from '../effects/schema';
 import { siteVars, heroShimmer, PHOTO_SHIMMER } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
@@ -124,11 +125,14 @@ function EventSlide({
   index,
   coupleNames,
   vars,
+  fadeUp,
 }: {
   event: PublicEvent;
   index: number;
   coupleNames: string;
   vars: { cream: string; surface: string; textDark: string; textMedium: string; gold: string; onGold: string };
+  /** The resolved `scrollAnim` entrance preset from the template root. */
+  fadeUp: Variants;
 }) {
   const headingColor = event.color ?? vars.textDark;
   const directions = directionsUrl(event.venue);
@@ -245,6 +249,12 @@ export default function Invite({ data }: TemplateProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const { scrollYProgress } = useScroll();
   const scaleY = useSpring(scrollYProgress, { stiffness: 120, damping: 30 });
+
+  // Effect controls: scrollAnim shadows the motion imports, headingShimmer
+  // gates the gold sweep across the names.
+  const fx = resolveEffects(INVITE_EFFECTS, data.effects);
+  const { fadeUp, scaleIn, stagger } = motionPreset(fx.scrollAnim!);
+  const shimmerOn = fx.headingShimmer !== 'off';
 
   const coupleNames = `${data.brideName} & ${data.groomName}`;
   const initials = `${data.brideName[0] ?? ''}${data.groomName[0] ?? ''}`;
@@ -383,6 +393,7 @@ export default function Invite({ data }: TemplateProps) {
             index={i}
             coupleNames={coupleNames}
             vars={vars}
+            fadeUp={fadeUp}
           />
         ))}
       </div>
@@ -463,7 +474,11 @@ export default function Invite({ data }: TemplateProps) {
       >
         <motion.div variants={fadeUp} {...inViewProps}>
           <p className="font-script mb-3" style={{ fontSize: 40 }}>
-            <ShimmerText>{coupleNames}</ShimmerText>
+            {shimmerOn ? (
+              <ShimmerText>{coupleNames}</ShimmerText>
+            ) : (
+              <span style={{ color: vars.gold }}>{coupleNames}</span>
+            )}
           </p>
           <p
             className="uppercase"
@@ -497,6 +512,7 @@ export default function Invite({ data }: TemplateProps) {
   };
 
   return (
+    <SiteEffectsContext.Provider value={fx}>
     <div className="flex justify-center" style={{ background: '#171310' }}>
       {/* An invite is a phone-first experience — present it as a centered card
           column on desktop (letterboxed) instead of stretching full-width. */}
@@ -576,9 +592,15 @@ export default function Invite({ data }: TemplateProps) {
                   aria-hidden
                 />
                 <h1 className="font-script leading-tight" style={{ fontSize: 'clamp(44px, 7vw, 84px)' }}>
-                  <ShimmerText colors={heroShimmerColors}>
-                    <EditableContent field="brideName" value={data.brideName} />
-                  </ShimmerText>
+                  {shimmerOn ? (
+                    <ShimmerText colors={heroShimmerColors}>
+                      <EditableContent field="brideName" value={data.brideName} />
+                    </ShimmerText>
+                  ) : (
+                    <span style={{ color: heroInk }}>
+                      <EditableContent field="brideName" value={data.brideName} />
+                    </span>
+                  )}
                 </h1>
                 <p
                   className="uppercase my-1"
@@ -587,9 +609,15 @@ export default function Invite({ data }: TemplateProps) {
                   <E k="hero.and" />
                 </p>
                 <h1 className="font-script leading-tight mb-3" style={{ fontSize: 'clamp(44px, 7vw, 84px)' }}>
-                  <ShimmerText colors={heroShimmerColors}>
-                    <EditableContent field="groomName" value={data.groomName} />
-                  </ShimmerText>
+                  {shimmerOn ? (
+                    <ShimmerText colors={heroShimmerColors}>
+                      <EditableContent field="groomName" value={data.groomName} />
+                    </ShimmerText>
+                  ) : (
+                    <span style={{ color: heroInk }}>
+                      <EditableContent field="groomName" value={data.groomName} />
+                    </span>
+                  )}
                 </h1>
                 {data.tagline && (
                   <p className="italic" style={{ fontSize: 14, color: heroInkSoft }}>
@@ -628,5 +656,6 @@ export default function Invite({ data }: TemplateProps) {
         )}
       </div>
     </div>
+    </SiteEffectsContext.Provider>
   );
 }

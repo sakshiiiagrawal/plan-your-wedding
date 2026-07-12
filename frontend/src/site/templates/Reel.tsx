@@ -6,7 +6,8 @@ import { REEL_COPY } from '../copy/templates/reel';
 import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
-import { fadeUp, inViewProps } from '../motion';
+import { motionPreset } from '../motion';
+import { REEL_EFFECTS, resolveEffects, SiteEffectsContext } from '../effects/schema';
 import { siteVars } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
@@ -70,6 +71,12 @@ export default function Reel({ data }: TemplateProps) {
   const reduced = useReducedMotion() ?? false;
   const enabled = data.sections.filter((s) => s.enabled);
 
+  // Effect controls: scrollAnim shadows the motion imports, headingShimmer
+  // gates the sweep across the names.
+  const fx = resolveEffects(REEL_EFFECTS, data.effects);
+  const { fadeUp, inViewProps } = motionPreset(fx.scrollAnim!);
+  const shimmerOn = fx.headingShimmer !== 'off';
+
   const coupleNames = `${data.brideName} & ${data.groomName}`;
   const websitePage = data.pages.find((pg) => pg.kind === 'website');
   const photos = data.galleryImages;
@@ -109,17 +116,25 @@ export default function Reel({ data }: TemplateProps) {
             <E k="hero.kicker" />
           </p>
           <h1 className="font-script mb-2" style={{ fontSize: 'clamp(46px, 7vw, 84px)', color: '#fff' }}>
-            <ShimmerText colors={['#fff', p.accent, '#fff']}>
+            {shimmerOn ? (
+              <ShimmerText colors={['#fff', p.accent, '#fff']}>
+                <EditableContent field="brideName" value={data.brideName} />
+              </ShimmerText>
+            ) : (
               <EditableContent field="brideName" value={data.brideName} />
-            </ShimmerText>
+            )}
           </h1>
           <p className="uppercase" style={{ fontSize: 10, letterSpacing: '0.5em', color: 'rgba(255,255,255,0.85)' }}>
             <E k="hero.and" />
           </p>
           <h1 className="font-script mt-2 mb-4" style={{ fontSize: 'clamp(46px, 7vw, 84px)', color: '#fff' }}>
-            <ShimmerText colors={['#fff', p.accent, '#fff']}>
+            {shimmerOn ? (
+              <ShimmerText colors={['#fff', p.accent, '#fff']}>
+                <EditableContent field="groomName" value={data.groomName} />
+              </ShimmerText>
+            ) : (
               <EditableContent field="groomName" value={data.groomName} />
-            </ShimmerText>
+            )}
           </h1>
           {data.weddingDate && (
             <p className="uppercase" style={{ fontSize: 11, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.9)' }}>
@@ -252,7 +267,7 @@ export default function Reel({ data }: TemplateProps) {
         <section key="final" className="flex flex-col items-center justify-center text-center px-8" style={{ minHeight: '80svh', background: p.bg, scrollSnapAlign: 'start' }}>
           <motion.div variants={fadeUp} {...inViewProps}>
             <p className="font-script mb-3" style={{ fontSize: 38, color: p.ink }}>
-              <ShimmerText>{coupleNames}</ShimmerText>
+              {shimmerOn ? <ShimmerText>{coupleNames}</ShimmerText> : coupleNames}
             </p>
             <p className="uppercase" style={{ fontSize: 10, letterSpacing: '0.35em', color: p.inkSoft }}>
               <E k="final.note" />
@@ -276,6 +291,7 @@ export default function Reel({ data }: TemplateProps) {
   }
 
   return (
+    <SiteEffectsContext.Provider value={fx}>
     <div className="flex justify-center" style={{ background: '#000' }}>
       {/* Phone-first photo-story reel — centered column with letterbox on desktop. */}
       <div
@@ -295,5 +311,6 @@ export default function Reel({ data }: TemplateProps) {
         )}
       </div>
     </div>
+    </SiteEffectsContext.Provider>
   );
 }

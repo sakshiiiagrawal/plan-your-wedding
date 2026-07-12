@@ -39,9 +39,8 @@ const ClassicGoldVeil = lazy(() =>
 );
 
 /**
- * One filigree corner of the ceremonial frame: an L of double hairlines that
- * resolves into a scroll curl, drawn on like a pen flourish. Rotated per
- * corner by the parent.
+ * One corner of the ceremonial frame: an L of double hairlines, drawn on
+ * like pen-work. Rotated per corner by the parent.
  */
 function CornerFlourish({
   color,
@@ -74,20 +73,6 @@ function CornerFlourish({
     <svg viewBox="0 0 100 100" className={`w-11 h-11 sm:w-20 sm:h-20 ${className}`} aria-hidden>
       {draw('M4,96 L4,30 Q4,4 30,4 L96,4', 1.5)}
       {draw('M12,96 L12,34 Q12,12 34,12 L96,12', 0.8, 0.25)}
-      {draw('M22,22 q10,-8 18,0 q8,8 0,14 q-8,6 -12,-2', 1, 0.6)}
-      <motion.circle
-        cx="40"
-        cy="40"
-        r="2"
-        fill={color}
-        {...(reduced
-          ? {}
-          : {
-              initial: { scale: 0 },
-              animate: { scale: 1 },
-              transition: { delay: delay + 1.6, duration: 0.4 },
-            })}
-      />
     </svg>
   );
 }
@@ -152,6 +137,7 @@ function Medallion({
   textColor,
   accent,
   reduced,
+  still = false,
   size = 'w-44 h-44 sm:w-52 sm:h-52',
 }: {
   photo: string | null;
@@ -160,6 +146,8 @@ function Medallion({
   textColor: string;
   accent: string;
   reduced: boolean;
+  /** scrollAnim "Off": skip the flip-in entrance but keep the cursor tilt. */
+  still?: boolean;
   size?: string;
 }) {
   const tiltX = useSpring(0, { stiffness: 140, damping: 14 });
@@ -180,7 +168,7 @@ function Medallion({
       }}
     >
       <motion.div
-        {...(reduced
+        {...(reduced || still
           ? {}
           : {
               initial: { rotateY: 160, opacity: 0, scale: 0.85 },
@@ -228,13 +216,16 @@ export default function Classic({ data }: TemplateProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [rsvpFocused, setRsvpFocused] = useState(false);
 
-  // Shared effect controls (scrollAnim / galleryHover) — GalleryGrid reads
-  // its preset from the provided context.
+  // Effect controls — GalleryGrid reads galleryHover from the provided
+  // context; goldDust / heroParallax / headingShimmer are honored below.
   const fx = resolveEffects(CLASSIC_EFFECTS, data.effects);
-  const { fadeUp, stagger, inViewProps } = motionPreset(fx.scrollAnim!);
+  const { fadeUp, stagger, inViewProps, still } = motionPreset(fx.scrollAnim!);
 
   const reduced = useReducedMotion() ?? false;
   const show3d = !reduced && !data.print;
+  // Decorative pen-work (flourish corners/rules) counts as an entrance too.
+  const sketch = reduced || still;
+  const shimmerOn = !reduced && fx.headingShimmer !== 'off';
   const heroRef = useRef<HTMLElement | null>(null);
   // 0 → hero fully in view, 1 → scrolled past. Drives the arch parting and
   // the names' slower-than-scroll float.
@@ -245,7 +236,7 @@ export default function Classic({ data }: TemplateProps) {
   const namesY = useTransform(heroProgress, [0, 1], [0, 130]);
   // Cursor parallax: the names lean gently with the pointer, the filigree
   // frame drifts against it, and the 3D arch tilts in kind (via mouse props).
-  const parallax = useMouseParallax(reduced);
+  const parallax = useMouseParallax(reduced || fx.heroParallax === 'off');
 
   const coupleNames = `${data.brideName} & ${data.groomName}`;
   const enabled = data.sections.filter((s) => s.enabled);
@@ -298,7 +289,7 @@ export default function Classic({ data }: TemplateProps) {
         {text}
       </motion.h2>
       <motion.div variants={fadeUp} className="mb-10">
-        <FlourishRule color={p.accent} reduced={reduced} />
+        <FlourishRule color={p.accent} reduced={sketch} />
       </motion.div>
     </>
   );
@@ -341,6 +332,7 @@ export default function Classic({ data }: TemplateProps) {
                     textColor={p.accent}
                     accent={p.accent}
                     reduced={reduced}
+                    still={still}
                   />
                 </div>
                 <div className="relative z-10 -ml-7 sm:-ml-9 mt-16 sm:mt-20">
@@ -351,6 +343,7 @@ export default function Classic({ data }: TemplateProps) {
                     textColor={p.primary}
                     accent={p.accent}
                     reduced={reduced}
+                    still={still}
                   />
                 </div>
                 <span
@@ -397,7 +390,7 @@ export default function Classic({ data }: TemplateProps) {
                 <motion.div key={event.id} variants={fadeUp}>
                   {i > 0 && (
                     <div className="py-10">
-                      <FlourishRule color={p.line} reduced={reduced} />
+                      <FlourishRule color={p.line} reduced={sketch} />
                     </div>
                   )}
                   <div className="grid grid-cols-[64px_1fr] sm:grid-cols-[96px_1fr] gap-5 sm:gap-8 items-start">
@@ -499,9 +492,14 @@ export default function Classic({ data }: TemplateProps) {
         className="py-24 relative overflow-hidden"
         style={{ background: p.heroGradient }}
       >
-        {show3d && (
+        {show3d && fx.goldDust !== 'none' && (
           <Suspense fallback={null}>
-            <ClassicGoldVeil palette={p} className="absolute inset-0" paused={rsvpFocused} />
+            <ClassicGoldVeil
+              palette={p}
+              motes={fx.goldDust!}
+              className="absolute inset-0"
+              paused={rsvpFocused}
+            />
           </Suspense>
         )}
         <div
@@ -588,10 +586,10 @@ export default function Classic({ data }: TemplateProps) {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <a href={`/${data.slug}`} className="font-script text-2xl" style={{ color: p.onHero }}>
-                {reduced ? (
-                  coupleNames
-                ) : (
+                {shimmerOn ? (
                   <ShimmerText colors={[p.onHero, p.accent, p.onHero]}>{coupleNames}</ShimmerText>
+                ) : (
+                  coupleNames
                 )}
               </a>
               <div className="hidden md:flex items-center gap-8">
@@ -697,6 +695,7 @@ export default function Classic({ data }: TemplateProps) {
               progress={heroProgress}
               mouseX={parallax.x}
               mouseY={parallax.y}
+              motes={fx.goldDust!}
               className="absolute inset-0"
             />
           </Suspense>
@@ -712,10 +711,10 @@ export default function Classic({ data }: TemplateProps) {
           className="absolute inset-x-3 top-20 bottom-3 sm:inset-x-6 sm:top-24 sm:bottom-6 pointer-events-none z-10"
         >
           <span aria-hidden>
-            <CornerFlourish color={heroGold} reduced={reduced} className="absolute top-0 left-0" />
-            <CornerFlourish color={heroGold} reduced={reduced} delay={0.2} className="absolute top-0 right-0 -scale-x-100" />
-            <CornerFlourish color={heroGold} reduced={reduced} delay={0.4} className="absolute bottom-0 left-0 -scale-y-100" />
-            <CornerFlourish color={heroGold} reduced={reduced} delay={0.6} className="absolute bottom-0 right-0 -scale-x-100 -scale-y-100" />
+            <CornerFlourish color={heroGold} reduced={sketch} className="absolute top-0 left-0" />
+            <CornerFlourish color={heroGold} reduced={sketch} delay={0.2} className="absolute top-0 right-0 -scale-x-100" />
+            <CornerFlourish color={heroGold} reduced={sketch} delay={0.4} className="absolute bottom-0 left-0 -scale-y-100" />
+            <CornerFlourish color={heroGold} reduced={sketch} delay={0.6} className="absolute bottom-0 right-0 -scale-x-100 -scale-y-100" />
           </span>
         </ParallaxLayer>
 
@@ -741,9 +740,15 @@ export default function Classic({ data }: TemplateProps) {
               className="font-script leading-tight mb-1"
               style={{ fontSize: 'clamp(3.4rem, 9vw, 6.5rem)' }}
             >
-              <ShimmerText colors={shimmerColors}>
-                <EditableContent field="brideName" value={data.brideName} />
-              </ShimmerText>
+              {shimmerOn ? (
+                <ShimmerText colors={shimmerColors}>
+                  <EditableContent field="brideName" value={data.brideName} />
+                </ShimmerText>
+              ) : (
+                <span style={{ color: p.onHero }}>
+                  <EditableContent field="brideName" value={data.brideName} />
+                </span>
+              )}
             </motion.h1>
             <motion.div variants={fadeUp} className="flex items-center justify-center gap-4 my-2" aria-hidden>
               <span className="h-px w-10" style={{ background: heroGold, opacity: 0.7 }} />
@@ -760,9 +765,15 @@ export default function Classic({ data }: TemplateProps) {
               className="font-script leading-tight mb-6"
               style={{ fontSize: 'clamp(3.4rem, 9vw, 6.5rem)' }}
             >
-              <ShimmerText colors={shimmerColors}>
-                <EditableContent field="groomName" value={data.groomName} />
-              </ShimmerText>
+              {shimmerOn ? (
+                <ShimmerText colors={shimmerColors}>
+                  <EditableContent field="groomName" value={data.groomName} />
+                </ShimmerText>
+              ) : (
+                <span style={{ color: p.onHero }}>
+                  <EditableContent field="groomName" value={data.groomName} />
+                </span>
+              )}
             </motion.h1>
             {data.tagline && (
               <motion.p

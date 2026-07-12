@@ -2,6 +2,7 @@
  * Throwaway QA harness (not part of the app): renders any template with mock
  * SiteData so templates can be screenshotted headlessly without auth/DB.
  * Usage: /tpl-preview.html?t=classic&p=royal&photos=1&layout=mosaic
+ *        &fx={"scrollAnim":"off"}   — per-page effect picks (config.effects)
  */
 import { StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -20,8 +21,20 @@ const palette = getPalette(params.get('p') ?? template.defaultPaletteId);
 const photos = params.get('photos') !== '0';
 const layout = (params.get('layout') ?? 'mosaic') as GalleryLayoutId;
 
-const img = (seed: number, w = 900, h = seed % 2 ? 1200 : 900) =>
-  `https://picsum.photos/seed/wed${seed}/${w}/${h}`;
+let effects: Record<string, string> = {};
+try {
+  effects = JSON.parse(params.get('fx') ?? '{}');
+} catch {
+  /* keep defaults */
+}
+
+// Inline SVG photos: no network, so the sweep runs offline and never flakes.
+const img = (seed: number) => {
+  const hue = (seed * 47) % 360;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="${seed % 2 ? 1200 : 900}"><rect width="100%" height="100%" fill="hsl(${hue},38%,70%)"/><circle cx="450" cy="480" r="200" fill="hsl(${hue},44%,52%)"/></svg>`,
+  )}`;
+};
 
 const future = new Date();
 future.setDate(future.getDate() + 142);
@@ -75,13 +88,13 @@ const data: SiteData = {
   galleryImages: photos ? Array.from({ length: 9 }, (_, i) => ({ url: img(i + 1) })) : [],
   gallerySubtitle: photos ? 'A few of our favourite frames' : '',
   galleryLayout: layout,
-  sections: [
-    { id: 'hero', enabled: true },
-    { id: 'story', enabled: true },
-    { id: 'events', enabled: true },
-    { id: 'rsvp', enabled: true },
-    { id: 'gallery', enabled: true },
-  ],
+  effects,
+  // The template's own parts, all on — except the tap-to-open envelope so
+  // headless runs can reach the content (opt back in with ?envelope=1).
+  sections: template.parts.map((part) => ({
+    id: part.id,
+    enabled: part.id !== 'envelope' || params.get('envelope') === '1',
+  })),
   palette,
   pages: [],
   musicUrl: null,

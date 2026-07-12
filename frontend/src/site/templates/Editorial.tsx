@@ -8,7 +8,9 @@ import { EDITORIAL_COPY } from '../copy/templates/editorial';
 import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
-import { drawLine, fadeUp, inViewProps, stagger } from '../motion';
+import { motionPreset } from '../motion';
+import { EDITORIAL_EFFECTS, resolveEffects, SiteEffectsContext } from '../effects/schema';
+import { hoverPreset } from '../effects/hover';
 import { siteVars } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
@@ -33,6 +35,7 @@ function CoverPlate({
   caption,
   captionColor,
   reduced,
+  tilt,
 }: {
   url: string;
   accent: string;
@@ -40,19 +43,25 @@ function CoverPlate({
   caption: string;
   captionColor: string;
   reduced: boolean;
+  /** The `heroParallax` pick: the plate leans toward the cursor. */
+  tilt: boolean;
 }) {
   const tiltX = useSpring(0, { stiffness: 130, damping: 17 });
   const tiltY = useSpring(0, { stiffness: 130, damping: 17 });
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+      {...(reduced
+        ? {}
+        : {
+            initial: { opacity: 0, scale: 0.96 },
+            animate: { opacity: 1, scale: 1 },
+            transition: { duration: 0.9, ease: [0.22, 1, 0.36, 1] },
+          })}
       className="hidden md:block relative"
       style={{ perspective: 900 }}
       onMouseMove={(e) => {
-        if (reduced) return;
+        if (!tilt) return;
         const r = e.currentTarget.getBoundingClientRect();
         tiltY.set(((e.clientX - r.left) / r.width - 0.5) * 7);
         tiltX.set(-((e.clientY - r.top) / r.height - 0.5) * 7);
@@ -192,6 +201,13 @@ export default function Editorial({ data }: TemplateProps) {
 
   const vars = siteVars(p);
 
+  // Effect controls: scrollAnim shadows the motion imports, galleryHover
+  // styles the plate rail, heroParallax drives the cover tilt, marquee picks
+  // the ticker mode.
+  const fx = resolveEffects(EDITORIAL_EFFECTS, data.effects);
+  const { fadeUp, drawLine, stagger, inViewProps, still } = motionPreset(fx.scrollAnim!);
+  const galleryHover = hoverPreset(fx.galleryHover!);
+
   const reduced = useReducedMotion() ?? false;
   const show3d = !reduced && !data.print;
   const heroRef = useRef<HTMLElement | null>(null);
@@ -223,7 +239,7 @@ export default function Editorial({ data }: TemplateProps) {
       >
         <motion.span
           className="inline-block font-serif-display text-2xl mr-2 align-middle"
-          {...(reduced
+          {...(reduced || still
             ? {}
             : {
                 initial: { opacity: 0, scale: 1.9, filter: 'blur(3px)' },
@@ -438,8 +454,9 @@ export default function Editorial({ data }: TemplateProps) {
                 const tall = i % 3 === 0;
                 return (
                   <figure key={image.url} className="flex-shrink-0" style={{ scrollSnapAlign: 'center' }}>
-                    <button
+                    <motion.button
                       onClick={() => setLightboxIndex(i)}
+                      {...(reduced ? {} : galleryHover.wrap)}
                       className="block overflow-hidden group"
                       style={{ border: `1px solid ${p.line}` }}
                     >
@@ -447,14 +464,14 @@ export default function Editorial({ data }: TemplateProps) {
                         src={image.url}
                         alt=""
                         loading="lazy"
-                        className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
+                        className={`object-cover ${galleryHover.imgClass}`}
                         style={{
                           height: 'min(52vh, 420px)',
                           width: 'auto',
                           aspectRatio: tall ? '4 / 5' : '3 / 2',
                         }}
                       />
-                    </button>
+                    </motion.button>
                     <figcaption
                       className="mt-3 text-[10px] uppercase flex items-baseline justify-between"
                       style={{ color: p.inkSoft, letterSpacing: '0.22em' }}
@@ -474,6 +491,7 @@ export default function Editorial({ data }: TemplateProps) {
   };
 
   return (
+    <SiteEffectsContext.Provider value={fx}>
     <div style={{ ...vars, background: p.bg, color: p.ink }} className="min-h-screen font-body">
       <ScrollProgress color={p.accent} />
       {data.musicUrl && <MusicPlayer url={data.musicUrl} disabled={data.preview} startTime={data.musicStartTime} endTime={data.musicEndTime} />}
@@ -674,17 +692,18 @@ export default function Editorial({ data }: TemplateProps) {
                 line={p.line}
                 caption={`${data.brideName} & ${data.groomName} — ${dateLine ?? ''}`}
                 captionColor={p.onHeroSoft}
-                reduced={reduced}
+                reduced={reduced || still}
+                tilt={!reduced && fx.heroParallax !== 'off'}
               />
             )}
           </div>
         </div>
-        {dateLine && (
+        {dateLine && fx.marquee !== 'hidden' && (
           <Marquee
             text={`${t('hero.marquee')} — ${dateLine}`}
             bg={p.accent}
             ink={p.onAccent}
-            reduced={reduced}
+            reduced={reduced || fx.marquee === 'static'}
           />
         )}
       </section>
@@ -725,5 +744,6 @@ export default function Editorial({ data }: TemplateProps) {
         />
       )}
     </div>
+    </SiteEffectsContext.Provider>
   );
 }

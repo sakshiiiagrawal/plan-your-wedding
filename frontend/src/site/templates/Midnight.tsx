@@ -8,7 +8,9 @@ import { MIDNIGHT_COPY } from '../copy/templates/midnight';
 import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
-import { fadeUp, inViewProps, stagger } from '../motion';
+import { motionPreset } from '../motion';
+import { MIDNIGHT_EFFECTS, resolveEffects, SiteEffectsContext } from '../effects/schema';
+import { hoverPreset } from '../effects/hover';
 import { siteVars, heroShimmer, heroIsDark } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
@@ -192,6 +194,13 @@ export default function Midnight({ data }: TemplateProps) {
   const countdown = useCountdown(data.weddingDate);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const reduced = useReducedMotion() ?? false;
+
+  // Effect controls: stars gate the night sky, scrollAnim shadows the motion
+  // imports, galleryHover styles the plate grid, headingShimmer the names.
+  const fx = resolveEffects(MIDNIGHT_EFFECTS, data.effects);
+  const { fadeUp, stagger, inViewProps, still } = motionPreset(fx.scrollAnim!);
+  const galleryHover = hoverPreset(fx.galleryHover!);
+  const shimmerOn = !reduced && fx.headingShimmer !== 'off';
 
   const coupleNames = `${data.brideName} & ${data.groomName}`;
   const enabled = data.sections.filter((s) => s.enabled);
@@ -381,6 +390,7 @@ export default function Midnight({ data }: TemplateProps) {
                 <motion.button
                   key={image.url}
                   variants={fadeUp}
+                  {...(reduced ? {} : galleryHover.wrap)}
                   onClick={() => setLightboxIndex(i)}
                   className={`overflow-hidden group relative ${feature ? 'col-span-2 row-span-2' : ''}`}
                   style={{ border: `1px solid ${p.line}`, aspectRatio: '1 / 1' }}
@@ -389,7 +399,7 @@ export default function Midnight({ data }: TemplateProps) {
                     src={image.url}
                     alt=""
                     loading="lazy"
-                    className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-[1.04] transition-all duration-700"
+                    className={`w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-all duration-700 ${galleryHover.imgClass}`}
                   />
                   <span
                     className="absolute inset-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
@@ -406,6 +416,7 @@ export default function Midnight({ data }: TemplateProps) {
   };
 
   return (
+    <SiteEffectsContext.Provider value={fx}>
     <div style={{ ...vars, background: p.bg, color: p.ink }} className="min-h-screen font-body">
       <ScrollProgress color={p.primary} />
       {data.musicUrl && <MusicPlayer url={data.musicUrl} disabled={data.preview} startTime={data.musicStartTime} endTime={data.musicEndTime} />}
@@ -468,7 +479,7 @@ export default function Midnight({ data }: TemplateProps) {
           </div>
         </nav>
         )}
-        <StarField color={p.onHeroSoft} />
+        {fx.stars !== 'off' && <StarField color={p.onHeroSoft} />}
         {darkHero && (
           <div
             className="absolute inset-0 pointer-events-none"
@@ -487,7 +498,7 @@ export default function Midnight({ data }: TemplateProps) {
               a={data.brideName[0] ?? ''}
               b={data.groomName[0] ?? ''}
               color={p.onHeroSoft}
-              reduced={reduced}
+              reduced={reduced || still}
             />
           </motion.div>
           <motion.p
@@ -502,9 +513,15 @@ export default function Midnight({ data }: TemplateProps) {
             className="font-serif-display uppercase leading-none mb-2"
             style={{ fontSize: 'clamp(2.6rem, 8vw, 6rem)', letterSpacing: '0.08em' }}
           >
-            <ShimmerText colors={shimmerColors}>
-              <EditableContent field="brideName" value={data.brideName} />
-            </ShimmerText>
+            {shimmerOn ? (
+              <ShimmerText colors={shimmerColors}>
+                <EditableContent field="brideName" value={data.brideName} />
+              </ShimmerText>
+            ) : (
+              <span style={{ color: p.onHero }}>
+                <EditableContent field="brideName" value={data.brideName} />
+              </span>
+            )}
           </motion.h1>
           <motion.p
             variants={fadeUp}
@@ -518,9 +535,15 @@ export default function Midnight({ data }: TemplateProps) {
             className="font-serif-display uppercase leading-none mb-10"
             style={{ fontSize: 'clamp(2.6rem, 8vw, 6rem)', letterSpacing: '0.08em' }}
           >
-            <ShimmerText colors={shimmerColors}>
-              <EditableContent field="groomName" value={data.groomName} />
-            </ShimmerText>
+            {shimmerOn ? (
+              <ShimmerText colors={shimmerColors}>
+                <EditableContent field="groomName" value={data.groomName} />
+              </ShimmerText>
+            ) : (
+              <span style={{ color: p.onHero }}>
+                <EditableContent field="groomName" value={data.groomName} />
+              </span>
+            )}
           </motion.h1>
           {data.tagline && (
             <motion.p
@@ -608,5 +631,6 @@ export default function Midnight({ data }: TemplateProps) {
         />
       )}
     </div>
+    </SiteEffectsContext.Provider>
   );
 }

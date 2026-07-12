@@ -112,7 +112,11 @@ export function fallingControl(choices: EffectChoice[], defaultId: string): Effe
 }
 
 // ---------------------------------------------------------------------------
-// Per-template control sets (data only — safe to import eagerly).
+// Per-template control sets (data only — safe to import eagerly). Every
+// template declares one: the shared motion/interaction controls verbatim,
+// plus an atmosphere control for its signature effect where it has one
+// (Botanical's falling petals & arch, Classic's gold dust, Midnight's stars,
+// Fiesta's confetti & mandala, Editorial's marquee).
 // ---------------------------------------------------------------------------
 
 export const BOTANICAL_EFFECTS: EffectControl[] = [
@@ -144,7 +148,98 @@ export const BOTANICAL_EFFECTS: EffectControl[] = [
   HERO_PARALLAX_CONTROL,
 ];
 
-export const CLASSIC_EFFECTS: EffectControl[] = [SCROLL_ANIM_CONTROL, GALLERY_HOVER_CONTROL];
+export const CLASSIC_EFFECTS: EffectControl[] = [
+  {
+    id: 'goldDust',
+    group: 'atmosphere',
+    label: 'Gold dust',
+    hint: 'The fine motes drifting through the hero and RSVP.',
+    choices: [
+      { id: 'sparse', name: 'Sparse', hint: 'A whisper of glimmer' },
+      { id: 'normal', name: 'Normal', hint: 'The designed balance' },
+      { id: 'lush', name: 'Lush', hint: 'A full golden haze' },
+      { id: 'none', name: 'None', hint: 'Clear air' },
+    ],
+    defaultId: 'normal',
+  },
+  SCROLL_ANIM_CONTROL,
+  GALLERY_HOVER_CONTROL,
+  HERO_PARALLAX_CONTROL,
+  HEADING_SHIMMER_CONTROL,
+];
+
+export const EDITORIAL_EFFECTS: EffectControl[] = [
+  {
+    id: 'marquee',
+    group: 'atmosphere',
+    label: 'Save-the-date ticker',
+    hint: 'The running masthead strip along the bottom of the cover.',
+    choices: [
+      { id: 'scroll', name: 'Scrolling', hint: 'Loops like a newsroom ticker' },
+      { id: 'static', name: 'Still', hint: 'Printed once, centered' },
+      { id: 'hidden', name: 'Hidden', hint: 'No strip' },
+    ],
+    defaultId: 'scroll',
+  },
+  SCROLL_ANIM_CONTROL,
+  GALLERY_HOVER_CONTROL,
+  HERO_PARALLAX_CONTROL,
+];
+
+export const MIDNIGHT_EFFECTS: EffectControl[] = [
+  {
+    id: 'stars',
+    group: 'atmosphere',
+    label: 'Night sky',
+    hint: 'The twinkling stars and shooting star behind the hero.',
+    choices: [
+      { id: 'on', name: 'On' },
+      { id: 'off', name: 'Off' },
+    ],
+    defaultId: 'on',
+  },
+  SCROLL_ANIM_CONTROL,
+  GALLERY_HOVER_CONTROL,
+  HEADING_SHIMMER_CONTROL,
+];
+
+export const JOURNEY_EFFECTS: EffectControl[] = [SCROLL_ANIM_CONTROL, GALLERY_HOVER_CONTROL];
+
+export const FIESTA_EFFECTS: EffectControl[] = [
+  {
+    id: 'confetti',
+    group: 'atmosphere',
+    label: 'Welcome confetti',
+    hint: 'The burst that greets guests as the page opens.',
+    choices: [
+      { id: 'burst', name: 'Burst', hint: 'One celebratory shower on arrival' },
+      { id: 'off', name: 'Off' },
+    ],
+    defaultId: 'burst',
+  },
+  {
+    id: 'mandala',
+    group: 'atmosphere',
+    label: 'Mandala',
+    hint: 'The line-drawn chakra behind the names.',
+    choices: [
+      { id: 'turning', name: 'Turning', hint: 'Slowly rotates — the designed look' },
+      { id: 'still', name: 'Still', hint: 'Drawn but motionless' },
+      { id: 'hidden', name: 'Hidden', hint: 'No mandala' },
+    ],
+    defaultId: 'turning',
+  },
+  SCROLL_ANIM_CONTROL,
+  GALLERY_HOVER_CONTROL,
+];
+
+export const INVITE_EFFECTS: EffectControl[] = [SCROLL_ANIM_CONTROL, HEADING_SHIMMER_CONTROL];
+
+export const REEL_EFFECTS: EffectControl[] = [SCROLL_ANIM_CONTROL, HEADING_SHIMMER_CONTROL];
+
+export const BOARDING_EFFECTS: EffectControl[] = [SCROLL_ANIM_CONTROL];
+
+export const CARD_EFFECTS: EffectControl[] = [SCROLL_ANIM_CONTROL];
 
 // ---------------------------------------------------------------------------
 // Resolution + context

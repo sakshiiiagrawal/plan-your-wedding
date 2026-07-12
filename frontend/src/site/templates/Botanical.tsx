@@ -26,17 +26,21 @@ const { E } = makeEditable('botanical', BOTANICAL_COPY);
 // the reduced-motion/print path keeps the flat arch + 2D PetalDrift instead.
 const BotanicalHeroScene = lazy(() => import('./BotanicalScene'));
 
-/** A few softly drifting petals behind the hero — storybook ambience. */
-function PetalDrift({ color }: { color: string }) {
+/** A few softly drifting petals behind the hero — storybook ambience.
+ *  Honors the shared `fallDensity` pick so the 2D fallback tracks the 3D scene. */
+function PetalDrift({ color, density = 'normal' }: { color: string; density?: string }) {
   const reduced = useReducedMotion();
   if (reduced) return null;
   const petals = [
     { left: '12%', size: 10, delay: 0, duration: 11 },
-    { left: '28%', size: 7, delay: 2.5, duration: 13 },
     { left: '55%', size: 9, delay: 1, duration: 12 },
-    { left: '72%', size: 6, delay: 4, duration: 14 },
     { left: '88%', size: 8, delay: 3, duration: 10 },
-  ];
+    { left: '28%', size: 7, delay: 2.5, duration: 13 },
+    { left: '72%', size: 6, delay: 4, duration: 14 },
+    { left: '40%', size: 8, delay: 5.5, duration: 12 },
+    { left: '63%', size: 7, delay: 6.5, duration: 11 },
+    { left: '18%', size: 6, delay: 7.5, duration: 13 },
+  ].slice(0, density === 'sparse' ? 3 : density === 'lush' ? 8 : 5);
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
       {petals.map((petal, i) => (
@@ -188,11 +192,14 @@ function Cameo({
   name,
   palette,
   reduced,
+  still = false,
 }: {
   photo: string | null;
   name: string;
   palette: { line: string; accent: string; primary: string; onHero: string; heroGradient: string; surface: string };
   reduced: boolean;
+  /** scrollAnim "Off": skip the scale-in entrance but keep the hover tilt. */
+  still?: boolean;
 }) {
   return (
     <div className="text-center">
@@ -200,13 +207,15 @@ function Cameo({
         className="relative mx-auto mb-4 w-36 h-48 sm:w-44 sm:h-56"
         {...(reduced
           ? {}
-          : {
-              initial: { opacity: 0, scale: 0.92 },
-              whileInView: { opacity: 1, scale: 1 },
-              viewport: { once: true, margin: '-60px' },
-              whileHover: { rotate: 1.5 },
-              transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
-            })}
+          : still
+            ? { whileHover: { rotate: 1.5 } }
+            : {
+                initial: { opacity: 0, scale: 0.92 },
+                whileInView: { opacity: 1, scale: 1 },
+                viewport: { once: true, margin: '-60px' },
+                whileHover: { rotate: 1.5 },
+                transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
+              })}
       >
         <div
           className="absolute inset-0 overflow-hidden flex items-center justify-center"
@@ -246,7 +255,7 @@ export default function Botanical({ data }: TemplateProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const fx = resolveEffects(BOTANICAL_EFFECTS, data.effects);
-  const { fadeUp, stagger, inViewProps } = motionPreset(fx.scrollAnim!);
+  const { fadeUp, stagger, inViewProps, still } = motionPreset(fx.scrollAnim!);
   const galleryHover = hoverPreset(fx.galleryHover!);
   const fallingOn = fx.falling !== 'none';
 
@@ -262,6 +271,8 @@ export default function Botanical({ data }: TemplateProps) {
   const vars = siteVars(p);
 
   const reduced = useReducedMotion() ?? false;
+  // Decorative pen-work (branch/stem draws) counts as an entrance too.
+  const sketch = reduced || still;
   // Everything off in the scene (no particles, no arch) → skip the 3D chunk.
   const show3d = !reduced && !data.print && (fallingOn || fx.arch !== 'hidden');
   const parallax = useMouseParallax(reduced || fx.heroParallax === 'off');
@@ -318,12 +329,12 @@ export default function Botanical({ data }: TemplateProps) {
           >
             <BranchSketch
               color={`color-mix(in srgb, ${p.accent} 70%, ${p.inkSoft})`}
-              reduced={reduced}
+              reduced={sketch}
               className="absolute -top-8 -left-6 opacity-60"
             />
             <BranchSketch
               color={`color-mix(in srgb, ${p.accent} 70%, ${p.inkSoft})`}
-              reduced={reduced}
+              reduced={sketch}
               delay={0.4}
               className="absolute -bottom-8 -right-6 rotate-180 opacity-60"
             />
@@ -341,6 +352,7 @@ export default function Botanical({ data }: TemplateProps) {
               name={data.brideName}
               palette={p}
               reduced={reduced}
+              still={still}
             />
             <span className="font-script text-4xl pb-10" style={{ color: p.accent }} aria-hidden>
               &amp;
@@ -350,6 +362,7 @@ export default function Botanical({ data }: TemplateProps) {
               name={data.groomName}
               palette={p}
               reduced={reduced}
+              still={still}
             />
           </div>
         </motion.div>
@@ -373,7 +386,7 @@ export default function Botanical({ data }: TemplateProps) {
                     <StemConnector
                       color={`color-mix(in srgb, ${p.accent} 75%, ${p.inkSoft})`}
                       mirror={i % 2 === 0}
-                      reduced={reduced}
+                      reduced={sketch}
                     />
                   )}
                   <motion.div
@@ -459,7 +472,7 @@ export default function Botanical({ data }: TemplateProps) {
         className="py-24 relative overflow-hidden"
         style={{ background: p.heroGradient }}
       >
-        {fallingOn && <PetalDrift color={p.accent} />}
+        {fallingOn && <PetalDrift color={p.accent} density={fx.fallDensity!} />}
         <motion.div variants={stagger} {...inViewProps} className="relative max-w-2xl mx-auto px-6">
           <motion.h2
             variants={fadeUp}
@@ -641,7 +654,7 @@ export default function Botanical({ data }: TemplateProps) {
           </Suspense>
         ) : (
           <>
-            {fallingOn && <PetalDrift color={p.accent} />}
+            {fallingOn && <PetalDrift color={p.accent} density={fx.fallDensity!} />}
             {/* Flat arch outline — the pre-3D motif, kept as the fallback */}
             {fx.arch !== 'hidden' && (
               <div
@@ -661,12 +674,12 @@ export default function Botanical({ data }: TemplateProps) {
         {/* Hand-sketched branches grow in from opposite corners */}
         <BranchSketch
           color={`color-mix(in srgb, ${p.onHeroSoft} 85%, transparent)`}
-          reduced={reduced}
+          reduced={sketch}
           className="absolute top-16 left-3 sm:top-20 sm:left-10 z-10 pointer-events-none"
         />
         <BranchSketch
           color={`color-mix(in srgb, ${p.onHeroSoft} 85%, transparent)`}
-          reduced={reduced}
+          reduced={sketch}
           delay={0.6}
           className="absolute bottom-6 right-3 sm:bottom-12 sm:right-10 rotate-180 z-10 pointer-events-none"
         />

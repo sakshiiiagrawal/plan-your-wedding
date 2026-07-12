@@ -636,7 +636,24 @@ export default function Events() {
                     </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdit(event);
+                    }}
+                    title="Edit event"
+                    style={{
+                      padding: 6,
+                      borderRadius: 8,
+                      color: 'var(--ink-dim)',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      display: 'flex',
+                    }}
+                  >
+                    <HiOutlinePencil style={{ width: 15, height: 15 }} />
+                  </button>
                   <HiOutlineChevronRight
                     style={{ width: 16, height: 16, color: 'var(--ink-dim)' }}
                   />
@@ -778,9 +795,30 @@ export default function Events() {
                             fontSize: 34,
                             background: `linear-gradient(135deg, ${eventColor}44, ${eventColor}11)`,
                             flexShrink: 0,
+                            position: 'relative',
                           }}
                         >
                           {EVENT_ICONS[event.event_type as keyof typeof EVENT_ICONS] || '🎊'}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(event);
+                            }}
+                            title="Edit event"
+                            style={{
+                              position: 'absolute',
+                              top: 8,
+                              right: 8,
+                              padding: 6,
+                              borderRadius: 8,
+                              color: 'var(--ink-mid)',
+                              background: 'rgba(255,255,255,0.75)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                            }}
+                          >
+                            <HiOutlinePencil style={{ width: 14, height: 14 }} />
+                          </button>
                         </div>
                         <div
                           style={{

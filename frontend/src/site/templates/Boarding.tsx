@@ -7,7 +7,8 @@ import { BOARDING_COPY } from '../copy/templates/boarding';
 import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
-import { fadeUp, inViewProps } from '../motion';
+import { motionPreset } from '../motion';
+import { BOARDING_EFFECTS, resolveEffects, SiteEffectsContext } from '../effects/schema';
 import { siteVars } from '../theme';
 import RsvpForm from '../RsvpForm';
 import MusicPlayer from '../effects/MusicPlayer';
@@ -32,7 +33,7 @@ function Barcode({ color }: { color: string }) {
 }
 
 /** The dotted flight arc between the two name-codes, plane included. */
-function RouteArc({ color }: { color: string }) {
+function RouteArc({ color, still = false }: { color: string; still?: boolean }) {
   return (
     <div className="relative flex-1 mx-3 sm:mx-4" aria-hidden>
       <svg viewBox="0 0 120 28" className="w-full h-7 overflow-visible">
@@ -43,14 +44,22 @@ function RouteArc({ color }: { color: string }) {
           strokeWidth="1.2"
           strokeDasharray="1 5"
           strokeLinecap="round"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1.6, delay: 0.4, ease: 'easeInOut' }}
+          {...(still
+            ? {}
+            : {
+                initial: { pathLength: 0 },
+                animate: { pathLength: 1 },
+                transition: { duration: 1.6, delay: 0.4, ease: 'easeInOut' },
+              })}
         />
         <motion.g
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.2, duration: 0.5 }}
+          {...(still
+            ? {}
+            : {
+                initial: { opacity: 0 },
+                animate: { opacity: 1 },
+                transition: { delay: 1.2, duration: 0.5 },
+              })}
         >
           <text x="60" y="8" textAnchor="middle" style={{ fontSize: 11 }} fill={color}>
             ✈
@@ -129,6 +138,11 @@ export default function Boarding({ data }: TemplateProps) {
   const [opened, setOpened] = useState(
     () => !envelopeEnabled || data.print || (!data.preview && sessionStorage.getItem(`invited:${data.slug}`) === 'true'),
   );
+
+  // Effect controls: scrollAnim shadows the motion imports and gates the
+  // pass's slide-in and the flight-arc draw.
+  const fx = resolveEffects(BOARDING_EFFECTS, data.effects);
+  const { fadeUp, inViewProps, still } = motionPreset(fx.scrollAnim!);
 
   const coupleNames = `${data.brideName} & ${data.groomName}`;
   const websitePage = data.pages.find((pg) => pg.kind === 'website');
@@ -261,6 +275,7 @@ export default function Boarding({ data }: TemplateProps) {
   };
 
   return (
+    <SiteEffectsContext.Provider value={fx}>
     <div className="flex justify-center" style={{ background: '#062A26' }}>
       {/* An invite is a phone-first experience — present it as a centered ticket
           column on desktop (letterboxed) instead of stretching full-width. */}
@@ -289,9 +304,13 @@ export default function Boarding({ data }: TemplateProps) {
 
             {/* The pass itself */}
             <motion.div
-              initial={{ opacity: 0, y: 26, rotate: -1.5 }}
-              animate={{ opacity: 1, y: 0, rotate: 0 }}
-              transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
+              {...(still
+                ? {}
+                : {
+                    initial: { opacity: 0, y: 26, rotate: -1.5 },
+                    animate: { opacity: 1, y: 0, rotate: 0 },
+                    transition: { duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.15 },
+                  })}
               className="relative z-10 w-full max-w-[400px] rounded-2xl overflow-hidden shadow-2xl"
               style={{ background: p.surface }}
             >
@@ -312,7 +331,7 @@ export default function Boarding({ data }: TemplateProps) {
                       <EditableContent field="brideName" value={data.brideName} />
                     </p>
                   </div>
-                  <RouteArc color={p.accent} />
+                  <RouteArc color={p.accent} still={still} />
                   <div className="text-center">
                     <p className="font-mono font-bold leading-none" style={{ fontSize: 40, color: p.ink }}>
                       {iata(data.groomName)}
@@ -379,9 +398,9 @@ export default function Boarding({ data }: TemplateProps) {
             </motion.div>
 
             <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.4, duration: 0.8 }}
+              {...(still
+                ? {}
+                : { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { delay: 1.4, duration: 0.8 } })}
               className="relative z-10 font-mono uppercase mt-8"
               style={{ fontSize: 9, letterSpacing: '0.3em', color: 'rgba(255,255,255,0.75)' }}
             >
@@ -393,5 +412,6 @@ export default function Boarding({ data }: TemplateProps) {
         {enabled.map((s) => partBlocks[s.id])}
       </div>
     </div>
+    </SiteEffectsContext.Provider>
   );
 }

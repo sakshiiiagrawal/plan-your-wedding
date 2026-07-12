@@ -7,7 +7,8 @@ import { CARD_COPY } from '../copy/templates/card';
 import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
-import { fadeUp, stagger } from '../motion';
+import { motionPreset } from '../motion';
+import { CARD_EFFECTS, resolveEffects, SiteEffectsContext } from '../effects/schema';
 import { siteVars } from '../theme';
 import RsvpForm from '../RsvpForm';
 import MusicPlayer from '../effects/MusicPlayer';
@@ -30,12 +31,18 @@ export default function NoteCard({ data }: TemplateProps) {
   // can't live inside a <button>, so it isn't inline-editable.
   const t = useT();
 
+  // Effect controls: scrollAnim shadows the motion imports (the card's
+  // cascade-in on open).
+  const fx = resolveEffects(CARD_EFFECTS, data.effects);
+  const { fadeUp, stagger } = motionPreset(fx.scrollAnim!);
+
   const coupleNames = `${data.brideName} & ${data.groomName}`;
   const websitePage = data.pages.find((pg) => pg.kind === 'website');
 
   const cssVars = siteVars(p);
 
   return (
+    <SiteEffectsContext.Provider value={fx}>
     <div style={{ background: p.heroGradient }}>
       <div
         className="relative w-full max-w-md sm:max-w-xl md:max-w-2xl mx-auto flex flex-col items-center justify-center font-serif-display px-8 py-14 sm:px-14 sm:py-20 md:px-20 text-center"
@@ -172,5 +179,6 @@ export default function NoteCard({ data }: TemplateProps) {
         </motion.div>
       </div>
     </div>
+    </SiteEffectsContext.Provider>
   );
 }
