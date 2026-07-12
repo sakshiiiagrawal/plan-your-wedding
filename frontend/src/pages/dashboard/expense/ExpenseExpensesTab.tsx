@@ -6,6 +6,7 @@ export interface ExpenseListRow {
   description: string;
   source_type: 'manual' | 'vendor' | 'venue';
   category_summary: string;
+  planned: number;
   committed: number;
   paid: number;
   outstanding: number;
@@ -50,6 +51,7 @@ export default function ExpenseExpensesTab({
     return true;
   });
 
+  const plannedTotal = filtered.reduce((sum, row) => sum + row.planned, 0);
   const committedTotal = filtered.reduce((sum, row) => sum + row.committed, 0);
 
   if (!filtered.length && rows.length === 0) {
@@ -118,7 +120,8 @@ export default function ExpenseExpensesTab({
                   <th className="text-left p-4 min-w-[140px]">Description</th>
                   <th className="text-left p-4 hidden sm:table-cell">Categories</th>
                   <th className="text-left p-4">Source</th>
-                  <th className="text-right p-4">Committed</th>
+                  <th className="text-right p-4 hidden md:table-cell">Planned</th>
+                  <th className="text-right p-4">Allocated</th>
                   <th className="text-right p-4 hidden md:table-cell">Paid</th>
                   <th className="text-right p-4 hidden md:table-cell">Outstanding</th>
                   <th className="text-left p-4 hidden md:table-cell">Date</th>
@@ -140,6 +143,9 @@ export default function ExpenseExpensesTab({
                       <span className="badge text-xs bg-surface-highest text-ink-mid capitalize">
                         {row.source_type}
                       </span>
+                    </td>
+                    <td className="p-4 text-right text-ink-mid hidden md:table-cell">
+                      {formatCurrency(row.planned)}
                     </td>
                     <td
                       className="p-4 text-right font-medium"
@@ -204,7 +210,10 @@ export default function ExpenseExpensesTab({
               <tfoot className="bg-surface-highest font-bold">
                 <tr>
                   <td colSpan={3} className="p-4">
-                    Total Committed
+                    Total Allocated
+                  </td>
+                  <td className="p-4 text-right text-ink-mid hidden md:table-cell">
+                    {formatCurrency(plannedTotal)}
                   </td>
                   <td className="p-4 text-right" style={{ color: 'var(--gold-deep)' }}>
                     {formatCurrency(committedTotal)}

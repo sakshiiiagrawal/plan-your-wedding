@@ -1061,6 +1061,7 @@ export interface ExpenseSummary {
   totalExpense: number;
   brideContribution: number;
   groomContribution: number;
+  totalPlanned: number;
   totalCommitted: number;
   totalSpent: number;
   totalPaid: number;

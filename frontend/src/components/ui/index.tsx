@@ -332,3 +332,17 @@ export function Eyebrow({
 }) {
   return <div className={`uppercase-eyebrow ${className}`}>{children}</div>;
 }
+
+// ─── Checkbox ─────────────────────────────────────────────────────────────────
+/** Neumorphic checkbox — drop-in for a native <input type="checkbox">. */
+export function Checkbox({
+  className = '',
+  ...rest
+}: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <label className={`neu-check ${className}`}>
+      <input type="checkbox" {...rest} />
+      <span className="neu-check-box" />
+    </label>
+  );
+}

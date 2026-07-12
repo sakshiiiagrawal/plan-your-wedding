@@ -32,24 +32,30 @@ function flattenExpenseItems(expenses: ExpenseWithDetails[]) {
 }
 
 function buildSideTotals(items: ExpenseItemRow[]) {
-  const bride = { total: 0, items: [] as ExpenseItemRow[] };
-  const groom = { total: 0, items: [] as ExpenseItemRow[] };
-  const shared = { total: 0, items: [] as ExpenseItemRow[] };
+  const bride = { total: 0, planned: 0, items: [] as ExpenseItemRow[] };
+  const groom = { total: 0, planned: 0, items: [] as ExpenseItemRow[] };
+  const shared = { total: 0, planned: 0, items: [] as ExpenseItemRow[] };
 
   for (const item of items) {
     const amount = toFloat(item.amount);
+    const planned = toFloat(item.planned_amount);
     if (item.side === 'bride') {
       bride.total += amount;
+      bride.planned += planned;
       bride.items.push(item);
     } else if (item.side === 'groom') {
       groom.total += amount;
+      groom.planned += planned;
       groom.items.push(item);
     } else {
       shared.total += amount;
+      shared.planned += planned;
       shared.items.push(item);
       const bridePct = toFloat(item.bride_share_percentage ?? 50) / 100;
       bride.total += amount * bridePct;
       groom.total += amount * (1 - bridePct);
+      bride.planned += planned * bridePct;
+      groom.planned += planned * (1 - bridePct);
     }
   }
 
@@ -70,6 +76,7 @@ export async function getExpenseSummary(ownerId: string) {
     totalExpense: toFloat(summary?.total_expense),
     brideContribution: toFloat(summary?.bride_side_contribution),
     groomContribution: toFloat(summary?.groom_side_contribution),
+    totalPlanned: totals.planned,
     totalCommitted: totals.committed,
     totalPaid: totals.paid,
     totalOutstanding: totals.outstanding,
@@ -107,6 +114,7 @@ export async function getExpenseOverview(ownerId: string) {
     const committed = rollup?.committed_amount ?? 0;
     return {
       ...cat,
+      planned: rollup?.planned_amount ?? 0,
       committed,
       paid: rollup?.paid_amount ?? 0,
       outstanding: rollup?.outstanding_amount ?? 0,
@@ -133,13 +141,14 @@ export async function getBySide(ownerId: string) {
 export async function getSideSummary(ownerId: string) {
   const rollups = await finance.getSideLiabilityRollups(ownerId);
   const summary = {
-    bride: { committed: 0, paid: 0, outstanding: 0, total: 0 },
-    groom: { committed: 0, paid: 0, outstanding: 0, total: 0 },
-    shared: { committed: 0, paid: 0, outstanding: 0, total: 0 },
+    bride: { planned: 0, committed: 0, paid: 0, outstanding: 0, total: 0 },
+    groom: { planned: 0, committed: 0, paid: 0, outstanding: 0, total: 0 },
+    shared: { planned: 0, committed: 0, paid: 0, outstanding: 0, total: 0 },
   };
 
   for (const row of rollups) {
     summary[row.side] = {
+      planned: row.planned_amount,
       committed: row.committed_amount,
       paid: row.paid_amount,
       outstanding: row.outstanding_amount,
@@ -218,6 +227,7 @@ export async function getCategoryTree(ownerId: string) {
       const committed = rollup?.committed_amount ?? 0;
       return {
         ...child,
+        planned: rollup?.planned_amount ?? 0,
         committed,
         paid: rollup?.paid_amount ?? 0,
         outstanding: rollup?.outstanding_amount ?? 0,
@@ -234,6 +244,7 @@ export async function getCategoryTree(ownerId: string) {
 
     return {
       ...parent,
+      planned: childRows.reduce((sum, child) => sum + child.planned, 0),
       committed: parentCommitted,
       paid: childRows.reduce((sum, child) => sum + child.paid, 0),
       outstanding: childRows.reduce((sum, child) => sum + child.outstanding, 0),
@@ -291,6 +302,7 @@ export async function getExpensesByCategory(ownerId: string) {
   return rollups.map((rollup) => ({
     id: rollup.category_id,
     name: categoryMap.get(rollup.category_id) ?? 'Uncategorized',
+    planned: rollup.planned_amount,
     committed: rollup.committed_amount,
     paid: rollup.paid_amount,
     outstanding: rollup.outstanding_amount,
@@ -303,6 +315,7 @@ export async function getExpensesByVendor(ownerId: string) {
   return expenses.map((expense) => ({
     id: expense.id,
     name: expense.description,
+    planned: expense.summary.planned_amount,
     committed: expense.summary.committed_amount,
     paid: expense.summary.paid_amount,
     outstanding: expense.summary.outstanding_amount,

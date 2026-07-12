@@ -15,14 +15,18 @@ import { CLASSIC_COPY } from '../copy/templates/classic';
 import { EditableContent, makeEditable } from '../copy/useCopy';
 import { calendarUrl, directionsUrl, formatEventDate, formatEventTime, icsFileName } from '../calendar';
 import { useCountdown } from '../useCountdown';
-import { fadeUp, flipIn, inViewProps, stagger, staggerTight } from '../motion';
+import { fadeUp, inViewProps, stagger } from '../motion';
 import { siteVars, heroShimmer } from '../theme';
 import RsvpForm from '../RsvpForm';
 import Lightbox from '../Lightbox';
 import ShimmerText from '../effects/ShimmerText';
 import ScrollProgress from '../effects/ScrollProgress';
+import ScrollCue from '../effects/ScrollCue';
 import TickerDigit from '../effects/TickerDigit';
 import MusicPlayer from '../effects/MusicPlayer';
+import GalleryGrid from '../effects/GalleryGrid';
+import { ParallaxLayer } from '../effects/MouseParallax';
+import { useMouseParallax } from '../effects/useMouseParallax';
 
 const { E } = makeEditable('classic', CLASSIC_COPY);
 
@@ -66,7 +70,7 @@ function CornerFlourish({
     />
   );
   return (
-    <svg viewBox="0 0 100 100" className={`w-16 h-16 sm:w-24 sm:h-24 ${className}`} aria-hidden>
+    <svg viewBox="0 0 100 100" className={`w-11 h-11 sm:w-20 sm:h-20 ${className}`} aria-hidden>
       {draw('M4,96 L4,30 Q4,4 30,4 L96,4', 1.5)}
       {draw('M12,96 L12,34 Q12,12 34,12 L96,12', 0.8, 0.25)}
       {draw('M22,22 q10,-8 18,0 q8,8 0,14 q-8,6 -12,-2', 1, 0.6)}
@@ -233,6 +237,9 @@ export default function Classic({ data }: TemplateProps) {
     offset: ['start start', 'end start'],
   });
   const namesY = useTransform(heroProgress, [0, 1], [0, 130]);
+  // Cursor parallax: the names lean gently with the pointer, the filigree
+  // frame drifts against it, and the 3D arch tilts in kind (via mouse props).
+  const parallax = useMouseParallax(reduced);
 
   const coupleNames = `${data.brideName} & ${data.groomName}`;
   const enabled = data.sections.filter((s) => s.enabled);
@@ -265,12 +272,22 @@ export default function Classic({ data }: TemplateProps) {
 
   const vars = siteVars(p);
 
-  const heading = (text: React.ReactNode) => (
+  // Court-programme heading: a whispered letterspaced kicker, a Playfair
+  // display title, and the gilded flourish rule — script is reserved for
+  // names and accents so section titles read premium, not greeting-card.
+  const heading = (kicker: React.ReactNode, text: React.ReactNode) => (
     <>
+      <motion.p
+        variants={fadeUp}
+        className="text-[11px] uppercase mb-4"
+        style={{ color: p.accent, letterSpacing: '0.38em', textIndent: '0.38em' }}
+      >
+        {kicker}
+      </motion.p>
       <motion.h2
         variants={fadeUp}
-        className="font-script text-5xl sm:text-6xl mb-5"
-        style={{ color: p.primary }}
+        className="font-display text-4xl sm:text-5xl mb-6"
+        style={{ color: p.primary, letterSpacing: '0.01em' }}
       >
         {text}
       </motion.h2>
@@ -296,13 +313,13 @@ export default function Classic({ data }: TemplateProps) {
         >
           {data.brideName[0]}{data.groomName[0]}
         </span>
-        <div className="max-w-4xl mx-auto px-4 relative">
+        <div className="max-w-4xl mx-auto px-6 relative">
           <motion.div variants={stagger} {...inViewProps} className="text-center">
-            {heading(<E k="story.heading" />)}
+            {heading(<E k="story.kicker" />, <E k="story.heading" />)}
             <motion.p
               variants={fadeUp}
-              className="font-serif-display text-xl leading-relaxed mb-14 whitespace-pre-line max-w-2xl mx-auto"
-              style={{ color: p.inkSoft }}
+              className="font-serif-display text-lg sm:text-xl mb-14 whitespace-pre-line max-w-2xl mx-auto"
+              style={{ color: p.inkSoft, lineHeight: 1.9 }}
             >
               <EditableContent field="story" value={data.story} multiline />
             </motion.p>
@@ -361,9 +378,9 @@ export default function Classic({ data }: TemplateProps) {
 
     events: showEvents ? (
       <section key="events" id="events" className="py-24" style={{ background: p.bg }}>
-        <div className="max-w-3xl mx-auto px-4">
+        <div className="max-w-3xl mx-auto px-6">
           <motion.div variants={stagger} {...inViewProps} className="text-center mb-14">
-            {heading(<E k="events.heading" />)}
+            {heading(<E k="events.kicker" />, <E k="events.heading" />)}
           </motion.div>
 
           <motion.div variants={stagger} {...inViewProps}>
@@ -380,12 +397,17 @@ export default function Classic({ data }: TemplateProps) {
                   <div className="grid grid-cols-[64px_1fr] sm:grid-cols-[96px_1fr] gap-5 sm:gap-8 items-start">
                     <div className="text-right">
                       <span
-                        className="font-script leading-none inline-block"
-                        style={{ fontSize: 'clamp(3rem, 7vw, 4.5rem)', color: stripe }}
+                        className="font-serif-display italic leading-none inline-block"
+                        style={{ fontSize: 'clamp(2.6rem, 6vw, 4rem)', color: stripe }}
                         aria-hidden
                       >
-                        {i + 1}
+                        {String(i + 1).padStart(2, '0')}
                       </span>
+                      <span
+                        className="block h-px mt-3 ml-auto w-8 sm:w-12"
+                        style={{ background: `color-mix(in srgb, ${stripe} 55%, transparent)` }}
+                        aria-hidden
+                      />
                     </div>
                     <div className="pt-2">
                       <div className="flex flex-wrap items-baseline gap-x-4 mb-2">
@@ -477,20 +499,27 @@ export default function Classic({ data }: TemplateProps) {
           </Suspense>
         )}
         <div
-          className="relative max-w-2xl mx-auto px-4"
+          className="relative max-w-2xl mx-auto px-6"
           onFocusCapture={() => setRsvpFocused(true)}
           onBlurCapture={() => setRsvpFocused(false)}
         >
           <motion.div variants={stagger} {...inViewProps}>
             <div className="text-center mb-12">
+              <motion.p
+                variants={fadeUp}
+                className="text-[11px] uppercase mb-4"
+                style={{ color: heroGold, letterSpacing: '0.38em', textIndent: '0.38em' }}
+              >
+                <E k="rsvp.kicker" />
+              </motion.p>
               <motion.h2
                 variants={fadeUp}
-                className="font-script text-5xl sm:text-6xl mb-4"
+                className="font-display text-4xl sm:text-5xl mb-4"
                 style={{ color: p.onHero }}
               >
                 <E k="rsvp.heading" />
               </motion.h2>
-              <motion.p variants={fadeUp} style={{ color: p.onHeroSoft }}>
+              <motion.p variants={fadeUp} className="font-serif-display italic text-lg" style={{ color: p.onHeroSoft }}>
                 <E k="rsvp.subheading" />
               </motion.p>
             </div>
@@ -513,46 +542,22 @@ export default function Classic({ data }: TemplateProps) {
 
     gallery: showGallery ? (
       <section key="gallery" id="gallery" className="py-24" style={{ background: p.surface }}>
-        <div className="max-w-6xl mx-auto px-4">
+        <div className="max-w-6xl mx-auto px-6">
           <motion.div variants={stagger} {...inViewProps} className="text-center mb-12">
-            {heading(<E k="gallery.heading" />)}
+            {heading(<E k="gallery.kicker" />, <E k="gallery.heading" />)}
             {data.gallerySubtitle && (
               <motion.p variants={fadeUp} className="-mt-4 mb-4 font-serif-display italic text-lg" style={{ color: p.inkSoft }}>
                 {data.gallerySubtitle}
               </motion.p>
             )}
           </motion.div>
-          <motion.div
-            variants={staggerTight}
-            {...inViewProps}
-            className="grid grid-cols-2 md:grid-cols-4 grid-flow-dense gap-4"
-            style={{ perspective: '1400px' }}
-          >
-            {data.galleryImages.map((image, i) => {
-              const feature = i % 5 === 0;
-              return (
-                <motion.button
-                  key={image.url}
-                  variants={reduced ? fadeUp : flipIn}
-                  onClick={() => setLightboxIndex(i)}
-                  className={`overflow-hidden rounded-xl group relative ${feature ? 'col-span-2 row-span-2' : ''}`}
-                  style={{ aspectRatio: '1 / 1' }}
-                >
-                  <img
-                    src={image.url}
-                    alt=""
-                    loading="lazy"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <span
-                    className="absolute inset-2 rounded-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    style={{ border: `1px solid ${p.accent}` }}
-                    aria-hidden
-                  />
-                </motion.button>
-              );
-            })}
-          </motion.div>
+          <GalleryGrid
+            images={data.galleryImages}
+            layout={data.galleryLayout}
+            palette={p}
+            reduced={reduced}
+            onOpen={setLightboxIndex}
+          />
         </div>
       </section>
     ) : null,
@@ -567,6 +572,7 @@ export default function Classic({ data }: TemplateProps) {
       {showHero && (
       <section
         ref={heroRef}
+        {...parallax.bind}
         className="min-h-screen flex items-center justify-center relative overflow-hidden pt-16"
       >
         {/* Nav — transparent, lives inside the hero rather than as a separate chrome bar */}
@@ -682,23 +688,35 @@ export default function Classic({ data }: TemplateProps) {
               palette={p}
               photoUrl={heroPhoto}
               progress={heroProgress}
+              mouseX={parallax.x}
+              mouseY={parallax.y}
               className="absolute inset-0"
             />
           </Suspense>
         )}
 
-        {/* The filigree frame draws itself around the whole ceremony */}
-        <div className="absolute inset-4 sm:inset-8 pointer-events-none z-10" aria-hidden>
-          <CornerFlourish color={heroGold} reduced={reduced} className="absolute top-0 left-0" />
-          <CornerFlourish color={heroGold} reduced={reduced} delay={0.2} className="absolute top-0 right-0 -scale-x-100" />
-          <CornerFlourish color={heroGold} reduced={reduced} delay={0.4} className="absolute bottom-0 left-0 -scale-y-100" />
-          <CornerFlourish color={heroGold} reduced={reduced} delay={0.6} className="absolute bottom-0 right-0 -scale-x-100 -scale-y-100" />
-        </div>
+        {/* The filigree frame draws itself around the ceremony. It opens below
+            the nav (top-20) so the corners never collide with the brand or
+            menu, and drifts against the cursor for depth. */}
+        <ParallaxLayer
+          x={parallax.x}
+          y={parallax.y}
+          depth={-7}
+          className="absolute inset-x-3 top-20 bottom-3 sm:inset-x-6 sm:top-24 sm:bottom-6 pointer-events-none z-10"
+        >
+          <span aria-hidden>
+            <CornerFlourish color={heroGold} reduced={reduced} className="absolute top-0 left-0" />
+            <CornerFlourish color={heroGold} reduced={reduced} delay={0.2} className="absolute top-0 right-0 -scale-x-100" />
+            <CornerFlourish color={heroGold} reduced={reduced} delay={0.4} className="absolute bottom-0 left-0 -scale-y-100" />
+            <CornerFlourish color={heroGold} reduced={reduced} delay={0.6} className="absolute bottom-0 right-0 -scale-x-100 -scale-y-100" />
+          </span>
+        </ParallaxLayer>
 
         <motion.div
-          className="relative z-10 text-center px-6 py-16 w-full max-w-4xl"
+          className="relative z-10 text-center px-10 sm:px-16 py-24 w-full max-w-4xl"
           {...(show3d ? { style: { y: namesY } } : {})}
         >
+          <ParallaxLayer x={parallax.x} y={parallax.y} depth={9}>
           <motion.div variants={stagger} initial="hidden" animate="visible">
             <motion.div
               variants={fadeUp}
@@ -817,15 +835,9 @@ export default function Classic({ data }: TemplateProps) {
               </motion.a>
             )}
           </motion.div>
+          </ParallaxLayer>
         </motion.div>
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce z-10">
-          <div
-            className="w-6 h-10 border-2 rounded-full flex justify-center pt-2"
-            style={{ borderColor: p.onHeroSoft }}
-          >
-            <div className="w-1 h-3 rounded-full" style={{ background: p.onHeroSoft }} />
-          </div>
-        </div>
+        <ScrollCue color={p.onHeroSoft} className="absolute bottom-9 left-1/2 -translate-x-1/2 z-10" />
       </section>
       )}
 

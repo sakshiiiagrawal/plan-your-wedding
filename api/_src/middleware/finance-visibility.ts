@@ -25,9 +25,11 @@ const MONEY_KEYS = new Set([
   'finance',
   'finance_summary',
   'total_cost',
+  'planned_amount',
   'committed_amount',
   'paid_amount',
   'outstanding_amount',
+  'scheduled_amount',
 ]);
 
 /**

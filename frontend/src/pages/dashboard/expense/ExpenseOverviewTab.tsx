@@ -13,12 +13,17 @@ export default function ExpenseOverviewTab({
   expenseOverview,
   formatCurrency,
 }: ExpenseOverviewTabProps) {
-  const [sortBy, setSortBy] = useState<'committed' | 'allocated' | 'name'>('committed');
+  const [sortBy, setSortBy] = useState<'committed' | 'planned' | 'allocated' | 'name'>(
+    'committed',
+  );
 
+  // Naming: `allocated` = category budget (allocated_amount), `committed` =
+  // amount allocated to expenses. In the UI these read "Budget" / "Allocated".
   const categoryData =
     expenseOverview?.map((category) => ({
       name: category.name,
       allocated: parseFloat(category.allocated_amount || 0),
+      planned: parseFloat(category.planned || 0),
       committed: parseFloat(category.committed || category.spent || 0),
       paid: parseFloat(category.paid || 0),
       outstanding: parseFloat(category.outstanding || 0),
@@ -30,9 +35,14 @@ export default function ExpenseOverviewTab({
     return b[sortBy] - a[sortBy];
   });
   const totalCommitted = categoryData.reduce((s, c) => s + c.committed, 0);
+  const totalPlanned = categoryData.reduce((s, c) => s + c.planned, 0);
   const totalAllocated = categoryData.reduce((s, c) => s + c.allocated, 0);
   const visibleTotalAllocated = categoriesWithSpend.reduce(
     (sum, category) => sum + category.allocated,
+    0,
+  );
+  const visibleTotalPlanned = categoriesWithSpend.reduce(
+    (sum, category) => sum + category.planned,
     0,
   );
   const visibleTotalCommitted = categoriesWithSpend.reduce(
@@ -63,7 +73,7 @@ export default function ExpenseOverviewTab({
         {/* Pie */}
         <div className="card" style={{ overflow: 'visible', position: 'relative', zIndex: 2 }}>
           <h3 className="section-title" style={{ marginBottom: 16 }}>
-            Committed by Category
+            Allocated by Category
           </h3>
           <div style={{ display: 'flex', gap: 16 }}>
             {pieData.length === 0 ? (
@@ -76,7 +86,7 @@ export default function ExpenseOverviewTab({
                   width: '100%',
                 }}
               >
-                No committed expenses yet.
+                No allocated expenses yet.
               </p>
             ) : (
               <>
@@ -175,8 +185,9 @@ export default function ExpenseOverviewTab({
           <h3 className="section-title">Budget Summary</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[
-              { label: 'Total Allocated', value: totalAllocated, color: 'var(--ink-mid)' },
-              { label: 'Total Committed', value: totalCommitted, color: 'var(--gold-deep)' },
+              { label: 'Total Budget', value: totalAllocated, color: 'var(--ink-mid)' },
+              { label: 'Total Planned', value: totalPlanned, color: 'var(--ink-mid)' },
+              { label: 'Total Allocated', value: totalCommitted, color: 'var(--gold-deep)' },
               {
                 label: 'Total Paid',
                 value: categoryData.reduce((s, c) => s + c.paid, 0),
@@ -265,13 +276,14 @@ export default function ExpenseOverviewTab({
             borderBottom: '1px solid var(--line-soft)',
           }}
         >
-          <h3 className="section-title">Allocated vs Committed</h3>
+          <h3 className="section-title">Budget vs Planned vs Allocated</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 11, color: 'var(--ink-dim)' }}>Sort:</span>
             {(
               [
-                ['committed', 'Committed'],
-                ['allocated', 'Allocated'],
+                ['committed', 'Allocated'],
+                ['planned', 'Planned'],
+                ['allocated', 'Budget'],
                 ['name', 'Name'],
               ] as const
             ).map(([val, lbl]) => (
@@ -301,8 +313,8 @@ export default function ExpenseOverviewTab({
           style={{
             display: 'grid',
             gridTemplateColumns: visibleHasBudgets
-              ? '1fr 110px 110px 80px 160px'
-              : '1fr 130px 180px',
+              ? '1fr 100px 100px 100px 70px 140px'
+              : '1fr 110px 130px 180px',
             gap: 8,
             padding: '8px 20px',
             background: 'var(--bg-raised)',
@@ -310,8 +322,8 @@ export default function ExpenseOverviewTab({
           }}
         >
           {(visibleHasBudgets
-            ? ['Category', 'Allocated', 'Committed', 'Used', 'Spend bar']
-            : ['Category', 'Committed', 'Spend bar']
+            ? ['Category', 'Budget', 'Planned', 'Allocated', 'Used', 'Spend bar']
+            : ['Category', 'Planned', 'Allocated', 'Spend bar']
           ).map((h) => (
             <span
               key={h}
@@ -355,8 +367,8 @@ export default function ExpenseOverviewTab({
                   style={{
                     display: 'grid',
                     gridTemplateColumns: visibleHasBudgets
-                      ? '1fr 110px 110px 80px 160px'
-                      : '1fr 130px 180px',
+                      ? '1fr 100px 100px 100px 70px 140px'
+                      : '1fr 110px 130px 180px',
                     gap: 8,
                     padding: '11px 20px',
                     borderBottom: i < sorted.length - 1 ? '1px solid var(--line-soft)' : 'none',
@@ -414,7 +426,7 @@ export default function ExpenseOverviewTab({
                     )}
                   </div>
 
-                  {/* Allocated — only when budgets exist */}
+                  {/* Budget — only when budgets exist */}
                   {visibleHasBudgets && (
                     <span
                       className="mono"
@@ -428,7 +440,19 @@ export default function ExpenseOverviewTab({
                     </span>
                   )}
 
-                  {/* Committed */}
+                  {/* Planned */}
+                  <span
+                    className="mono"
+                    style={{
+                      fontSize: 12,
+                      color: cat.planned > 0 ? 'var(--ink-mid)' : 'var(--ink-dim)',
+                      textAlign: 'right',
+                    }}
+                  >
+                    {cat.planned > 0 ? formatCurrency(cat.planned) : '—'}
+                  </span>
+
+                  {/* Allocated */}
                   <span
                     className="mono"
                     style={{
@@ -487,8 +511,8 @@ export default function ExpenseOverviewTab({
             style={{
               display: 'grid',
               gridTemplateColumns: visibleHasBudgets
-                ? '1fr 110px 110px 80px 160px'
-                : '1fr 130px 180px',
+                ? '1fr 100px 100px 100px 70px 140px'
+                : '1fr 110px 130px 180px',
               gap: 8,
               padding: '10px 20px',
               background: 'var(--bg-raised)',
@@ -509,6 +533,17 @@ export default function ExpenseOverviewTab({
                 {formatCurrency(visibleTotalAllocated)}
               </span>
             )}
+            <span
+              className="mono"
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: 'var(--ink-mid)',
+                textAlign: 'right',
+              }}
+            >
+              {formatCurrency(visibleTotalPlanned)}
+            </span>
             <span
               className="mono"
               style={{

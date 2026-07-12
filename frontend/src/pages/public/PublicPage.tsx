@@ -109,6 +109,7 @@ export default function PublicPage() {
     galleryImages: ((galleryContent as any)?.images ?? []) as { url: string }[],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     gallerySubtitle: (galleryContent as any)?.subtitle ?? '',
+    galleryLayout: page.config?.gallery_layout ?? undefined,
     sections,
     palette,
     pages: (pages ?? [])

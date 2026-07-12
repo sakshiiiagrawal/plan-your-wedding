@@ -26,7 +26,7 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import SortableItem from '../../components/SortableItem';
-import { SectionHeader } from '../../components/ui';
+import { SectionHeader, Checkbox } from '../../components/ui';
 import SplitShare from '../../components/ui/SplitShare';
 import AddressAutocomplete, { buildMapsUrl } from '../../components/AddressAutocomplete';
 import {
@@ -1746,21 +1746,11 @@ export default function Venues() {
                                 whiteSpace: 'nowrap',
                               }}
                             >
-                              <input
-                                type="checkbox"
+                              <Checkbox
                                 id="has_accommodation_chk"
                                 checked={!!formData.has_accommodation}
                                 onChange={() => {}}
                                 onClick={(e) => e.stopPropagation()}
-                                style={{
-                                  width: 14,
-                                  height: 14,
-                                  accentColor: 'var(--gold)',
-                                  cursor: 'pointer',
-                                  flexShrink: 0,
-                                  margin: 0,
-                                  display: 'block',
-                                }}
                               />
                               <span
                                 style={{
@@ -2407,8 +2397,7 @@ export default function Venues() {
                                       justifyContent: 'center',
                                     }}
                                   >
-                                    <input
-                                      type="checkbox"
+                                    <Checkbox
                                       checked={cat.includes_breakfast}
                                       onChange={(e) =>
                                         setRoomCategories((prev) =>
@@ -2419,12 +2408,6 @@ export default function Venues() {
                                           ),
                                         )
                                       }
-                                      style={{
-                                        width: 15,
-                                        height: 15,
-                                        accentColor: 'var(--gold)',
-                                        cursor: 'pointer',
-                                      }}
                                       title="Includes breakfast"
                                     />
                                   </div>

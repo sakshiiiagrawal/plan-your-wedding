@@ -26,6 +26,7 @@ interface ExpenseItemForm {
   id: string;
   description: string;
   amount: string;
+  planned_amount: string;
   category_id: string | null;
   side: 'bride' | 'groom' | 'shared';
   bride_share_percentage: number;
@@ -45,6 +46,7 @@ const createItem = (): ExpenseItemForm => ({
   id: Math.random().toString(36).slice(2),
   description: '',
   amount: '',
+  planned_amount: '',
   category_id: null,
   side: 'shared',
   bride_share_percentage: 50,
@@ -72,6 +74,16 @@ export default function AddExpenseModal({
 
   const totalCommitted = useMemo(
     () => formData.items.reduce((sum, item) => sum + Number(item.amount || 0), 0),
+    [formData.items],
+  );
+  // Blank planned falls back to the item's amount (mirrors the server default).
+  const totalPlanned = useMemo(
+    () =>
+      formData.items.reduce(
+        (sum, item) =>
+          sum + (item.planned_amount === '' ? Number(item.amount || 0) : Number(item.planned_amount)),
+        0,
+      ),
     [formData.items],
   );
   const paymentExceedsTotal = installmentsExceedTotal(formData.installments, totalCommitted);
@@ -116,6 +128,8 @@ export default function AddExpenseModal({
         category_id: item.category_id,
         description: item.description,
         amount: Number(item.amount || 0),
+        // Blank means "no separate estimate" — the server defaults it to amount.
+        ...(item.planned_amount !== '' ? { planned_amount: Number(item.planned_amount) } : {}),
         display_order: index + 1,
         ...(canSeeSplits
           ? {
@@ -260,7 +274,7 @@ export default function AddExpenseModal({
                   <div>
                     <h3 className="section-title">Line Items</h3>
                     <p className="text-sm text-ink-low">
-                      Categories, side splits, and committed totals come from these items.
+                      Categories, side splits, and planned/allocated totals come from these items.
                     </p>
                   </div>
                   <button
@@ -311,22 +325,37 @@ export default function AddExpenseModal({
                         </button>
                       </div>
 
+                      <div>
+                        <label className="label">Item Description *</label>
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(event) =>
+                            updateItem(item.id, { description: event.target.value })
+                          }
+                          className="input"
+                          placeholder="Base package, flowers, travel fee"
+                          required
+                        />
+                      </div>
+
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="label">Item Description *</label>
+                          <label className="label">Planned (estimate)</label>
                           <input
-                            type="text"
-                            value={item.description}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.planned_amount}
                             onChange={(event) =>
-                              updateItem(item.id, { description: event.target.value })
+                              updateItem(item.id, { planned_amount: event.target.value })
                             }
                             className="input"
-                            placeholder="Base package, flowers, travel fee"
-                            required
+                            placeholder="Defaults to allocated"
                           />
                         </div>
                         <div>
-                          <label className="label">Amount *</label>
+                          <label className="label">Allocated *</label>
                           <input
                             type="number"
                             min="0"
@@ -433,9 +462,14 @@ export default function AddExpenseModal({
                     border: '1px solid var(--line-soft)',
                   }}
                 >
-                  <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>Committed Total</span>
-                  <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--gold-deep)' }}>
-                    {formatCurrency(totalCommitted)}
+                  <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
+                    Planned {formatCurrency(totalPlanned)}
+                  </span>
+                  <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
+                    Allocated{' '}
+                    <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--gold-deep)' }}>
+                      {formatCurrency(totalCommitted)}
+                    </span>
                   </span>
                 </div>
               </div>

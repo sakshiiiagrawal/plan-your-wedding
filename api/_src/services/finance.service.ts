@@ -130,6 +130,7 @@ function mapExpenseItemRow(row: DbRow): ExpenseItemRow {
     event_id: row['event_id'] ? String(row['event_id']) : null,
     description: String(row['description']),
     amount: toNumber(row['amount']),
+    planned_amount: toNumber(row['planned_amount']),
     side: row['side'] as ExpenseItemRow['side'],
     bride_share_percentage: toNullableNumber(row['bride_share_percentage']),
     display_order: Number(row['display_order']),
@@ -173,10 +174,11 @@ function mapAllocationRow(row: DbRow): PaymentAllocationRow {
 
 function parseSummary(row: DbRow | undefined): ExpenseBalanceSummary {
   return {
+    planned_amount: row ? toNumber(row['planned_amount']) : 0,
     committed_amount: row ? toNumber(row['committed_amount']) : 0,
     paid_amount: row ? toNumber(row['paid_amount']) : 0,
     outstanding_amount: row ? toNumber(row['outstanding_amount']) : 0,
-    planned_amount: row ? toNumber(row['planned_amount']) : 0,
+    scheduled_amount: row ? toNumber(row['scheduled_amount']) : 0,
   };
 }
 
@@ -385,6 +387,7 @@ async function loadExpenseSummary(
   const { rows } = await client.query<DbRow>(
     `
       SELECT
+        febv.planned_amount,
         febv.committed_amount,
         febv.paid_amount,
         febv.outstanding_amount,
@@ -393,7 +396,7 @@ async function loadExpenseSummary(
           FROM payments p
           WHERE p.expense_id = febv.expense_id
             AND p.status = 'scheduled'
-        ), 0) AS planned_amount
+        ), 0) AS scheduled_amount
       FROM finance_expense_balances_v febv
       WHERE febv.user_id = $1
         AND febv.expense_id = $2
@@ -676,6 +679,12 @@ async function syncExpenseItems(
           : side === 'shared'
             ? (item.bride_share_percentage ?? 50)
             : null;
+      // Absent planned_amount preserves the stored value (older clients and
+      // partial payloads must not wipe a recorded plan).
+      const plannedAmount =
+        item.planned_amount === undefined
+          ? before.planned_amount
+          : normalizeMoney(item.planned_amount);
       const { rows } = await client.query<DbRow>(
         `
           UPDATE expense_items
@@ -684,9 +693,10 @@ async function syncExpenseItems(
             event_id = $3,
             description = $4,
             amount = $5,
-            side = $6,
-            bride_share_percentage = $7,
-            display_order = $8
+            planned_amount = $6,
+            side = $7,
+            bride_share_percentage = $8,
+            display_order = $9
           WHERE id = $1
           RETURNING *
         `,
@@ -696,6 +706,7 @@ async function syncExpenseItems(
           item.event_id ?? null,
           item.description,
           normalizeMoney(item.amount),
+          plannedAmount,
           side,
           bridePct,
           item.display_order,
@@ -728,11 +739,12 @@ async function syncExpenseItems(
           event_id,
           description,
           amount,
+          planned_amount,
           side,
           bride_share_percentage,
           display_order
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
       `,
       [
@@ -741,6 +753,10 @@ async function syncExpenseItems(
         item.event_id ?? null,
         item.description,
         normalizeMoney(item.amount),
+        // No plan supplied for a brand-new item: the committed amount is the
+        // honest default (vendor/venue-sourced items are created from an
+        // already-agreed total_cost).
+        normalizeMoney(item.planned_amount ?? item.amount),
         side,
         bridePct,
         item.display_order,
@@ -1271,13 +1287,14 @@ async function loadExpenseDetailsForRows(
       `
         SELECT
           febv.expense_id,
+          febv.planned_amount,
           febv.committed_amount,
           febv.paid_amount,
           febv.outstanding_amount,
-          COALESCE(sp.planned_amount, 0) AS planned_amount
+          COALESCE(sp.scheduled_amount, 0) AS scheduled_amount
         FROM finance_expense_balances_v febv
         LEFT JOIN (
-          SELECT expense_id, SUM(amount) AS planned_amount
+          SELECT expense_id, SUM(amount) AS scheduled_amount
           FROM payments
           WHERE expense_id = ANY($2::uuid[])
             AND status = 'scheduled'
@@ -1672,6 +1689,7 @@ export async function buildVenueSourceItems(
 }
 
 export async function getFinanceDashboardTotals(ownerId: string): Promise<{
+  planned: number;
   committed: number;
   paid: number;
   outstanding: number;
@@ -1680,6 +1698,7 @@ export async function getFinanceDashboardTotals(ownerId: string): Promise<{
     const { rows } = await client.query<DbRow>(
       `
         SELECT
+          COALESCE(SUM(planned_amount), 0) AS planned,
           COALESCE(SUM(committed_amount), 0) AS committed,
           COALESCE(SUM(paid_amount), 0) AS paid,
           COALESCE(SUM(outstanding_amount), 0) AS outstanding
@@ -1689,6 +1708,7 @@ export async function getFinanceDashboardTotals(ownerId: string): Promise<{
       [ownerId],
     );
     return {
+      planned: toNumber(rows[0]?.['planned']),
       committed: toNumber(rows[0]?.['committed']),
       paid: toNumber(rows[0]?.['paid']),
       outstanding: toNumber(rows[0]?.['outstanding']),
@@ -1700,6 +1720,7 @@ export async function getCategoryRollups(ownerId: string): Promise<
   Array<{
     category_id: string;
     parent_category_id: string | null;
+    planned_amount: number;
     committed_amount: number;
     paid_amount: number;
     outstanding_amount: number;
@@ -1717,6 +1738,7 @@ export async function getCategoryRollups(ownerId: string): Promise<
     return rows.map((row: DbRow) => ({
       category_id: String(row['category_id']),
       parent_category_id: row['parent_category_id'] ? String(row['parent_category_id']) : null,
+      planned_amount: toNumber(row['planned_amount']),
       committed_amount: toNumber(row['committed_amount']),
       paid_amount: toNumber(row['paid_amount']),
       outstanding_amount: toNumber(row['outstanding_amount']),
@@ -1727,6 +1749,7 @@ export async function getCategoryRollups(ownerId: string): Promise<
 export async function getSideLiabilityRollups(ownerId: string): Promise<
   Array<{
     side: 'bride' | 'groom' | 'shared';
+    planned_amount: number;
     committed_amount: number;
     paid_amount: number;
     outstanding_amount: number;
@@ -1746,6 +1769,7 @@ export async function getSideLiabilityRollups(ownerId: string): Promise<
 
   return liability.map((row: DbRow) => ({
     side: String(row['side']) as 'bride' | 'groom' | 'shared',
+    planned_amount: toNumber(row['planned_amount']),
     committed_amount: toNumber(row['committed_amount']),
     paid_amount: toNumber(row['paid_amount']),
     outstanding_amount: toNumber(row['outstanding_amount']),

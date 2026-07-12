@@ -45,7 +45,12 @@ export const GOLD_MOTES_FRAGMENT = /* glsl */ `
 
   void main() {
     float d = length(gl_PointCoord - 0.5);
-    float alpha = smoothstep(0.5, 0.05, d) * vGlow * uOpacity;
+    // A hard bright core inside a faint halo reads as glinting dust; one wide
+    // soft falloff reads as blurry petals — which is exactly the complaint
+    // this shape fixes.
+    float core = smoothstep(0.16, 0.0, d);
+    float halo = smoothstep(0.5, 0.1, d) * 0.3;
+    float alpha = (core + halo) * vGlow * uOpacity;
     if (alpha < 0.01) discard;
     gl_FragColor = vec4(mix(uColorA, uColorB, vGlow), alpha);
   }

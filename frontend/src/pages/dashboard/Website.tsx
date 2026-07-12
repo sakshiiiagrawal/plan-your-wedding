@@ -33,7 +33,14 @@ import { getPalette, getTemplate, templatesForKind } from '../../site/registry';
 import type { SiteEditController } from '../../site/copy/context';
 import { defaultForKey } from '../../site/copy/registry';
 import { DEFAULT_QR_DESIGN_ID } from '../../site/qrDesigns';
-import type { PageKind, PartId, SectionSetting, SiteData } from '../../site/types';
+import {
+  DEFAULT_GALLERY_LAYOUT,
+  type GalleryLayoutId,
+  type PageKind,
+  type PartId,
+  type SectionSetting,
+  type SiteData,
+} from '../../site/types';
 import { parseLocalDate } from '../../utils/date';
 import PreviewCanvas, { type Device } from './website/PreviewCanvas';
 import ContentPanel from './website/ContentPanel';
@@ -89,6 +96,7 @@ export default function Website() {
   const [musicEndTime, setMusicEndTime] = useState(45);
   const [qrEnabled, setQrEnabled] = useState(false);
   const [qrStyle, setQrStyle] = useState(DEFAULT_QR_DESIGN_ID);
+  const [galleryLayout, setGalleryLayout] = useState<GalleryLayoutId>(DEFAULT_GALLERY_LAYOUT);
   // Sparse per-page copy overrides (config.text_overrides), edited inline in the preview
   const [textOverrides, setTextOverrides] = useState<Record<string, string>>({});
   // Shared couple content drafts
@@ -131,6 +139,7 @@ export default function Website() {
     setMusicEndTime(selectedPage.config?.music_end_time ?? DEFAULT_MUSIC_END);
     setQrEnabled(!!selectedPage.config?.qr_enabled);
     setQrStyle(selectedPage.config?.qr_style ?? DEFAULT_QR_DESIGN_ID);
+    setGalleryLayout(selectedPage.config?.gallery_layout ?? DEFAULT_GALLERY_LAYOUT);
     setTextOverrides(selectedPage.config?.text_overrides ?? {});
   }
 
@@ -274,6 +283,7 @@ export default function Website() {
           music_end_time: musicEndTime,
           qr_enabled: qrEnabled,
           qr_style: qrStyle,
+          gallery_layout: galleryLayout,
           text_overrides: textOverrides,
         },
       }),
@@ -408,6 +418,7 @@ export default function Website() {
     galleryImages,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     gallerySubtitle: (galleryContent as any)?.subtitle ?? '',
+    galleryLayout,
     sections: previewSections,
     palette,
     pages: pages
@@ -846,6 +857,9 @@ export default function Website() {
                 paletteId={paletteId}
                 onSelectPalette={markDirty(setPaletteId)}
                 recommendedPaletteIds={template.recommendedPaletteIds}
+                galleryLayout={galleryLayout}
+                onGalleryLayout={markDirty(setGalleryLayout)}
+                showGalleryLayout={template.parts.some((part) => part.id === 'gallery')}
               />
             )}
 

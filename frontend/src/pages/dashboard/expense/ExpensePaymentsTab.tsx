@@ -16,7 +16,7 @@ function formatPaymentAmount(
   return `${direction === 'inflow' ? '-' : ''}${formatCurrency(amount)}`;
 }
 
-function plannedBadge(paymentDate: string) {
+function scheduleBadge(paymentDate: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const due = parseLocalDate(paymentDate);
@@ -55,7 +55,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
     (sum, payment) => sum + (payment.direction === 'inflow' ? -payment.amount : payment.amount),
     0,
   );
-  const plannedTotal = scheduledPayments.reduce(
+  const scheduledTotal = scheduledPayments.reduce(
     (sum, payment) => sum + (payment.direction === 'inflow' ? -payment.amount : payment.amount),
     0,
   );
@@ -68,7 +68,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
           <div className="text-sm text-ink-low">Net Paid</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-blue-600">{formatCurrency(plannedTotal)}</div>
+          <div className="text-2xl font-bold text-blue-600">{formatCurrency(scheduledTotal)}</div>
           <div className="text-sm text-ink-low">Scheduled</div>
         </div>
         <div className="card text-center">
@@ -135,7 +135,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                         )}
                       </td>
                       <td className="p-4">
-                        {plannedBadge(payment.due_date ?? payment.created_at)}
+                        {scheduleBadge(payment.due_date ?? payment.created_at)}
                       </td>
                       <td className="p-4 text-ink-low text-sm hidden md:table-cell">
                         {payment.notes || '—'}
@@ -239,7 +239,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                 <tr>
                   <th className="text-left p-4">Expense</th>
                   <th className="text-left p-4">Type</th>
-                  <th className="text-right p-4">Committed</th>
+                  <th className="text-right p-4">Allocated</th>
                   <th className="text-right p-4">Paid</th>
                   <th className="text-right p-4">Outstanding</th>
                 </tr>

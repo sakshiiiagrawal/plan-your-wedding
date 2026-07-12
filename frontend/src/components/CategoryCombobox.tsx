@@ -224,7 +224,7 @@ export default function CategoryCombobox({
             if (!isOpen) openDropdown();
           }}
           onFocus={openDropdown}
-          className="input pl-9 pr-8"
+          className="input input-neu pl-9 pr-8"
           placeholder={placeholder}
           required={required && !value}
           disabled={disabled}

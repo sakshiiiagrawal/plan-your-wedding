@@ -25,7 +25,7 @@ import {
   HiOutlineSave,
   HiOutlinePhone,
 } from 'react-icons/hi';
-import { SectionHeader, SegmentedControl, KPICard, DrawerPanel } from '../../components/ui';
+import { SectionHeader, SegmentedControl, KPICard, DrawerPanel, Checkbox } from '../../components/ui';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import { formatDate } from '../../utils/date';
@@ -702,7 +702,7 @@ export default function Guests() {
             placeholder="Search guests…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="input"
+            className="input input-neu"
             style={{ paddingLeft: 36, fontSize: 13 }}
           />
         </div>
@@ -737,8 +737,7 @@ export default function Guests() {
           }}
           title="Vendor teams are stored as guests so they appear in accommodation and meal counts."
         >
-          <input
-            type="checkbox"
+          <Checkbox
             checked={showVendorTeams}
             onChange={(e) => setShowVendorTeams(e.target.checked)}
           />
@@ -946,18 +945,11 @@ export default function Guests() {
                     </select>
                   </td>
                   <td className="p-2 hidden md:table-cell text-center">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={row.needs_accommodation}
                       onChange={(e) =>
                         updatePendingRow(row._key, { needs_accommodation: e.target.checked })
                       }
-                      style={{
-                        width: 14,
-                        height: 14,
-                        cursor: 'pointer',
-                        accentColor: 'var(--gold)',
-                      }}
                     />
                   </td>
                   <td className="p-2">
@@ -1254,16 +1246,9 @@ export default function Guests() {
                         cursor: 'pointer',
                       }}
                     >
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={formData[key as keyof GuestFormData] as boolean}
                         onChange={(e) => setFormData({ ...formData, [key]: e.target.checked })}
-                        style={{
-                          width: 14,
-                          height: 14,
-                          cursor: 'pointer',
-                          accentColor: 'var(--gold)',
-                        }}
                       />
                       {label}
                     </label>
@@ -1290,8 +1275,7 @@ export default function Guests() {
                             cursor: 'pointer',
                           }}
                         >
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={formData.events.includes(event.id)}
                             onChange={(e) =>
                               setFormData({
@@ -1301,12 +1285,6 @@ export default function Guests() {
                                   : formData.events.filter((id) => id !== event.id),
                               })
                             }
-                            style={{
-                              width: 14,
-                              height: 14,
-                              cursor: 'pointer',
-                              accentColor: 'var(--gold)',
-                            }}
                           />
                           {event.name}
                         </label>

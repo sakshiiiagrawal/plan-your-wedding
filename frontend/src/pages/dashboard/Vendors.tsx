@@ -35,7 +35,7 @@ import type {
   VendorWithFinance,
 } from '@wedding-planner/shared';
 import { financeTier } from '@wedding-planner/shared';
-import { SectionHeader } from '../../components/ui';
+import { SectionHeader, Checkbox } from '../../components/ui';
 import DatePicker from '../../components/ui/DatePicker';
 import SplitShare from '../../components/ui/SplitShare';
 import InstallmentsEditor, {
@@ -774,7 +774,7 @@ export default function Vendors() {
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input"
+              className="input input-neu"
               placeholder="Search vendors, contacts, categories, or events"
               style={{ paddingLeft: 38 }}
             />
@@ -955,8 +955,8 @@ export default function Vendors() {
                                 letterSpacing: 'normal',
                               }}
                             >
-                              <input
-                                type="checkbox"
+                              <Checkbox
+                                className="pointer-events-none"
                                 checked={checked}
                                 onChange={() =>
                                   toggleSelection(
@@ -965,14 +965,6 @@ export default function Vendors() {
                                     setSelectedCategoryIds,
                                   )
                                 }
-                                style={{
-                                  accentColor: 'var(--gold)',
-                                  pointerEvents: 'none',
-                                  width: 14,
-                                  height: 14,
-                                  margin: 0,
-                                  flexShrink: 0,
-                                }}
                               />
                               <span
                                 style={{
@@ -1025,20 +1017,12 @@ export default function Vendors() {
                               letterSpacing: 'normal',
                             }}
                           >
-                            <input
-                              type="checkbox"
+                            <Checkbox
+                              className="pointer-events-none"
                               checked={checked}
                               onChange={() =>
                                 toggleSelection(option.id, paymentFilters, setPaymentFilters)
                               }
-                              style={{
-                                accentColor: 'var(--gold)',
-                                pointerEvents: 'none',
-                                width: 14,
-                                height: 14,
-                                margin: 0,
-                                flexShrink: 0,
-                              }}
                             />
                             <span
                               style={{
@@ -1088,20 +1072,12 @@ export default function Vendors() {
                               letterSpacing: 'normal',
                             }}
                           >
-                            <input
-                              type="checkbox"
+                            <Checkbox
+                              className="pointer-events-none"
                               checked={checked}
                               onChange={() =>
                                 toggleSelection(option.id, logisticsFilters, setLogisticsFilters)
                               }
-                              style={{
-                                accentColor: '#0f766e',
-                                pointerEvents: 'none',
-                                width: 14,
-                                height: 14,
-                                margin: 0,
-                                flexShrink: 0,
-                              }}
                             />
                             <span
                               style={{
@@ -2067,8 +2043,7 @@ export default function Vendors() {
                                       cursor: 'pointer',
                                     }}
                                   >
-                                    <input
-                                      type="checkbox"
+                                    <Checkbox
                                       checked={formData.needs_food}
                                       onChange={(e) =>
                                         setFormData((prev) => ({
@@ -2089,8 +2064,7 @@ export default function Vendors() {
                                       cursor: 'pointer',
                                     }}
                                   >
-                                    <input
-                                      type="checkbox"
+                                    <Checkbox
                                       checked={formData.needs_accommodation}
                                       onChange={(e) =>
                                         setFormData((prev) => ({

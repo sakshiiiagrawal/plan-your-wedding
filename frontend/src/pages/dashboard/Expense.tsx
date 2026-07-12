@@ -143,6 +143,7 @@ export default function Expense() {
         description: expense.description,
         source_type: expense.source_type,
         category_summary: categorySummary || 'Uncategorized',
+        planned: expense.summary.planned_amount,
         committed: expense.summary.committed_amount,
         paid: expense.summary.paid_amount,
         outstanding: expense.summary.outstanding_amount,
@@ -317,6 +318,7 @@ export default function Expense() {
   }
 
   const totalBudget = expenseSummary?.totalExpense || 0;
+  const planned = expenseSummary?.totalPlanned || 0;
   const committed = expenseSummary?.totalCommitted || 0;
   const paid = expenseSummary?.totalPaid || 0;
   const outstandingTotal = expenseSummary?.totalOutstanding ?? outstanding?.totalOutstanding ?? 0;
@@ -382,7 +384,7 @@ export default function Expense() {
           </div>
         )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="stat-card">
           <div className="stat-value" style={{ color: 'var(--gold-deep)' }}>
             {formatCurrency(totalBudget)}
@@ -390,8 +392,12 @@ export default function Expense() {
           <div className="stat-label">Budget</div>
         </div>
         <div className="stat-card">
+          <div className="stat-value text-ink-mid">{formatCurrency(planned)}</div>
+          <div className="stat-label">Planned</div>
+        </div>
+        <div className="stat-card">
           <div className="stat-value text-maroon-800">{formatCurrency(committed)}</div>
-          <div className="stat-label">Committed</div>
+          <div className="stat-label">Allocated</div>
         </div>
         <div className="stat-card">
           <div className="stat-value text-green-700">{formatCurrency(paid)}</div>

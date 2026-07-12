@@ -199,7 +199,7 @@ export default function PaymentTimelinePanel({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', fontSize: 12 }}>
         <span style={{ color: 'var(--ink-low)' }}>
-          Committed: <strong style={{ color: 'var(--ink-mid)' }}>{formatCurrency(committed)}</strong>
+          Allocated: <strong style={{ color: 'var(--ink-mid)' }}>{formatCurrency(committed)}</strong>
         </span>
         <span style={{ color: 'var(--ok)' }}>
           Paid: <strong>{formatCurrency(paid)}</strong>

@@ -240,7 +240,7 @@ export default function InstallmentsEditor({
       {exceedsTotal && (
         <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
           Installments total {formatCurrency(sumOutflowInstallments(installments))}, which is
-          higher than the committed total ({formatCurrency(committedTotal)}). Add more line items
+          higher than the allocated total ({formatCurrency(committedTotal)}). Add more line items
           above before saving.
         </div>
       )}

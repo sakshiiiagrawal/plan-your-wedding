@@ -189,7 +189,7 @@ export default function ExpenseCategoriesTab({
           >
             <h3 className="section-title">Top Categories</h3>
             <span style={{ fontSize: 12, color: 'var(--ink-low)' }}>
-              Committed:{' '}
+              Allocated:{' '}
               <strong style={{ color: 'var(--gold-deep)' }}>{formatCurrency(grandTotal)}</strong>
             </span>
           </div>

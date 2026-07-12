@@ -32,6 +32,7 @@ interface ExpenseItemForm {
   local_id: string;
   description: string;
   amount: string;
+  planned_amount: string;
   category_id: string | null;
   side: 'bride' | 'groom' | 'shared';
   bride_share_percentage: number;
@@ -48,6 +49,7 @@ const createItem = (): ExpenseItemForm => ({
   local_id: Math.random().toString(36).slice(2),
   description: '',
   amount: '',
+  planned_amount: '',
   category_id: null,
   side: 'shared',
   bride_share_percentage: 50,
@@ -66,6 +68,7 @@ function getExpenseFormState(expense: ExpenseRow | null): FormData | null {
             local_id: item.id,
             description: item.description,
             amount: String(item.amount),
+            planned_amount: String(item.planned_amount ?? ''),
             category_id: item.category_id,
             side: item.side,
             bride_share_percentage: item.bride_share_percentage ?? 50,
@@ -97,6 +100,16 @@ export default function EditExpenseModal({
 
   const totalCommitted = useMemo(
     () => formData?.items.reduce((sum, item) => sum + Number(item.amount || 0), 0) ?? 0,
+    [formData],
+  );
+  // Blank planned falls back to the item's amount (mirrors the server default).
+  const totalPlanned = useMemo(
+    () =>
+      formData?.items.reduce(
+        (sum, item) =>
+          sum + (item.planned_amount === '' ? Number(item.amount || 0) : Number(item.planned_amount)),
+        0,
+      ) ?? 0,
     [formData],
   );
   const isDirty = JSON.stringify(formData) !== JSON.stringify(getExpenseFormState(expense));
@@ -148,6 +161,9 @@ export default function EditExpenseModal({
         category_id: item.category_id,
         description: item.description,
         amount: Number(item.amount || 0),
+        // Blank planned: omit so the server preserves the stored value (existing
+        // items) or defaults it to amount (new items).
+        ...(item.planned_amount !== '' ? { planned_amount: Number(item.planned_amount) } : {}),
         display_order: index + 1,
         ...(canSeeSplits
           ? {
@@ -267,7 +283,7 @@ export default function EditExpenseModal({
                   <div>
                     <h3 className="section-title">Line Items</h3>
                     <p className="text-sm text-ink-low">
-                      Keep the committed amount aligned with the real category breakdown.
+                      Keep the allocated amount aligned with the real category breakdown.
                     </p>
                   </div>
                   <button
@@ -320,21 +336,36 @@ export default function EditExpenseModal({
                         </button>
                       </div>
 
+                      <div>
+                        <label className="label">Item Description *</label>
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(event) =>
+                            updateItem(item.local_id, { description: event.target.value })
+                          }
+                          className="input"
+                          required
+                        />
+                      </div>
+
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="label">Item Description *</label>
+                          <label className="label">Planned (estimate)</label>
                           <input
-                            type="text"
-                            value={item.description}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.planned_amount}
                             onChange={(event) =>
-                              updateItem(item.local_id, { description: event.target.value })
+                              updateItem(item.local_id, { planned_amount: event.target.value })
                             }
                             className="input"
-                            required
+                            placeholder="Defaults to allocated"
                           />
                         </div>
                         <div>
-                          <label className="label">Amount *</label>
+                          <label className="label">Allocated *</label>
                           <input
                             type="number"
                             min="0"
@@ -442,9 +473,14 @@ export default function EditExpenseModal({
                     border: '1px solid var(--line-soft)',
                   }}
                 >
-                  <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>Committed Total</span>
-                  <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--gold-deep)' }}>
-                    {formatCurrency(totalCommitted)}
+                  <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
+                    Planned {formatCurrency(totalPlanned)}
+                  </span>
+                  <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
+                    Allocated{' '}
+                    <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--gold-deep)' }}>
+                      {formatCurrency(totalCommitted)}
+                    </span>
                   </span>
                 </div>
               </div>

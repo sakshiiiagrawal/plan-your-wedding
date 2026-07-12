@@ -186,7 +186,7 @@ function EventTypeCombobox({ value, isOther, onSelect }: EventTypeComboboxProps)
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search event types..."
-                className="w-full pl-8 pr-3 py-1.5 text-sm border border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400"
+                className="input input-neu pl-8 py-1.5 text-sm"
               />
             </div>
           </div>

@@ -99,6 +99,22 @@ export interface QrCodeSetting {
   url: string;
 }
 
+/**
+ * How a template's photo grid arranges itself. Stored per page in
+ * `config.gallery_layout`; templates that render a photo grid read it via
+ * the shared `GalleryGrid` effect.
+ */
+export type GalleryLayoutId = 'mosaic' | 'masonry' | 'filmstrip' | 'polaroid';
+
+export const DEFAULT_GALLERY_LAYOUT: GalleryLayoutId = 'mosaic';
+
+export const GALLERY_LAYOUTS: { id: GalleryLayoutId; name: string; hint: string }[] = [
+  { id: 'mosaic', name: 'Mosaic', hint: 'Square tiles with featured photos twice the size' },
+  { id: 'masonry', name: 'Masonry', hint: 'Flowing columns that keep each photo’s natural shape' },
+  { id: 'filmstrip', name: 'Filmstrip', hint: 'One elegant row that guests swipe through' },
+  { id: 'polaroid', name: 'Polaroid', hint: 'Tilted keepsake prints with paper borders' },
+];
+
 /** Normalized, template-agnostic input every template renders from. */
 export interface SiteData {
   slug: string;
@@ -110,6 +126,8 @@ export interface SiteData {
   events: PublicEvent[];
   galleryImages: { url: string }[];
   gallerySubtitle: string;
+  /** Per-page photo-grid arrangement (config.gallery_layout); templates with a grid honor it. */
+  galleryLayout?: GalleryLayoutId;
   /** Ordered, validated against the active template's `parts`. */
   sections: SectionSetting[];
   palette: Palette;

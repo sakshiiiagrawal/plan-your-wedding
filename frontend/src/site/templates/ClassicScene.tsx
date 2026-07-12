@@ -278,15 +278,47 @@ function RipplePhoto({ url, palette }: { url: string; palette: Palette }) {
   );
 }
 
+/**
+ * Tilts its children toward the cursor — the DOM layers parallax in 2D, this
+ * gives the arch true perspective depth. The springs arrive pre-smoothed from
+ * useMouseParallax; the extra lerp keeps frame-rate independence.
+ */
+function ParallaxRig({
+  mouseX,
+  mouseY,
+  children,
+}: {
+  mouseX?: MotionValue<number> | undefined;
+  mouseY?: MotionValue<number> | undefined;
+  children: React.ReactNode;
+}) {
+  const group = useRef<THREE.Group>(null);
+  useFrame(() => {
+    const g = group.current;
+    if (!g) return;
+    const mx = mouseX?.get() ?? 0;
+    const my = mouseY?.get() ?? 0;
+    g.rotation.y = THREE.MathUtils.lerp(g.rotation.y, mx * 0.07, 0.1);
+    g.rotation.x = THREE.MathUtils.lerp(g.rotation.x, -my * 0.045, 0.1);
+    g.position.x = THREE.MathUtils.lerp(g.position.x, mx * 0.3, 0.1);
+    g.position.y = THREE.MathUtils.lerp(g.position.y, -my * 0.18, 0.1);
+  });
+  return <group ref={group}>{children}</group>;
+}
+
 export default function ClassicHeroScene({
   palette,
   photoUrl,
   progress,
+  mouseX,
+  mouseY,
   className,
 }: {
   palette: Palette;
   photoUrl: string | null;
   progress: MotionValue<number>;
+  mouseX?: MotionValue<number> | undefined;
+  mouseY?: MotionValue<number> | undefined;
   className?: string | undefined;
 }) {
   return (
@@ -299,8 +331,12 @@ export default function ClassicHeroScene({
           </Suspense>
         </SceneErrorBoundary>
       )}
-      <MirrorArch palette={palette} progress={progress} />
-      <GoldMotes palette={palette} count={380} area={[13, 8, 5]} size={34} opacity={0.9} />
+      <ParallaxRig mouseX={mouseX} mouseY={mouseY}>
+        <MirrorArch palette={palette} progress={progress} />
+        {/* Fine gold dust, not petals: many small dim points beat few big
+            blobs — the additive blend does the glow. */}
+        <GoldMotes palette={palette} count={220} area={[13, 8, 5]} size={16} speed={0.7} opacity={0.5} />
+      </ParallaxRig>
     </SceneCanvas>
   );
 }
@@ -317,7 +353,7 @@ export function GoldVeil({
 }) {
   return (
     <SceneCanvas className={className} paused={paused}>
-      <GoldMotes palette={palette} count={110} area={[15, 8, 4]} size={28} speed={0.6} opacity={0.5} />
+      <GoldMotes palette={palette} count={90} area={[15, 8, 4]} size={15} speed={0.5} opacity={0.4} />
     </SceneCanvas>
   );
 }

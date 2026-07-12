@@ -11,7 +11,7 @@ import {
   type WeddingSection,
   type MemberPermission,
 } from '@wedding-planner/shared';
-import { SectionHeader } from '../../components/ui';
+import { SectionHeader, Checkbox } from '../../components/ui';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { formatDate } from '../../utils/date';
 import { useAuth } from '../../contexts/AuthContext';
@@ -59,8 +59,7 @@ function SectionPicker({
             cursor: disabledSections?.has(section) ? 'not-allowed' : 'pointer',
           }}
         >
-          <input
-            type="checkbox"
+          <Checkbox
             checked={value.includes(section)}
             disabled={disabledSections?.has(section)}
             onChange={() => toggle(section)}
@@ -112,8 +111,7 @@ function PermissionPicker({
               cursor: disabled ? 'not-allowed' : 'pointer',
             }}
           >
-            <input
-              type="checkbox"
+            <Checkbox
               checked={value.includes(permission)}
               disabled={disabled}
               onChange={() => toggle(permission)}
@@ -330,8 +328,7 @@ function MembersPanel() {
                   className="flex items-center gap-1.5 mb-1.5"
                   style={{ fontSize: 12, color: 'var(--ink-mid)', cursor: 'pointer' }}
                 >
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={m.allowed_sections !== null}
                     onChange={(e) =>
                       updateMember.mutate({

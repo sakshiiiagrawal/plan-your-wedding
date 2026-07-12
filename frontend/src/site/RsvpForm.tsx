@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import api from '../api/axios';
 import { usePublicEvents } from '../hooks/useApi';
 import { SharedE, useSharedT } from './copy/shared';
+import { Checkbox } from '../components/ui';
 
 /**
  * Shared RSVP logic used by every template. Colors come from the `--site-*`
@@ -147,8 +148,7 @@ export default function RsvpForm({
                 className="flex items-center gap-2 cursor-pointer"
                 style={{ color: 'var(--site-ink-soft, #4b5563)', fontSize: 14 }}
               >
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={!skippedEvents.has(event.id)}
                   onChange={() => toggleEvent(event.id)}
                 />

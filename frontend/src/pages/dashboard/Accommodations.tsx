@@ -41,6 +41,7 @@ import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Portal from '../../components/Portal';
 import DateRangePicker from '../../components/ui/DateRangePicker';
+import { Checkbox } from '../../components/ui';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import { currencySymbol } from '../../utils/currency';
@@ -920,7 +921,7 @@ export default function Accommodations() {
                   placeholder="Search guests..."
                   value={guestPanelSearch}
                   onChange={(e) => setGuestPanelSearch(e.target.value)}
-                  className="input pl-9 py-2 text-sm"
+                  className="input input-neu pl-9 py-2 text-sm"
                 />
                 {guestPanelSearch && (
                   <button
@@ -1320,11 +1321,9 @@ export default function Accommodations() {
                             Cancel
                           </button>
                           <label className="flex items-center gap-1.5 text-xs text-ink-low cursor-pointer">
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={applyDatesToExisting}
                               onChange={(e) => setApplyDatesToExisting(e.target.checked)}
-                              className="w-3.5 h-3.5 accent-maroon-700 rounded"
                             />
                             Also apply to all existing stays at this hotel
                           </label>
@@ -2081,12 +2080,10 @@ export default function Accommodations() {
                       : 'hover:bg-surface-raised cursor-pointer'
                 }`}
               >
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={isSelected}
                   onChange={() => toggleGuest(guest.id)}
                   disabled={isDisabled}
-                  className="w-4 h-4 accent-maroon-700 rounded"
                 />
                 <HiOutlineUser className="w-4 h-4 text-ink-dim flex-shrink-0" />
                 <span className="text-sm text-ink-high flex-1">
@@ -2216,7 +2213,7 @@ export default function Accommodations() {
                                 placeholder="Search guests by name…"
                                 value={guestSearchQuery}
                                 onChange={(e) => setGuestSearchQuery(e.target.value)}
-                                className="input pl-9"
+                                className="input input-neu pl-9"
                                 autoFocus
                               />
                               {guestSearchQuery && (
