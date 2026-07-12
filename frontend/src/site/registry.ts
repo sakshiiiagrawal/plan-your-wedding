@@ -52,6 +52,7 @@ export const TEMPLATES: Record<string, TemplateDefinition> = {
     defaultPaletteId: 'royal',
     recommendedPaletteIds: ['royal', 'desert', 'mandala', 'heirloom'],
     effectControls: CLASSIC_EFFECTS,
+    supportsGalleryLayout: true,
     component: lazy(() => import('./templates/Classic')),
   },
   editorial: {

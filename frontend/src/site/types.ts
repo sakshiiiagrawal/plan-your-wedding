@@ -168,6 +168,11 @@ export interface TemplateDefinition {
   /** Animation controls this template honors — declaring them is all it takes
    *  for the Studio to render the "Animations & effects" pickers. */
   effectControls?: EffectControl[];
+  /** Whether this template renders its gallery through the shared `GalleryGrid`
+   *  and so honors the couple's `galleryLayout` pick. Templates with a bespoke,
+   *  art-directed gallery leave this off, and the Studio hides the picker for
+   *  them rather than showing a control that does nothing. */
+  supportsGalleryLayout?: boolean;
   component:
     | ComponentType<TemplateProps>
     | LazyExoticComponent<ComponentType<TemplateProps>>;

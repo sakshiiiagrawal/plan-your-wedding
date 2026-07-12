@@ -38,45 +38,6 @@ const ClassicGoldVeil = lazy(() =>
   import('./ClassicScene').then((m) => ({ default: m.GoldVeil })),
 );
 
-/**
- * One corner of the ceremonial frame: an L of double hairlines, drawn on
- * like pen-work. Rotated per corner by the parent.
- */
-function CornerFlourish({
-  color,
-  reduced,
-  delay = 0,
-  className = '',
-}: {
-  color: string;
-  reduced: boolean;
-  delay?: number;
-  className?: string;
-}) {
-  const draw = (d: string, w: number, extraDelay = 0) => (
-    <motion.path
-      d={d}
-      fill="none"
-      stroke={color}
-      strokeWidth={w}
-      strokeLinecap="round"
-      {...(reduced
-        ? {}
-        : {
-            initial: { pathLength: 0, opacity: 0 },
-            animate: { pathLength: 1, opacity: 1 },
-            transition: { duration: 1.6, delay: delay + extraDelay, ease: 'easeInOut' },
-          })}
-    />
-  );
-  return (
-    <svg viewBox="0 0 100 100" className={`w-11 h-11 sm:w-20 sm:h-20 ${className}`} aria-hidden>
-      {draw('M4,96 L4,30 Q4,4 30,4 L96,4', 1.5)}
-      {draw('M12,96 L12,34 Q12,12 34,12 L96,12', 0.8, 0.25)}
-    </svg>
-  );
-}
-
 /** A gilded flourish rule — hairlines meeting a centre diamond, drawn on. */
 function FlourishRule({ color, reduced }: { color: string; reduced: boolean }) {
   return (
@@ -700,23 +661,6 @@ export default function Classic({ data }: TemplateProps) {
             />
           </Suspense>
         )}
-
-        {/* The filigree frame draws itself around the ceremony. It opens below
-            the nav (top-20) so the corners never collide with the brand or
-            menu, and drifts against the cursor for depth. */}
-        <ParallaxLayer
-          x={parallax.x}
-          y={parallax.y}
-          depth={-7}
-          className="absolute inset-x-3 top-20 bottom-3 sm:inset-x-6 sm:top-24 sm:bottom-6 pointer-events-none z-10"
-        >
-          <span aria-hidden>
-            <CornerFlourish color={heroGold} reduced={sketch} className="absolute top-0 left-0" />
-            <CornerFlourish color={heroGold} reduced={sketch} delay={0.2} className="absolute top-0 right-0 -scale-x-100" />
-            <CornerFlourish color={heroGold} reduced={sketch} delay={0.4} className="absolute bottom-0 left-0 -scale-y-100" />
-            <CornerFlourish color={heroGold} reduced={sketch} delay={0.6} className="absolute bottom-0 right-0 -scale-x-100 -scale-y-100" />
-          </span>
-        </ParallaxLayer>
 
         <motion.div
           className="relative z-10 text-center px-10 sm:px-16 py-24 w-full max-w-4xl"

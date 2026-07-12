@@ -877,7 +877,10 @@ export default function Website() {
                 recommendedPaletteIds={template.recommendedPaletteIds}
                 galleryLayout={galleryLayout}
                 onGalleryLayout={markDirty(setGalleryLayout)}
-                showGalleryLayout={template.parts.some((part) => part.id === 'gallery')}
+                showGalleryLayout={
+                  !!template.supportsGalleryLayout &&
+                  template.parts.some((part) => part.id === 'gallery')
+                }
                 effectControls={template.effectControls ?? []}
                 effects={effects}
                 onEffect={setEffect}

@@ -983,41 +983,6 @@ export default function Venues() {
                     </div>
                   </div>
 
-                  {fullAddress && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 6,
-                        fontSize: 12,
-                        color: 'var(--ink-mid)',
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      <HiOutlineLocationMarker
-                        style={{
-                          width: 12,
-                          height: 12,
-                          color: 'var(--gold)',
-                          flexShrink: 0,
-                          marginTop: 2,
-                        }}
-                      />
-                      {mapsUrl ? (
-                        <a
-                          href={mapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ color: 'var(--ink-mid)', textDecoration: 'none' }}
-                        >
-                          {fullAddress}
-                        </a>
-                      ) : (
-                        <span>{fullAddress}</span>
-                      )}
-                    </div>
-                  )}
-
                   <div
                     style={{
                       display: 'grid',
