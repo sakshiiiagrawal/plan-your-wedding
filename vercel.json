@@ -1,5 +1,6 @@
 {
   "regions": ["bom1"],
+  "crons": [{ "path": "/api/v1/cron/daily-digest", "schedule": "0 3 * * *" }],
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "installCommand": "npm install && cd api && npm install",

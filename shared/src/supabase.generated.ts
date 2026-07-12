@@ -905,6 +905,9 @@ export interface Database {
           status: DbTaskStatus;
           due_date: string | null;
           completed_at: string | null;
+          reminder_offset_days: number | null;
+          reminder_date: string | null;
+          reminder_repeat: string;
           notes: string | null;
           created_at: string;
           updated_at: string;
@@ -922,6 +925,9 @@ export interface Database {
           status?: DbTaskStatus;
           due_date?: string | null;
           completed_at?: string | null;
+          reminder_offset_days?: number | null;
+          reminder_date?: string | null;
+          reminder_repeat?: string;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -939,6 +945,9 @@ export interface Database {
           status?: DbTaskStatus;
           due_date?: string | null;
           completed_at?: string | null;
+          reminder_offset_days?: number | null;
+          reminder_date?: string | null;
+          reminder_repeat?: string;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;

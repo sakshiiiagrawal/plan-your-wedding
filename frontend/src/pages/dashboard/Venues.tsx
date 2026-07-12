@@ -194,6 +194,55 @@ function VenueRoomsSection({ rooms = [] }: { rooms?: any[] }) {
     return byDay;
   }, [rooms]);
 
+  // Per-night occupancy: a single "capacity" number is meaningless when a venue
+  // is booked across several days, because each night can hold a different set
+  // of guests. So we walk every night in the venue's booked window and tally how
+  // many the rooms available that night sleep vs. how many are actually assigned.
+  const nightly = useMemo(() => {
+    const dated = (rooms as any[]).filter((r) => r.check_in_date && r.check_out_date);
+    if (dated.length === 0) return { nights: [], hasOccupancy: false, peakSleeps: 0 };
+
+    let minIn: string | null = null;
+    let maxOut: string | null = null;
+    dated.forEach((r) => {
+      if (!minIn || r.check_in_date < minIn) minIn = r.check_in_date;
+      if (!maxOut || r.check_out_date > maxOut) maxOut = r.check_out_date;
+    });
+    if (!minIn || !maxOut) return { nights: [], hasOccupancy: false, peakSleeps: 0 };
+
+    const nights: { date: string; sleeps: number; occupied: number }[] = [];
+    const cur = parseLocalDate(minIn);
+    const end = parseLocalDate(maxOut);
+    let guard = 0;
+    // [check_in, check_out) — the checkout day is not a night stayed.
+    while (cur < end && guard < 400) {
+      const iso = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(
+        cur.getDate(),
+      ).padStart(2, '0')}`;
+      let sleeps = 0;
+      let occupied = 0;
+      dated.forEach((r) => {
+        if (r.check_in_date <= iso && iso < r.check_out_date) {
+          sleeps += Number(r.capacity) || 0;
+          (r.room_allocations ?? []).forEach((a: any) => {
+            if (a.check_in_date <= iso && iso < a.check_out_date) {
+              occupied += (a.guest_ids ?? []).length;
+            }
+          });
+        }
+      });
+      nights.push({ date: iso, sleeps, occupied });
+      cur.setDate(cur.getDate() + 1);
+      guard++;
+    }
+    const shown = nights.filter((n) => n.sleeps > 0);
+    return {
+      nights: shown,
+      hasOccupancy: shown.some((n) => n.occupied > 0),
+      peakSleeps: shown.reduce((m, n) => Math.max(m, n.sleeps), 0),
+    };
+  }, [rooms]);
+
   const totalRooms = (rooms as any[]).length;
 
   if (totalRooms === 0)
@@ -208,6 +257,86 @@ function VenueRoomsSection({ rooms = [] }: { rooms?: any[] }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {nightly.nights.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              color: 'var(--ink-dim)',
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              marginBottom: 1,
+            }}
+          >
+            {nightly.hasOccupancy ? 'Nightly occupancy' : 'Nightly capacity'}
+          </div>
+          {nightly.nights.map((n) => {
+            const pct = n.sleeps > 0 ? Math.min(100, (n.occupied / n.sleeps) * 100) : 0;
+            const widthPct = nightly.peakSleeps > 0 ? (n.sleeps / nightly.peakSleeps) * 100 : 100;
+            return (
+              <div
+                key={n.date}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}
+              >
+                <span
+                  style={{
+                    width: 52,
+                    flexShrink: 0,
+                    color: 'var(--ink-mid)',
+                    fontWeight: 500,
+                  }}
+                >
+                  {fmtShortDate(n.date)}
+                </span>
+                <div
+                  style={{
+                    flex: 1,
+                    height: 8,
+                    borderRadius: 100,
+                    background: 'var(--bg-raised)',
+                    overflow: 'hidden',
+                    maxWidth: `${widthPct}%`,
+                    border: '1px solid var(--line-soft)',
+                  }}
+                  title={`${n.sleeps} bed${n.sleeps !== 1 ? 's' : ''} available this night`}
+                >
+                  {nightly.hasOccupancy && (
+                    <div
+                      style={{
+                        width: `${pct}%`,
+                        height: '100%',
+                        borderRadius: 100,
+                        background: pct >= 100 ? '#ea580c' : 'var(--gold)',
+                        transition: 'width 0.2s',
+                      }}
+                    />
+                  )}
+                </div>
+                <span
+                  style={{
+                    flexShrink: 0,
+                    color: 'var(--ink-dim)',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {nightly.hasOccupancy ? (
+                    <>
+                      <span style={{ color: 'var(--ink-high)', fontWeight: 600 }}>
+                        {n.occupied}
+                      </span>
+                      {' / '}
+                      {n.sleeps}
+                    </>
+                  ) : (
+                    <>sleeps {n.sleeps}</>
+                  )}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {groupedByDay.map(({ day, groups }) => (
           <div key={day ?? '__none__'} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -326,7 +455,7 @@ function VenueRoomsSection({ rooms = [] }: { rooms?: any[] }) {
               <tr>
                 <th>Room</th>
                 <th>Type</th>
-                <th style={{ textAlign: 'center' }}>Occ.</th>
+                <th style={{ textAlign: 'center' }}>Occupancy</th>
                 <th style={{ textAlign: 'right' }}>Rate / night</th>
                 <th style={{ textAlign: 'center' }}>Breakfast</th>
                 <th style={{ textAlign: 'center' }}>Check-in</th>
@@ -595,8 +724,12 @@ export default function Venues() {
     const payload = {
       ...restFormData,
       capacity: formData.capacity === '' ? null : Number(formData.capacity),
-      ...(canSeeMoney ? { total_cost: formData.total_cost === '' ? 0 : Number(formData.total_cost) } : {}),
-      ...(canSeeSplits ? { side: formData.side, bride_share_percentage: formData.bride_share_percentage } : {}),
+      ...(canSeeMoney
+        ? { total_cost: formData.total_cost === '' ? 0 : Number(formData.total_cost) }
+        : {}),
+      ...(canSeeSplits
+        ? { side: formData.side, bride_share_percentage: formData.bride_share_percentage }
+        : {}),
     };
     try {
       let savedVenue: any;
@@ -723,529 +856,572 @@ export default function Venues() {
               }}
             >
               {venues.map((venue, venueIndex) => {
-            const v = venue as VenueWithFinance & { events?: Array<{ id: string; name: string }> };
-            const venueTypeLabel = v.venue_type?.replace(/_/g, ' ') ?? '';
-            const fullAddress = [v.address, v.city].filter(Boolean).join(', ');
-            const mapsUrl = buildMapsUrl({
-              place_id: (v as any).place_id,
-              latitude: (v as any).latitude,
-              longitude: (v as any).longitude,
-              address: fullAddress,
-            });
-            const hasContact = v.contact_person || v.contact_phone;
-            const hasRooms = v.has_accommodation;
-            const hasEvents = v.events && v.events.length > 0;
-            const committed = v.finance_summary?.committed_amount ?? 0;
-            const paid = v.finance_summary?.paid_amount ?? 0;
-            const outstanding = v.finance_summary?.outstanding_amount ?? 0;
-            const plannedPayments =
-              v.finance?.payments?.filter((p) => p.status === 'scheduled') ?? [];
+                const v = venue as VenueWithFinance & {
+                  events?: Array<{ id: string; name: string }>;
+                };
+                const venueTypeLabel = v.venue_type?.replace(/_/g, ' ') ?? '';
+                const fullAddress = [v.address, v.city].filter(Boolean).join(', ');
+                const mapsUrl = buildMapsUrl({
+                  place_id: (v as any).place_id,
+                  latitude: (v as any).latitude,
+                  longitude: (v as any).longitude,
+                  address: fullAddress,
+                });
+                const hasContact = v.contact_person || v.contact_phone;
+                const hasRooms = v.has_accommodation;
+                const venueRooms = roomsByVenue[venue.id] ?? [];
+                const totalSleeps = venueRooms.reduce(
+                  (s: number, r: any) => s + (Number(r.capacity) || 0),
+                  0,
+                );
+                const hasEvents = v.events && v.events.length > 0;
+                const committed = v.finance_summary?.committed_amount ?? 0;
+                const paid = v.finance_summary?.paid_amount ?? 0;
+                const outstanding = v.finance_summary?.outstanding_amount ?? 0;
+                const plannedPayments =
+                  v.finance?.payments?.filter((p) => p.status === 'scheduled') ?? [];
 
-            return (
-              <SortableItem id={venue.id} key={venue.id}>
-                {({ handleProps }) => (
-              <div
-                className="card"
-                style={{
-                  padding: 0,
-                  overflow: 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  position: 'relative',
-                }}
-              >
-                <div style={{ height: 4, background: HEADER_GRADIENTS[venueIndex % 3] }} />
-
-                <div
-                  style={{ padding: 12, display: 'flex', flexDirection: 'column', flex: 1, gap: 8 }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      justifyContent: 'space-between',
-                      gap: 8,
-                    }}
-                  >
-                    {(v as any).photo_url && (
-                      <img
-                        src={(v as any).photo_url}
-                        alt=""
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 8,
-                          objectFit: 'cover',
-                          flexShrink: 0,
-                          border: '1px solid var(--line)',
-                        }}
-                      />
-                    )}
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <h3
-                        className="display"
-                        onClick={() => handleEdit(venue)}
-                        style={{
-                          margin: 0,
-                          fontSize: 16,
-                          color: 'var(--ink-high)',
-                          lineHeight: 1.25,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          cursor: 'pointer',
-                        }}
-                        onMouseEnter={(e) => {
-                          (e.currentTarget as HTMLElement).style.color = 'var(--gold-deep)';
-                        }}
-                        onMouseLeave={(e) => {
-                          (e.currentTarget as HTMLElement).style.color = 'var(--ink-high)';
-                        }}
-                      >
-                        {venue.name}
-                      </h3>
+                return (
+                  <SortableItem id={venue.id} key={venue.id}>
+                    {({ handleProps }) => (
                       <div
+                        className="card"
                         style={{
+                          padding: 0,
+                          overflow: 'hidden',
                           display: 'flex',
-                          alignItems: 'center',
-                          gap: 5,
-                          marginTop: 3,
-                          flexWrap: 'wrap',
+                          flexDirection: 'column',
+                          position: 'relative',
                         }}
                       >
-                        {venueTypeLabel && (
-                          <span
-                            style={{
-                              fontSize: 10,
-                              color: 'var(--ink-low)',
-                              textTransform: 'capitalize',
-                              fontWeight: 500,
-                              letterSpacing: 0.3,
-                            }}
-                          >
-                            {venueTypeLabel}
-                          </span>
-                        )}
-                        {v.city && (
-                          <span style={{ fontSize: 10, color: 'var(--ink-dim)' }}>· {v.city}</span>
-                        )}
-                        {hasRooms && (
-                          <span
-                            style={{
-                              fontSize: 9,
-                              background: 'var(--gold-glow)',
-                              color: 'var(--gold-deep)',
-                              padding: '1px 6px',
-                              borderRadius: 100,
-                              fontWeight: 500,
-                              border: '1px solid rgba(176,141,62,0.25)',
-                            }}
-                          >
-                            Rooms
-                          </span>
-                        )}
-                        {v.finance?.items?.[0]?.side && (
-                          <span
-                            style={{
-                              fontSize: 9,
-                              color: 'var(--ink-low)',
-                              textTransform: 'capitalize',
-                              border: '1px solid var(--line)',
-                              padding: '1px 6px',
-                              borderRadius: 100,
-                            }}
-                          >
-                            {v.finance.items[0].side}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                      <button
-                        {...handleProps}
-                        type="button"
-                        style={{
-                          ...(handleProps.style as object),
-                          width: 30,
-                          height: 30,
-                          borderRadius: 8,
-                          border: '1px solid var(--line)',
-                          color: 'var(--ink-dim)',
-                          background: 'transparent',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                        aria-label="Drag to reorder venue"
-                      >
-                        <HiOutlineDotsVertical style={{ width: 14, height: 14 }} />
-                      </button>
-                      {v.contact_phone && (
-                        <a
-                          href={`tel:${v.contact_phone}`}
-                          title={`Call ${v.contact_person || 'venue'}`}
-                          style={{
-                            width: 30,
-                            height: 30,
-                            borderRadius: 8,
-                            border: '1px solid var(--line)',
-                            color: 'var(--ink-dim)',
-                            background: 'transparent',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.15s',
-                          }}
-                          onMouseEnter={(e) => {
-                            const el = e.currentTarget as HTMLElement;
-                            el.style.background = 'rgba(22,163,74,0.08)';
-                            el.style.borderColor = 'rgba(22,163,74,0.4)';
-                            el.style.color = '#16a34a';
-                          }}
-                          onMouseLeave={(e) => {
-                            const el = e.currentTarget as HTMLElement;
-                            el.style.background = 'transparent';
-                            el.style.borderColor = 'var(--line)';
-                            el.style.color = 'var(--ink-dim)';
-                          }}
-                        >
-                          <HiOutlinePhone style={{ width: 14, height: 14 }} />
-                        </a>
-                      )}
-                      {mapsUrl && (
-                        <a
-                          href={mapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Get directions"
-                          style={{
-                            width: 30,
-                            height: 30,
-                            borderRadius: 8,
-                            border: '1px solid var(--line)',
-                            color: 'var(--ink-dim)',
-                            background: 'transparent',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.15s',
-                          }}
-                          onMouseEnter={(e) => {
-                            const el = e.currentTarget as HTMLElement;
-                            el.style.background = 'rgba(29,78,216,0.08)';
-                            el.style.borderColor = 'rgba(29,78,216,0.4)';
-                            el.style.color = '#1d4ed8';
-                          }}
-                          onMouseLeave={(e) => {
-                            const el = e.currentTarget as HTMLElement;
-                            el.style.background = 'transparent';
-                            el.style.borderColor = 'var(--line)';
-                            el.style.color = 'var(--ink-dim)';
-                          }}
-                        >
-                          <HiOutlineMap style={{ width: 14, height: 14 }} />
-                        </a>
-                      )}
-                      <button
-                        onClick={() => handleEdit(venue)}
-                        title="Edit venue"
-                        style={{
-                          width: 30,
-                          height: 30,
-                          borderRadius: 8,
-                          border: '1px solid var(--line)',
-                          color: 'var(--ink-dim)',
-                          background: 'transparent',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'all 0.15s',
-                        }}
-                        onMouseEnter={(e) => {
-                          const el = e.currentTarget as HTMLElement;
-                          el.style.background = 'var(--gold-glow)';
-                          el.style.borderColor = 'rgba(176,141,62,0.5)';
-                          el.style.color = 'var(--gold-deep)';
-                        }}
-                        onMouseLeave={(e) => {
-                          const el = e.currentTarget as HTMLElement;
-                          el.style.background = 'transparent';
-                          el.style.borderColor = 'var(--line)';
-                          el.style.color = 'var(--ink-dim)';
-                        }}
-                      >
-                        <HiOutlinePencilAlt style={{ width: 14, height: 14 }} />
-                      </button>
-                    </div>
-                  </div>
+                        <div style={{ height: 4, background: HEADER_GRADIENTS[venueIndex % 3] }} />
 
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: `repeat(${canSeeMoney ? 4 : 1}, 1fr)`,
-                      gap: 6,
-                      padding: '7px 10px',
-                      background: 'var(--bg-raised)',
-                      borderRadius: 8,
-                    }}
-                  >
-                    <div>
-                      <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
-                        Cap
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--ink-high)', fontWeight: 500 }}>
-                        {v.capacity && Number(v.capacity) > 0 ? (
-                          v.capacity
-                        ) : (
-                          <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>—</span>
-                        )}
-                      </div>
-                    </div>
-                    {canSeeMoney && (
-                      <>
-                        <div>
-                          <div
-                            className="uppercase-eyebrow"
-                            style={{ marginBottom: 2, fontSize: 9 }}
-                          >
-                            Committed
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--ink-high)', fontWeight: 500 }}>
-                            {committed > 0 ? (
-                              formatCurrency(committed)
-                            ) : (
-                              <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>—</span>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <div
-                            className="uppercase-eyebrow"
-                            style={{ marginBottom: 2, fontSize: 9 }}
-                          >
-                            Paid
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 12,
-                              color: paid > 0 ? '#16a34a' : 'var(--ink-dim)',
-                              fontWeight: 500,
-                            }}
-                          >
-                            {paid > 0 ? formatCurrency(paid) : '—'}
-                          </div>
-                        </div>
-                        <div>
-                          <div
-                            className="uppercase-eyebrow"
-                            style={{ marginBottom: 2, fontSize: 9 }}
-                          >
-                            Due
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 12,
-                              color: outstanding > 0 ? '#ea580c' : 'var(--ink-dim)',
-                              fontWeight: 500,
-                            }}
-                          >
-                            {outstanding > 0 ? formatCurrency(outstanding) : '—'}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {(plannedPayments.length > 0 || hasContact) && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                      {hasContact && (
                         <div
                           style={{
+                            padding: 12,
                             display: 'flex',
-                            alignItems: 'center',
-                            gap: 5,
-                            fontSize: 11,
-                            color: 'var(--ink-mid)',
-                            padding: '4px 8px',
-                            background: 'var(--bg-raised)',
-                            borderRadius: 6,
+                            flexDirection: 'column',
+                            flex: 1,
+                            gap: 8,
                           }}
                         >
-                          <HiOutlinePhone
+                          <div
                             style={{
-                              width: 11,
-                              height: 11,
-                              color: 'var(--ink-dim)',
-                              flexShrink: 0,
-                            }}
-                          />
-                          <span
-                            style={{
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              flex: 1,
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              justifyContent: 'space-between',
+                              gap: 8,
                             }}
                           >
-                            {v.contact_person && (
-                              <span style={{ color: 'var(--ink-mid)' }}>{v.contact_person}</span>
-                            )}
-                            {v.contact_person && v.contact_phone && (
-                              <span style={{ color: 'var(--ink-dim)' }}> · </span>
-                            )}
-                            {v.contact_phone && (
-                              <a
-                                href={`tel:${v.contact_phone}`}
+                            {(v as any).photo_url && (
+                              <img
+                                src={(v as any).photo_url}
+                                alt=""
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
                                 style={{
-                                  color: 'var(--gold-deep)',
-                                  fontWeight: 500,
-                                  textDecoration: 'none',
+                                  width: 36,
+                                  height: 36,
+                                  borderRadius: 8,
+                                  objectFit: 'cover',
+                                  flexShrink: 0,
+                                  border: '1px solid var(--line)',
+                                }}
+                              />
+                            )}
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <h3
+                                className="display"
+                                onClick={() => handleEdit(venue)}
+                                style={{
+                                  margin: 0,
+                                  fontSize: 16,
+                                  color: 'var(--ink-high)',
+                                  lineHeight: 1.25,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  cursor: 'pointer',
+                                }}
+                                onMouseEnter={(e) => {
+                                  (e.currentTarget as HTMLElement).style.color = 'var(--gold-deep)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  (e.currentTarget as HTMLElement).style.color = 'var(--ink-high)';
                                 }}
                               >
-                                {v.contact_phone}
-                              </a>
-                            )}
-                          </span>
-                        </div>
-                      )}
-                      {plannedPayments.slice(0, 2).map((payment) => (
-                        <div
-                          key={payment.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            background: 'var(--gold-glow)',
-                            border: '1px solid rgba(176,141,62,0.2)',
-                            borderRadius: 6,
-                            padding: '4px 8px',
-                            fontSize: 11,
-                          }}
-                        >
-                          <span
-                            className="mono"
+                                {venue.name}
+                              </h3>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 5,
+                                  marginTop: 3,
+                                  flexWrap: 'wrap',
+                                }}
+                              >
+                                {venueTypeLabel && (
+                                  <span
+                                    style={{
+                                      fontSize: 10,
+                                      color: 'var(--ink-low)',
+                                      textTransform: 'capitalize',
+                                      fontWeight: 500,
+                                      letterSpacing: 0.3,
+                                    }}
+                                  >
+                                    {venueTypeLabel}
+                                  </span>
+                                )}
+                                {v.city && (
+                                  <span style={{ fontSize: 10, color: 'var(--ink-dim)' }}>
+                                    · {v.city}
+                                  </span>
+                                )}
+                                {hasRooms && (
+                                  <span
+                                    style={{
+                                      fontSize: 9,
+                                      background: 'var(--gold-glow)',
+                                      color: 'var(--gold-deep)',
+                                      padding: '1px 6px',
+                                      borderRadius: 100,
+                                      fontWeight: 500,
+                                      border: '1px solid rgba(176,141,62,0.25)',
+                                    }}
+                                  >
+                                    Rooms
+                                  </span>
+                                )}
+                                {v.finance?.items?.[0]?.side && (
+                                  <span
+                                    style={{
+                                      fontSize: 9,
+                                      color: 'var(--ink-low)',
+                                      textTransform: 'capitalize',
+                                      border: '1px solid var(--line)',
+                                      padding: '1px 6px',
+                                      borderRadius: 100,
+                                    }}
+                                  >
+                                    {v.finance.items[0].side}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                              <button
+                                {...handleProps}
+                                type="button"
+                                style={{
+                                  ...(handleProps.style as object),
+                                  width: 30,
+                                  height: 30,
+                                  borderRadius: 8,
+                                  border: '1px solid var(--line)',
+                                  color: 'var(--ink-dim)',
+                                  background: 'transparent',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                                aria-label="Drag to reorder venue"
+                              >
+                                <HiOutlineDotsVertical style={{ width: 14, height: 14 }} />
+                              </button>
+                              {v.contact_phone && (
+                                <a
+                                  href={`tel:${v.contact_phone}`}
+                                  title={`Call ${v.contact_person || 'venue'}`}
+                                  style={{
+                                    width: 30,
+                                    height: 30,
+                                    borderRadius: 8,
+                                    border: '1px solid var(--line)',
+                                    color: 'var(--ink-dim)',
+                                    background: 'transparent',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.15s',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    const el = e.currentTarget as HTMLElement;
+                                    el.style.background = 'rgba(22,163,74,0.08)';
+                                    el.style.borderColor = 'rgba(22,163,74,0.4)';
+                                    el.style.color = '#16a34a';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    const el = e.currentTarget as HTMLElement;
+                                    el.style.background = 'transparent';
+                                    el.style.borderColor = 'var(--line)';
+                                    el.style.color = 'var(--ink-dim)';
+                                  }}
+                                >
+                                  <HiOutlinePhone style={{ width: 14, height: 14 }} />
+                                </a>
+                              )}
+                              {mapsUrl && (
+                                <a
+                                  href={mapsUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Get directions"
+                                  style={{
+                                    width: 30,
+                                    height: 30,
+                                    borderRadius: 8,
+                                    border: '1px solid var(--line)',
+                                    color: 'var(--ink-dim)',
+                                    background: 'transparent',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.15s',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    const el = e.currentTarget as HTMLElement;
+                                    el.style.background = 'rgba(29,78,216,0.08)';
+                                    el.style.borderColor = 'rgba(29,78,216,0.4)';
+                                    el.style.color = '#1d4ed8';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    const el = e.currentTarget as HTMLElement;
+                                    el.style.background = 'transparent';
+                                    el.style.borderColor = 'var(--line)';
+                                    el.style.color = 'var(--ink-dim)';
+                                  }}
+                                >
+                                  <HiOutlineMap style={{ width: 14, height: 14 }} />
+                                </a>
+                              )}
+                              <button
+                                onClick={() => handleEdit(venue)}
+                                title="Edit venue"
+                                style={{
+                                  width: 30,
+                                  height: 30,
+                                  borderRadius: 8,
+                                  border: '1px solid var(--line)',
+                                  color: 'var(--ink-dim)',
+                                  background: 'transparent',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'all 0.15s',
+                                }}
+                                onMouseEnter={(e) => {
+                                  const el = e.currentTarget as HTMLElement;
+                                  el.style.background = 'var(--gold-glow)';
+                                  el.style.borderColor = 'rgba(176,141,62,0.5)';
+                                  el.style.color = 'var(--gold-deep)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  const el = e.currentTarget as HTMLElement;
+                                  el.style.background = 'transparent';
+                                  el.style.borderColor = 'var(--line)';
+                                  el.style.color = 'var(--ink-dim)';
+                                }}
+                              >
+                                <HiOutlinePencilAlt style={{ width: 14, height: 14 }} />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div
                             style={{
-                              fontWeight: 500,
-                              color:
-                                payment.direction === 'inflow' ? '#0369a1' : 'var(--gold-deep)',
+                              display: 'grid',
+                              gridTemplateColumns: `repeat(${canSeeMoney ? 4 : 1}, 1fr)`,
+                              gap: 6,
+                              padding: '7px 10px',
+                              background: 'var(--bg-raised)',
+                              borderRadius: 8,
                             }}
                           >
-                            {formatPaymentAmount(payment.amount, payment.direction)}
-                          </span>
-                          <span style={{ color: 'var(--ink-low)' }}>
-                            {parseLocalDate(payment.due_date ?? payment.created_at).toLocaleDateString(
-                              'en-IN',
+                            <div>
+                              <div
+                                className="uppercase-eyebrow"
+                                style={{ marginBottom: 2, fontSize: 9 }}
+                              >
+                                {hasRooms ? 'Rooms · Sleeps' : 'Capacity'}
+                              </div>
+                              <div
+                                style={{ fontSize: 12, color: 'var(--ink-high)', fontWeight: 500 }}
+                              >
+                                {hasRooms ? (
+                                  venueRooms.length > 0 ? (
+                                    `${venueRooms.length} · ${totalSleeps}`
+                                  ) : (
+                                    <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>
+                                      —
+                                    </span>
+                                  )
+                                ) : v.capacity && Number(v.capacity) > 0 ? (
+                                  v.capacity
+                                ) : (
+                                  <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>
+                                    —
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {canSeeMoney && (
+                              <>
+                                <div>
+                                  <div
+                                    className="uppercase-eyebrow"
+                                    style={{ marginBottom: 2, fontSize: 9 }}
+                                  >
+                                    Committed
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: 12,
+                                      color: 'var(--ink-high)',
+                                      fontWeight: 500,
+                                    }}
+                                  >
+                                    {committed > 0 ? (
+                                      formatCurrency(committed)
+                                    ) : (
+                                      <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>
+                                        —
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div
+                                    className="uppercase-eyebrow"
+                                    style={{ marginBottom: 2, fontSize: 9 }}
+                                  >
+                                    Paid
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: 12,
+                                      color: paid > 0 ? '#16a34a' : 'var(--ink-dim)',
+                                      fontWeight: 500,
+                                    }}
+                                  >
+                                    {paid > 0 ? formatCurrency(paid) : '—'}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div
+                                    className="uppercase-eyebrow"
+                                    style={{ marginBottom: 2, fontSize: 9 }}
+                                  >
+                                    Due
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: 12,
+                                      color: outstanding > 0 ? '#ea580c' : 'var(--ink-dim)',
+                                      fontWeight: 500,
+                                    }}
+                                  >
+                                    {outstanding > 0 ? formatCurrency(outstanding) : '—'}
+                                  </div>
+                                </div>
+                              </>
                             )}
-                          </span>
+                          </div>
+
+                          {(plannedPayments.length > 0 || hasContact) && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                              {hasContact && (
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 5,
+                                    fontSize: 11,
+                                    color: 'var(--ink-mid)',
+                                    padding: '4px 8px',
+                                    background: 'var(--bg-raised)',
+                                    borderRadius: 6,
+                                  }}
+                                >
+                                  <HiOutlinePhone
+                                    style={{
+                                      width: 11,
+                                      height: 11,
+                                      color: 'var(--ink-dim)',
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                  <span
+                                    style={{
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      flex: 1,
+                                    }}
+                                  >
+                                    {v.contact_person && (
+                                      <span style={{ color: 'var(--ink-mid)' }}>
+                                        {v.contact_person}
+                                      </span>
+                                    )}
+                                    {v.contact_person && v.contact_phone && (
+                                      <span style={{ color: 'var(--ink-dim)' }}> · </span>
+                                    )}
+                                    {v.contact_phone && (
+                                      <a
+                                        href={`tel:${v.contact_phone}`}
+                                        style={{
+                                          color: 'var(--gold-deep)',
+                                          fontWeight: 500,
+                                          textDecoration: 'none',
+                                        }}
+                                      >
+                                        {v.contact_phone}
+                                      </a>
+                                    )}
+                                  </span>
+                                </div>
+                              )}
+                              {plannedPayments.slice(0, 2).map((payment) => (
+                                <div
+                                  key={payment.id}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    background: 'var(--gold-glow)',
+                                    border: '1px solid rgba(176,141,62,0.2)',
+                                    borderRadius: 6,
+                                    padding: '4px 8px',
+                                    fontSize: 11,
+                                  }}
+                                >
+                                  <span
+                                    className="mono"
+                                    style={{
+                                      fontWeight: 500,
+                                      color:
+                                        payment.direction === 'inflow'
+                                          ? '#0369a1'
+                                          : 'var(--gold-deep)',
+                                    }}
+                                  >
+                                    {formatPaymentAmount(payment.amount, payment.direction)}
+                                  </span>
+                                  <span style={{ color: 'var(--ink-low)' }}>
+                                    {parseLocalDate(
+                                      payment.due_date ?? payment.created_at,
+                                    ).toLocaleDateString('en-IN')}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {hasRooms && (
+                            <div style={{ paddingTop: 8, borderTop: '1px solid var(--line-soft)' }}>
+                              <div
+                                className="uppercase-eyebrow"
+                                style={{
+                                  marginBottom: 6,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  fontSize: 9,
+                                }}
+                              >
+                                <HiOutlineHome style={{ width: 10, height: 10 }} /> Accommodation
+                              </div>
+                              <VenueRoomsSection rooms={roomsByVenue[venue.id] ?? []} />
+                              <Link
+                                to="../accommodations"
+                                style={{ fontSize: 11, color: 'var(--gold-deep)', fontWeight: 500 }}
+                              >
+                                Manage room allocations →
+                              </Link>
+                            </div>
+                          )}
+
+                          {(v as any).notes && (
+                            <div
+                              style={{
+                                paddingTop: 8,
+                                borderTop: '1px solid var(--line-soft)',
+                                fontSize: 12,
+                                color: 'var(--ink-mid)',
+                                whiteSpace: 'pre-line',
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {(v as any).notes}
+                            </div>
+                          )}
+
+                          {hasEvents && (
+                            <div
+                              style={{
+                                paddingTop: 8,
+                                borderTop: '1px solid var(--line-soft)',
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: 4,
+                                alignItems: 'center',
+                              }}
+                            >
+                              <HiOutlineCalendar
+                                style={{ width: 11, height: 11, color: 'var(--ink-dim)' }}
+                              />
+                              {(v.events ?? []).map((event: any) => (
+                                <span
+                                  key={event.id}
+                                  style={{
+                                    fontSize: 10,
+                                    background: 'var(--gold-glow)',
+                                    color: 'var(--gold-deep)',
+                                    padding: '2px 8px',
+                                    borderRadius: 100,
+                                    border: '1px solid rgba(176,141,62,0.25)',
+                                  }}
+                                >
+                                  {event.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {canSeeMoney && v.expense_id && committed > 0 && (
+                            <button
+                              onClick={() => {
+                                handleEdit(v);
+                                setTimeout(() => setActiveTab(2), 50);
+                              }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                fontSize: 11,
+                                color: 'var(--gold-deep)',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                fontWeight: 500,
+                                marginTop: 'auto',
+                                paddingTop: 8,
+                                borderTop: '1px solid var(--line-soft)',
+                              }}
+                            >
+                              <HiOutlineCurrencyRupee style={{ width: 12, height: 12 }} /> Manage
+                              payments
+                            </button>
+                          )}
                         </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {hasRooms && (
-                    <div style={{ paddingTop: 8, borderTop: '1px solid var(--line-soft)' }}>
-                      <div
-                        className="uppercase-eyebrow"
-                        style={{
-                          marginBottom: 6,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          fontSize: 9,
-                        }}
-                      >
-                        <HiOutlineHome style={{ width: 10, height: 10 }} /> Accommodation
                       </div>
-                      <VenueRoomsSection rooms={roomsByVenue[venue.id] ?? []} />
-                      <Link
-                        to="../accommodations"
-                        style={{ fontSize: 11, color: 'var(--gold-deep)', fontWeight: 500 }}
-                      >
-                        Manage room allocations →
-                      </Link>
-                    </div>
-                  )}
-
-                  {(v as any).notes && (
-                    <div
-                      style={{
-                        paddingTop: 8,
-                        borderTop: '1px solid var(--line-soft)',
-                        fontSize: 12,
-                        color: 'var(--ink-mid)',
-                        whiteSpace: 'pre-line',
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      {(v as any).notes}
-                    </div>
-                  )}
-
-                  {hasEvents && (
-                    <div
-                      style={{
-                        paddingTop: 8,
-                        borderTop: '1px solid var(--line-soft)',
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 4,
-                        alignItems: 'center',
-                      }}
-                    >
-                      <HiOutlineCalendar
-                        style={{ width: 11, height: 11, color: 'var(--ink-dim)' }}
-                      />
-                      {(v.events ?? []).map((event: any) => (
-                        <span
-                          key={event.id}
-                          style={{
-                            fontSize: 10,
-                            background: 'var(--gold-glow)',
-                            color: 'var(--gold-deep)',
-                            padding: '2px 8px',
-                            borderRadius: 100,
-                            border: '1px solid rgba(176,141,62,0.25)',
-                          }}
-                        >
-                          {event.name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {canSeeMoney && v.expense_id && committed > 0 && (
-                    <button
-                      onClick={() => {
-                        handleEdit(v);
-                        setTimeout(() => setActiveTab(2), 50);
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        fontSize: 11,
-                        color: 'var(--gold-deep)',
-                        background: 'transparent',
-                        cursor: 'pointer',
-                        fontWeight: 500,
-                        marginTop: 'auto',
-                        paddingTop: 8,
-                        borderTop: '1px solid var(--line-soft)',
-                      }}
-                    >
-                      <HiOutlineCurrencyRupee style={{ width: 12, height: 12 }} /> Manage payments
-                    </button>
-                  )}
-                </div>
-              </div>
-                )}
-              </SortableItem>
-            );
-          })}
+                    )}
+                  </SortableItem>
+                );
+              })}
             </div>
           </SortableContext>
         </DndContext>
@@ -1589,16 +1765,23 @@ export default function Venues() {
                           />
                         </div>
 
-                        <div>
-                          <label className="label">Capacity</label>
-                          <input
-                            type="number"
-                            value={formData.capacity}
-                            onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-                            className="input"
-                            placeholder="Number of guests"
-                          />
-                        </div>
+                        {/* Seating capacity applies to event spaces. For stay
+                            venues, sleeping occupancy is derived per-night from the
+                            rooms, so we don't ask for a conflicting single number. */}
+                        {!formData.has_accommodation && (
+                          <div>
+                            <label className="label">Event capacity (seating)</label>
+                            <input
+                              type="number"
+                              value={formData.capacity}
+                              onChange={(e) =>
+                                setFormData({ ...formData, capacity: e.target.value })
+                              }
+                              className="input"
+                              placeholder="Max seated guests"
+                            />
+                          </div>
+                        )}
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                           <div>
@@ -1630,9 +1813,7 @@ export default function Venues() {
                           <label className="label">Notes</label>
                           <textarea
                             value={formData.notes}
-                            onChange={(e) =>
-                              setFormData({ ...formData, notes: e.target.value })
-                            }
+                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                             className="input"
                             rows={3}
                             placeholder="Any details about this venue…"
@@ -1643,179 +1824,195 @@ export default function Venues() {
 
                       {/* Right: Financial details */}
                       {canSeeMoney && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: 10,
-                            fontWeight: 600,
-                            color: 'var(--ink-dim)',
-                            letterSpacing: '0.08em',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          Financial Details
-                        </p>
-
-                        <div>
-                          <label className="label">Obligation Date</label>
-                          <DatePicker
-                            value={formData.expense_date}
-                            onChange={(v) => setFormData({ ...formData, expense_date: v })}
-                            placeholder="Obligation date"
-                          />
-                        </div>
-
-                        {canSeeSplits && (
-                        <div>
-                          <label className="label">Liability Side</label>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            {(['bride', 'groom', 'shared'] as const).map((side) => {
-                              const isActive = formData.side === side;
-                              const activeColors =
-                                side === 'bride'
-                                  ? {
-                                      border: '#be185d',
-                                      bg: 'rgba(190,24,93,0.08)',
-                                      color: '#be185d',
-                                    }
-                                  : side === 'groom'
-                                    ? {
-                                        border: '#1d4ed8',
-                                        bg: 'rgba(29,78,216,0.08)',
-                                        color: '#1d4ed8',
-                                      }
-                                    : {
-                                        border: 'var(--gold)',
-                                        bg: 'var(--gold-glow)',
-                                        color: 'var(--gold-deep)',
-                                      };
-                              return (
-                                <button
-                                  key={side}
-                                  type="button"
-                                  onClick={() => setFormData({ ...formData, side })}
-                                  style={{
-                                    flex: 1,
-                                    padding: '6px 4px',
-                                    borderRadius: 8,
-                                    fontSize: 11,
-                                    border: `2px solid ${isActive ? activeColors.border : 'var(--line)'}`,
-                                    background: isActive ? activeColors.bg : 'transparent',
-                                    color: isActive ? activeColors.color : 'var(--ink-mid)',
-                                    cursor: 'pointer',
-                                    fontWeight: isActive ? 500 : 400,
-                                  }}
-                                >
-                                  {side === 'shared'
-                                    ? 'Shared'
-                                    : side.charAt(0).toUpperCase() + side.slice(1)}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        )}
-
-                        {canSeeSplits && formData.side === 'shared' && (
-                          <SplitShare
-                            total={Number(formData.total_cost) || 0}
-                            bridePercentage={formData.bride_share_percentage}
-                            onChange={(pct) =>
-                              setFormData({ ...formData, bride_share_percentage: pct })
-                            }
-                          />
-                        )}
-
-                        {/* Payment summary — only when editing */}
-                        {editingVenue && (
-                          <div
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                          <p
                             style={{
-                              marginTop: 4,
-                              padding: 14,
-                              background: 'var(--bg-raised)',
-                              borderRadius: 10,
-                              border: '1px solid var(--line-soft)',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: 10,
+                              margin: 0,
+                              fontSize: 10,
+                              fontWeight: 600,
+                              color: 'var(--ink-dim)',
+                              letterSpacing: '0.08em',
+                              textTransform: 'uppercase',
                             }}
                           >
-                            <p
-                              style={{
-                                margin: 0,
-                                fontSize: 10,
-                                fontWeight: 600,
-                                color: 'var(--ink-dim)',
-                                letterSpacing: '0.08em',
-                                textTransform: 'uppercase',
-                              }}
-                            >
-                              Payment Summary
-                            </p>
-                            <div
-                              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}
-                            >
-                              <div>
-                                <div
-                                  style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}
-                                >
-                                  Committed
-                                </div>
-                                <div
-                                  style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-mid)' }}
-                                >
-                                  {formatCurrency(paymentCommitted)}
-                                </div>
-                              </div>
-                              <div>
-                                <div
-                                  style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}
-                                >
-                                  Paid
-                                </div>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>
-                                  {formatCurrency(paymentPaid)}
-                                </div>
-                              </div>
-                              <div style={{ gridColumn: '1 / -1' }}>
-                                <div
-                                  style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}
-                                >
-                                  Outstanding
-                                </div>
-                                <div
-                                  style={{
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    color: paymentOutstanding > 0 ? '#ea580c' : 'var(--ink-dim)',
-                                  }}
-                                >
-                                  {formatCurrency(paymentOutstanding)}
-                                </div>
+                            Financial Details
+                          </p>
+
+                          <div>
+                            <label className="label">Obligation Date</label>
+                            <DatePicker
+                              value={formData.expense_date}
+                              onChange={(v) => setFormData({ ...formData, expense_date: v })}
+                              placeholder="Obligation date"
+                            />
+                          </div>
+
+                          {canSeeSplits && (
+                            <div>
+                              <label className="label">Liability Side</label>
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                {(['bride', 'groom', 'shared'] as const).map((side) => {
+                                  const isActive = formData.side === side;
+                                  const activeColors =
+                                    side === 'bride'
+                                      ? {
+                                          border: '#be185d',
+                                          bg: 'rgba(190,24,93,0.08)',
+                                          color: '#be185d',
+                                        }
+                                      : side === 'groom'
+                                        ? {
+                                            border: '#1d4ed8',
+                                            bg: 'rgba(29,78,216,0.08)',
+                                            color: '#1d4ed8',
+                                          }
+                                        : {
+                                            border: 'var(--gold)',
+                                            bg: 'var(--gold-glow)',
+                                            color: 'var(--gold-deep)',
+                                          };
+                                  return (
+                                    <button
+                                      key={side}
+                                      type="button"
+                                      onClick={() => setFormData({ ...formData, side })}
+                                      style={{
+                                        flex: 1,
+                                        padding: '6px 4px',
+                                        borderRadius: 8,
+                                        fontSize: 11,
+                                        border: `2px solid ${isActive ? activeColors.border : 'var(--line)'}`,
+                                        background: isActive ? activeColors.bg : 'transparent',
+                                        color: isActive ? activeColors.color : 'var(--ink-mid)',
+                                        cursor: 'pointer',
+                                        fontWeight: isActive ? 500 : 400,
+                                      }}
+                                    >
+                                      {side === 'shared'
+                                        ? 'Shared'
+                                        : side.charAt(0).toUpperCase() + side.slice(1)}
+                                    </button>
+                                  );
+                                })}
                               </div>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => setActiveTab(2)}
+                          )}
+
+                          {canSeeSplits && formData.side === 'shared' && (
+                            <SplitShare
+                              total={Number(formData.total_cost) || 0}
+                              bridePercentage={formData.bride_share_percentage}
+                              onChange={(pct) =>
+                                setFormData({ ...formData, bride_share_percentage: pct })
+                              }
+                            />
+                          )}
+
+                          {/* Payment summary — only when editing */}
+                          {editingVenue && (
+                            <div
                               style={{
+                                marginTop: 4,
+                                padding: 14,
+                                background: 'var(--bg-raised)',
+                                borderRadius: 10,
+                                border: '1px solid var(--line-soft)',
                                 display: 'flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                fontSize: 12,
-                                color: 'var(--gold-deep)',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                fontWeight: 500,
-                                padding: 0,
+                                flexDirection: 'column',
+                                gap: 10,
                               }}
                             >
-                              <HiOutlineCurrencyRupee style={{ width: 13, height: 13 }} /> Manage
-                              payments →
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                              <p
+                                style={{
+                                  margin: 0,
+                                  fontSize: 10,
+                                  fontWeight: 600,
+                                  color: 'var(--ink-dim)',
+                                  letterSpacing: '0.08em',
+                                  textTransform: 'uppercase',
+                                }}
+                              >
+                                Payment Summary
+                              </p>
+                              <div
+                                style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}
+                              >
+                                <div>
+                                  <div
+                                    style={{
+                                      fontSize: 10,
+                                      color: 'var(--ink-dim)',
+                                      marginBottom: 2,
+                                    }}
+                                  >
+                                    Committed
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: 13,
+                                      fontWeight: 600,
+                                      color: 'var(--ink-mid)',
+                                    }}
+                                  >
+                                    {formatCurrency(paymentCommitted)}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div
+                                    style={{
+                                      fontSize: 10,
+                                      color: 'var(--ink-dim)',
+                                      marginBottom: 2,
+                                    }}
+                                  >
+                                    Paid
+                                  </div>
+                                  <div style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>
+                                    {formatCurrency(paymentPaid)}
+                                  </div>
+                                </div>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                  <div
+                                    style={{
+                                      fontSize: 10,
+                                      color: 'var(--ink-dim)',
+                                      marginBottom: 2,
+                                    }}
+                                  >
+                                    Outstanding
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: 13,
+                                      fontWeight: 600,
+                                      color: paymentOutstanding > 0 ? '#ea580c' : 'var(--ink-dim)',
+                                    }}
+                                  >
+                                    {formatCurrency(paymentOutstanding)}
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setActiveTab(2)}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  fontSize: 12,
+                                  color: 'var(--gold-deep)',
+                                  background: 'transparent',
+                                  cursor: 'pointer',
+                                  fontWeight: 500,
+                                  padding: 0,
+                                }}
+                              >
+                                <HiOutlineCurrencyRupee style={{ width: 13, height: 13 }} /> Manage
+                                payments →
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}

@@ -25,7 +25,11 @@ const allowedOrigins: string[] = [
   'http://localhost:5173',
   'http://localhost:3000',
   ...(env.FRONTEND_URL ? [env.FRONTEND_URL] : []),
-  ...[process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL]
+  ...[
+    process.env.VERCEL_URL,
+    process.env.VERCEL_BRANCH_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+  ]
     .filter((host): host is string => Boolean(host))
     .map((host) => `https://${host}`),
 ];
@@ -68,6 +72,8 @@ const PUBLIC_PATHS: string[] = [
   '/api/v1/auth/reset-password',
   '/api/v1/auth/verify-email',
   '/api/v1/setup-status',
+  // Guarded by CRON_SECRET inside the handler, not a user token
+  '/api/v1/cron/daily-digest',
 ];
 
 // Public path prefixes (any path starting with these is public)
@@ -86,6 +92,7 @@ const PROTECTED_PREFIXES: string[] = [
   '/api/v1/vendors',
   '/api/v1/expense',
   '/api/v1/tasks',
+  '/api/v1/reminders',
   '/api/v1/website-content',
   '/api/v1/members',
   '/api/v1/pages',

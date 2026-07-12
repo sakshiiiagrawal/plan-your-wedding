@@ -75,10 +75,7 @@ async function optimisticRemoveRow(
 }
 
 /** Restore every cache captured by the optimistic helpers (use in onError). */
-function rollbackOptimistic(
-  queryClient: QueryClient,
-  context: OptimisticContext | undefined,
-) {
+function rollbackOptimistic(queryClient: QueryClient, context: OptimisticContext | undefined) {
   context?.snapshots.forEach(([key, data]) => queryClient.setQueryData(key, data));
 }
 
@@ -203,7 +200,7 @@ export interface PublicPagePayload {
   title: string;
   template: string;
   palette: string;
-   
+
   config: Record<string, any>;
 }
 
@@ -243,10 +240,7 @@ export const useCreatePage = () => {
       // Seed the cache immediately so the newly created page is present
       // before the invalidated refetch lands (avoids a stale-list render
       // where the selection falls back to the home page).
-      queryClient.setQueryData<PublicPageRecord[]>(['pages'], (old) => [
-        ...(old ?? []),
-        created,
-      ]);
+      queryClient.setQueryData<PublicPageRecord[]>(['pages'], (old) => [...(old ?? []), created]);
       invalidatePages(queryClient);
     },
   });
@@ -1091,8 +1085,7 @@ export interface BudgetPageData {
 export const useBudgetPageData = () =>
   useQuery<BudgetPageData>({
     queryKey: ['expense', 'page-data'],
-    queryFn: () =>
-      api.get(`/expense/page-data?today=${todayLocal()}`).then((res) => res.data),
+    queryFn: () => api.get(`/expense/page-data?today=${todayLocal()}`).then((res) => res.data),
   });
 
 export const useExpenseOverview = () =>
@@ -1249,8 +1242,7 @@ export const useExpenseOutstanding = () =>
 export const useExpenseAlerts = () =>
   useQuery<ExpenseAlerts>({
     queryKey: ['expense', 'alerts'],
-    queryFn: () =>
-      api.get(`/expense/alerts?today=${todayLocal()}`).then((res) => res.data),
+    queryFn: () => api.get(`/expense/alerts?today=${todayLocal()}`).then((res) => res.data),
   });
 
 export const useSourcePayments = (sourceType: 'vendor' | 'venue', sourceId?: string | null) =>
@@ -1407,7 +1399,10 @@ export const useDeleteExpensePayment = () => {
     },
     onError: (_error, _variables, context) => {
       if (!context?.expenseId) return;
-      queryClient.setQueryData(['expense', context.expenseId, 'payments'], context.previousPayments);
+      queryClient.setQueryData(
+        ['expense', context.expenseId, 'payments'],
+        context.previousPayments,
+      );
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['expense', variables.expenseId, 'payments'] });
@@ -1525,6 +1520,30 @@ export const useTask = (id?: string | null) =>
     enabled: !!id,
   });
 
+export interface ReminderItem {
+  kind: 'task' | 'payment';
+  id: string;
+  title: string;
+  date: string;
+  amount?: number;
+}
+
+export interface RemindersFeed {
+  overdue: ReminderItem[];
+  today: ReminderItem[];
+  upcoming: ReminderItem[];
+}
+
+// Topbar bell feed. A live status indicator (overdue + due today + coming up),
+// not an unread inbox — no read state anywhere. Payment freshness rides
+// staleTime rather than invalidation across every finance mutation.
+export const useReminders = () =>
+  useQuery<RemindersFeed>({
+    queryKey: ['reminders'],
+    queryFn: () => api.get('/reminders').then((res) => res.data),
+    staleTime: 60_000,
+  });
+
 export const useCreateTask = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -1532,6 +1551,7 @@ export const useCreateTask = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['reminders'] });
     },
   });
 };
@@ -1546,6 +1566,7 @@ export const useUpdateTask = () => {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['reminders'] });
     },
   });
 };
@@ -1562,6 +1583,7 @@ export const useUpdateTaskStatus = () => {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['reminders'] });
     },
   });
 };
@@ -1575,6 +1597,7 @@ export const useDeleteTask = () => {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['reminders'] });
     },
   });
 };
@@ -1597,7 +1620,8 @@ export const useResetPassword = () =>
 
 export const useVerifyEmail = () =>
   useMutation({
-    mutationFn: (token: string) => api.post('/auth/verify-email', { token }).then((res) => res.data),
+    mutationFn: (token: string) =>
+      api.post('/auth/verify-email', { token }).then((res) => res.data),
   });
 
 export const useResendVerification = () =>
@@ -1607,7 +1631,13 @@ export const useResendVerification = () =>
 
 export const useUpdateProfile = () =>
   useMutation({
-    mutationFn: (updates: { name?: string; email?: string; slug?: string; currency?: string }) =>
+    mutationFn: (updates: {
+      name?: string;
+      email?: string;
+      slug?: string;
+      currency?: string;
+      reminder_prefs?: { email_digest: boolean; payment_lead_days: number };
+    }) =>
       api
         .patch<{
           slug?: string | null;
@@ -1675,8 +1705,7 @@ export const useInviteMember = () => {
 
 export const useAcceptInvite = () =>
   useMutation({
-    mutationFn: (token: string) =>
-      api.post('/members/accept', { token }).then((res) => res.data),
+    mutationFn: (token: string) => api.post('/members/accept', { token }).then((res) => res.data),
   });
 
 export interface PendingInvite {
@@ -1699,8 +1728,7 @@ export const usePendingInvites = (enabled = true) =>
 export const useAcceptPendingInvite = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      api.post(`/members/pending/${id}/accept`).then((res) => res.data),
+    mutationFn: (id: string) => api.post(`/members/pending/${id}/accept`).then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-invites'] });
       queryClient.invalidateQueries({ queryKey: ['weddings'] });

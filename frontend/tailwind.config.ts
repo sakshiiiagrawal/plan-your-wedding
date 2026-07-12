@@ -51,6 +51,18 @@ export default {
           600: '#4E342E',
         },
         // Token-bound semantic colors (var()-backed — no opacity modifiers)
+        bride: {
+          DEFAULT: 'var(--bride)',
+          deep: 'var(--bride-deep)',
+          soft: 'var(--bride-soft)',
+          line: 'var(--bride-line)',
+        },
+        groom: {
+          DEFAULT: 'var(--groom)',
+          deep: 'var(--groom-deep)',
+          soft: 'var(--groom-soft)',
+          line: 'var(--groom-line)',
+        },
         ink: {
           high: 'var(--ink-high)',
           mid: 'var(--ink-mid)',

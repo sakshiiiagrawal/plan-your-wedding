@@ -526,10 +526,7 @@ async function assertRoomOwnership(roomId: string, ownerId: string): Promise<voi
   if (owner !== ownerId) throw new NotFoundError('Room not found');
 }
 
-async function assertAllocationOwnership(
-  allocationId: string,
-  ownerId: string,
-): Promise<void> {
+async function assertAllocationOwnership(allocationId: string, ownerId: string): Promise<void> {
   const owner = await repo.findAllocationOwner(allocationId);
   if (owner !== ownerId) throw new NotFoundError('Allocation not found');
 }
@@ -605,30 +602,23 @@ export async function updateRoom(
 
   // If lowering capacity, make sure it doesn't go below current occupancy
   if (payload.capacity !== undefined && existing) {
-    const occupancy = allocs.reduce(
-      (sum, a) => sum + ((a.guest_ids as string[])?.length ?? 0),
-      0,
-    );
+    const occupancy = allocs.reduce((sum, a) => sum + ((a.guest_ids as string[])?.length ?? 0), 0);
     if (payload.capacity < occupancy) {
       throw new BadRequestError(
-        `Cannot set capacity to ${payload.capacity} — room currently has ${occupancy} guest${occupancy !== 1 ? 's' : ''} assigned.`,
+        `Cannot set occupancy to ${payload.capacity} — room currently has ${occupancy} guest${occupancy !== 1 ? 's' : ''} assigned.`,
       );
     }
   }
 
   // If narrowing the booked window, every existing stay must still fit inside it.
-  if (
-    (payload.check_in_date !== undefined || payload.check_out_date !== undefined) &&
-    existing
-  ) {
+  if ((payload.check_in_date !== undefined || payload.check_out_date !== undefined) && existing) {
     const roomIn = payload.check_in_date ?? existing.check_in_date ?? null;
     const roomOut = payload.check_out_date ?? existing.check_out_date ?? null;
     assertDateOrder(roomIn, roomOut, 'Room booked window');
     const offending = allocs
       .filter((a) => ((a.guest_ids as string[]) ?? []).length > 0)
       .filter(
-        (a) =>
-          (roomIn && a.check_in_date < roomIn) || (roomOut && a.check_out_date > roomOut),
+        (a) => (roomIn && a.check_in_date < roomIn) || (roomOut && a.check_out_date > roomOut),
       )
       .sort((a, b) => a.check_in_date.localeCompare(b.check_in_date))[0];
     if (offending) {
@@ -711,7 +701,7 @@ async function assertAllocationAllowed(
   const existingOccupancy = Number(occRows[0]?.occupancy ?? 0);
   if (existingOccupancy + guestIds.length > room.capacity) {
     throw new BadRequestError(
-      `Room ${room.room_number} has a capacity of ${room.capacity}. ${existingOccupancy} guest${existingOccupancy !== 1 ? 's are' : ' is'} already assigned for an overlapping stay, and this would add ${guestIds.length} more.`,
+      `Room ${room.room_number} sleeps ${room.capacity}. ${existingOccupancy} guest${existingOccupancy !== 1 ? 's are' : ' is'} already assigned for an overlapping stay, and this would add ${guestIds.length} more.`,
     );
   }
 
@@ -828,7 +818,14 @@ export async function updateAllocation(
               check_out_date = $5, notes = $6, updated_at = NOW()
         WHERE id = $1
         RETURNING *`,
-      [id, merged.room_id, merged.guest_ids, merged.check_in_date, merged.check_out_date, merged.notes],
+      [
+        id,
+        merged.room_id,
+        merged.guest_ids,
+        merged.check_in_date,
+        merged.check_out_date,
+        merged.notes,
+      ],
     );
     return rows[0];
   });
@@ -1099,8 +1096,7 @@ async function processAllocations(
       group.checkOutDate,
     );
     const exact = overlapping.find(
-      (a) =>
-        a.check_in_date === group.checkInDate && a.check_out_date === group.checkOutDate,
+      (a) => a.check_in_date === group.checkInDate && a.check_out_date === group.checkOutDate,
     );
     const mergedIds = exact
       ? Array.from(new Set([...((exact.guest_ids as string[]) ?? []), ...group.guestIds]))
@@ -1118,7 +1114,7 @@ async function processAllocations(
       errors.push({
         row: group.firstRow,
         guest: group.guestNames.join(', '),
-        error: `Room ${group.roomNumber} has a capacity of ${capacity}, but ${group.checkInDate} → ${group.checkOutDate} would have ${finalCount} guest${finalCount !== 1 ? 's' : ''} across overlapping stays.`,
+        error: `Room ${group.roomNumber} sleeps ${capacity}, but ${group.checkInDate} → ${group.checkOutDate} would have ${finalCount} guest${finalCount !== 1 ? 's' : ''} across overlapping stays.`,
       });
       continue;
     }
@@ -1144,9 +1140,7 @@ async function processAllocations(
       exact?.id,
     );
     const conflictedIds = new Set(
-      dbConflicts.flatMap((c) =>
-        (c.guest_ids ?? []).filter((id) => group.guestIds.includes(id)),
-      ),
+      dbConflicts.flatMap((c) => (c.guest_ids ?? []).filter((id) => group.guestIds.includes(id))),
     );
     pendingGuestWindows
       .filter(

@@ -48,7 +48,14 @@ function scheduleBadge(paymentDate: string) {
       </span>
     );
   }
-  return <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Scheduled</span>;
+  return (
+    <span
+      className="text-xs px-1.5 py-0.5 rounded"
+      style={{ background: 'var(--info-soft)', color: 'var(--info)' }}
+    >
+      Scheduled
+    </span>
+  );
 }
 
 export default function ExpensePaymentsTab({
@@ -134,7 +141,9 @@ export default function ExpensePaymentsTab({
           <div className="text-sm text-ink-low">Net Paid</div>
         </div>
         <div className="card text-center">
-          <div className="text-2xl font-bold text-blue-600">{formatCurrency(scheduledTotal)}</div>
+          <div className="text-2xl font-bold" style={{ color: 'var(--info)' }}>
+            {formatCurrency(scheduledTotal)}
+          </div>
           <div className="text-sm text-ink-low">Scheduled</div>
           <div className="text-[11px] text-ink-dim mt-0.5">already part of Outstanding</div>
         </div>
@@ -167,8 +176,13 @@ export default function ExpensePaymentsTab({
 
       {scheduledPayments.length > 0 && (
         <div id="scheduled-payments" className="card overflow-hidden p-0">
-          <div className="p-4 bg-blue-50 border-b border-blue-100">
-            <h3 className="font-semibold text-blue-800">Scheduled Payments</h3>
+          <div
+            className="p-4 border-b border-line-soft"
+            style={{ background: 'var(--info-soft)' }}
+          >
+            <h3 className="font-semibold" style={{ color: 'var(--info)' }}>
+              Scheduled Payments
+            </h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -293,9 +307,10 @@ export default function ExpensePaymentsTab({
                         {payment.expense.source_type}
                       </td>
                       <td
-                        className={`p-4 text-right font-medium ${
-                          payment.direction === 'inflow' ? 'text-sky-700' : 'text-green-700'
-                        }`}
+                        className="p-4 text-right font-medium"
+                        style={{
+                          color: payment.direction === 'inflow' ? 'var(--info)' : 'var(--ok)',
+                        }}
                       >
                         {formatPaymentAmount(payment.amount, payment.direction, formatCurrency)}
                       </td>

@@ -10,10 +10,16 @@
 BEGIN;
 
 ALTER TABLE expense_items
-  ADD COLUMN planned_amount NUMERIC(12, 2) NOT NULL DEFAULT 0
-  CONSTRAINT expense_items_planned_amount_nonnegative CHECK (planned_amount >= 0);
+  ADD COLUMN IF NOT EXISTS planned_amount NUMERIC(12, 2) NOT NULL DEFAULT 0;
 
-UPDATE expense_items SET planned_amount = amount;
+-- Constraint added separately so a DB where the column pre-existed (added out of
+-- band) still gets it. IF NOT EXISTS can't guard ADD CONSTRAINT, so drop-then-add.
+ALTER TABLE expense_items DROP CONSTRAINT IF EXISTS expense_items_planned_amount_nonnegative;
+ALTER TABLE expense_items
+  ADD CONSTRAINT expense_items_planned_amount_nonnegative CHECK (planned_amount >= 0);
+
+-- Backfill only untouched rows so re-running never clobbers user-entered planned values.
+UPDATE expense_items SET planned_amount = amount WHERE planned_amount = 0;
 
 -- Dependents first, then the base item view (same order as 011).
 DROP VIEW IF EXISTS finance_side_liability_rollups_v;

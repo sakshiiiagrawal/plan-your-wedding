@@ -201,12 +201,10 @@ export async function createUser(input: RegisterInput): Promise<UserRow> {
       { section_name: 'our_story', content: { story: '' }, display_order: 3 },
       { section_name: 'gallery', content: { images: [] }, display_order: 4 },
     ];
-    await supabase
-      .from('website_content')
-      .upsert(
-        seedSections.map((s) => ({ ...s, user_id: newUser.id })),
-        { onConflict: 'section_name,user_id' },
-      );
+    await supabase.from('website_content').upsert(
+      seedSections.map((s) => ({ ...s, user_id: newUser.id })),
+      { onConflict: 'section_name,user_id' },
+    );
 
     // Every wedding starts with a home page (the multi-page public site model);
     // more pages (e.g. an invitation) are added from the Site Studio.
@@ -333,7 +331,7 @@ export async function updateProfile(
   ownerId: string,
   updates: UpdateProfileInput,
 ): Promise<UserRow & { verification_email_sent?: boolean }> {
-  const { name, email, slug, currency } = updates;
+  const { name, email, slug, currency, reminder_prefs } = updates;
 
   const current = await findUserById(ownerId);
   if (!current) throw new UnauthorizedError('User not found');
@@ -352,12 +350,18 @@ export async function updateProfile(
   }
 
   if (slug) {
-    const { data } = await supabase.from('users').select('id').eq('slug', slug).neq('id', ownerId).limit(1);
+    const { data } = await supabase
+      .from('users')
+      .select('id')
+      .eq('slug', slug)
+      .neq('id', ownerId)
+      .limit(1);
     if (data && data.length > 0) throw new ConflictError('That URL is already taken');
   }
 
-  const patch: Record<string, string | boolean> = {};
+  const patch: Record<string, string | boolean | object> = {};
   if (name) patch.name = name;
+  if (reminder_prefs) patch.reminder_prefs = reminder_prefs;
   if (emailChanged) {
     patch.email = normalizedEmail;
     // A changed address is unproven until re-verified — pending-invite
@@ -378,7 +382,7 @@ export async function updateProfile(
     .update(patch)
     .eq('id', ownerId)
     // email_verified included so the client sees the flag flip on email change
-    .select('id, email, name, slug, currency, email_verified')
+    .select('id, email, name, slug, currency, email_verified, reminder_prefs')
     .single();
 
   if (error) throw error;

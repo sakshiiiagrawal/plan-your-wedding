@@ -549,6 +549,7 @@ export default function Events() {
               <div
                 key={event.id}
                 onClick={() => setDetailEvent(event)}
+                className="evt-hover-parent"
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '100px 1fr auto',
@@ -643,6 +644,7 @@ export default function Events() {
                       handleEdit(event);
                     }}
                     title="Edit event"
+                    className="evt-hover-edit"
                     style={{
                       padding: 6,
                       borderRadius: 8,
@@ -762,7 +764,7 @@ export default function Events() {
                       <div
                         key={event.id}
                         onClick={() => setDetailEvent(event)}
-                        className="card"
+                        className="card evt-hover-parent"
                         style={{
                           position: 'absolute',
                           left: a.x,
@@ -805,6 +807,7 @@ export default function Events() {
                               handleEdit(event);
                             }}
                             title="Edit event"
+                            className="evt-hover-edit"
                             style={{
                               position: 'absolute',
                               top: 8,

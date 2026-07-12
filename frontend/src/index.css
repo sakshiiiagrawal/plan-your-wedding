@@ -27,6 +27,17 @@
   --gold-soft: #c2a45c;
   --gold-glow: rgba(176, 141, 62, 0.16);
 
+  /* Bride / groom side identity — rosewood & bronze, CVD-validated pair.
+     Base steps are for marks/fills (≥3:1 on panel); -deep steps are text-safe (≥4.5:1). */
+  --bride: #97404e;
+  --bride-deep: #74232f;
+  --bride-soft: rgba(151, 64, 78, 0.07);
+  --bride-line: rgba(151, 64, 78, 0.3);
+  --groom: #b08d3e;
+  --groom-deep: #7e6227;
+  --groom-soft: rgba(176, 141, 62, 0.1);
+  --groom-line: rgba(176, 141, 62, 0.38);
+
   /* Primary (deep burgundy) — btn-primary stops hardcoding hex */
   --primary: #6b1f2a;
   --primary-hover: #55161f;
@@ -38,6 +49,7 @@
   --warn: #a85f00;
   --err: #b3372f;
   --info: #2b5ea7;
+  --info-soft: rgba(43, 94, 167, 0.09);
 
   /* Type */
   --font-display: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
@@ -937,4 +949,13 @@ a:focus-visible,
     max-height: none !important;
     overflow: visible !important;
   }
+}
+
+/* Reveal-on-hover edit buttons (Events timeline/cards) */
+.evt-hover-edit {
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.evt-hover-parent:hover .evt-hover-edit {
+  opacity: 1;
 }

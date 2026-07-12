@@ -32,8 +32,7 @@ export const registerSchema = z
     weddingDate: z.string().optional(),
   })
   .refine(
-    (v) =>
-      v.slug !== undefined || v.inviteToken !== undefined || v.accountType === 'collaborator',
+    (v) => v.slug !== undefined || v.inviteToken !== undefined || v.accountType === 'collaborator',
     {
       message: 'A wedding URL is required',
       path: ['slug'],
@@ -60,6 +59,12 @@ export const updateProfileSchema = z.object({
   email: z.string().email().optional(),
   slug: weddingSlugSchema.optional(),
   currency: z.enum(CURRENCY_CODES).optional(),
+  reminder_prefs: z
+    .object({
+      email_digest: z.boolean(),
+      payment_lead_days: z.union([z.literal(1), z.literal(3), z.literal(7)]),
+    })
+    .optional(),
 });
 
 export const changePasswordSchema = z.object({

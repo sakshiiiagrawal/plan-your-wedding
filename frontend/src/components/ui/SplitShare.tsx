@@ -9,12 +9,12 @@ interface SplitShareProps {
   disabled?: boolean;
 }
 
-const BRIDE_COLOR = '#be185d';
-const BRIDE_BG = 'rgba(190,24,93,0.05)';
-const BRIDE_BORDER = 'rgba(190,24,93,0.35)';
-const GROOM_COLOR = '#1d4ed8';
-const GROOM_BG = 'rgba(29,78,216,0.05)';
-const GROOM_BORDER = 'rgba(29,78,216,0.35)';
+const BRIDE_COLOR = 'var(--bride-deep)';
+const BRIDE_BG = 'var(--bride-soft)';
+const BRIDE_BORDER = 'var(--bride-line)';
+const GROOM_COLOR = 'var(--groom-deep)';
+const GROOM_BG = 'var(--groom-soft)';
+const GROOM_BORDER = 'var(--groom-line)';
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 const roundPct = (n: number) => Math.round(n * 100) / 100;

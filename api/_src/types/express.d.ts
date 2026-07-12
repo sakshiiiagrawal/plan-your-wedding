@@ -11,6 +11,8 @@ export interface AuthenticatedUser {
   allowedSections: string[] | null;
   /** Fine-grained grants (e.g. 'budget:splits', 'members:manage'). Admins implicitly hold all. */
   permissions: string[];
+  /** Reminder settings (users.reminder_prefs). Always the logged-in user's own, never the wedding owner's. */
+  reminderPrefs: { email_digest?: boolean; payment_lead_days?: number } | null;
 }
 
 declare global {

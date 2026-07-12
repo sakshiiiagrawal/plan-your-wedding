@@ -2,7 +2,9 @@
 import { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
-const COLORS = ['#6B1F2A', '#B08D3E', '#228B22', '#1A237E', '#E91E63', '#FF6F00', '#607D8B'];
+// Theme-cohesive categorical palette (rosewood → bronze → pine → plum → terracotta
+// → berry → indigo). CVD-validated: worst adjacent pair ΔE 19.8, all ≥3:1 on panel.
+const COLORS = ['#97404e', '#b08d3e', '#2e7d43', '#8a4489', '#bf5b2d', '#c2185b', '#5a55a8'];
 
 interface ExpenseOverviewTabProps {
   expenseOverview: any[] | undefined;

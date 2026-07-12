@@ -30,13 +30,14 @@ import {
   HiOutlineTrash,
   HiOutlineViewList,
   HiOutlineViewGrid,
+  HiOutlineBell,
 } from 'react-icons/hi';
 import { SectionHeader, KPICard, SegmentedControl } from '../../components/ui';
 import DatePicker from '../../components/ui/DatePicker';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
-import { formatDate } from '../../utils/date';
+import { formatDate, parseLocalDate, todayLocal } from '../../utils/date';
 
 interface TaskFormData {
   title: string;
@@ -46,6 +47,9 @@ interface TaskFormData {
   status: string;
   assigned_to: string;
   event_id: string | null;
+  reminder_offset_days: number | null;
+  reminder_date: string;
+  reminder_repeat: string;
 }
 
 const DEFAULT_FORM: TaskFormData = {
@@ -56,6 +60,9 @@ const DEFAULT_FORM: TaskFormData = {
   status: 'pending',
   assigned_to: '',
   event_id: null,
+  reminder_offset_days: null,
+  reminder_date: '',
+  reminder_repeat: 'once',
 };
 
 function getTaskFormState(task?: any): TaskFormData {
@@ -68,7 +75,39 @@ function getTaskFormState(task?: any): TaskFormData {
     status: task.status || 'pending',
     assigned_to: task.assigned_to || '',
     event_id: task.event_id || null,
+    reminder_offset_days: task.reminder_offset_days ?? null,
+    reminder_date: task.reminder_date || '',
+    reminder_repeat: task.reminder_repeat || 'once',
   };
+}
+
+// Effective reminder fire date: absolute date wins, else offset back from due date.
+function reminderFireDate(task: any): string | null {
+  if (task.reminder_date) return task.reminder_date;
+  if (task.due_date && task.reminder_offset_days != null) {
+    const d = parseLocalDate(task.due_date);
+    d.setDate(d.getDate() - task.reminder_offset_days);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  return null;
+}
+
+// Small bell shown on cards/rows when a reminder is set; gold once it has fired.
+function ReminderBell({ task }: { task: any }) {
+  const fire = reminderFireDate(task);
+  if (!fire) return null;
+  const active = fire <= todayLocal() && task.status !== 'completed';
+  return (
+    <HiOutlineBell
+      title={`Reminder ${fmtDate(fire)}`}
+      style={{
+        width: 12,
+        height: 12,
+        flexShrink: 0,
+        color: active ? 'var(--gold)' : 'var(--ink-dim)',
+      }}
+    />
+  );
 }
 
 const PRIORITY_COLOR: Record<string, string> = {
@@ -212,11 +251,14 @@ function DraggableTaskCard({
         >
           {task.priority}
         </span>
-        {task.due_date && (
-          <span className="mono" style={{ fontSize: 10, color: 'var(--ink-dim)' }}>
-            {fmtDate(task.due_date)}
-          </span>
-        )}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <ReminderBell task={task} />
+          {task.due_date && (
+            <span className="mono" style={{ fontSize: 10, color: 'var(--ink-dim)' }}>
+              {fmtDate(task.due_date)}
+            </span>
+          )}
+        </span>
       </div>
 
       {task.assigned_to && (
@@ -373,6 +415,9 @@ export default function Tasks() {
   const [editingTask, setEditingTask] = useState<any>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // "Custom date…" picked in the reminder select but no date chosen yet —
+  // keeps the select on 'custom' while the DatePicker is still empty.
+  const [customReminder, setCustomReminder] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -410,11 +455,13 @@ export default function Tasks() {
   const resetForm = () => {
     setFormData(DEFAULT_FORM);
     setEditingTask(null);
+    setCustomReminder(false);
   };
 
   const handleEdit = (task: any) => {
     setEditingTask(task);
     setFormData(getTaskFormState(task));
+    setCustomReminder(!!task.reminder_date);
     setShowAddModal(true);
   };
 
@@ -422,12 +469,18 @@ export default function Tasks() {
     e.preventDefault();
     // Guard against double-fired submit events creating duplicate tasks
     if (createMutation.isPending || updateMutation.isPending) return;
+    // A relative reminder without a due date can never fire — drop it rather
+    // than persist a dead setting (the select disables these options too).
+    const payload =
+      !formData.due_date && formData.reminder_offset_days != null
+        ? { ...formData, reminder_offset_days: null }
+        : formData;
     try {
       if (editingTask) {
-        await updateMutation.mutateAsync({ id: editingTask.id, ...formData });
+        await updateMutation.mutateAsync({ id: editingTask.id, ...payload });
         toast.success('Task updated!');
       } else {
-        await createMutation.mutateAsync(formData);
+        await createMutation.mutateAsync(payload);
         toast.success('Task created!');
       }
       setShowAddModal(false);
@@ -713,6 +766,7 @@ export default function Tasks() {
                     {task.assigned_to && <span>{task.assigned_to}</span>}
                     {task.assigned_to && task.due_date && <span>·</span>}
                     {task.due_date && <span>{fmtDate(task.due_date)}</span>}
+                    <ReminderBell task={task} />
                   </div>
                 </div>
 
@@ -911,6 +965,98 @@ export default function Tasks() {
                     </datalist>
                   </div>
                 </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label className="label">Reminder</label>
+                    <select
+                      value={
+                        customReminder || formData.reminder_date
+                          ? 'custom'
+                          : formData.reminder_offset_days != null
+                            ? String(formData.reminder_offset_days)
+                            : ''
+                      }
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === 'custom') {
+                          setCustomReminder(true);
+                          setFormData({ ...formData, reminder_offset_days: null });
+                          return;
+                        }
+                        setCustomReminder(false);
+                        if (v === '')
+                          setFormData({
+                            ...formData,
+                            reminder_offset_days: null,
+                            reminder_date: '',
+                            reminder_repeat: 'once',
+                          });
+                        else
+                          setFormData({
+                            ...formData,
+                            reminder_offset_days: Number(v),
+                            reminder_date: '',
+                          });
+                      }}
+                      className="input"
+                    >
+                      <option value="">None</option>
+                      <option value="0" disabled={!formData.due_date}>
+                        On due date
+                      </option>
+                      <option value="1" disabled={!formData.due_date}>
+                        1 day before
+                      </option>
+                      <option value="3" disabled={!formData.due_date}>
+                        3 days before
+                      </option>
+                      <option value="7" disabled={!formData.due_date}>
+                        1 week before
+                      </option>
+                      <option value="14" disabled={!formData.due_date}>
+                        2 weeks before
+                      </option>
+                      <option value="custom">Custom date…</option>
+                    </select>
+                  </div>
+                  {(customReminder || formData.reminder_date) && (
+                    <div>
+                      <label className="label">Remind on</label>
+                      <DatePicker
+                        value={formData.reminder_date}
+                        onChange={(v) => setFormData({ ...formData, reminder_date: v })}
+                        placeholder="Pick a date"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {(formData.reminder_offset_days != null || formData.reminder_date) && (
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      fontSize: 13,
+                      color: 'var(--ink-mid)',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.reminder_repeat === 'daily'}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          reminder_repeat: e.target.checked ? 'daily' : 'once',
+                        })
+                      }
+                    />
+                    Keep reminding daily until done
+                  </label>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>

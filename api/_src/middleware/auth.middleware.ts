@@ -71,7 +71,9 @@ export const verifyToken = async (
 
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, email, name, slug, email_verified, currency, active_owner_id, password_changed_at')
+      .select(
+        'id, email, name, slug, email_verified, currency, active_owner_id, password_changed_at, reminder_prefs',
+      )
       .eq('id', decoded.id)
       .single();
 
@@ -140,6 +142,7 @@ export const verifyToken = async (
       role,
       allowedSections,
       permissions,
+      reminderPrefs: user.reminder_prefs ?? null,
     };
     setCachedUser(token, req.user);
     next();

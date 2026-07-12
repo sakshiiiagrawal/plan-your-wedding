@@ -440,20 +440,20 @@ export default function EditExpenseModal({
                             const activeStyle =
                               side === 'bride'
                                 ? {
-                                    borderColor: '#be185d',
-                                    background: 'rgba(190,24,93,0.06)',
-                                    color: '#be185d',
+                                    borderColor: 'var(--bride-line)',
+                                    background: 'var(--bride-soft)',
+                                    color: 'var(--bride-deep)',
                                   }
                                 : side === 'groom'
                                   ? {
-                                      borderColor: '#1d4ed8',
-                                      background: 'rgba(29,78,216,0.06)',
-                                      color: '#1d4ed8',
+                                      borderColor: 'var(--groom-line)',
+                                      background: 'var(--groom-soft)',
+                                      color: 'var(--groom-deep)',
                                     }
                                   : {
-                                      borderColor: 'var(--gold)',
-                                      background: 'var(--gold-glow)',
-                                      color: 'var(--gold-deep)',
+                                      borderColor: 'var(--line-strong)',
+                                      background: 'var(--bg-highest)',
+                                      color: 'var(--ink-high)',
                                     };
                             return (
                               <button

@@ -9,6 +9,9 @@ const envSchema = z
     SUPABASE_SERVICE_KEY: z.string().min(1),
     DATABASE_URL: z.string().min(1),
     FRONTEND_URL: z.string().url().optional(),
+    // Guards /api/v1/cron/* — Vercel Cron sends it as a bearer token. Unset
+    // means the cron endpoints always 401 (safe default, digest just won't run).
+    CRON_SECRET: z.string().optional(),
     SMTP_HOST: z.string().optional(),
     SMTP_PORT: z.coerce.number().optional(),
     SMTP_USER: z.string().optional(),

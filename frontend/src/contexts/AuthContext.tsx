@@ -17,6 +17,8 @@ export interface AuthUser {
   allowedSections?: string[] | null;
   /** Fine-grained grants (e.g. 'budget:splits', 'members:manage'). Admins implicitly hold all. */
   permissions?: string[] | null;
+  /** Reminder settings (own account, not the active wedding's owner) */
+  reminderPrefs?: { email_digest?: boolean; payment_lead_days?: number } | null;
 }
 
 interface RegisterData {

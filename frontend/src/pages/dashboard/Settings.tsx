@@ -42,9 +42,7 @@ function SectionPicker({
 }) {
   const toggle = (section: WeddingSection) => {
     if (disabledSections?.has(section)) return;
-    onChange(
-      value.includes(section) ? value.filter((s) => s !== section) : [...value, section],
-    );
+    onChange(value.includes(section) ? value.filter((s) => s !== section) : [...value, section]);
   };
 
   return (
@@ -89,9 +87,7 @@ function PermissionPicker({
     if (disabledPermissions?.has(permission)) return;
     if (permission === 'budget:splits' && !sectionsIncludeBudget) return;
     onChange(
-      value.includes(permission)
-        ? value.filter((p) => p !== permission)
-        : [...value, permission],
+      value.includes(permission) ? value.filter((p) => p !== permission) : [...value, permission],
     );
   };
 
@@ -144,7 +140,9 @@ function MembersPanel() {
   const removeMember = useRemoveMember();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<MemberRole>('viewer');
-  const [sections, setSections] = useState<string[]>(DEFAULT_INVITE_SECTIONS as unknown as string[]);
+  const [sections, setSections] = useState<string[]>(
+    DEFAULT_INVITE_SECTIONS as unknown as string[],
+  );
   const [permissions, setPermissions] = useState<string[]>([]);
   const [memberToRemove, setMemberToRemove] = useState<{ id: string; email: string } | null>(null);
 
@@ -165,7 +163,9 @@ function MembersPanel() {
         permissions: role === 'admin' ? [] : permissions,
       })) as { email_sent?: boolean };
       if (created.email_sent === false) {
-        toast.error('Invite created, but the email failed to send — invite the same address again to resend.');
+        toast.error(
+          'Invite created, but the email failed to send — invite the same address again to resend.',
+        );
       } else {
         toast.success('Invite sent');
       }
@@ -206,9 +206,9 @@ function MembersPanel() {
   return (
     <Card title="Members & collaborators">
       <p style={{ color: 'var(--ink-low)', fontSize: 13, marginBottom: 16 }}>
-        Invite your partner as an <b>admin</b> so you both manage the same wedding. Invite a
-        wedding planner or family as <b>editor</b> (can make changes) or <b>viewer</b>{' '}
-        (read-only) — optionally limited to just the sections they need.
+        Invite your partner as an <b>admin</b> so you both manage the same wedding. Invite a wedding
+        planner or family as <b>editor</b> (can make changes) or <b>viewer</b> (read-only) —
+        optionally limited to just the sections they need.
       </p>
 
       <form onSubmit={handleInvite} className="mb-5 space-y-3">
@@ -271,101 +271,101 @@ function MembersPanel() {
           // so don't offer edit/remove controls that would just fail.
           const targetIsUntouchableAdmin = !isActorAdmin && m.role === 'admin';
           return (
-          <div
-            key={m.id}
-            style={{
-              border: '1px solid var(--line-soft)',
-              borderRadius: 8,
-              padding: '10px 12px',
-            }}
-          >
-            <div className="flex items-center justify-between gap-3 text-sm">
-              <div style={{ minWidth: 0 }}>
-                <span>{m.invited_email}</span>{' '}
-                <span style={{ color: 'var(--ink-low)', fontSize: 12 }}>
-                  {m.status === 'pending'
-                    ? `(invited ${formatDate(m.created_at, { month: 'short', day: 'numeric' })} · not accepted yet)`
-                    : '(active)'}
-                </span>
-              </div>
-              {targetIsUntouchableAdmin ? (
-                <span style={{ fontSize: 12, color: 'var(--ink-dim)' }}>Admin</span>
-              ) : (
-                <div className="flex items-center gap-2">
-                  {m.status === 'pending' && (
+            <div
+              key={m.id}
+              style={{
+                border: '1px solid var(--line-soft)',
+                borderRadius: 8,
+                padding: '10px 12px',
+              }}
+            >
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <div style={{ minWidth: 0 }}>
+                  <span>{m.invited_email}</span>{' '}
+                  <span style={{ color: 'var(--ink-low)', fontSize: 12 }}>
+                    {m.status === 'pending'
+                      ? `(invited ${formatDate(m.created_at, { month: 'short', day: 'numeric' })} · not accepted yet)`
+                      : '(active)'}
+                  </span>
+                </div>
+                {targetIsUntouchableAdmin ? (
+                  <span style={{ fontSize: 12, color: 'var(--ink-dim)' }}>Admin</span>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    {m.status === 'pending' && (
+                      <button
+                        onClick={() => handleResendInvite(m)}
+                        disabled={inviteMember.isPending}
+                        className="btn-outline"
+                        style={{ padding: '4px 10px', fontSize: 12 }}
+                      >
+                        Resend
+                      </button>
+                    )}
+                    <select
+                      className="input"
+                      style={{ width: 110, padding: '4px 8px' }}
+                      value={m.role}
+                      onChange={(e) => updateMember.mutate({ id: m.id, role: e.target.value })}
+                    >
+                      <option value="viewer">Viewer</option>
+                      <option value="editor">Editor</option>
+                      {isActorAdmin && <option value="admin">Admin</option>}
+                    </select>
                     <button
-                      onClick={() => handleResendInvite(m)}
-                      disabled={inviteMember.isPending}
+                      onClick={() => setMemberToRemove({ id: m.id, email: m.invited_email })}
                       className="btn-outline"
                       style={{ padding: '4px 10px', fontSize: 12 }}
                     >
-                      Resend
+                      Remove
                     </button>
+                  </div>
+                )}
+              </div>
+              {m.role !== 'admin' && (
+                <div style={{ marginTop: 8 }}>
+                  <label
+                    className="flex items-center gap-1.5 mb-1.5"
+                    style={{ fontSize: 12, color: 'var(--ink-mid)', cursor: 'pointer' }}
+                  >
+                    <Checkbox
+                      checked={m.allowed_sections !== null}
+                      onChange={(e) =>
+                        updateMember.mutate({
+                          id: m.id,
+                          sections: e.target.checked ? [...WEDDING_SECTIONS] : null,
+                        })
+                      }
+                    />
+                    Limit access to specific sections
+                  </label>
+                  {m.allowed_sections !== null && (
+                    <SectionPicker
+                      value={m.allowed_sections}
+                      onChange={(next) => {
+                        if (next.length === 0) {
+                          toast.error('Keep at least one section, or turn off the limit');
+                          return;
+                        }
+                        updateMember.mutate({ id: m.id, sections: next });
+                      }}
+                      disabledSections={disabledSections}
+                    />
                   )}
-                  <select
-                    className="input"
-                    style={{ width: 110, padding: '4px 8px' }}
-                    value={m.role}
-                    onChange={(e) => updateMember.mutate({ id: m.id, role: e.target.value })}
-                  >
-                    <option value="viewer">Viewer</option>
-                    <option value="editor">Editor</option>
-                    {isActorAdmin && <option value="admin">Admin</option>}
-                  </select>
-                  <button
-                    onClick={() => setMemberToRemove({ id: m.id, email: m.invited_email })}
-                    className="btn-outline"
-                    style={{ padding: '4px 10px', fontSize: 12 }}
-                  >
-                    Remove
-                  </button>
+                  <p style={{ fontSize: 12, color: 'var(--ink-mid)', margin: '10px 0 4px' }}>
+                    Extra permissions
+                  </p>
+                  <PermissionPicker
+                    value={m.permissions}
+                    onChange={(next) => updateMember.mutate({ id: m.id, permissions: next })}
+                    disabledPermissions={disabledPermissions}
+                    sectionsIncludeBudget={
+                      m.allowed_sections === null || m.allowed_sections.includes('budget')
+                    }
+                  />
                 </div>
               )}
             </div>
-            {m.role !== 'admin' && (
-              <div style={{ marginTop: 8 }}>
-                <label
-                  className="flex items-center gap-1.5 mb-1.5"
-                  style={{ fontSize: 12, color: 'var(--ink-mid)', cursor: 'pointer' }}
-                >
-                  <Checkbox
-                    checked={m.allowed_sections !== null}
-                    onChange={(e) =>
-                      updateMember.mutate({
-                        id: m.id,
-                        sections: e.target.checked ? [...WEDDING_SECTIONS] : null,
-                      })
-                    }
-                  />
-                  Limit access to specific sections
-                </label>
-                {m.allowed_sections !== null && (
-                  <SectionPicker
-                    value={m.allowed_sections}
-                    onChange={(next) => {
-                      if (next.length === 0) {
-                        toast.error('Keep at least one section, or turn off the limit');
-                        return;
-                      }
-                      updateMember.mutate({ id: m.id, sections: next });
-                    }}
-                    disabledSections={disabledSections}
-                  />
-                )}
-                <p style={{ fontSize: 12, color: 'var(--ink-mid)', margin: '10px 0 4px' }}>
-                  Extra permissions
-                </p>
-                <PermissionPicker
-                  value={m.permissions}
-                  onChange={(next) => updateMember.mutate({ id: m.id, permissions: next })}
-                  disabledPermissions={disabledPermissions}
-                  sectionsIncludeBudget={
-                    m.allowed_sections === null || m.allowed_sections.includes('budget')
-                  }
-                />
-              </div>
-            )}
-          </div>
           );
         })}
       </div>
@@ -420,6 +420,11 @@ export default function Settings() {
   const [newSlug, setNewSlug] = useState(slug ?? '');
   const [currency, setCurrency] = useState(user?.currency ?? 'INR');
   const updateProfile = useUpdateProfile();
+
+  const [emailDigest, setEmailDigest] = useState(user?.reminderPrefs?.email_digest !== false);
+  const [paymentLeadDays, setPaymentLeadDays] = useState(
+    user?.reminderPrefs?.payment_lead_days ?? 7,
+  );
 
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -557,6 +562,63 @@ export default function Settings() {
         )}
       </Card>
 
+      <Card title="Reminders">
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            try {
+              await updateProfile.mutateAsync({
+                reminder_prefs: { email_digest: emailDigest, payment_lead_days: paymentLeadDays },
+              });
+              toast.success('Reminder settings saved');
+            } catch {
+              toast.error('Failed to save reminder settings');
+            }
+          }}
+          className="space-y-4"
+        >
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              cursor: 'pointer',
+              userSelect: 'none',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={emailDigest}
+              onChange={(e) => setEmailDigest(e.target.checked)}
+              style={{ marginTop: 3 }}
+            />
+            <span>
+              <span style={{ display: 'block', fontSize: 14, color: 'var(--ink-high)' }}>
+                Daily email digest
+              </span>
+              <span style={{ display: 'block', fontSize: 12, color: 'var(--ink-dim)' }}>
+                One morning email with anything overdue, due, or coming up.
+              </span>
+            </span>
+          </label>
+          <div>
+            <label className="label">Payment heads-up</label>
+            <select
+              className="input"
+              value={paymentLeadDays}
+              onChange={(e) => setPaymentLeadDays(Number(e.target.value))}
+            >
+              <option value={7}>1 week before due</option>
+              <option value={3}>3 days before due</option>
+              <option value={1}>1 day before due</option>
+            </select>
+          </div>
+          <button type="submit" disabled={updateProfile.isPending} className="btn-primary">
+            {updateProfile.isPending ? 'Saving...' : 'Save reminder settings'}
+          </button>
+        </form>
+      </Card>
+
       {/* Member management needs members:manage (admins hold it implicitly); the API enforces the same */}
       {canManageMembers && <MembersPanel />}
 
@@ -597,9 +659,9 @@ export default function Settings() {
         ) : (
           <div className="space-y-3">
             <p style={{ color: 'var(--err)', fontSize: 13 }}>
-              This permanently deletes your account and any wedding data you own (collaborators
-              lose access to it). Weddings you collaborate on are not deleted — you just leave
-              them. This cannot be undone.
+              This permanently deletes your account and any wedding data you own (collaborators lose
+              access to it). Weddings you collaborate on are not deleted — you just leave them. This
+              cannot be undone.
             </p>
             <div className="flex gap-3">
               <button onClick={() => setShowDeleteConfirm(false)} className="btn-outline">

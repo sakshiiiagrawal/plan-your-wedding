@@ -47,6 +47,19 @@ export async function findUpcoming(ownerId: string, today: string, nextWeek: str
   return data ?? [];
 }
 
+// Feed candidates for the reminders bell/digest — every open task; the fire
+// date arithmetic (COALESCE(reminder_date, due_date - offset)) happens in TS.
+// ponytail: no date pre-filter — task tables are hundreds of rows, not millions.
+export async function findOpenForReminders(ownerId: string) {
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('id, title, due_date, reminder_offset_days, reminder_date, reminder_repeat')
+    .eq('user_id', ownerId)
+    .in('status', ['pending', 'in_progress']);
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function findByIdAndOwner(id: string, ownerId: string) {
   const { data, error } = await supabase
     .from('tasks')
