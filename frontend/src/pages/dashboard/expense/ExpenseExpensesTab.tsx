@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
+import { HiOutlineArchive, HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
+import { parseLocalDate } from '../../../utils/date';
+
+type SortKey = 'date' | 'outstanding' | 'committed' | 'description';
 
 export interface ExpenseListRow {
   id: string;
@@ -16,6 +19,7 @@ export interface ExpenseListRow {
   item_count: number;
   status: 'active' | 'closed' | 'terminated';
   editable: boolean;
+  has_payments: boolean;
 }
 
 interface ExpenseExpensesTabProps {
@@ -24,6 +28,12 @@ interface ExpenseExpensesTabProps {
   formatCurrency: (amount: number) => string;
   onEdit: (row: ExpenseListRow) => void;
   onDelete: (id: string) => void;
+  /** A5: payment-backed rows can't be deleted — they get closed instead. */
+  onCloseExpense: (id: string) => void;
+  /** C2: open the payments surface for a vendor/venue-sourced expense. */
+  onViewPayments: (row: ExpenseListRow) => void;
+  /** C7: empty-state call to action. */
+  onAdd: () => void;
   /** Bride/groom liability side is only meaningful with budget:splits. */
   showSides?: boolean;
 }
@@ -34,28 +44,62 @@ export default function ExpenseExpensesTab({
   formatCurrency,
   onEdit,
   onDelete,
+  onCloseExpense,
+  onViewPayments,
+  onAdd,
   showSides = true,
 }: ExpenseExpensesTabProps) {
   const [filterType, setFilterType] = useState<'all' | 'manual' | 'vendor' | 'venue'>('all');
   const [filterSide, setFilterSide] = useState<'all' | 'bride' | 'groom' | 'shared' | 'mixed'>(
     'all',
   );
+  const [search, setSearch] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('date');
 
   if (loading) {
     return <div className="card p-8 text-center text-ink-low">Loading expenses...</div>;
   }
 
-  const filtered = rows.filter((row) => {
-    if (filterType !== 'all' && row.source_type !== filterType) return false;
-    if (filterSide !== 'all' && row.side_key !== filterSide) return false;
-    return true;
-  });
+  const query = search.trim().toLowerCase();
+  const filtered = rows
+    .filter((row) => {
+      if (filterType !== 'all' && row.source_type !== filterType) return false;
+      if (filterSide !== 'all' && row.side_key !== filterSide) return false;
+      if (
+        query &&
+        !row.description.toLowerCase().includes(query) &&
+        !row.category_summary.toLowerCase().includes(query)
+      )
+        return false;
+      return true;
+    })
+    .sort((a, b) => {
+      switch (sortKey) {
+        case 'outstanding':
+          return b.outstanding - a.outstanding;
+        case 'committed':
+          return b.committed - a.committed;
+        case 'description':
+          return a.description.localeCompare(b.description);
+        default:
+          return parseLocalDate(b.expense_date).getTime() - parseLocalDate(a.expense_date).getTime();
+      }
+    });
 
   const plannedTotal = filtered.reduce((sum, row) => sum + row.planned, 0);
   const committedTotal = filtered.reduce((sum, row) => sum + row.committed, 0);
+  const paidTotal = filtered.reduce((sum, row) => sum + row.paid, 0);
+  const outstandingTotal = filtered.reduce((sum, row) => sum + row.outstanding, 0);
 
-  if (!filtered.length && rows.length === 0) {
-    return <div className="card p-8 text-center text-ink-low">No expenses recorded yet.</div>;
+  if (rows.length === 0) {
+    return (
+      <div className="card p-8 text-center space-y-3">
+        <div className="text-ink-low">No expenses recorded yet.</div>
+        <button onClick={onAdd} className="btn-primary" style={{ fontSize: 13 }}>
+          Add Expense
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -105,6 +149,25 @@ export default function ExpenseExpensesTab({
             ))}
           </div>
         )}
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search description or category…"
+          className="input"
+          style={{ flex: 1, minWidth: 180, maxWidth: 320 }}
+        />
+        <select
+          value={sortKey}
+          onChange={(e) => setSortKey(e.target.value as SortKey)}
+          className="input"
+          style={{ width: 'auto' }}
+        >
+          <option value="date">Newest first</option>
+          <option value="outstanding">Outstanding</option>
+          <option value="committed">Allocated</option>
+          <option value="description">Description A–Z</option>
+        </select>
       </div>
 
       {filtered.length === 0 ? (
@@ -131,9 +194,20 @@ export default function ExpenseExpensesTab({
               </thead>
               <tbody>
                 {filtered.map((row) => (
-                  <tr key={row.id} className="table-row group">
+                  <tr
+                    key={row.id}
+                    className="table-row group"
+                    style={row.status !== 'active' ? { opacity: 0.6 } : undefined}
+                  >
                     <td className="p-4 font-medium min-w-[140px]">
-                      <div>{row.description}</div>
+                      <div className="flex items-center gap-2">
+                        <span>{row.description}</span>
+                        {row.status !== 'active' && (
+                          <span className="badge text-xs bg-surface-highest text-ink-mid capitalize">
+                            {row.status}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-ink-low">{row.item_count} line items</div>
                     </td>
                     <td className="p-4 text-ink-mid hidden sm:table-cell">
@@ -160,7 +234,7 @@ export default function ExpenseExpensesTab({
                       {formatCurrency(row.outstanding)}
                     </td>
                     <td className="p-4 text-ink-mid hidden md:table-cell">
-                      {new Date(row.expense_date).toLocaleDateString('en-IN')}
+                      {parseLocalDate(row.expense_date).toLocaleDateString('en-IN')}
                     </td>
                     {showSides && (
                       <td className="p-4">
@@ -170,8 +244,22 @@ export default function ExpenseExpensesTab({
                       </td>
                     )}
                     <td className="p-4">
+                      {row.source_type !== 'manual' && (
+                        <div className="flex flex-col items-end gap-0.5">
+                          <button
+                            onClick={() => onViewPayments(row)}
+                            className="text-xs font-medium"
+                            style={{ color: 'var(--gold-deep)', background: 'transparent', cursor: 'pointer' }}
+                          >
+                            Payments
+                          </button>
+                          <span className="text-[10px] text-ink-low">
+                            Managed from {row.source_type === 'vendor' ? 'Vendors' : 'Venues'}
+                          </span>
+                        </div>
+                      )}
                       {row.editable && (
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1">
                           <button
                             onClick={() => onEdit(row)}
                             style={{
@@ -194,13 +282,24 @@ export default function ExpenseExpensesTab({
                           >
                             <HiOutlinePencil className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => onDelete(row.id)}
-                            className="p-1.5 rounded-lg text-ink-dim hover:text-red-600 hover:bg-red-50 transition-colors"
-                            title="Delete expense"
-                          >
-                            <HiOutlineTrash className="w-4 h-4" />
-                          </button>
+                          {row.status === 'active' &&
+                            (row.has_payments ? (
+                              <button
+                                onClick={() => onCloseExpense(row.id)}
+                                className="p-1.5 rounded-lg text-ink-dim hover:text-gold-deep hover:bg-surface-highest transition-colors"
+                                title="Close expense (has payments — can't be deleted)"
+                              >
+                                <HiOutlineArchive className="w-4 h-4" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => onDelete(row.id)}
+                                className="p-1.5 rounded-lg text-ink-dim hover:text-red-600 hover:bg-red-50 transition-colors"
+                                title="Delete expense"
+                              >
+                                <HiOutlineTrash className="w-4 h-4" />
+                              </button>
+                            ))}
                         </div>
                       )}
                     </td>
@@ -209,16 +308,24 @@ export default function ExpenseExpensesTab({
               </tbody>
               <tfoot className="bg-surface-highest font-bold">
                 <tr>
-                  <td colSpan={3} className="p-4">
-                    Total Allocated
-                  </td>
+                  <td className="p-4 min-w-[140px]">Total</td>
+                  <td className="p-4 hidden sm:table-cell" />
+                  <td className="p-4" />
                   <td className="p-4 text-right text-ink-mid hidden md:table-cell">
                     {formatCurrency(plannedTotal)}
                   </td>
                   <td className="p-4 text-right" style={{ color: 'var(--gold-deep)' }}>
                     {formatCurrency(committedTotal)}
                   </td>
-                  <td colSpan={5}></td>
+                  <td className="p-4 text-right text-green-700 hidden md:table-cell">
+                    {formatCurrency(paidTotal)}
+                  </td>
+                  <td className="p-4 text-right text-orange-700 hidden md:table-cell">
+                    {formatCurrency(outstandingTotal)}
+                  </td>
+                  <td className="p-4 hidden md:table-cell" />
+                  {showSides && <td className="p-4" />}
+                  <td className="p-4" />
                 </tr>
               </tfoot>
             </table>

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Fragment, useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useDashboardOverview } from '../../hooks/useApi';
+import { useDashboardOverview, useExpenseAlerts } from '../../hooks/useApi';
 import {
   HiOutlineUserGroup,
   HiOutlineCurrencyRupee,
@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [cdPhase, setCdPhase] = useState<'counting' | 'today' | 'past'>('counting');
 
   const { data: overview, isLoading } = useDashboardOverview();
+  const { data: paymentAlerts } = useExpenseAlerts();
   const stats = overview?.stats;
   const heroContent = overview?.hero;
   const expenseOverview = overview?.expenseOverview ?? [];
@@ -544,6 +545,81 @@ export default function Dashboard() {
               />
             </div>
           </div>
+
+          {/* Payments due */}
+          {canSeeMoney &&
+            paymentAlerts &&
+            (paymentAlerts.overdueCount > 0 || paymentAlerts.upcomingCount > 0) && (
+              <div className="card">
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 12,
+                  }}
+                >
+                  <div className="uppercase-eyebrow">Payments due</div>
+                  <Link
+                    to={`/${slug}/dashboard/expense?tab=payments`}
+                    style={{ fontSize: 12, color: 'var(--gold-deep)', textDecoration: 'none' }}
+                  >
+                    →
+                  </Link>
+                </div>
+
+                {paymentAlerts.overdueCount > 0 && (
+                  <Link
+                    to={`/${slug}/dashboard/expense?tab=payments`}
+                    style={{
+                      display: 'block',
+                      fontSize: 13,
+                      color: '#b91c1c',
+                      marginBottom: 10,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    {paymentAlerts.overdueCount} overdue ·{' '}
+                    {formatCurrencyCompact(paymentAlerts.overdueTotal)}
+                  </Link>
+                )}
+
+                {paymentAlerts.upcomingPayments.slice(0, 3).map((p) => (
+                  <div
+                    key={p.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '8px 0',
+                      borderTop: '1px solid var(--line-soft)',
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: 'var(--ink-high)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {p.expense.description}
+                      </div>
+                      {p.due_date && (
+                        <div style={{ fontSize: 11, color: 'var(--ink-low)' }}>
+                          Due {formatDate(p.due_date, { month: 'short', day: 'numeric' })}
+                        </div>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gold-deep)' }}>
+                      {formatCurrencyCompact(p.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
           {/* Open tasks */}
           <div className="card" style={{ flex: 1 }}>

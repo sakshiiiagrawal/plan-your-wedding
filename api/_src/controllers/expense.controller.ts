@@ -29,10 +29,17 @@ export const getPageData = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.json(await service.getPageData(getWeddingOwnerId(req)));
+    res.json(await service.getPageData(getWeddingOwnerId(req), parseTodayParam(req)));
   } catch (e) {
     next(e);
   }
+};
+
+// Accepts the client's local YYYY-MM-DD so date-based classification (overdue vs
+// upcoming) matches the user's timezone; ignores anything not a plain date.
+const parseTodayParam = (req: Request): string | undefined => {
+  const raw = req.query.today;
+  return typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : undefined;
 };
 
 export const getOverview = async (
@@ -389,7 +396,7 @@ export const getOutstanding = async (
 
 export const getAlerts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    res.json(await service.getAlerts(getWeddingOwnerId(req)));
+    res.json(await service.getAlerts(getWeddingOwnerId(req), parseTodayParam(req)));
   } catch (e) {
     next(e);
   }

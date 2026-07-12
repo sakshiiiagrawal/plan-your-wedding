@@ -381,16 +381,18 @@ export async function getOutstanding(ownerId: string) {
 // Alerts: overdue/upcoming payments + over-budget categories
 // ---------------------------------------------------------------------------
 
-export async function getAlerts(ownerId: string) {
+export async function getAlerts(ownerId: string, todayOverride?: string) {
   const [scheduled, categories, rollups] = await Promise.all([
     finance.getScheduledPayments(ownerId),
     repo.findCategoriesByOwner(ownerId),
     finance.getCategoryRollups(ownerId),
   ]);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const nextWeek = new Date();
-  nextWeek.setDate(nextWeek.getDate() + 7);
+  // Prefer the client's local date so overdue/upcoming match the user's
+  // timezone; fall back to server UTC when absent.
+  const today = todayOverride ?? new Date().toISOString().slice(0, 10);
+  const nextWeek = new Date(`${today}T00:00:00Z`);
+  nextWeek.setUTCDate(nextWeek.getUTCDate() + 7);
   const nextWeekStr = nextWeek.toISOString().slice(0, 10);
   const spending = new Map(rollups.map((rollup) => [rollup.category_id, rollup]));
 
@@ -538,14 +540,14 @@ export async function deletePaymentAttachment(attachmentId: string, ownerId: str
 
 // One round-trip for the Budget page (was 6 parallel calls). Unfiltered — the
 // page filters expenses client-side.
-export async function getPageData(ownerId: string) {
+export async function getPageData(ownerId: string, todayOverride?: string) {
   const [summary, overview, expenses, categories, outstanding, alerts] = await Promise.all([
     getExpenseSummary(ownerId),
     getExpenseOverview(ownerId),
     listExpenses(ownerId, {}),
     listCategories(ownerId),
     getOutstanding(ownerId),
-    getAlerts(ownerId),
+    getAlerts(ownerId, todayOverride),
   ]);
   return { summary, overview, expenses, categories, outstanding, alerts };
 }

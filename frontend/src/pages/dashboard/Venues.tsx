@@ -40,84 +40,28 @@ import {
   useSourcePayments,
   useCreateSourcePayment,
   useDeleteSourcePayment,
+  useUpdateExpensePayment,
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import Portal from '../../components/Portal';
 import CategoryCombobox from '../../components/CategoryCombobox';
 import DatePicker from '../../components/ui/DatePicker';
 import DateRangePicker from '../../components/ui/DateRangePicker';
-import PaymentAttachments from '../../components/finance/PaymentAttachments';
-import PaymentNotesEditor from '../../components/finance/PaymentNotesEditor';
+import PaymentTimelinePanel from '../../components/finance/PaymentTimelinePanel';
 import InstallmentsEditor, {
+  installmentToPaymentPayload,
   type InstallmentFormRow,
 } from '../../components/finance/InstallmentsEditor';
-import type {
-  ExpenseItemRow,
-  PaymentAllocationRow,
-  PaymentRow,
-  VenueWithFinance,
-} from '@wedding-planner/shared';
+import type { VenueWithFinance } from '@wedding-planner/shared';
 import { financeTier } from '@wedding-planner/shared';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
-import { parseLocalDate } from '../../utils/date';
+import { parseLocalDate, todayLocal } from '../../utils/date';
 import { currencySymbol, formatCurrency } from '../../utils/currency';
 import { useAuth } from '../../contexts/AuthContext';
 
 /** Bride / groom amounts for a payment marked paid_by shared, from allocations + line-item sides. */
-function sharedPaymentSideAmounts(
-  payment: Pick<
-    PaymentRow,
-    'id' | 'amount' | 'direction' | 'paid_by_side' | 'paid_bride_share_percentage'
-  >,
-  items: ExpenseItemRow[],
-  allocations: PaymentAllocationRow[],
-): { bride: number; groom: number } | null {
-  if (payment.paid_by_side !== 'shared') return null;
-  const multiplier = payment.direction === 'inflow' ? -1 : 1;
-
-  if (payment.paid_bride_share_percentage != null) {
-    return {
-      bride: payment.amount * multiplier * (payment.paid_bride_share_percentage / 100),
-      groom: payment.amount * multiplier * ((100 - payment.paid_bride_share_percentage) / 100),
-    };
-  }
-
-  const itemById = new Map(items.map((i) => [i.id, i]));
-  const forPayment = allocations.filter((a) => a.payment_id === payment.id);
-
-  let bride = 0;
-  let groom = 0;
-
-  const addPortion = (portion: number, item: ExpenseItemRow | undefined) => {
-    if (!item) return;
-    if (item.side === 'bride') bride += portion;
-    else if (item.side === 'groom') groom += portion;
-    else {
-      const bp = item.bride_share_percentage ?? 50;
-      bride += portion * (bp / 100);
-      groom += portion * ((100 - bp) / 100);
-    }
-  };
-
-  if (forPayment.length > 0) {
-    for (const a of forPayment) {
-      addPortion(a.amount * multiplier, itemById.get(a.expense_item_id));
-    }
-    return { bride, groom };
-  }
-
-  const sharedItem = items.find((i) => i.side === 'shared');
-  const amt = payment.amount * multiplier;
-  if (sharedItem) {
-    const bp = sharedItem.bride_share_percentage ?? 50;
-    return { bride: amt * (bp / 100), groom: amt * ((100 - bp) / 100) };
-  }
-
-  return { bride: amt / 2, groom: amt / 2 };
-}
-
 const PRESET_ROOM_TYPES: { label: string; capacity: number; prefix: string }[] = [
   { label: 'Standard Room', capacity: 2, prefix: 'STD' },
   { label: 'Deluxe Room', capacity: 2, prefix: 'DLX' },
@@ -135,16 +79,6 @@ const PRESET_ROOM_TYPES: { label: string; capacity: number; prefix: string }[] =
 const PRESET_BY_LABEL: Record<string, { capacity: number; prefix: string }> = Object.fromEntries(
   PRESET_ROOM_TYPES.map((t) => [t.label, { capacity: t.capacity, prefix: t.prefix }]),
 );
-
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  cash: 'Cash',
-  bank_transfer: 'Bank Transfer',
-  upi: 'UPI',
-  cheque: 'Cheque',
-  credit_card: 'Credit Card',
-};
-
-const TODAY = new Date().toISOString().slice(0, 10);
 
 const formatPaymentAmount = (amount: number, direction: 'outflow' | 'inflow') =>
   `${direction === 'inflow' ? '-' : ''}${formatCurrency(amount)}`;
@@ -193,27 +127,14 @@ interface VenueFormData {
   default_check_out_date: string;
 }
 
-interface PaymentFormState {
-  amount: string;
-  payment_date: string;
-  payment_method: string;
-  paid_by_side: 'bride' | 'groom' | 'shared';
-  paid_bride_share_percentage: number;
-  notes: string;
-  extra_category_id: string | null;
-  extra_description: string;
-  extra_side: 'bride' | 'groom' | 'shared';
-  extra_bride_share_percentage: number;
-}
-
-const DEFAULT_FORM: VenueFormData = {
+const createDefaultForm = (): VenueFormData => ({
   name: '',
   venue_type: 'wedding_hall',
   address: '',
   city: '',
   capacity: '',
   total_cost: '',
-  expense_date: new Date().toISOString().slice(0, 10),
+  expense_date: todayLocal(),
   side: 'shared',
   bride_share_percentage: 50,
   has_accommodation: false,
@@ -226,20 +147,7 @@ const DEFAULT_FORM: VenueFormData = {
   photo_url: null,
   default_check_in_date: '',
   default_check_out_date: '',
-};
-
-const DEFAULT_PAYMENT_FORM: PaymentFormState = {
-  amount: '',
-  payment_date: TODAY,
-  payment_method: 'cash',
-  paid_by_side: 'shared',
-  paid_bride_share_percentage: 50,
-  notes: '',
-  extra_category_id: null,
-  extra_description: 'Tip',
-  extra_side: 'shared',
-  extra_bride_share_percentage: 50,
-};
+});
 
 function VenueRoomsSection({ rooms = [] }: { rooms?: any[] }) {
   const [expanded, setExpanded] = useState(false);
@@ -493,12 +401,11 @@ export default function Venues() {
   const canSeeSplits = tier === 'full';
 
   const [showVenueModal, setShowVenueModal] = useState(false);
-  const [formData, setFormData] = useState<VenueFormData>(DEFAULT_FORM);
+  const [formData, setFormData] = useState<VenueFormData>(createDefaultForm);
   const [editingVenue, setEditingVenue] = useState<VenueWithFinance | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [roomCategories, setRoomCategories] = useState<RoomCategoryEntry[]>([]);
   const [activeTab, setActiveTab] = useState<number>(0);
-  const [paymentForm, setPaymentForm] = useState<PaymentFormState>(DEFAULT_PAYMENT_FORM);
   const [installments, setInstallments] = useState<InstallmentFormRow[]>([]);
 
   const { data: pageData, isLoading, error } = useVenuesPageData();
@@ -534,8 +441,9 @@ export default function Venues() {
   }, [editingVenue, venues]);
   const createVenuePayment = useCreateSourcePayment('venue');
   const deleteVenuePayment = useDeleteSourcePayment('venue');
+  const updateExpensePayment = useUpdateExpensePayment();
   const getVenueFormState = (venue?: VenueWithFinance | null): VenueFormData => {
-    if (!venue) return DEFAULT_FORM;
+    if (!venue) return createDefaultForm();
     const firstItem = venue.finance?.items?.[0];
     return {
       name: venue.name || '',
@@ -544,7 +452,7 @@ export default function Venues() {
       city: venue.city || '',
       capacity: venue.capacity || '',
       total_cost: venue.finance_summary?.committed_amount || '',
-      expense_date: venue.finance?.expense_date || new Date().toISOString().slice(0, 10),
+      expense_date: venue.finance?.expense_date || todayLocal(),
       side: firstItem?.side || 'shared',
       bride_share_percentage: firstItem?.bride_share_percentage ?? 50,
       has_accommodation: venue.has_accommodation ?? false,
@@ -559,15 +467,6 @@ export default function Venues() {
       default_check_out_date: venue.default_check_out_date || '',
     };
   };
-  const getVenuePaymentFormState = (venue?: VenueWithFinance | null): PaymentFormState => {
-    const firstItem = venue?.finance?.items?.[0];
-    return {
-      ...DEFAULT_PAYMENT_FORM,
-      paid_by_side: firstItem?.side ?? 'shared',
-      paid_bride_share_percentage: firstItem?.bride_share_percentage ?? 50,
-    };
-  };
-
   const sortedPayments = useMemo(
     () =>
       [...(venuePayments as any[])].sort((a: any, b: any) => {
@@ -581,17 +480,6 @@ export default function Venues() {
   const paymentCommitted = currentVenueSummary?.committed_amount ?? 0;
   const paymentPaid = currentVenueSummary?.paid_amount ?? 0;
   const paymentOutstanding = currentVenueSummary?.outstanding_amount ?? 0;
-
-  // Payment tab state
-  const committedForPayment = editingVenue ? paymentOutstanding : Number(formData.total_cost || 0);
-  const enteredAmount = Number(paymentForm.amount || 0);
-  const paymentDirection = enteredAmount < 0 ? 'inflow' : 'outflow';
-  const paymentMagnitude = Math.abs(enteredAmount);
-  const isReversal = paymentDirection === 'inflow';
-  const excessAmount = isReversal
-    ? 0
-    : Math.max(0, Number((paymentMagnitude - committedForPayment).toFixed(2)));
-  const isScheduled = paymentForm.payment_date > TODAY;
 
   // Only show Rooms tab when venue has accommodation; Payments tab needs money visibility
   const visibleTabs = useMemo(() => {
@@ -607,11 +495,10 @@ export default function Venues() {
     : Number(formData.total_cost || 0) > 0;
 
   const resetForm = () => {
-    setFormData(DEFAULT_FORM);
+    setFormData(createDefaultForm());
     setEditingVenue(null);
     setRoomCategories([]);
     setActiveTab(0);
-    setPaymentForm(DEFAULT_PAYMENT_FORM);
     setInstallments([]);
   };
   const closeVenueModal = () => {
@@ -619,11 +506,10 @@ export default function Venues() {
     resetForm();
   };
   const isVenueModalDirty =
-    JSON.stringify({ formData, roomCategories, paymentForm, installments }) !==
+    JSON.stringify({ formData, roomCategories, installments }) !==
     JSON.stringify({
       formData: getVenueFormState(editingVenue),
       roomCategories: [],
-      paymentForm: getVenuePaymentFormState(editingVenue),
       installments: [],
     });
   const { attemptClose: attemptCloseVenueModal, dialog: venueUnsavedDialog } =
@@ -641,7 +527,6 @@ export default function Venues() {
   const handleEdit = (venue: VenueWithFinance) => {
     setEditingVenue(venue);
     setFormData(getVenueFormState(venue));
-    setPaymentForm(getVenuePaymentFormState(venue));
     setShowVenueModal(true);
   };
 
@@ -694,6 +579,17 @@ export default function Venues() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (createMutation.isPending || updateMutation.isPending) return;
+
+    // D7: installments need an obligation, which only exists with a total cost.
+    if (!editingVenue) {
+      const hasInstallments = installments.some((row) => Number(row.amount || 0) !== 0);
+      if (hasInstallments && !(Number(formData.total_cost || 0) > 0)) {
+        toast.error('Enter the total cost before adding installments.');
+        setActiveTab(2);
+        return;
+      }
+    }
+
     const rooms = buildRoomsPayload();
     const { side: _side, bride_share_percentage: _bsp, ...restFormData } = formData;
     const payload = {
@@ -717,26 +613,9 @@ export default function Venues() {
       if (rowsToRecord.length > 0 && savedVenue?.id && savedVenue?.expense_id) {
         try {
           for (const row of rowsToRecord) {
-            const amount = Number(row.amount || 0);
-            const direction = amount < 0 ? 'inflow' : 'outflow';
-            const magnitude = Math.abs(amount);
-            const scheduled = row.payment_date > TODAY;
             await createVenuePayment.mutateAsync({
               sourceId: savedVenue.id,
-              amount: magnitude,
-              direction,
-              status: scheduled ? 'scheduled' : 'posted',
-              due_date: row.payment_date,
-              paid_date: scheduled ? null : row.payment_date,
-              payment_method: scheduled ? null : row.payment_method,
-              ...(canSeeSplits
-                ? {
-                    paid_by_side: row.paid_by_side,
-                    paid_bride_share_percentage:
-                      row.paid_by_side === 'shared' ? row.paid_bride_share_percentage : null,
-                  }
-                : {}),
-              notes: row.notes || null,
+              ...installmentToPaymentPayload(row, canSeeSplits),
             });
           }
           toast.success(rowsToRecord.length > 1 ? 'Installments recorded.' : 'Payment recorded.');
@@ -745,6 +624,10 @@ export default function Venues() {
             'Venue saved but failed to record all payments. You can add the rest from the Payments tab.',
           );
         }
+      } else if (rowsToRecord.length > 0 && !savedVenue?.expense_id) {
+        toast.error(
+          'Venue saved, but the payments could not be attached. Open the venue and add them from the Payments tab.',
+        );
       }
 
       closeVenueModal();
@@ -762,85 +645,6 @@ export default function Venues() {
       setDeleteConfirm(null);
     } catch {
       toast.error('Failed to delete venue');
-    }
-  };
-
-  const handlePaymentSave = async () => {
-    if (!editingVenue?.expense_id) {
-      toast.error('Add the obligation amount first before recording payments.');
-      return;
-    }
-    if (!enteredAmount) {
-      toast.error('Enter a valid amount.');
-      return;
-    }
-    if (excessAmount > 0 && !paymentForm.extra_category_id) {
-      toast.error('Select a category for the excess amount.');
-      return;
-    }
-    try {
-      await createVenuePayment.mutateAsync({
-        sourceId: editingVenue.id,
-        amount: paymentMagnitude,
-        direction: paymentDirection,
-        status: isScheduled ? 'scheduled' : 'posted',
-        due_date: paymentForm.payment_date,
-        paid_date: isScheduled ? null : paymentForm.payment_date,
-        payment_method: isScheduled ? null : paymentForm.payment_method,
-        ...(canSeeSplits
-          ? {
-              paid_by_side: paymentForm.paid_by_side,
-              paid_bride_share_percentage:
-                paymentForm.paid_by_side === 'shared'
-                  ? paymentForm.paid_bride_share_percentage
-                  : null,
-            }
-          : {}),
-        notes: paymentForm.notes || null,
-        new_items:
-          excessAmount > 0 && paymentForm.extra_category_id
-            ? [
-                {
-                  category_id: paymentForm.extra_category_id,
-                  description: paymentForm.extra_description || 'Additional charge',
-                  amount: excessAmount,
-                  ...(canSeeSplits
-                    ? {
-                        side: paymentForm.extra_side,
-                        bride_share_percentage:
-                          paymentForm.extra_side === 'shared'
-                            ? paymentForm.extra_bride_share_percentage
-                            : null,
-                      }
-                    : {}),
-                },
-              ]
-            : undefined,
-      });
-      toast.success(
-        isScheduled
-          ? isReversal
-            ? 'Planned reversal saved.'
-            : 'Planned payment saved.'
-          : isReversal
-            ? 'Reversal recorded.'
-            : 'Payment recorded.',
-      );
-      setPaymentForm(getVenuePaymentFormState(editingVenue));
-    } catch (error: any) {
-      toast.error(
-        error?.response?.data?.error || error?.response?.data?.message || 'Failed to save payment.',
-      );
-    }
-  };
-
-  const handlePaymentDelete = async (paymentId: string) => {
-    if (!editingVenue) return;
-    try {
-      await deleteVenuePayment.mutateAsync({ sourceId: editingVenue.id, paymentId });
-      toast.success('Scheduled payment deleted.');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || 'Failed to delete payment.');
     }
   };
 
@@ -2465,23 +2269,50 @@ export default function Venues() {
                     <div
                       style={{
                         height: '100%',
-                        display: 'grid',
-                        gridTemplateColumns: editingVenue ? '1fr 340px' : '1fr',
-                        overflow: 'hidden',
+                        overflowY: 'auto',
+                        padding: 24,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 14,
                       }}
                     >
-                      {/* Left: Payment history (only when editing) */}
-                      {editingVenue && (
-                        <div
-                          style={{
-                            overflowY: 'auto',
-                            padding: 24,
-                            borderRight: '1px solid var(--line-soft)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 12,
+                      {editingVenue ? (
+                        <PaymentTimelinePanel
+                          payments={sortedPayments}
+                          committed={paymentCommitted}
+                          paid={paymentPaid}
+                          outstanding={paymentOutstanding}
+                          onCreate={(payload) =>
+                            createVenuePayment.mutateAsync({
+                              sourceId: editingVenue.id,
+                              ...payload,
+                            })
+                          }
+                          onDelete={(paymentId) =>
+                            deleteVenuePayment.mutateAsync({
+                              sourceId: editingVenue.id,
+                              paymentId,
+                            })
+                          }
+                          onUpdate={(paymentId, payload) =>
+                            updateExpensePayment.mutateAsync({ paymentId, ...payload })
+                          }
+                          isUpdating={updateExpensePayment.isPending}
+                          items={currentVenueFinance?.items}
+                          allocations={currentVenueFinance?.allocations}
+                          isCreating={createVenuePayment.isPending}
+                          isDeleting={deleteVenuePayment.isPending}
+                          defaultSplit={{
+                            side: currentVenueFinance?.items?.[0]?.side ?? 'shared',
+                            bridePercentage:
+                              currentVenueFinance?.items?.[0]?.bride_share_percentage ?? 50,
                           }}
-                        >
+                          canSeeSplits={canSeeSplits}
+                          canRecordPayment={!!editingVenue.expense_id}
+                          disabledReason="Link an obligation to this venue before recording payments."
+                        />
+                      ) : (
+                        <>
                           <p
                             style={{
                               margin: 0,
@@ -2492,461 +2323,20 @@ export default function Venues() {
                               textTransform: 'uppercase',
                             }}
                           >
-                            Payment History
+                            Initial Payments (Optional)
                           </p>
-                          {sortedPayments.length === 0 ? (
-                            <div
-                              style={{
-                                border: '1.5px dashed var(--line)',
-                                borderRadius: 10,
-                                padding: '24px 20px',
-                                fontSize: 13,
-                                color: 'var(--ink-dim)',
-                                textAlign: 'center',
-                              }}
-                            >
-                              No payments recorded yet.
-                            </div>
-                          ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                              {sortedPayments.map((payment: any) => {
-                                const dateLabel =
-                                  payment.paid_date ?? payment.due_date ?? payment.created_at;
-                                const isDeleteAllowed = payment.status === 'scheduled';
-                                const isInflow = payment.direction === 'inflow';
-                                const amtColor = isInflow
-                                  ? '#0369a1'
-                                  : payment.status === 'posted'
-                                    ? 'var(--ok)'
-                                    : 'var(--gold-deep)';
-                                const sideShares = sharedPaymentSideAmounts(
-                                  payment,
-                                  currentVenueFinance?.items ?? [],
-                                  currentVenueFinance?.allocations ?? [],
-                                );
-                                return (
-                                  <div
-                                    key={payment.id}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'flex-start',
-                                      justifyContent: 'space-between',
-                                      gap: 12,
-                                      border: '1px solid var(--line-soft)',
-                                      borderRadius: 10,
-                                      padding: '10px 14px',
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: 4,
-                                        minWidth: 0,
-                                      }}
-                                    >
-                                      <div
-                                        style={{
-                                          display: 'flex',
-                                          flexWrap: 'wrap',
-                                          alignItems: 'center',
-                                          gap: 6,
-                                        }}
-                                      >
-                                        <span
-                                          style={{ fontWeight: 600, fontSize: 14, color: amtColor }}
-                                        >
-                                          {formatPaymentAmount(payment.amount, payment.direction)}
-                                        </span>
-                                        <span
-                                          style={{
-                                            fontSize: 10,
-                                            padding: '2px 7px',
-                                            borderRadius: 100,
-                                            background: 'var(--bg-raised)',
-                                            color: 'var(--ink-low)',
-                                            textTransform: 'capitalize',
-                                          }}
-                                        >
-                                          {payment.status.replaceAll('_', ' ')}
-                                        </span>
-                                        {payment.paid_by_side && (
-                                          <span
-                                            style={{
-                                              fontSize: 10,
-                                              padding: '2px 7px',
-                                              borderRadius: 100,
-                                              background: 'var(--bg-raised)',
-                                              color: 'var(--ink-low)',
-                                              textTransform: 'capitalize',
-                                            }}
-                                          >
-                                            {payment.paid_by_side}
-                                          </span>
-                                        )}
-                                      </div>
-                                      {sideShares && (
-                                        <div
-                                          style={{
-                                            fontSize: 11,
-                                            color: 'var(--ink-low)',
-                                            lineHeight: 1.35,
-                                          }}
-                                        >
-                                          Bride {formatCurrency(sideShares.bride)} · Groom{' '}
-                                          {formatCurrency(sideShares.groom)}
-                                        </div>
-                                      )}
-                                      <div
-                                        className="mono"
-                                        style={{ fontSize: 11, color: 'var(--ink-dim)' }}
-                                      >
-                                        {parseLocalDate(dateLabel).toLocaleDateString('en-IN')}
-                                        {payment.payment_method &&
-                                          ` · ${PAYMENT_METHOD_LABELS[payment.payment_method] ?? payment.payment_method}`}
-                                      </div>
-                                      <PaymentNotesEditor
-                                        paymentId={payment.id}
-                                        notes={payment.notes}
-                                      />
-                                      <div style={{ marginTop: 4 }}>
-                                        <PaymentAttachments paymentId={payment.id} />
-                                      </div>
-                                    </div>
-                                    {isDeleteAllowed && (
-                                      <button
-                                        type="button"
-                                        onClick={() => handlePaymentDelete(payment.id)}
-                                        disabled={deleteVenuePayment.isPending}
-                                        style={{
-                                          padding: '6px 8px',
-                                          borderRadius: 6,
-                                          color: 'var(--err)',
-                                          background: 'transparent',
-                                          cursor: 'pointer',
-                                          flexShrink: 0,
-                                          opacity: deleteVenuePayment.isPending ? 0.5 : 1,
-                                        }}
-                                        onMouseEnter={(e) => {
-                                          (e.currentTarget as HTMLElement).style.background =
-                                            'rgba(220,38,38,0.08)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                          (e.currentTarget as HTMLElement).style.background =
-                                            'transparent';
-                                        }}
-                                      >
-                                        <HiOutlineTrash style={{ width: 15, height: 15 }} />
-                                      </button>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
+                          <p style={{ margin: 0, fontSize: 12, color: 'var(--ink-low)' }}>
+                            Optionally record advance, milestone, or final payments alongside the
+                            venue. Leave empty to skip.
+                          </p>
+                          <InstallmentsEditor
+                            installments={installments}
+                            onChange={setInstallments}
+                            committedTotal={Number(formData.total_cost || 0)}
+                            canSeeSplits={canSeeSplits}
+                          />
+                        </>
                       )}
-
-                      {/* Right (or full width for new): Add payment form */}
-                      <div
-                        style={{
-                          overflowY: 'auto',
-                          padding: 24,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 14,
-                        }}
-                      >
-                        {editingVenue ? (
-                          <>
-                            <p
-                              style={{
-                                margin: 0,
-                                fontSize: 10,
-                                fontWeight: 600,
-                                color: 'var(--ink-dim)',
-                                letterSpacing: '0.08em',
-                                textTransform: 'uppercase',
-                              }}
-                            >
-                              {isScheduled ? 'Schedule Payment' : 'Record Payment'}
-                            </p>
-
-                            <div
-                              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}
-                            >
-                              <div>
-                                <label className="label">Amount</label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  value={paymentForm.amount}
-                                  onChange={(e) =>
-                                    setPaymentForm((p) => ({ ...p, amount: e.target.value }))
-                                  }
-                                  className="input"
-                                  placeholder="Enter amount"
-                                />
-                              </div>
-                              <div>
-                                <label className="label">
-                                  {isScheduled ? 'Due Date' : 'Payment Date'}
-                                </label>
-                                <DatePicker
-                                  value={paymentForm.payment_date}
-                                  onChange={(v) =>
-                                    setPaymentForm((p) => ({ ...p, payment_date: v }))
-                                  }
-                                  placeholder={isScheduled ? 'Due date' : 'Payment date'}
-                                />
-                              </div>
-                            </div>
-
-                            <div
-                              style={{
-                                display: 'grid',
-                                gridTemplateColumns: canSeeSplits ? '1fr 1fr' : '1fr',
-                                gap: 12,
-                              }}
-                            >
-                              <div>
-                                <label className="label">Method</label>
-                                <select
-                                  value={paymentForm.payment_method}
-                                  onChange={(e) =>
-                                    setPaymentForm((p) => ({
-                                      ...p,
-                                      payment_method: e.target.value,
-                                    }))
-                                  }
-                                  className="input"
-                                  disabled={isScheduled}
-                                >
-                                  {Object.entries(PAYMENT_METHOD_LABELS).map(([v, l]) => (
-                                    <option key={v} value={v}>
-                                      {l}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              {canSeeSplits && (
-                                <div>
-                                  <label className="label">Paid By</label>
-                                  <select
-                                    value={paymentForm.paid_by_side}
-                                    onChange={(e) =>
-                                      setPaymentForm((p) => ({
-                                        ...p,
-                                        paid_by_side: e.target.value as
-                                          | 'bride'
-                                          | 'groom'
-                                          | 'shared',
-                                      }))
-                                    }
-                                    className="input"
-                                  >
-                                    <option value="bride">Bride</option>
-                                    <option value="groom">Groom</option>
-                                    <option value="shared">Shared</option>
-                                  </select>
-                                </div>
-                              )}
-                            </div>
-
-                            {canSeeSplits && paymentForm.paid_by_side === 'shared' && (
-                              <SplitShare
-                                total={paymentMagnitude}
-                                bridePercentage={paymentForm.paid_bride_share_percentage}
-                                onChange={(pct) =>
-                                  setPaymentForm((p) => ({
-                                    ...p,
-                                    paid_bride_share_percentage: pct,
-                                  }))
-                                }
-                              />
-                            )}
-
-                            <div>
-                              <label className="label">Notes</label>
-                              <textarea
-                                value={paymentForm.notes}
-                                onChange={(e) =>
-                                  setPaymentForm((p) => ({ ...p, notes: e.target.value }))
-                                }
-                                className="input"
-                                style={{ minHeight: 60 }}
-                                placeholder={
-                                  isScheduled
-                                    ? 'Optional reminder note'
-                                    : 'Reference, cheque no., or note'
-                                }
-                              />
-                            </div>
-
-                            {isScheduled && (
-                              <div
-                                style={{
-                                  border: '1px solid rgba(217,119,6,0.25)',
-                                  background: 'rgba(217,119,6,0.06)',
-                                  borderRadius: 8,
-                                  padding: '10px 14px',
-                                  fontSize: 12,
-                                  color: 'var(--warn)',
-                                }}
-                              >
-                                Future date — will be saved as a scheduled reminder.
-                              </div>
-                            )}
-
-                            {isReversal && (
-                              <div
-                                style={{
-                                  border: '1px solid rgba(3,105,161,0.22)',
-                                  background: 'rgba(3,105,161,0.06)',
-                                  borderRadius: 8,
-                                  padding: '10px 14px',
-                                  fontSize: 12,
-                                  color: '#0c4a6e',
-                                }}
-                              >
-                                Negative amounts are recorded as payment reversals and reduce the
-                                paid total.
-                              </div>
-                            )}
-
-                            {excessAmount > 0 && (
-                              <div
-                                style={{
-                                  border: '1px solid rgba(234,88,12,0.25)',
-                                  background: 'rgba(234,88,12,0.05)',
-                                  borderRadius: 8,
-                                  padding: 14,
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: 12,
-                                }}
-                              >
-                                <div style={{ fontSize: 12, color: '#9a3412' }}>
-                                  {formatCurrency(excessAmount)} over outstanding — classify the
-                                  extra amount.
-                                </div>
-                                <div>
-                                  <label className="label">Category</label>
-                                  <CategoryCombobox
-                                    value={paymentForm.extra_category_id}
-                                    onChange={(id) =>
-                                      setPaymentForm((p) => ({ ...p, extra_category_id: id }))
-                                    }
-                                    level="subcategory"
-                                    placeholder="Select category"
-                                  />
-                                </div>
-                                <div
-                                  style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: canSeeSplits ? '1fr 1fr' : '1fr',
-                                    gap: 10,
-                                  }}
-                                >
-                                  <div>
-                                    <label className="label">Label</label>
-                                    <input
-                                      type="text"
-                                      value={paymentForm.extra_description}
-                                      onChange={(e) =>
-                                        setPaymentForm((p) => ({
-                                          ...p,
-                                          extra_description: e.target.value,
-                                        }))
-                                      }
-                                      className="input"
-                                      placeholder="Tip, late fee…"
-                                    />
-                                  </div>
-                                  {canSeeSplits && (
-                                    <div>
-                                      <label className="label">Side</label>
-                                      <select
-                                        value={paymentForm.extra_side}
-                                        onChange={(e) =>
-                                          setPaymentForm((p) => ({
-                                            ...p,
-                                            extra_side: e.target.value as
-                                              | 'bride'
-                                              | 'groom'
-                                              | 'shared',
-                                          }))
-                                        }
-                                        className="input"
-                                      >
-                                        <option value="bride">Bride</option>
-                                        <option value="groom">Groom</option>
-                                        <option value="shared">Shared</option>
-                                      </select>
-                                    </div>
-                                  )}
-                                </div>
-                                {canSeeSplits && paymentForm.extra_side === 'shared' && (
-                                  <SplitShare
-                                    total={excessAmount}
-                                    bridePercentage={paymentForm.extra_bride_share_percentage}
-                                    onChange={(pct) =>
-                                      setPaymentForm((p) => ({
-                                        ...p,
-                                        extra_bride_share_percentage: pct,
-                                      }))
-                                    }
-                                  />
-                                )}
-                              </div>
-                            )}
-
-                            <button
-                              type="button"
-                              onClick={handlePaymentSave}
-                              disabled={createVenuePayment.isPending || !editingVenue.expense_id}
-                              className="btn-primary"
-                              style={{
-                                opacity:
-                                  createVenuePayment.isPending || !editingVenue.expense_id
-                                    ? 0.5
-                                    : 1,
-                              }}
-                            >
-                              {createVenuePayment.isPending
-                                ? 'Saving…'
-                                : isScheduled
-                                  ? 'Save Planned Payment'
-                                  : 'Record Payment'}
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <p
-                              style={{
-                                margin: 0,
-                                fontSize: 10,
-                                fontWeight: 600,
-                                color: 'var(--ink-dim)',
-                                letterSpacing: '0.08em',
-                                textTransform: 'uppercase',
-                              }}
-                            >
-                              Initial Payments (Optional)
-                            </p>
-                            <p style={{ margin: 0, fontSize: 12, color: 'var(--ink-low)' }}>
-                              Optionally record advance, milestone, or final payments alongside the
-                              venue. Leave empty to skip.
-                            </p>
-                            <InstallmentsEditor
-                              installments={installments}
-                              onChange={setInstallments}
-                              committedTotal={Number(formData.total_cost || 0)}
-                              canSeeSplits={canSeeSplits}
-                            />
-                          </>
-                        )}
-                      </div>
                     </div>
                   )}
                 </div>

@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import api from '../api/axios';
+import { todayLocal } from '../utils/date';
 import type { PublicEvent } from '../site/types';
 import type {
   HeroContent,
@@ -1089,7 +1091,8 @@ export interface BudgetPageData {
 export const useBudgetPageData = () =>
   useQuery<BudgetPageData>({
     queryKey: ['expense', 'page-data'],
-    queryFn: () => api.get('/expense/page-data').then((res) => res.data),
+    queryFn: () =>
+      api.get(`/expense/page-data?today=${todayLocal()}`).then((res) => res.data),
   });
 
 export const useExpenseOverview = () =>
@@ -1246,7 +1249,8 @@ export const useExpenseOutstanding = () =>
 export const useExpenseAlerts = () =>
   useQuery<ExpenseAlerts>({
     queryKey: ['expense', 'alerts'],
-    queryFn: () => api.get('/expense/alerts').then((res) => res.data),
+    queryFn: () =>
+      api.get(`/expense/alerts?today=${todayLocal()}`).then((res) => res.data),
   });
 
 export const useSourcePayments = (sourceType: 'vendor' | 'venue', sourceId?: string | null) =>
@@ -1427,6 +1431,11 @@ export const useUpdateExpensePayment = () => {
       queryClient.invalidateQueries({ queryKey: ['expense'] });
       queryClient.invalidateQueries({ queryKey: ['vendor'] });
       queryClient.invalidateQueries({ queryKey: ['venue'] });
+      // Plural list keys carry the finance_summary shown on vendor/venue cards,
+      // which goes stale after a mark-paid otherwise.
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['accommodations'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
@@ -1761,6 +1770,7 @@ function useExport(path: string, filename: string) {
       const res = await api.get(path, { responseType: 'blob' });
       downloadBlob(res.data, filename);
     },
+    onError: () => toast.error('Export failed. Please try again.'),
   });
 }
 

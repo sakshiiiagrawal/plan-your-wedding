@@ -67,7 +67,7 @@ export default function ResetPassword() {
               <button
                 type="submit"
                 disabled={resetPassword.isPending}
-                className="btn-primary w-full py-3 disabled:opacity-50"
+                className="btn-primary w-full py-3 text-sm mt-1 disabled:opacity-50"
               >
                 {resetPassword.isPending ? 'Updating...' : 'Reset password'}
               </button>

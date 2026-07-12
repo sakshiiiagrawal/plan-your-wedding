@@ -328,6 +328,47 @@ a:focus-visible,
   border-color: var(--gold);
 }
 
+/* Hero CTA — gold gradient for dark maroon backgrounds (Marketing/Login) */
+@utility btn-hero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: var(--radius-lg);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background: linear-gradient(135deg, #f3ead1 0%, #d6bc78 55%, #c4a55a 100%);
+  color: #4a121a;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow:
+    0 10px 30px -8px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.btn-hero:hover {
+  background: linear-gradient(135deg, #faf5e8 0%, #e7d6a8 55%, #d6bc78 100%);
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 36px -8px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+.btn-hero:active {
+  transform: translateY(0);
+}
+.btn-hero:focus-visible {
+  outline: 2px solid #f3ead1;
+  outline-offset: 3px;
+}
+.btn-hero:disabled {
+  opacity: 0.6;
+  transform: none;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
 @utility btn-outline {
   display: inline-flex;
   align-items: center;

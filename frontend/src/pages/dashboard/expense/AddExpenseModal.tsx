@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { HiOutlinePlus, HiOutlineTrash, HiOutlineX } from 'react-icons/hi';
 import Portal from '../../../components/Portal';
 import CategoryCombobox from '../../../components/CategoryCombobox';
@@ -7,11 +7,13 @@ import DatePicker from '../../../components/ui/DatePicker';
 import SplitShare from '../../../components/ui/SplitShare';
 import InstallmentsEditor, {
   installmentsExceedTotal,
+  installmentToPaymentPayload,
   type InstallmentFormRow,
 } from '../../../components/finance/InstallmentsEditor';
 import useUnsavedChangesPrompt from '../../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../../hooks/useModalDismiss';
 import { formatCurrency } from '../../../utils/currency';
+import { todayLocal } from '../../../utils/date';
 import { financeTier } from '@wedding-planner/shared';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -40,8 +42,6 @@ interface FormData {
   installments: InstallmentFormRow[];
 }
 
-const TODAY = new Date().toISOString().split('T')[0] ?? '';
-
 const createItem = (): ExpenseItemForm => ({
   id: Math.random().toString(36).slice(2),
   description: '',
@@ -52,13 +52,13 @@ const createItem = (): ExpenseItemForm => ({
   bride_share_percentage: 50,
 });
 
-const INITIAL_FORM: FormData = {
+const createInitialForm = (): FormData => ({
   description: '',
-  expense_date: TODAY,
+  expense_date: todayLocal(),
   notes: '',
   items: [createItem()],
   installments: [],
-};
+});
 
 export default function AddExpenseModal({
   show,
@@ -68,7 +68,10 @@ export default function AddExpenseModal({
 }: AddExpenseModalProps) {
   const { user } = useAuth();
   const canSeeSplits = financeTier(user) === 'full';
-  const [formData, setFormData] = useState<FormData>(INITIAL_FORM);
+  // Stable baseline for dirty-checking and reset; the item id stays fixed for
+  // this mount so an untouched form compares equal.
+  const initialFormRef = useRef<FormData>(createInitialForm());
+  const [formData, setFormData] = useState<FormData>(initialFormRef.current);
   const [showCustomCategoryModal, setShowCustomCategoryModal] = useState(false);
   const [customCategoryParentId, setCustomCategoryParentId] = useState<string | null>(null);
 
@@ -89,10 +92,10 @@ export default function AddExpenseModal({
   const paymentExceedsTotal = installmentsExceedTotal(formData.installments, totalCommitted);
 
   const handleClose = () => {
-    setFormData(INITIAL_FORM);
+    setFormData(initialFormRef.current);
     onClose();
   };
-  const isDirty = JSON.stringify(formData) !== JSON.stringify(INITIAL_FORM);
+  const isDirty = JSON.stringify(formData) !== JSON.stringify(initialFormRef.current);
   const { attemptClose, dialog: unsavedDialog } = useUnsavedChangesPrompt({
     isDirty,
     onDiscard: handleClose,
@@ -138,33 +141,16 @@ export default function AddExpenseModal({
             }
           : {}),
       })),
-      payments: formData.installments.map((installment) => {
-        const amount = Number(installment.amount || 0);
-        const direction = amount < 0 ? 'inflow' : 'outflow';
-        const magnitude = Math.abs(amount);
-        const isScheduled = installment.payment_date > TODAY;
-        return {
-          amount: magnitude,
-          direction,
-          status: isScheduled ? 'scheduled' : 'posted',
-          due_date: installment.payment_date,
-          paid_date: isScheduled ? null : installment.payment_date,
-          payment_method: isScheduled ? null : installment.payment_method,
-          ...(canSeeSplits
-            ? {
-                paid_by_side: installment.paid_by_side,
-                paid_bride_share_percentage:
-                  installment.paid_by_side === 'shared'
-                    ? installment.paid_bride_share_percentage
-                    : null,
-              }
-            : {}),
-          notes: installment.notes || null,
-        };
-      }),
+      payments: formData.installments.map((installment) =>
+        installmentToPaymentPayload(installment, canSeeSplits),
+      ),
     });
 
-    setFormData(INITIAL_FORM);
+    // Only reached on success — onSubmit rethrows on failure, preserving the
+    // form (and the unsaved-changes dialog) so nothing is lost.
+    const fresh = createInitialForm();
+    initialFormRef.current = fresh;
+    setFormData(fresh);
   };
 
   if (!show) return null;

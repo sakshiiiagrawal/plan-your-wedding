@@ -23,7 +23,7 @@ export default function Marketing() {
           Create your personalized wedding website, manage guests, track your expense, coordinate
           vendors, and more.
         </p>
-        <button onClick={() => navigate('/onboard')} className="btn-primary px-10 py-4 text-lg">
+        <button onClick={() => navigate('/onboard')} className="btn-hero px-10 py-4 text-lg">
           Get Started Free
         </button>
         <p className="text-cream/70 text-sm mt-6">

@@ -528,11 +528,17 @@ function normalizePaymentStatus(input: PaymentMutationInput): PaymentMutationInp
       payment_method: null,
     };
   }
+  // posted / entered_in_error: a method is required (a future paid_date is
+  // allowed — it enables post-dated instruments).
+  const paymentMethod = normalizedInput.payment_method ?? null;
+  if (paymentMethod == null) {
+    throw new BadRequestError('A payment method is required to record a paid payment.');
+  }
   return {
     ...normalizedInput,
     paid_date: normalizeDate(normalizedInput.paid_date),
     due_date: normalizedInput.due_date ?? null,
-    payment_method: normalizedInput.payment_method ?? null,
+    payment_method: paymentMethod,
   };
 }
 
@@ -779,6 +785,17 @@ async function syncExpenseItems(
 
   for (const row of existing) {
     if (keptIds.has(row.id)) continue;
+    // Surface a clear 409 instead of letting a payment_allocations FK blow up as
+    // a 500 — the item still backs recorded payments.
+    const { rows: allocatedRows } = await client.query(
+      `SELECT 1 FROM payment_allocations WHERE expense_item_id = $1 LIMIT 1`,
+      [row.id],
+    );
+    if (allocatedRows.length > 0) {
+      throw new ConflictError(
+        `"${row.description}" has payments allocated to it. Reverse those payments before removing the item.`,
+      );
+    }
     await client.query(`DELETE FROM expense_items WHERE id = $1`, [row.id]);
     await insertActivity(client, ownerId, expenseId, 'expense_item', row.id, 'deleted', row, null);
   }
@@ -1000,7 +1017,19 @@ export async function createPaymentRecordTx(
 
   if (normalized.status === 'posted') {
     if (normalized.direction === 'inflow' && !hasExplicitAllocations) {
-      throw new BadRequestError('Refunds require explicit line-item allocations.');
+      // Auto-allocate a refund/reversal across the items that have been paid,
+      // proportional to how much each still has on the books. Mirrors the
+      // outflow branch but caps against `paid` rather than `outstanding`.
+      const candidates = Array.from(working.entries())
+        .map(([id, values]) => ({ id, available: values.paid }))
+        .filter((entry) => entry.available > 0);
+      const available = normalizeMoney(candidates.reduce((sum, item) => sum + item.available, 0));
+      if (candidateAmount > available) {
+        throw new BadRequestError(
+          `Refund exceeds the total paid so far (${available}). Reduce the amount or pick specific line items.`,
+        );
+      }
+      allocations = autoAllocateProportionally(candidateAmount, candidates);
     }
 
     if (normalized.direction !== 'inflow' && !hasExplicitAllocations) {

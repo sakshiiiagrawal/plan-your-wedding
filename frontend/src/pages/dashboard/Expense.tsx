@@ -14,6 +14,7 @@ import ExpenseCategoriesTab from './expense/ExpenseCategoriesTab';
 import ExpensePaymentsTab from './expense/ExpensePaymentsTab';
 import AddExpenseModal from './expense/AddExpenseModal';
 import EditExpenseModal from './expense/EditExpenseModal';
+import VendorPaymentsModal from './VendorPaymentsModal';
 import type { ExpenseRow } from './expense/EditExpenseModal';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -99,10 +100,16 @@ export default function Expense() {
     [canSeeSplits],
   );
 
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(
+    () => new URLSearchParams(window.location.search).get('tab') ?? 'overview',
+  );
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [closeConfirm, setCloseConfirm] = useState<string | null>(null);
+  const [paymentSource, setPaymentSource] = useState<
+    React.ComponentProps<typeof VendorPaymentsModal>['source'] | null
+  >(null);
 
   const { data: pageData, isLoading } = useBudgetPageData();
   const expenseSummary = pageData?.summary;
@@ -153,6 +160,7 @@ export default function Expense() {
         item_count: expense.items.length,
         status: expense.status,
         editable: expense.source_type === 'manual',
+        has_payments: expense.payments.length > 0,
       };
     });
   }, [categoryNameById, expenses]);
@@ -175,7 +183,11 @@ export default function Expense() {
         count: countByCategory.get(category.id) ?? 0,
         allocated: Number(category.allocated_amount ?? 0),
       }))
-      .filter((category: { committed: number }) => category.committed > 0)
+      // B3: keep budget-only categories so card totals reconcile with Overview.
+      .filter(
+        (category: { committed: number; allocated: number }) =>
+          category.committed > 0 || category.allocated > 0,
+      )
       .sort(
         (left: { committed: number }, right: { committed: number }) =>
           right.committed - left.committed,
@@ -275,6 +287,8 @@ export default function Expense() {
         apiError.response?.data?.error ||
         'Failed to update expense.';
       toast.error(message);
+      // Rethrow so the modal keeps the form (and unsaved-changes dialog) intact.
+      throw error;
     }
   };
 
@@ -293,6 +307,38 @@ export default function Expense() {
     }
   };
 
+  const goToScheduledPayments = () => {
+    setActiveTab('payments');
+    setTimeout(
+      () => document.getElementById('scheduled-payments')?.scrollIntoView({ behavior: 'smooth' }),
+      50,
+    );
+  };
+
+  // Routes to the right payment surface: manual expenses use the edit modal,
+  // vendor/venue-sourced ones use the read-through payments modal.
+  const openPaymentsFor = (expenseId: string) => {
+    const expense = expensesById.get(expenseId);
+    if (!expense) return;
+    if (expense.source_type === 'manual') {
+      setEditingExpense(expense);
+      return;
+    }
+    if (!expense.source_id) return;
+    setPaymentSource({
+      id: expense.source_id,
+      name: expense.source_name ?? expense.description,
+      type: expense.source_type,
+      expense_id: expense.id,
+      finance_summary: {
+        committed_amount: expense.summary.committed_amount,
+        paid_amount: expense.summary.paid_amount,
+        outstanding_amount: expense.summary.outstanding_amount,
+      },
+      finance: { items: expense.items, allocations: expense.allocations },
+    });
+  };
+
   const handleExpenseSubmit = async (payload: Record<string, unknown>) => {
     try {
       await createExpenseMutation.mutateAsync(payload);
@@ -306,6 +352,8 @@ export default function Expense() {
         apiError.response?.data?.error ||
         'Failed to add expense.';
       toast.error(message);
+      // Rethrow so AddExpenseModal keeps the entered data instead of resetting.
+      throw error;
     }
   };
 
@@ -353,22 +401,30 @@ export default function Expense() {
           alerts.overBudgetCategories?.length > 0) && (
           <div className="space-y-2">
             {alerts.overdueCount > 0 && (
-              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+              <button
+                onClick={goToScheduledPayments}
+                className="flex w-full items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700 text-left hover:bg-red-100 transition-colors"
+              >
                 <span className="font-bold">⚠</span>
                 <span>
                   {alerts.overdueCount} overdue payment{alerts.overdueCount !== 1 ? 's' : ''}{' '}
                   totalling {formatCurrency(alerts.overdueTotal)}
                 </span>
-              </div>
+                <span className="ml-auto font-medium">Review →</span>
+              </button>
             )}
             {alerts.upcomingCount > 0 && (
-              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-700">
+              <button
+                onClick={goToScheduledPayments}
+                className="flex w-full items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-700 text-left hover:bg-amber-100 transition-colors"
+              >
                 <span className="font-bold">⚠</span>
                 <span>
                   {alerts.upcomingCount} payment{alerts.upcomingCount !== 1 ? 's' : ''} due in the
                   next 7 days totalling {formatCurrency(alerts.upcomingTotal)}
                 </span>
-              </div>
+                <span className="ml-auto font-medium">Review →</span>
+              </button>
             )}
             {alerts.overBudgetCategories?.map((category) => (
               <div
@@ -386,9 +442,19 @@ export default function Expense() {
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="stat-card">
-          <div className="stat-value" style={{ color: 'var(--gold-deep)' }}>
-            {formatCurrency(totalBudget)}
-          </div>
+          {totalBudget > 0 ? (
+            <div className="stat-value" style={{ color: 'var(--gold-deep)' }}>
+              {formatCurrency(totalBudget)}
+            </div>
+          ) : (
+            <button
+              onClick={() => setActiveTab('categories')}
+              className="stat-value"
+              style={{ color: 'var(--gold-deep)', background: 'transparent', cursor: 'pointer' }}
+            >
+              Set budget →
+            </button>
+          )}
           <div className="stat-label">Budget</div>
         </div>
         <div className="stat-card">
@@ -406,8 +472,13 @@ export default function Expense() {
         <div className="stat-card">
           <div className="stat-value text-orange-700">{formatCurrency(outstandingTotal)}</div>
           <div className="stat-label">Outstanding</div>
-          <div className="text-xs text-ink-dim mt-1">
-            {formatCurrency(remainingBudget)} budget remaining
+          <div
+            className="text-xs mt-1"
+            style={{ color: remainingBudget < 0 ? 'var(--err)' : 'var(--ink-dim)' }}
+          >
+            {remainingBudget < 0
+              ? `over budget by ${formatCurrency(Math.abs(remainingBudget))}`
+              : `${formatCurrency(remainingBudget)} budget remaining`}
           </div>
         </div>
       </div>
@@ -450,6 +521,9 @@ export default function Expense() {
               }
             }}
             onDelete={(id) => setDeleteConfirm(id)}
+            onCloseExpense={(id) => setCloseConfirm(id)}
+            onViewPayments={(row) => openPaymentsFor(row.id)}
+            onAdd={() => setShowExpenseModal(true)}
             showSides={canSeeSplits}
           />
         )}
@@ -466,7 +540,9 @@ export default function Expense() {
           />
         )}
 
-        {activeTab === 'payments' && <ExpensePaymentsTab formatCurrency={formatCurrency} />}
+        {activeTab === 'payments' && (
+          <ExpensePaymentsTab formatCurrency={formatCurrency} onRecordPayment={openPaymentsFor} />
+        )}
       </div>
 
       <AddExpenseModal
@@ -491,6 +567,23 @@ export default function Expense() {
         onConfirm={() => deleteConfirm && handleExpenseDelete(deleteConfirm)}
         onCancel={() => setDeleteConfirm(null)}
       />
+
+      <ConfirmDialog
+        open={closeConfirm !== null}
+        title="Close expense?"
+        message="This expense has recorded payments, so it can't be deleted. Closing keeps the history and hides it from active planning. You can reopen it later."
+        confirmLabel="Close"
+        isPending={updateExpenseMutation.isPending}
+        onConfirm={() => {
+          if (closeConfirm) void handleExpenseUpdate(closeConfirm, { status: 'closed' });
+          setCloseConfirm(null);
+        }}
+        onCancel={() => setCloseConfirm(null)}
+      />
+
+      {paymentSource && (
+        <VendorPaymentsModal source={paymentSource} onClose={() => setPaymentSource(null)} />
+      )}
     </div>
   );
 }

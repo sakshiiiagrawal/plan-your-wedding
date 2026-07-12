@@ -6,16 +6,19 @@ import CustomCategoryModal from '../../../components/CustomCategoryModal';
 import DatePicker from '../../../components/ui/DatePicker';
 import SplitShare from '../../../components/ui/SplitShare';
 import PaymentTimelinePanel from '../../../components/finance/PaymentTimelinePanel';
+import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 import useUnsavedChangesPrompt from '../../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../../hooks/useModalDismiss';
-import type { ExpenseWithDetails } from '@wedding-planner/shared';
+import type { ExpenseWithDetails, FinanceHeaderStatus } from '@wedding-planner/shared';
 import { financeTier } from '@wedding-planner/shared';
 import { formatCurrency } from '../../../utils/currency';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
+  useBudgetPageData,
   useCreateExpensePayment,
   useDeleteExpensePayment,
   useExpensePaymentsForExpense,
+  useUpdateExpensePayment,
 } from '../../../hooks/useApi';
 
 export type ExpenseRow = ExpenseWithDetails;
@@ -97,6 +100,28 @@ export default function EditExpenseModal({
   const { data: payments = [] } = useExpensePaymentsForExpense(expense?.id);
   const createExpensePayment = useCreateExpensePayment();
   const deleteExpensePayment = useDeleteExpensePayment();
+  const updateExpensePayment = useUpdateExpensePayment();
+  const [statusConfirm, setStatusConfirm] = useState<FinanceHeaderStatus | null>(null);
+
+  // A3: live copy so the payment panel reflects fresh summary/items/allocations
+  // without reopening. Form fields still init from the prop snapshot.
+  const { data: pageData } = useBudgetPageData();
+  const liveExpense = pageData?.expenses.find((e) => e.id === expense?.id) ?? expense;
+
+  // A4-client: net paid per item, so items backing payments can't be deleted.
+  const paidByItem = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!liveExpense) return map;
+    for (const allocation of liveExpense.allocations) {
+      const owning = liveExpense.payments.find((p) => p.id === allocation.payment_id);
+      const sign = owning?.direction === 'inflow' ? -1 : 1;
+      map.set(
+        allocation.expense_item_id,
+        (map.get(allocation.expense_item_id) ?? 0) + sign * allocation.amount,
+      );
+    }
+    return map;
+  }, [liveExpense]);
 
   const totalCommitted = useMemo(
     () => formData?.items.reduce((sum, item) => sum + Number(item.amount || 0), 0) ?? 0,
@@ -124,6 +149,7 @@ export default function EditExpenseModal({
   useModalDismiss(expense !== null, attemptClose);
 
   if (!expense || !formData) return null;
+  const detail = liveExpense ?? expense;
 
   const updateItem = (id: string, patch: Partial<ExpenseItemForm>) => {
     setFormData((prev) =>
@@ -161,9 +187,10 @@ export default function EditExpenseModal({
         category_id: item.category_id,
         description: item.description,
         amount: Number(item.amount || 0),
-        // Blank planned: omit so the server preserves the stored value (existing
-        // items) or defaults it to amount (new items).
-        ...(item.planned_amount !== '' ? { planned_amount: Number(item.planned_amount) } : {}),
+        // B1: blank planned is an explicit reset-to-allocated (the field is
+        // pre-filled, so clearing it is intentional).
+        planned_amount:
+          item.planned_amount === '' ? Number(item.amount || 0) : Number(item.planned_amount),
         display_order: index + 1,
         ...(canSeeSplits
           ? {
@@ -329,7 +356,15 @@ export default function EditExpenseModal({
                         <button
                           type="button"
                           onClick={() => removeItem(item.local_id)}
-                          disabled={formData.items.length === 1}
+                          disabled={
+                            formData.items.length === 1 ||
+                            (!!item.id && (paidByItem.get(item.id) ?? 0) > 0)
+                          }
+                          title={
+                            item.id && (paidByItem.get(item.id) ?? 0) > 0
+                              ? `${formatCurrency(paidByItem.get(item.id) ?? 0)} paid against this item — reverse those payments first`
+                              : undefined
+                          }
                           className="p-2 rounded-lg text-red-500 hover:bg-red-50 disabled:opacity-40"
                         >
                           <HiOutlineTrash className="w-4 h-4" />
@@ -361,7 +396,7 @@ export default function EditExpenseModal({
                               updateItem(item.local_id, { planned_amount: event.target.value })
                             }
                             className="input"
-                            placeholder="Defaults to allocated"
+                            placeholder="Blank resets to allocated"
                           />
                         </div>
                         <div>
@@ -485,6 +520,11 @@ export default function EditExpenseModal({
                 </div>
               </div>
 
+            </form>
+
+            {/* A8: kept outside the form so a payment-panel key press can't
+                submit the expense edit. */}
+            <div className="px-6 pb-6 space-y-6">
               <div className="space-y-4">
                 <div>
                   <h3 className="section-title">Payments</h3>
@@ -494,27 +534,83 @@ export default function EditExpenseModal({
                 </div>
                 <PaymentTimelinePanel
                   payments={payments}
-                  committed={expense.summary?.committed_amount ?? totalCommitted}
-                  paid={expense.summary?.paid_amount ?? 0}
-                  outstanding={expense.summary?.outstanding_amount ?? totalCommitted}
+                  committed={detail.summary?.committed_amount ?? totalCommitted}
+                  paid={detail.summary?.paid_amount ?? 0}
+                  outstanding={detail.summary?.outstanding_amount ?? totalCommitted}
                   onCreate={(payload) =>
                     createExpensePayment.mutateAsync({ expenseId: expense.id, ...payload })
                   }
                   onDelete={(paymentId) =>
                     deleteExpensePayment.mutateAsync({ expenseId: expense.id, paymentId })
                   }
+                  onUpdate={(paymentId, payload) =>
+                    updateExpensePayment.mutateAsync({ paymentId, ...payload })
+                  }
+                  isUpdating={updateExpensePayment.isPending}
+                  items={detail.items}
+                  allocations={detail.allocations}
                   isCreating={createExpensePayment.isPending}
                   isDeleting={deleteExpensePayment.isPending}
                   defaultSplit={{
-                    side: expense.items[0]?.side ?? 'shared',
-                    bridePercentage: expense.items[0]?.bride_share_percentage ?? 50,
+                    side: detail.items[0]?.side ?? 'shared',
+                    bridePercentage: detail.items[0]?.bride_share_percentage ?? 50,
                   }}
                   canSeeSplits={canSeeSplits}
-                  canRecordPayment={expense.items.length > 0}
+                  canRecordPayment={detail.items.length > 0}
                   disabledReason="Add a line item first before recording payments."
                 />
               </div>
-            </form>
+
+              {/* A5/C6: lifecycle actions */}
+              <div className="space-y-3" style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 16 }}>
+                <div className="flex items-center gap-2">
+                  <h3 className="section-title" style={{ margin: 0 }}>Status</h3>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      padding: '2px 8px',
+                      borderRadius: 100,
+                      textTransform: 'capitalize',
+                      background: 'var(--bg-raised)',
+                      color: 'var(--ink-low)',
+                    }}
+                  >
+                    {expense.status}
+                  </span>
+                </div>
+                {expense.status === 'active' ? (
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      onClick={() => setStatusConfirm('closed')}
+                    >
+                      Close expense
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStatusConfirm('terminated')}
+                      style={{
+                        fontSize: 12,
+                        color: 'var(--ink-dim)',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Terminate…
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    onClick={() => void onSubmit(expense.id, { status: 'active' })}
+                  >
+                    Reopen
+                  </button>
+                )}
+              </div>
+            </div>
 
             <div
               style={{
@@ -547,6 +643,24 @@ export default function EditExpenseModal({
       </Portal>
 
       {unsavedDialog}
+
+      <ConfirmDialog
+        open={statusConfirm != null}
+        title={statusConfirm === 'terminated' ? 'Terminate expense' : 'Close expense'}
+        message={
+          statusConfirm === 'terminated'
+            ? 'This cancels any scheduled payments and trims each line item down to what has actually been paid. This cannot be undone.'
+            : 'Mark this expense as closed. Scheduled payments stay, and you can reopen it later.'
+        }
+        confirmLabel={statusConfirm === 'terminated' ? 'Terminate' : 'Close'}
+        isPending={isPending}
+        onConfirm={() => {
+          const next = statusConfirm;
+          setStatusConfirm(null);
+          if (next) void onSubmit(expense.id, { status: next });
+        }}
+        onCancel={() => setStatusConfirm(null)}
+      />
 
       <CustomCategoryModal
         isOpen={showCustomCategoryModal}

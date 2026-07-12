@@ -129,9 +129,7 @@ function BudgetCell({
             color: 'var(--ink-dim)',
             cursor: 'pointer',
             border: 'none',
-            opacity: 0,
           }}
-          className="budget-edit-btn"
           title="Set budget"
         >
           <HiOutlinePencil style={{ width: 10, height: 10 }} />
@@ -176,7 +174,6 @@ export default function ExpenseCategoriesTab({
 
   return (
     <>
-      <style>{`.budget-edit-btn { opacity: 0 !important; } .category-row:hover .budget-edit-btn { opacity: 1 !important; }`}</style>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div className="card">
           <div

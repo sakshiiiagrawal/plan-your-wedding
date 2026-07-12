@@ -1,11 +1,23 @@
-import { useExpenseOutstanding, useExpensePayments } from '../../../hooks/useApi';
+import { useState } from 'react';
+import toast from 'react-hot-toast';
+import {
+  useDeleteExpensePayment,
+  useExpenseOutstanding,
+  useExpensePayments,
+  useUpdateExpensePayment,
+  type FinanceTimelinePayment,
+} from '../../../hooks/useApi';
 import { parseLocalDate } from '../../../utils/date';
 import { financeTier } from '@wedding-planner/shared';
 import { useAuth } from '../../../contexts/AuthContext';
 import PaymentAttachments from '../../../components/finance/PaymentAttachments';
+import MarkPaidDialog, { type MarkPaidResult } from '../../../components/finance/MarkPaidDialog';
+import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 
 interface ExpensePaymentsTabProps {
   formatCurrency: (amount: number) => string;
+  /** C4: open the payment surface for an expense (manual → edit modal, source → payments modal). */
+  onRecordPayment: (expenseId: string) => void;
 }
 
 function formatPaymentAmount(
@@ -39,11 +51,18 @@ function scheduleBadge(paymentDate: string) {
   return <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Scheduled</span>;
 }
 
-export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTabProps) {
+export default function ExpensePaymentsTab({
+  formatCurrency,
+  onRecordPayment,
+}: ExpensePaymentsTabProps) {
   const { user } = useAuth();
   const canSeeSplits = financeTier(user) === 'full';
   const { data: payments = [], isLoading: loadingPayments } = useExpensePayments();
   const { data: outstanding, isLoading: loadingOutstanding } = useExpenseOutstanding();
+  const updatePayment = useUpdateExpensePayment();
+  const deletePayment = useDeleteExpensePayment();
+  const [markPaidTarget, setMarkPaidTarget] = useState<FinanceTimelinePayment | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<FinanceTimelinePayment | null>(null);
 
   if (loadingPayments || loadingOutstanding) {
     return <div className="card p-8 text-center text-ink-low">Loading payments...</div>;
@@ -59,10 +78,57 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
     (sum, payment) => sum + (payment.direction === 'inflow' ? -payment.amount : payment.amount),
     0,
   );
+  // Outflow-only — this is what's carved out of Outstanding by the schedule.
+  const scheduledOutflowTotal = scheduledPayments
+    .filter((payment) => payment.direction === 'outflow')
+    .reduce((sum, payment) => sum + payment.amount, 0);
+  const totalOutstanding = outstanding?.totalOutstanding ?? 0;
+  const unscheduled = Number((totalOutstanding - scheduledOutflowTotal).toFixed(2));
+
+  const confirmMarkPaid = async (result: MarkPaidResult) => {
+    if (!markPaidTarget) return;
+    try {
+      await updatePayment.mutateAsync({
+        paymentId: markPaidTarget.id,
+        status: 'posted',
+        paid_date: result.paid_date,
+        payment_method: result.payment_method,
+        amount: result.amount,
+      });
+      toast.success('Payment recorded.');
+      setMarkPaidTarget(null);
+    } catch (error) {
+      const apiError = error as { response?: { data?: { error?: string; message?: string } } };
+      toast.error(
+        apiError.response?.data?.error ||
+          apiError.response?.data?.message ||
+          'Failed to mark payment as paid.',
+      );
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deletePayment.mutateAsync({
+        expenseId: deleteTarget.expense_id,
+        paymentId: deleteTarget.id,
+      });
+      toast.success('Scheduled payment deleted.');
+      setDeleteTarget(null);
+    } catch (error) {
+      const apiError = error as { response?: { data?: { error?: string; message?: string } } };
+      toast.error(
+        apiError.response?.data?.error ||
+          apiError.response?.data?.message ||
+          'Failed to delete payment.',
+      );
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="card text-center">
           <div className="text-2xl font-bold text-green-600">{formatCurrency(paidTotal)}</div>
           <div className="text-sm text-ink-low">Net Paid</div>
@@ -70,21 +136,37 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
         <div className="card text-center">
           <div className="text-2xl font-bold text-blue-600">{formatCurrency(scheduledTotal)}</div>
           <div className="text-sm text-ink-low">Scheduled</div>
+          <div className="text-[11px] text-ink-dim mt-0.5">already part of Outstanding</div>
         </div>
         <div className="card text-center">
           <div
             className={`text-2xl font-bold ${
-              (outstanding?.totalOutstanding ?? 0) > 0 ? 'text-orange-600' : 'text-ink-dim'
+              totalOutstanding > 0 ? 'text-orange-600' : 'text-ink-dim'
             }`}
           >
-            {formatCurrency(outstanding?.totalOutstanding ?? 0)}
+            {formatCurrency(totalOutstanding)}
           </div>
           <div className="text-sm text-ink-low">Outstanding</div>
+        </div>
+        <div className="card text-center">
+          {unscheduled < 0 ? (
+            <>
+              <div className="text-2xl font-bold text-red-600">
+                {formatCurrency(Math.abs(unscheduled))}
+              </div>
+              <div className="text-sm text-ink-low">Over-scheduled by</div>
+            </>
+          ) : (
+            <>
+              <div className="text-2xl font-bold text-ink-mid">{formatCurrency(unscheduled)}</div>
+              <div className="text-sm text-ink-low">Unscheduled</div>
+            </>
+          )}
         </div>
       </div>
 
       {scheduledPayments.length > 0 && (
-        <div className="card overflow-hidden p-0">
+        <div id="scheduled-payments" className="card overflow-hidden p-0">
           <div className="p-4 bg-blue-50 border-b border-blue-100">
             <h3 className="font-semibold text-blue-800">Scheduled Payments</h3>
           </div>
@@ -100,6 +182,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   <th className="text-left p-4">Status</th>
                   <th className="text-left p-4 hidden md:table-cell">Notes</th>
                   <th className="text-left p-4">Receipts</th>
+                  <th className="text-right p-4">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -111,7 +194,12 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   )
                   .map((payment) => (
                     <tr key={payment.id} className="table-row">
-                      <td className="p-4 font-medium">{payment.expense.description}</td>
+                      <td className="p-4 font-medium">
+                        {payment.expense.description}
+                        {payment.notes && (
+                          <div className="text-xs text-ink-low md:hidden">{payment.notes}</div>
+                        )}
+                      </td>
                       <td className="p-4 text-ink-low capitalize">
                         {payment.expense.source_type}
                       </td>
@@ -142,6 +230,22 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                       </td>
                       <td className="p-4">
                         <PaymentAttachments paymentId={payment.id} />
+                      </td>
+                      <td className="p-4">
+                        <div className="flex justify-end gap-3 whitespace-nowrap">
+                          <button
+                            onClick={() => setMarkPaidTarget(payment)}
+                            className="text-xs font-medium text-green-700 hover:underline"
+                          >
+                            Mark paid
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget(payment)}
+                            className="text-xs font-medium text-red-600 hover:underline"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -242,6 +346,7 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   <th className="text-right p-4">Allocated</th>
                   <th className="text-right p-4">Paid</th>
                   <th className="text-right p-4">Outstanding</th>
+                  <th className="text-right p-4">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -259,6 +364,15 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                       <td className="p-4 text-right font-semibold text-orange-700">
                         {formatCurrency(item.outstanding)}
                       </td>
+                      <td className="p-4 text-right">
+                        <button
+                          onClick={() => onRecordPayment(item.expense_id)}
+                          className="text-xs font-medium whitespace-nowrap"
+                          style={{ color: 'var(--gold-deep)' }}
+                        >
+                          Record payment →
+                        </button>
+                      </td>
                     </tr>
                   ))}
               </tbody>
@@ -270,12 +384,36 @@ export default function ExpensePaymentsTab({ formatCurrency }: ExpensePaymentsTa
                   <td className="p-4 text-right text-orange-700">
                     {formatCurrency(outstanding.totalOutstanding)}
                   </td>
+                  <td className="p-4" />
                 </tr>
               </tfoot>
             </table>
           </div>
         </div>
       )}
+
+      {markPaidTarget && (
+        <MarkPaidDialog
+          payment={markPaidTarget}
+          isPending={updatePayment.isPending}
+          onConfirm={confirmMarkPaid}
+          onCancel={() => setMarkPaidTarget(null)}
+        />
+      )}
+
+      <ConfirmDialog
+        open={deleteTarget != null}
+        title="Delete scheduled payment"
+        message={
+          deleteTarget
+            ? `Delete the scheduled ${formatCurrency(deleteTarget.amount)} payment? This can't be undone.`
+            : ''
+        }
+        confirmLabel="Delete"
+        isPending={deletePayment.isPending}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

@@ -4,11 +4,14 @@ import toast from 'react-hot-toast';
 import CategoryCombobox from '../CategoryCombobox';
 import DatePicker from '../ui/DatePicker';
 import SplitShare from '../ui/SplitShare';
+import ConfirmDialog from '../ui/ConfirmDialog';
+import MarkPaidDialog, { type MarkPaidResult } from './MarkPaidDialog';
+import { ModeToggle, type PaymentMode } from './InstallmentsEditor';
 import PaymentAttachments from './PaymentAttachments';
 import PaymentNotesEditor from './PaymentNotesEditor';
 import { formatCurrency } from '../../utils/currency';
-import { parseLocalDate } from '../../utils/date';
-import type { PaymentRow } from '@wedding-planner/shared';
+import { parseLocalDate, todayLocal } from '../../utils/date';
+import type { PaymentRow, ExpenseItemRow, PaymentAllocationRow } from '@wedding-planner/shared';
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   cash: 'Cash',
@@ -18,10 +21,12 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   credit_card: 'Credit Card',
 };
 
-const TODAY = new Date().toISOString().slice(0, 10);
+const round2 = (value: number) => Number(value.toFixed(2));
 
 const formatPaymentAmount = (amount: number, direction: 'outflow' | 'inflow') =>
   `${direction === 'inflow' ? '-' : ''}${formatCurrency(amount)}`;
+
+type PanelItem = Pick<ExpenseItemRow, 'id' | 'description' | 'amount'>;
 
 interface PaymentFormState {
   amount: string;
@@ -34,6 +39,13 @@ interface PaymentFormState {
   extra_description: string;
   extra_side: 'bride' | 'groom' | 'shared';
   extra_bride_share_percentage: number;
+  // Explicit record-vs-schedule choice (derived from date until toggled).
+  mode: PaymentMode;
+  modeTouched: boolean;
+  // D6: null = split automatically; otherwise the target expense item id.
+  apply_to_item_id: string | null;
+  // C3/B5: set when this entry reverses an existing posted payment.
+  reverses_payment_id: string | null;
 }
 
 interface DefaultSplit {
@@ -42,9 +54,10 @@ interface DefaultSplit {
 }
 
 function getPaymentFormState(defaultSplit: DefaultSplit): PaymentFormState {
+  const payment_date = todayLocal();
   return {
     amount: '',
-    payment_date: TODAY,
+    payment_date,
     payment_method: 'cash',
     paid_by_side: defaultSplit.side,
     paid_bride_share_percentage: defaultSplit.bridePercentage,
@@ -53,6 +66,10 @@ function getPaymentFormState(defaultSplit: DefaultSplit): PaymentFormState {
     extra_description: 'Tip',
     extra_side: defaultSplit.side,
     extra_bride_share_percentage: 50,
+    mode: payment_date > todayLocal() ? 'schedule' : 'record',
+    modeTouched: false,
+    apply_to_item_id: null,
+    reverses_payment_id: null,
   };
 }
 
@@ -73,6 +90,12 @@ export interface PaymentTimelinePanelProps {
   canSeeSplits: boolean;
   canRecordPayment: boolean;
   disabledReason?: string;
+  // D3: mark a scheduled payment as paid. Absent hides the action.
+  onUpdate?: ((paymentId: string, payload: Record<string, unknown>) => Promise<unknown>) | undefined;
+  isUpdating?: boolean | undefined;
+  // D6: line-item picker + allocation chips.
+  items?: PanelItem[] | undefined;
+  allocations?: PaymentAllocationRow[] | undefined;
 }
 
 export default function PaymentTimelinePanel({
@@ -88,25 +111,94 @@ export default function PaymentTimelinePanel({
   canSeeSplits,
   canRecordPayment,
   disabledReason,
+  onUpdate,
+  isUpdating,
+  items,
+  allocations,
 }: PaymentTimelinePanelProps) {
   const [formData, setFormData] = useState<PaymentFormState>(() =>
     getPaymentFormState(defaultSplit),
   );
+  const [deleteTarget, setDeleteTarget] = useState<PaymentRow | null>(null);
+  const [markPaidTarget, setMarkPaidTarget] = useState<PaymentRow | null>(null);
 
   const enteredAmount = Number(formData.amount || 0);
   const paymentDirection = enteredAmount < 0 ? 'inflow' : 'outflow';
   const paymentMagnitude = Math.abs(enteredAmount);
   const isReversal = paymentDirection === 'inflow';
-  const excessAmount = isReversal
-    ? 0
-    : Math.max(0, Number((paymentMagnitude - outstanding).toFixed(2)));
-  const isScheduled = formData.payment_date > TODAY;
+  const isScheduled = formData.mode === 'schedule';
+
+  const hasItemPicker = (items?.length ?? 0) > 1;
+
+  // Net paid per item (outflow allocations minus inflow reversals).
+  const paidByItem = new Map<string, number>();
+  for (const allocation of allocations ?? []) {
+    const owning = payments.find((payment) => payment.id === allocation.payment_id);
+    const sign = owning?.direction === 'inflow' ? -1 : 1;
+    paidByItem.set(
+      allocation.expense_item_id,
+      (paidByItem.get(allocation.expense_item_id) ?? 0) + sign * allocation.amount,
+    );
+  }
+  const itemRemaining = (itemId: string): number => {
+    const item = items?.find((entry) => entry.id === itemId);
+    if (!item) return outstanding;
+    return Math.max(0, round2(item.amount - (paidByItem.get(itemId) ?? 0)));
+  };
+
+  // Excess/new-item classification only applies to auto-split recorded outflows.
+  // When a specific item is targeted the full amount goes to it and the server
+  // enforces that item's remaining balance.
+  const excessAmount =
+    isReversal || isScheduled || formData.apply_to_item_id
+      ? 0
+      : Math.max(0, round2(paymentMagnitude - outstanding));
+
+  // Schedule-mode over-scheduling: outstanding minus already-scheduled outflows.
+  const scheduledOutflowTotal = payments
+    .filter((payment) => payment.status === 'scheduled' && payment.direction === 'outflow')
+    .reduce((sum, payment) => sum + payment.amount, 0);
+  const unscheduled = round2(outstanding - scheduledOutflowTotal);
+  const overScheduled =
+    isScheduled && !isReversal && paymentMagnitude > unscheduled && unscheduled >= 0;
 
   const sortedPayments = [...payments].sort((left, right) => {
     const leftDate = left.paid_date ?? left.due_date ?? left.created_at;
     const rightDate = right.paid_date ?? right.due_date ?? right.created_at;
     return rightDate.localeCompare(leftDate);
   });
+
+  const itemLabel = (itemId: string) =>
+    items?.find((entry) => entry.id === itemId)?.description ?? 'Item';
+
+  const setMode = (mode: PaymentMode) =>
+    setFormData((prev) => ({ ...prev, mode, modeTouched: true }));
+
+  const updateDate = (payment_date: string) =>
+    setFormData((prev) => ({
+      ...prev,
+      payment_date,
+      mode: prev.modeTouched ? prev.mode : payment_date > todayLocal() ? 'schedule' : 'record',
+    }));
+
+  const startReverse = (payment: PaymentRow) => {
+    setFormData((prev) => ({
+      ...prev,
+      amount: String(-payment.amount),
+      mode: 'record',
+      modeTouched: true,
+      payment_date: todayLocal(),
+      payment_method: payment.payment_method ?? prev.payment_method,
+      paid_by_side: payment.paid_by_side ?? prev.paid_by_side,
+      paid_bride_share_percentage: payment.paid_bride_share_percentage ?? prev.paid_bride_share_percentage,
+      apply_to_item_id: null,
+      reverses_payment_id: payment.id,
+      notes: `Reversal of ${formatCurrency(payment.amount)} payment`,
+    }));
+    if (typeof document !== 'undefined') {
+      document.getElementById('add-payment-heading')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   const handleSave = async () => {
     if (!canRecordPayment) {
@@ -124,6 +216,11 @@ export default function PaymentTimelinePanel({
       return;
     }
 
+    const targetItemId = formData.apply_to_item_id;
+    // Full amount to the targeted item — the server rejects if it exceeds that
+    // item's remaining balance.
+    const allocationForItem = targetItemId && !isScheduled ? paymentMagnitude : 0;
+
     try {
       await onCreate({
         amount: paymentMagnitude,
@@ -140,6 +237,12 @@ export default function PaymentTimelinePanel({
             }
           : {}),
         notes: formData.notes || null,
+        ...(formData.reverses_payment_id
+          ? { reverses_payment_id: formData.reverses_payment_id }
+          : {}),
+        ...(targetItemId && !isScheduled && allocationForItem > 0
+          ? { allocations: [{ expense_item_id: targetItemId, amount: allocationForItem }] }
+          : {}),
         new_items:
           excessAmount > 0 && formData.extra_category_id
             ? [
@@ -163,9 +266,7 @@ export default function PaymentTimelinePanel({
 
       toast.success(
         isScheduled
-          ? isReversal
-            ? 'Planned reversal saved.'
-            : 'Planned payment saved.'
+          ? 'Scheduled payment saved.'
           : isReversal
             ? 'Reversal recorded.'
             : 'Payment recorded.',
@@ -181,16 +282,39 @@ export default function PaymentTimelinePanel({
     }
   };
 
-  const handleDelete = async (paymentId: string) => {
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await onDelete(paymentId);
+      await onDelete(deleteTarget.id);
       toast.success('Scheduled payment deleted.');
+      setDeleteTarget(null);
     } catch (error: unknown) {
       const apiError = error as ApiError;
       const message =
         apiError.response?.data?.error ||
         apiError.response?.data?.message ||
         'Failed to delete payment.';
+      toast.error(message);
+    }
+  };
+
+  const confirmMarkPaid = async (result: MarkPaidResult) => {
+    if (!markPaidTarget || !onUpdate) return;
+    try {
+      await onUpdate(markPaidTarget.id, {
+        status: 'posted',
+        paid_date: result.paid_date,
+        payment_method: result.payment_method,
+        amount: result.amount,
+      });
+      toast.success('Payment recorded.');
+      setMarkPaidTarget(null);
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      const message =
+        apiError.response?.data?.error ||
+        apiError.response?.data?.message ||
+        'Failed to mark payment as paid.';
       toast.error(message);
     }
   };
@@ -233,7 +357,19 @@ export default function PaymentTimelinePanel({
                 key={payment.id}
                 payment={payment}
                 isDeleting={isDeleting}
-                onDelete={handleDelete}
+                onDelete={(p) => setDeleteTarget(p)}
+                onMarkPaid={onUpdate ? (p) => setMarkPaidTarget(p) : undefined}
+                onReverse={startReverse}
+                allocationChips={
+                  hasItemPicker
+                    ? (allocations ?? [])
+                        .filter((allocation) => allocation.payment_id === payment.id)
+                        .map((allocation) => ({
+                          label: itemLabel(allocation.expense_item_id),
+                          amount: allocation.amount,
+                        }))
+                    : []
+                }
               />
             ))}
           </div>
@@ -242,7 +378,11 @@ export default function PaymentTimelinePanel({
 
       {/* Add payment form */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <h3 className="section-title">Add Payment</h3>
+        <h3 className="section-title" id="add-payment-heading">
+          Add Payment
+        </h3>
+
+        <ModeToggle mode={formData.mode} onChange={setMode} />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
@@ -257,11 +397,11 @@ export default function PaymentTimelinePanel({
             />
           </div>
           <div>
-            <label className="label">{isScheduled ? 'Due Date' : 'Payment Date'}</label>
+            <label className="label">{isScheduled ? 'Due Date' : 'Paid On'}</label>
             <DatePicker
               value={formData.payment_date}
-              onChange={(v) => setFormData((p) => ({ ...p, payment_date: v }))}
-              placeholder={isScheduled ? 'Due date' : 'Payment date'}
+              onChange={updateDate}
+              placeholder={isScheduled ? 'Due date' : 'Paid on'}
             />
           </div>
         </div>
@@ -303,6 +443,26 @@ export default function PaymentTimelinePanel({
           )}
         </div>
 
+        {hasItemPicker && !isScheduled && (
+          <div>
+            <label className="label">Apply to</label>
+            <select
+              value={formData.apply_to_item_id ?? ''}
+              onChange={(e) =>
+                setFormData((p) => ({ ...p, apply_to_item_id: e.target.value || null }))
+              }
+              className="input"
+            >
+              <option value="">Split automatically</option>
+              {items?.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.description} · remaining {formatCurrency(itemRemaining(item.id))}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {canSeeSplits && formData.paid_by_side === 'shared' && (
           <SplitShare
             total={paymentMagnitude}
@@ -324,7 +484,13 @@ export default function PaymentTimelinePanel({
           />
         </div>
 
-        {isScheduled && (
+        {!isScheduled && formData.payment_date > todayLocal() && (
+          <div style={{ fontSize: 12, color: 'var(--ink-low)' }}>
+            Recording a future-dated payment (post-dated instrument).
+          </div>
+        )}
+
+        {overScheduled && (
           <div
             style={{
               border: '1px solid rgba(217,119,6,0.25)',
@@ -335,7 +501,8 @@ export default function PaymentTimelinePanel({
               color: 'var(--warn)',
             }}
           >
-            This will be saved as a scheduled payment reminder.
+            This schedules more than the {formatCurrency(unscheduled)} still unscheduled. It won't
+            change the paid total, but the schedule will exceed what's outstanding.
           </div>
         )}
 
@@ -392,26 +559,28 @@ export default function PaymentTimelinePanel({
                   placeholder="Tip, late fee, extra service"
                 />
               </div>
-              <div>
-                <label className="label">Liability Side</label>
-                <select
-                  value={formData.extra_side}
-                  onChange={(e) =>
-                    setFormData((p) => ({
-                      ...p,
-                      extra_side: e.target.value as 'bride' | 'groom' | 'shared',
-                    }))
-                  }
-                  className="input"
-                >
-                  <option value="bride">Bride</option>
-                  <option value="groom">Groom</option>
-                  <option value="shared">Shared</option>
-                </select>
-              </div>
+              {canSeeSplits && (
+                <div>
+                  <label className="label">Liability Side</label>
+                  <select
+                    value={formData.extra_side}
+                    onChange={(e) =>
+                      setFormData((p) => ({
+                        ...p,
+                        extra_side: e.target.value as 'bride' | 'groom' | 'shared',
+                      }))
+                    }
+                    className="input"
+                  >
+                    <option value="bride">Bride</option>
+                    <option value="groom">Groom</option>
+                    <option value="shared">Shared</option>
+                  </select>
+                </div>
+              )}
             </div>
 
-            {formData.extra_side === 'shared' && (
+            {canSeeSplits && formData.extra_side === 'shared' && (
               <SplitShare
                 total={excessAmount}
                 bridePercentage={formData.extra_bride_share_percentage}
@@ -430,23 +599,68 @@ export default function PaymentTimelinePanel({
           className="btn-primary"
           style={{ opacity: isCreating ? 0.5 : 1 }}
         >
-          {isCreating ? 'Saving…' : isScheduled ? 'Save Planned Payment' : 'Record Payment'}
+          {isCreating
+            ? 'Saving…'
+            : isScheduled
+              ? 'Save Scheduled Payment'
+              : isReversal
+                ? 'Record Reversal'
+                : 'Record Payment'}
         </button>
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget != null}
+        title="Delete scheduled payment"
+        message={
+          deleteTarget
+            ? `Delete the scheduled ${formatCurrency(deleteTarget.amount)} payment? This can't be undone.`
+            : ''
+        }
+        confirmLabel="Delete"
+        isPending={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      {markPaidTarget && (
+        <MarkPaidDialog
+          payment={markPaidTarget}
+          isPending={isUpdating}
+          onConfirm={confirmMarkPaid}
+          onCancel={() => setMarkPaidTarget(null)}
+        />
+      )}
     </div>
   );
+}
+
+interface AllocationChip {
+  label: string;
+  amount: number;
 }
 
 interface PaymentTimelineItemProps {
   payment: PaymentRow;
   isDeleting: boolean;
-  onDelete: (paymentId: string) => void;
+  onDelete: (payment: PaymentRow) => void;
+  onMarkPaid?: ((payment: PaymentRow) => void) | undefined;
+  onReverse?: ((payment: PaymentRow) => void) | undefined;
+  allocationChips: AllocationChip[];
 }
 
-function PaymentTimelineItem({ payment, isDeleting, onDelete }: PaymentTimelineItemProps) {
+function PaymentTimelineItem({
+  payment,
+  isDeleting,
+  onDelete,
+  onMarkPaid,
+  onReverse,
+  allocationChips,
+}: PaymentTimelineItemProps) {
   const dateLabel = payment.paid_date ?? payment.due_date ?? payment.created_at;
-  const isDeleteAllowed = payment.status === 'scheduled';
+  const isScheduled = payment.status === 'scheduled';
   const isInflow = payment.direction === 'inflow';
+  const isPostedOutflow = payment.status === 'posted' && !isInflow;
   const amtColor = isInflow ? '#0369a1' : payment.status === 'posted' ? 'var(--ok)' : 'var(--gold-deep)';
 
   return (
@@ -517,16 +731,68 @@ function PaymentTimelineItem({ payment, isDeleting, onDelete }: PaymentTimelineI
             ` · ${PAYMENT_METHOD_LABELS[payment.payment_method] ?? payment.payment_method}`}
         </div>
 
+        {allocationChips.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
+            {allocationChips.map((chip, index) => (
+              <span
+                key={index}
+                style={{
+                  fontSize: 10,
+                  padding: '2px 7px',
+                  borderRadius: 6,
+                  background: 'var(--bg-raised)',
+                  color: 'var(--ink-low)',
+                }}
+              >
+                {chip.label} {formatCurrency(chip.amount)}
+              </span>
+            ))}
+          </div>
+        )}
+
         <PaymentNotesEditor paymentId={payment.id} notes={payment.notes} />
 
         <div style={{ marginTop: 4 }}>
           <PaymentAttachments paymentId={payment.id} />
         </div>
+
+        <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+          {isScheduled && onMarkPaid && (
+            <button
+              type="button"
+              onClick={() => onMarkPaid(payment)}
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--ok)',
+                background: 'transparent',
+                cursor: 'pointer',
+              }}
+            >
+              Mark paid
+            </button>
+          )}
+          {isPostedOutflow && onReverse && (
+            <button
+              type="button"
+              onClick={() => onReverse(payment)}
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: '#0369a1',
+                background: 'transparent',
+                cursor: 'pointer',
+              }}
+            >
+              Reverse
+            </button>
+          )}
+        </div>
       </div>
-      {isDeleteAllowed && (
+      {isScheduled && (
         <button
           type="button"
-          onClick={() => onDelete(payment.id)}
+          onClick={() => onDelete(payment)}
           disabled={isDeleting}
           style={{
             padding: '6px 8px',

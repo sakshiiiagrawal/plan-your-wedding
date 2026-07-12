@@ -29,28 +29,33 @@ export default function ExpenseOverviewTab({
       outstanding: parseFloat(category.outstanding || 0),
     })) || [];
 
+  // Pie stays committed-based; the tracker table also surfaces budget/planned-
+  // only categories so the card totals reconcile (B3).
   const categoriesWithSpend = categoryData.filter((c) => c.committed > 0);
-  const sorted = [...categoriesWithSpend].sort((a, b) => {
+  const categoriesForTable = categoryData.filter(
+    (c) => c.committed > 0 || c.allocated > 0 || c.planned > 0,
+  );
+  const sorted = [...categoriesForTable].sort((a, b) => {
     if (sortBy === 'name') return a.name.localeCompare(b.name);
     return b[sortBy] - a[sortBy];
   });
   const totalCommitted = categoryData.reduce((s, c) => s + c.committed, 0);
   const totalPlanned = categoryData.reduce((s, c) => s + c.planned, 0);
   const totalAllocated = categoryData.reduce((s, c) => s + c.allocated, 0);
-  const visibleTotalAllocated = categoriesWithSpend.reduce(
+  const visibleTotalAllocated = categoriesForTable.reduce(
     (sum, category) => sum + category.allocated,
     0,
   );
-  const visibleTotalPlanned = categoriesWithSpend.reduce(
+  const visibleTotalPlanned = categoriesForTable.reduce(
     (sum, category) => sum + category.planned,
     0,
   );
-  const visibleTotalCommitted = categoriesWithSpend.reduce(
+  const visibleTotalCommitted = categoriesForTable.reduce(
     (sum, category) => sum + category.committed,
     0,
   );
   const visibleHasBudgets = visibleTotalAllocated > 0;
-  const maxCommitted = Math.max(...categoriesWithSpend.map((c) => c.committed), 1);
+  const maxCommitted = Math.max(...categoriesForTable.map((c) => c.committed), 1);
 
   const pieData = categoriesWithSpend.map((category, index) => ({
     name: category.name,
@@ -185,7 +190,7 @@ export default function ExpenseOverviewTab({
           <h3 className="section-title">Budget Summary</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[
-              { label: 'Total Budget', value: totalAllocated, color: 'var(--ink-mid)' },
+              { label: 'Category budgets', value: totalAllocated, color: 'var(--ink-mid)' },
               { label: 'Total Planned', value: totalPlanned, color: 'var(--ink-mid)' },
               { label: 'Total Allocated', value: totalCommitted, color: 'var(--gold-deep)' },
               {
@@ -222,7 +227,7 @@ export default function ExpenseOverviewTab({
           {totalAllocated > 0 && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 11, color: 'var(--ink-dim)' }}>Budget used</span>
+                <span style={{ fontSize: 11, color: 'var(--ink-dim)' }}>Category budgets used</span>
                 <span
                   style={{
                     fontSize: 11,
@@ -346,7 +351,7 @@ export default function ExpenseOverviewTab({
               fontStyle: 'italic',
             }}
           >
-            No categories with payments yet.
+            No categories with allocated expenses yet.
           </div>
         ) : (
           <div>
@@ -422,6 +427,22 @@ export default function ExpenseOverviewTab({
                         }}
                       >
                         OVER
+                      </span>
+                    )}
+                    {cat.committed === 0 && (
+                      <span
+                        style={{
+                          fontSize: 9,
+                          padding: '1px 6px',
+                          borderRadius: 100,
+                          background: 'var(--bg-raised)',
+                          color: 'var(--ink-dim)',
+                          fontWeight: 600,
+                          flexShrink: 0,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        planned only
                       </span>
                     )}
                   </div>

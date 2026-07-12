@@ -6,7 +6,9 @@ import {
   useCreateSourcePayment,
   useDeleteSourcePayment,
   useSourcePayments,
+  useUpdateExpensePayment,
 } from '../../hooks/useApi';
+import type { PaymentAllocationRow } from '@wedding-planner/shared';
 import { HiOutlineX } from 'react-icons/hi';
 
 interface SourcePaymentModalProps {
@@ -22,9 +24,13 @@ interface SourcePaymentModalProps {
     } | null;
     finance?: {
       items?: Array<{
+        id: string;
+        description: string;
+        amount: number;
         side: 'bride' | 'groom' | 'shared';
         bride_share_percentage: number | null;
       }>;
+      allocations?: PaymentAllocationRow[];
     } | null;
   };
   onClose: () => void;
@@ -42,6 +48,7 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
   const { data: payments = [] } = useSourcePayments(source.type, source.id);
   const createPayment = useCreateSourcePayment(source.type);
   const deletePayment = useDeleteSourcePayment(source.type);
+  const updatePayment = useUpdateExpensePayment();
 
   const committed = source.finance_summary?.committed_amount ?? 0;
   const paid = source.finance_summary?.paid_amount ?? 0;
@@ -155,6 +162,12 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
                 outstanding={outstanding}
                 onCreate={(payload) => createPayment.mutateAsync({ sourceId: source.id, ...payload })}
                 onDelete={(paymentId) => deletePayment.mutateAsync({ sourceId: source.id, paymentId })}
+                onUpdate={(paymentId, payload) =>
+                  updatePayment.mutateAsync({ paymentId, ...payload })
+                }
+                isUpdating={updatePayment.isPending}
+                items={source.finance?.items}
+                allocations={source.finance?.allocations}
                 isCreating={createPayment.isPending}
                 isDeleting={deletePayment.isPending}
                 defaultSplit={getDefaultPaymentSplit(source)}
