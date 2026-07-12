@@ -15,6 +15,7 @@ import { formatDate, parseLocalDate } from '../../utils/date';
 import { formatCurrencyCompact } from '../../utils/currency';
 import { useAuth } from '../../contexts/AuthContext';
 import { financeTier } from '@wedding-planner/shared';
+import { EVENT_ICONS } from './Events';
 
 interface Countdown {
   days: number;
@@ -399,7 +400,9 @@ export default function Dashboard() {
                   fontWeight: 500,
                 }}
               >
-                {events.length > 0 ? `${events.length} days of celebration` : 'Events & timeline'}
+                {events.length > 0
+                  ? `${new Set(events.map((ev: any) => ev.event_date)).size} days of celebration`
+                  : 'Events & timeline'}
               </h2>
             </div>
             <Link
@@ -472,7 +475,7 @@ export default function Dashboard() {
                           fontSize: 12,
                         }}
                       >
-                        {ev.icon || '🎊'}
+                        {EVENT_ICONS[ev.event_type as keyof typeof EVENT_ICONS] || '🎊'}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div

@@ -75,7 +75,7 @@ const EVENT_TYPES = [
   { value: 'sumangali_prarthanai', label: 'Sumangali Prarthanai', group: 'South Indian' },
 ];
 
-const EVENT_ICONS: Record<string, string> = {
+export const EVENT_ICONS: Record<string, string> = {
   roka: '🤝',
   engagement: '💍',
   ring_ceremony: '💍',

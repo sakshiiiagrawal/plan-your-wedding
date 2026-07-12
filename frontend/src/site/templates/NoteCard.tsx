@@ -49,10 +49,34 @@ export default function NoteCard({ data }: TemplateProps) {
           style={{ border: `1px solid ${p.accent}`, opacity: 0.35 }}
           aria-hidden
         />
+        {/* Corner ticks press the frame into the card stock */}
+        {[
+          'top-2 left-2 sm:top-3.5 sm:left-3.5 border-t-2 border-l-2',
+          'top-2 right-2 sm:top-3.5 sm:right-3.5 border-t-2 border-r-2',
+          'bottom-2 left-2 sm:bottom-3.5 sm:left-3.5 border-b-2 border-l-2',
+          'bottom-2 right-2 sm:bottom-3.5 sm:right-3.5 border-b-2 border-r-2',
+        ].map((pos) => (
+          <span
+            key={pos}
+            className={`absolute w-3.5 h-3.5 pointer-events-none ${pos}`}
+            style={{ borderColor: p.accent, opacity: 0.7 }}
+            aria-hidden
+          />
+        ))}
 
         <motion.div variants={stagger} initial="hidden" animate="visible" className="relative w-full">
           {showHero && (
             <>
+              <motion.div variants={fadeUp} className="flex justify-center mb-5">
+                <span
+                  className="w-14 h-14 rounded-full flex items-center justify-center font-script text-xl"
+                  style={{ border: `1px solid ${p.accent}`, color: p.primary }}
+                  aria-hidden
+                >
+                  {data.brideName[0]}
+                  {data.groomName[0]}
+                </span>
+              </motion.div>
               <motion.p variants={fadeUp} className="uppercase mb-4" style={{ fontSize: 10, letterSpacing: '0.35em', color: p.accent }}>
                 <E k="hero.kicker" />
               </motion.p>

@@ -39,6 +39,31 @@ export const drawLine = {
   visible: { scaleX: 1, transition: { duration: 0.9, ease: [0.22, 1, 0.36, 1] as const } },
 };
 
+/** Tighter cascade than `stagger` — for dense grids (gallery tiles, plaques). */
+export const staggerTight = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.07 } },
+};
+
+/** Clip-path wipe from the left — a curtain reveal for photos and panels. */
+export const revealClip = {
+  hidden: { clipPath: 'inset(0 100% 0 0)' },
+  visible: {
+    clipPath: 'inset(0 0% 0 0)',
+    transition: { duration: 1.0, ease: [0.22, 1, 0.36, 1] as const },
+  },
+};
+
+/** 3D card flip-in. Give the parent `perspective` for real depth. */
+export const flipIn = {
+  hidden: { opacity: 0, rotateY: 75 },
+  visible: {
+    opacity: 1,
+    rotateY: 0,
+    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const },
+  },
+};
+
 export const inViewProps = {
   initial: 'hidden' as const,
   whileInView: 'visible' as const,

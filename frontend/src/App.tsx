@@ -34,6 +34,7 @@ const Tasks = lazy(() => import('./pages/dashboard/Tasks'));
 const Gallery = lazy(() => import('./pages/dashboard/Gallery'));
 const Website = lazy(() => import('./pages/dashboard/Website'));
 const Settings = lazy(() => import('./pages/dashboard/Settings'));
+const PreviewFrame = lazy(() => import('./pages/dashboard/website/PreviewFrame'));
 
 function App() {
   // Scrolling over a focused number input silently changes its value —
@@ -269,6 +270,17 @@ function App() {
                 <SlugGuard>
                   <PublicPage />
                 </SlugGuard>
+              }
+            />
+
+            {/* Site Studio preview iframe — fed by PreviewCanvas through
+                expandos on the iframe element; renders nothing standalone */}
+            <Route
+              path="/__preview"
+              element={
+                <Suspense fallback={null}>
+                  <PreviewFrame />
+                </Suspense>
               }
             />
 

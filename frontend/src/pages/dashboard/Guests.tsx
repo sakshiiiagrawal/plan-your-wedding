@@ -498,7 +498,6 @@ export default function Guests() {
     }
     setIsSavingAll(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       await bulkCreateMutation.mutateAsync(pendingRows.map(({ _key, ...data }) => data));
       toast.success(
         `${pendingRows.length} guest${pendingRows.length > 1 ? 's' : ''} added successfully!`,

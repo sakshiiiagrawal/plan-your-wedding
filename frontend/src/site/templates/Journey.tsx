@@ -25,10 +25,13 @@ interface Milestone {
   cta?: { label: React.ReactNode; href: string; download?: string }[] | undefined;
 }
 
+const ROMANS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV'];
+
 /**
- * "Our Journey" — vertical scrollytelling timeline: a center spine that
- * draws with scroll progress, milestones alternating left/right, gallery
- * photos woven in as tilted snapshots. RSVP is the final milestone.
+ * "Our Journey" — reimagined as The Storybook: the couple's site as a book.
+ * The hero is the cover page, every milestone is a chapter with a roman
+ * numeral folio and a polaroid snapshot, a spine draws with scroll progress,
+ * and the RSVP is the next chapter — the one the guest writes themselves into.
  */
 export default function Journey({ data }: TemplateProps) {
   const p = data.palette;
@@ -83,63 +86,102 @@ export default function Journey({ data }: TemplateProps) {
   // through), so we drop the spine and render a clean centered list instead.
   const anyPhotos = timeline.some((it) => it !== 'rsvp' && Boolean(it.photo));
 
+  // Chapter numbering counts real milestones; the RSVP marker takes the next one.
+  let chapterIdx = 0;
+
+  const chapterLabel = (n: number) => (
+    <p className="text-xs uppercase mb-2 flex items-center gap-3" style={{ color: p.accent, letterSpacing: '0.24em' }}>
+      <E k="chapter.label" /> {ROMANS[n] ?? n + 1}
+    </p>
+  );
+
   return (
     <div style={{ ...vars, background: p.bg, color: p.ink }} className="min-h-screen font-body">
-      {!data.preview && <ScrollProgress color={p.accent} />}
+      <ScrollProgress color={p.accent} />
       {data.musicUrl && <MusicPlayer url={data.musicUrl} disabled={data.preview} startTime={data.musicStartTime} endTime={data.musicEndTime} />}
 
-      {anyEnabled && (
-      <nav
-        className="fixed top-0 left-0 right-0 z-50 border-b backdrop-blur"
-        style={{ background: `${p.bg}E6`, borderColor: p.line }}
-      >
-        <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
-          <a href={`/${data.slug}`} className="font-serif-display text-lg" style={{ color: p.primary }}>
-            {data.brideName[0]}
-            <span style={{ color: p.accent }}>&amp;</span>
-            {data.groomName[0]}
-          </a>
-          <div className="flex items-center gap-6">
-            {invitePage && (
-              <Link
-                to={`/${data.slug}/${invitePage.pageSlug}`}
-                className="hidden sm:block text-xs uppercase hover:opacity-60"
-                style={{ color: p.accent, letterSpacing: '0.14em' }}
-              >
-                {invitePage.title}
-              </Link>
-            )}
-            {data.authed && (
-              <Link
-                to={`/${data.slug}/dashboard`}
-                className="text-xs uppercase hover:opacity-60"
-                style={{ color: p.inkSoft, letterSpacing: '0.14em' }}
-              >
-                Dashboard
-              </Link>
-            )}
-          </div>
-        </div>
-      </nav>
-      )}
-
+      {/* Hero — the cover of the book */}
       {showHero && (
       <section
-        className="min-h-[82vh] flex items-center justify-center text-center pt-14 pb-16 px-6"
+        className="min-h-[88vh] flex items-center justify-center text-center pt-20 pb-16 px-6 relative overflow-hidden"
         style={{ background: p.heroGradient }}
       >
-        <motion.div variants={stagger} initial="hidden" animate="visible">
+        {/* Nav — transparent, lives inside the hero rather than as a separate chrome bar */}
+        {anyEnabled && (
+        <nav className="absolute top-0 left-0 right-0 z-20">
+          <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
+            <a href={`/${data.slug}`} className="font-serif-display text-lg" style={{ color: p.onHero }}>
+              {data.brideName[0]}
+              <span style={{ color: p.accent }}>&amp;</span>
+              {data.groomName[0]}
+            </a>
+            <div className="flex items-center gap-6">
+              {invitePage && (
+                <Link
+                  to={`/${data.slug}/${invitePage.pageSlug}`}
+                  className="hidden sm:block text-xs uppercase hover:opacity-60"
+                  style={{ color: p.onHero, letterSpacing: '0.14em' }}
+                >
+                  {invitePage.title}
+                </Link>
+              )}
+              {data.authed && (
+                <Link
+                  to={`/${data.slug}/dashboard`}
+                  className="text-xs uppercase hover:opacity-60"
+                  style={{ color: p.onHeroSoft, letterSpacing: '0.14em' }}
+                >
+                  Dashboard
+                </Link>
+              )}
+            </div>
+          </div>
+        </nav>
+        )}
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          animate="visible"
+          className="relative w-full max-w-2xl px-8 py-16 sm:px-16 sm:py-20"
+          style={{ border: `1px solid color-mix(in srgb, ${p.onHeroSoft} 55%, transparent)` }}
+        >
+          {/* Inner rule + corner ticks: an embossed cover plate */}
+          <div
+            className="absolute inset-2.5 pointer-events-none"
+            style={{ border: `1px solid color-mix(in srgb, ${p.onHeroSoft} 35%, transparent)` }}
+            aria-hidden
+          />
+          {[
+            'top-0 left-0 border-t-2 border-l-2',
+            'top-0 right-0 border-t-2 border-r-2',
+            'bottom-0 left-0 border-b-2 border-l-2',
+            'bottom-0 right-0 border-b-2 border-r-2',
+          ].map((pos) => (
+            <span
+              key={pos}
+              className={`absolute w-4 h-4 ${pos}`}
+              style={{ borderColor: p.accent }}
+              aria-hidden
+            />
+          ))}
           <motion.p
             variants={fadeUp}
             className="text-xs uppercase mb-8"
-            style={{ color: p.onHeroSoft, letterSpacing: '0.3em' }}
+            style={{ color: p.onHeroSoft, letterSpacing: '0.34em' }}
           >
             <E k="hero.kicker" />
           </motion.p>
+          <motion.p
+            variants={fadeUp}
+            className="font-serif-display italic text-2xl mb-4"
+            style={{ color: p.onHeroSoft }}
+          >
+            <E k="hero.coverTitle" />
+          </motion.p>
           <motion.h1
             variants={fadeUp}
-            className="font-serif-display leading-[0.95] mb-8"
-            style={{ color: p.onHero, fontSize: 'clamp(2.75rem, 7vw, 5.5rem)' }}
+            className="font-serif-display leading-[1.02] mb-8"
+            style={{ color: p.onHero, fontSize: 'clamp(2.75rem, 7vw, 5rem)' }}
           >
             <EditableContent field="brideName" value={data.brideName} />
             <span className="italic" style={{ color: p.accent }}>
@@ -149,12 +191,18 @@ export default function Journey({ data }: TemplateProps) {
             <EditableContent field="groomName" value={data.groomName} />
           </motion.h1>
           {data.tagline && (
-            <motion.p variants={fadeUp} className="font-serif-display italic text-xl mb-6" style={{ color: p.onHeroSoft }}>
+            <motion.p variants={fadeUp} className="font-serif-display italic text-xl mb-8" style={{ color: p.onHeroSoft }}>
               <EditableContent field="tagline" value={data.tagline} multiline />
             </motion.p>
           )}
+          <motion.div variants={fadeUp} className="flex items-center justify-center gap-4" aria-hidden>
+            <span className="h-px w-10" style={{ background: `color-mix(in srgb, ${p.onHeroSoft} 60%, transparent)` }} />
+            <span style={{ color: p.accent }}>❦</span>
+            <span className="h-px w-10" style={{ background: `color-mix(in srgb, ${p.onHeroSoft} 60%, transparent)` }} />
+          </motion.div>
           {data.weddingDate && (
-            <motion.p variants={fadeUp} className="text-sm uppercase" style={{ color: p.onHero, letterSpacing: '0.14em' }}>
+            <motion.p variants={fadeUp} className="mt-8 text-sm uppercase" style={{ color: p.onHero, letterSpacing: '0.18em' }}>
+              <span style={{ color: p.onHeroSoft }}><E k="hero.beginsOn" /> </span>
               {data.weddingDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </motion.p>
           )}
@@ -166,7 +214,7 @@ export default function Journey({ data }: TemplateProps) {
       <section className="py-24 max-w-4xl mx-auto px-6">
         {/* The spine lives inside the items wrapper so it spans exactly first→last
             milestone — never bleeding into the section padding or the footer. */}
-        <div className="relative space-y-20">
+        <div className="relative space-y-24">
           {anyPhotos && (
             <>
               <div className="absolute left-1/2 top-2 bottom-2 w-px hidden sm:block" style={{ background: p.line, transform: 'translateX(-50%)' }} />
@@ -178,6 +226,7 @@ export default function Journey({ data }: TemplateProps) {
           )}
           {timeline.map((item, i) => {
             if (item === 'rsvp') {
+              const n = chapterIdx++;
               return (
                 <motion.div key="rsvp" id="rsvp" variants={fadeUp} {...inViewProps} className="relative z-10 pt-10 text-center" style={{ background: p.bg }}>
                   {anyPhotos && (
@@ -186,12 +235,15 @@ export default function Journey({ data }: TemplateProps) {
                       style={{ background: p.accent, transform: 'translate(-50%, 0)', top: -8, zIndex: 2 }}
                     />
                   )}
-                  <p className="text-xs uppercase mb-2" style={{ color: p.accent, letterSpacing: '0.2em' }}>
-                    {SECTION_LABELS.rsvp}
+                  <p className="text-xs uppercase mb-2" style={{ color: p.accent, letterSpacing: '0.24em' }}>
+                    <E k="chapter.label" /> {ROMANS[n] ?? n + 1} — {SECTION_LABELS.rsvp}
                   </p>
-                  <h3 className="font-serif-display text-3xl mb-8" style={{ color: p.primary }}>
+                  <h3 className="font-serif-display text-3xl sm:text-4xl mb-3" style={{ color: p.primary }}>
                     <E k="rsvp.heading" />
                   </h3>
+                  <p className="font-serif-display italic mb-10" style={{ color: p.inkSoft }}>
+                    <E k="rsvp.subheading" />
+                  </p>
                   <div className="max-w-lg mx-auto">
                     <RsvpForm slug={data.slug} preview={data.preview} />
                   </div>
@@ -199,6 +251,7 @@ export default function Journey({ data }: TemplateProps) {
               );
             }
             const m = item;
+            const n = chapterIdx++;
             const hasPhoto = Boolean(m.photo);
             return (
               <div
@@ -216,22 +269,33 @@ export default function Journey({ data }: TemplateProps) {
                 <motion.div
                   variants={fadeUp}
                   {...inViewProps}
-                  className={
+                  className={`relative ${
                     anyPhotos
                       ? i % 2
                         ? 'sm:order-2 sm:text-left'
                         : 'sm:order-1 sm:text-right'
                       : 'text-center'
-                  }
+                  }`}
                 >
-                  {m.subtitle && (
-                    <p className="text-xs uppercase mb-2" style={{ color: p.accent, letterSpacing: '0.2em' }}>
-                      {m.subtitle}
-                    </p>
-                  )}
+                  {/* Folio numeral ghosted behind the chapter text */}
+                  <span
+                    className={`absolute -top-14 font-serif-display italic select-none pointer-events-none leading-none hidden sm:block ${
+                      anyPhotos ? (i % 2 ? 'left-0' : 'right-0') : 'left-1/2 -translate-x-1/2'
+                    }`}
+                    style={{ fontSize: '7rem', color: p.primary, opacity: 0.07 }}
+                    aria-hidden
+                  >
+                    {ROMANS[n] ?? n + 1}
+                  </span>
+                  {chapterLabel(n)}
                   <h3 className="font-serif-display text-3xl mb-3" style={{ color: p.primary }}>
                     {m.title}
                   </h3>
+                  {m.subtitle && (
+                    <p className="text-xs uppercase mb-3" style={{ color: p.inkSoft, letterSpacing: '0.18em' }}>
+                      {m.subtitle}
+                    </p>
+                  )}
                   <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: p.inkSoft }}>
                     {m.body}
                   </p>
@@ -259,11 +323,18 @@ export default function Journey({ data }: TemplateProps) {
                     whileInView={{ opacity: 1, rotate: i % 2 ? 1.2 : -1.2, scale: 1 }}
                     viewport={{ once: true, margin: '-80px' }}
                     transition={{ duration: 0.7 }}
-                    className={`overflow-hidden ${i % 2 ? 'sm:order-1' : 'sm:order-2'}`}
-                    style={{ border: `4px solid ${p.surface}`, boxShadow: '0 12px 32px -12px rgba(0,0,0,0.3)' }}
+                    className={`${i % 2 ? 'sm:order-1' : 'sm:order-2'}`}
                   >
-                    <button onClick={() => setLightboxIndex(data.galleryImages.findIndex((g) => g.url === m.photo))} className="block w-full">
+                    {/* A polaroid pasted into the album, captioned by hand */}
+                    <button
+                      onClick={() => setLightboxIndex(data.galleryImages.findIndex((g) => g.url === m.photo))}
+                      className="block w-full p-3 pb-2"
+                      style={{ background: p.surface, boxShadow: '0 16px 36px -16px rgba(0,0,0,0.35)', border: `1px solid ${p.line}` }}
+                    >
                       <img src={m.photo} alt="" loading="lazy" className="w-full object-cover" style={{ aspectRatio: '4/3' }} />
+                      <span className="block font-script text-xl pt-2 pb-1 text-center" style={{ color: p.inkSoft }}>
+                        {typeof m.title === 'string' ? m.title : coupleNames}
+                      </span>
                     </button>
                   </motion.div>
                 )}
@@ -275,6 +346,9 @@ export default function Journey({ data }: TemplateProps) {
 
       {anyEnabled && (
       <footer className="py-16 border-t text-center" style={{ borderColor: p.line }}>
+        <p className="font-serif-display italic text-lg mb-3" style={{ color: p.inkSoft }}>
+          <E k="footer.note" />
+        </p>
         <p className="font-serif-display text-2xl mb-2" style={{ color: p.primary }}>
           {coupleNames}
         </p>

@@ -13,4 +13,8 @@ export const EDITORIAL_COPY = {
   'rsvp.heading': 'Will you join us?',
   'rsvp.subheading': 'Kindly respond so we can plan every detail around you.',
   'gallery.heading': 'In pictures',
+  'hero.issue': 'Vol. I — The Wedding Issue',
+  'hero.marquee': 'Save the date',
+  'gallery.plate': 'Plate',
+  'footer.colophon': 'Published on the occasion of the marriage of',
 } as const satisfies CopyMap;

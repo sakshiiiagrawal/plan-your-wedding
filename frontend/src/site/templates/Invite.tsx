@@ -25,15 +25,7 @@ import MusicPlayer from '../effects/MusicPlayer';
 
 const { E } = makeEditable('invite', INVITE_COPY);
 
-function Envelope({
-  initials,
-  preview,
-  onComplete,
-}: {
-  initials: string;
-  preview?: boolean | undefined;
-  onComplete: () => void;
-}) {
+function Envelope({ initials, onComplete }: { initials: string; onComplete: () => void }) {
   const [opened, setOpened] = useState(false);
 
   const handleTap = () => {
@@ -47,34 +39,17 @@ function Envelope({
       onClick={handleTap}
       animate={opened ? { opacity: 0 } : { opacity: 1 }}
       transition={opened ? { delay: 0.9, duration: 0.5 } : { duration: 0.2 }}
-      style={
-        preview
-          ? {
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: '100svh',
-              background: '#f5ece0',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              zIndex: 100,
-            }
-          : {
-              position: 'fixed',
-              inset: 0,
-              background: '#f5ece0',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              zIndex: 100,
-            }
-      }
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: '#f5ece0',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        zIndex: 100,
+      }}
     >
       <motion.div
         animate={opened ? { y: 80, opacity: 0 } : { y: [0, -8, 0] }}
@@ -159,10 +134,28 @@ function EventSlide({
   const directions = directionsUrl(event.venue);
   return (
     <section
-      className="flex flex-col items-center justify-center text-center px-8"
+      className="flex flex-col items-center justify-center text-center px-6"
       style={{ minHeight: '100svh', background: index % 2 ? vars.surface : vars.cream }}
     >
-      <motion.div variants={fadeUp} {...inViewProps} className="max-w-md sm:max-w-xl mx-auto">
+      <motion.div
+        variants={fadeUp}
+        {...inViewProps}
+        className="relative max-w-md sm:max-w-xl mx-auto w-full px-6 py-12 sm:px-10"
+      >
+        {/* Engraved corner ticks frame every ceremony card */}
+        {[
+          'top-0 left-0 border-t border-l',
+          'top-0 right-0 border-t border-r',
+          'bottom-0 left-0 border-b border-l',
+          'bottom-0 right-0 border-b border-r',
+        ].map((pos) => (
+          <span
+            key={pos}
+            className={`absolute w-6 h-6 ${pos}`}
+            style={{ borderColor: `color-mix(in srgb, ${vars.gold} 65%, transparent)` }}
+            aria-hidden
+          />
+        ))}
         {event.event_type && (
           <p
             className="uppercase mb-5"
@@ -174,7 +167,11 @@ function EventSlide({
         <h2 className="font-script mb-6" style={{ fontSize: 52, color: headingColor }}>
           {event.name}
         </h2>
-        <div className="w-10 h-px mx-auto mb-6" style={{ background: vars.gold }} />
+        <div className="flex items-center justify-center gap-3 mb-6" aria-hidden>
+          <span className="h-px w-10" style={{ background: vars.gold, opacity: 0.7 }} />
+          <span className="w-1.5 h-1.5 rotate-45" style={{ border: `1px solid ${vars.gold}` }} />
+          <span className="h-px w-10" style={{ background: vars.gold, opacity: 0.7 }} />
+        </div>
         {event.description && (
           <p className="italic text-sm mb-5 mx-auto" style={{ color: vars.textMedium, maxWidth: 300 }}>
             {event.description}
@@ -510,31 +507,26 @@ export default function Invite({ data }: TemplateProps) {
         {envelopeEnabled && !opened && (
           <Envelope
             initials={initials}
-            preview={data.preview}
             onComplete={() => {
               if (!data.preview) sessionStorage.setItem(`invited:${data.slug}`, 'true');
               setOpened(true);
-              data.onIntroOpen?.();
             }}
           />
         )}
 
         {data.musicUrl && <MusicPlayer url={data.musicUrl} disabled={data.preview} startTime={data.musicStartTime} endTime={data.musicEndTime} />}
 
-        {/* Scroll progress bar — position:fixed, so keep it out of the
-            Site Studio preview where it would track the dashboard scroll */}
-        {!data.preview && (
-          <motion.div
-            className="fixed top-0 right-0 h-screen"
-            style={{
-              width: 3,
-              background: 'linear-gradient(180deg, #c9942a, #f0d080)',
-              transformOrigin: 'top',
-              scaleY,
-              zIndex: 60,
-            }}
-          />
-        )}
+        {/* Scroll progress bar */}
+        <motion.div
+          className="fixed top-0 right-0 h-screen"
+          style={{
+            width: 3,
+            background: 'linear-gradient(180deg, #c9942a, #f0d080)',
+            transformOrigin: 'top',
+            scaleY,
+            zIndex: 60,
+          }}
+        />
 
         {/* Hero slide */}
         {showHero &&
@@ -564,16 +556,25 @@ export default function Invite({ data }: TemplateProps) {
               </div>
               <div style={{ flex: 1, minHeight: 180 }} />
               <div
-                className="text-center max-w-md sm:max-w-xl md:max-w-2xl mx-auto"
+                className="relative text-center max-w-md sm:max-w-xl md:max-w-2xl mx-auto"
                 style={{
                   background: heroPhoto ? 'rgba(15,8,2,0.22)' : 'transparent',
                   backdropFilter: heroPhoto ? 'blur(12px)' : undefined,
                   WebkitBackdropFilter: heroPhoto ? 'blur(12px)' : undefined,
                   borderRadius: 16,
-                  padding: '20px 24px 36px',
+                  padding: '24px 24px 40px',
                   margin: '0 12px 12px',
+                  border: heroPhoto ? '1px solid rgba(240,208,128,0.4)' : `1px solid color-mix(in srgb, ${p.onHeroSoft} 40%, transparent)`,
                 }}
               >
+                {/* Inner hairline — the engraved double rule of a printed card */}
+                <span
+                  className="absolute inset-1.5 rounded-xl pointer-events-none"
+                  style={{
+                    border: heroPhoto ? '1px solid rgba(240,208,128,0.25)' : `1px solid color-mix(in srgb, ${p.onHeroSoft} 25%, transparent)`,
+                  }}
+                  aria-hidden
+                />
                 <h1 className="font-script leading-tight" style={{ fontSize: 'clamp(44px, 7vw, 84px)' }}>
                   <ShimmerText colors={heroShimmerColors}>
                     <EditableContent field="brideName" value={data.brideName} />

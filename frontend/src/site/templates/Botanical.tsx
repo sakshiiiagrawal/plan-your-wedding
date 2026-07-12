@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
 import type { PartId, TemplateProps } from '../types';
 import { SECTION_LABELS } from '../config';
 import { SharedE } from '../copy/shared';
@@ -17,6 +17,10 @@ import TickerDigit from '../effects/TickerDigit';
 import MusicPlayer from '../effects/MusicPlayer';
 
 const { E } = makeEditable('botanical', BOTANICAL_COPY);
+
+// The 3D garden (living arch + volumetric petal canopy) is its own chunk;
+// the reduced-motion/print path keeps the flat arch + 2D PetalDrift instead.
+const BotanicalHeroScene = lazy(() => import('./BotanicalScene'));
 
 /** A few softly drifting petals behind the hero — storybook ambience. */
 function PetalDrift({ color }: { color: string }) {
@@ -58,10 +62,179 @@ function PetalDrift({ color }: { color: string }) {
   );
 }
 
+/** A hand-drawn branch that sketches itself in — the herbarium's pen work. */
+function BranchSketch({
+  color,
+  reduced,
+  className = '',
+  delay = 0,
+}: {
+  color: string;
+  reduced: boolean;
+  className?: string;
+  delay?: number;
+}) {
+  const leaves = [
+    'M30,118 q-16,-4 -18,-20 q16,2 18,20',
+    'M44,88 q-18,-2 -22,-18 q18,0 22,18',
+    'M58,62 q-16,-6 -17,-22 q15,3 17,22',
+    'M52,96 q14,-10 30,-6 q-10,14 -30,6',
+    'M68,68 q12,-12 28,-10 q-8,15 -28,10',
+    'M84,40 q10,-13 26,-13 q-5,16 -26,13',
+  ];
+  return (
+    <svg viewBox="0 0 130 150" className={`w-24 h-28 sm:w-32 sm:h-36 ${className}`} aria-hidden>
+      <motion.path
+        d="M22,148 C30,110 44,80 66,56 C82,38 96,28 112,22"
+        fill="none"
+        stroke={color}
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        {...(reduced
+          ? {}
+          : {
+              initial: { pathLength: 0 },
+              animate: { pathLength: 1 },
+              transition: { duration: 2, delay, ease: 'easeInOut' },
+            })}
+      />
+      {leaves.map((d, i) => (
+        <motion.path
+          key={d}
+          d={d}
+          fill="none"
+          stroke={color}
+          strokeWidth="1.1"
+          strokeLinecap="round"
+          {...(reduced
+            ? {}
+            : {
+                initial: { pathLength: 0, opacity: 0 },
+                animate: { pathLength: 1, opacity: 1 },
+                transition: { duration: 0.9, delay: delay + 0.5 + i * 0.22, ease: 'easeOut' },
+              })}
+        />
+      ))}
+    </svg>
+  );
+}
+
+/** Soft organic edge between two section colours — no hard bands anywhere. */
+function WaveEdge({ fill, flip = false }: { fill: string; flip?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 1440 56"
+      preserveAspectRatio="none"
+      className={`block w-full h-10 sm:h-14 ${flip ? 'rotate-180' : ''}`}
+      aria-hidden
+    >
+      <path
+        d="M0,32 C180,56 360,8 560,20 C760,32 900,52 1100,40 C1260,30 1360,14 1440,24 L1440,56 L0,56 Z"
+        fill={fill}
+      />
+    </svg>
+  );
+}
+
+/** The winding dashed stem that links one garden event to the next. */
+function StemConnector({ color, mirror, reduced }: { color: string; mirror: boolean; reduced: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 200 90"
+      className={`h-20 w-48 mx-auto block ${mirror ? '-scale-x-100' : ''}`}
+      aria-hidden
+    >
+      <motion.path
+        d="M40,4 C40,40 160,50 160,86"
+        fill="none"
+        stroke={color}
+        strokeWidth="1.4"
+        strokeDasharray="1 7"
+        strokeLinecap="round"
+        {...(reduced
+          ? {}
+          : {
+              initial: { pathLength: 0 },
+              whileInView: { pathLength: 1 },
+              viewport: { once: true, margin: '-40px' },
+              transition: { duration: 1.1, ease: 'easeInOut' },
+            })}
+      />
+      <motion.path
+        d="M96,40 q-14,-4 -16,-18 q14,2 16,18"
+        fill="none"
+        stroke={color}
+        strokeWidth="1.1"
+        {...(reduced
+          ? {}
+          : {
+              initial: { opacity: 0 },
+              whileInView: { opacity: 1 },
+              viewport: { once: true },
+              transition: { duration: 0.6, delay: 0.7 },
+            })}
+      />
+    </svg>
+  );
+}
+
+/** A portrait as a cameo: oval ring, hanging from a sketched stem. */
+function Cameo({
+  photo,
+  name,
+  palette,
+  reduced,
+}: {
+  photo: string | null;
+  name: string;
+  palette: { line: string; accent: string; primary: string; onHero: string; heroGradient: string; surface: string };
+  reduced: boolean;
+}) {
+  return (
+    <div className="text-center">
+      <motion.div
+        className="relative mx-auto mb-4 w-36 h-48 sm:w-44 sm:h-56"
+        {...(reduced
+          ? {}
+          : {
+              initial: { opacity: 0, scale: 0.92 },
+              whileInView: { opacity: 1, scale: 1 },
+              viewport: { once: true, margin: '-60px' },
+              whileHover: { rotate: 1.5 },
+              transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
+            })}
+      >
+        <div
+          className="absolute inset-0 overflow-hidden flex items-center justify-center"
+          style={{
+            borderRadius: '50%',
+            border: `1px solid ${palette.accent}`,
+            boxShadow: `inset 0 0 0 6px ${palette.surface}, inset 0 0 0 7px ${palette.line}`,
+            background: photo ? undefined : palette.heroGradient,
+          }}
+        >
+          {photo ? (
+            <img src={photo} alt={name} loading="lazy" className="w-full h-full object-cover" />
+          ) : (
+            <span className="font-script text-5xl" style={{ color: palette.onHero }}>
+              {name[0]}
+            </span>
+          )}
+        </div>
+      </motion.div>
+      <p className="font-serif-display italic text-2xl" style={{ color: palette.primary }}>
+        {name}
+      </p>
+    </div>
+  );
+}
+
 /**
- * "Garden Romance" — soft pastel washes, arch silhouettes, italic serif,
- * centered storybook composition. Arches hold real couple photos when the
- * gallery has them.
+ * "Garden Romance" — reimagined as The Herbarium: a pressed-flower garden
+ * album. Hand-drawn branches sketch themselves around the hero, sections meet
+ * on organic wave edges instead of hard bands, the couple hang as cameo
+ * portraits, the events grow along a winding dashed stem as leaf-shaped
+ * cards, and gallery photos are pinned like specimens under washi tape.
  */
 export default function Botanical({ data }: TemplateProps) {
   const p = data.palette;
@@ -79,13 +252,16 @@ export default function Botanical({ data }: TemplateProps) {
 
   const vars = siteVars(p);
 
-  const divider = (
-    <div className="flex items-center justify-center gap-2 mb-10" aria-hidden>
-      <span className="w-1.5 h-1.5 rounded-full" style={{ background: p.accent }} />
-      <span className="w-2 h-2 rounded-full" style={{ background: p.accent }} />
-      <span className="w-1.5 h-1.5 rounded-full" style={{ background: p.accent }} />
-    </div>
-  );
+  const reduced = useReducedMotion() ?? false;
+  const show3d = !reduced && !data.print;
+  const heroRef = useRef<HTMLElement | null>(null);
+  const { scrollYProgress: heroProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  });
+  // Names rise faster than the page scrolls — "rising through the garden
+  // arch" (the arch itself swells to let them pass; see BotanicalScene).
+  const namesY = useTransform(heroProgress, [0, 1], [0, -110]);
 
   const heading = (text: React.ReactNode) => (
     <motion.div variants={fadeUp}>
@@ -95,145 +271,185 @@ export default function Botanical({ data }: TemplateProps) {
       >
         {text}
       </h2>
-      {divider}
+      <div className="flex items-center justify-center gap-3 mb-10" aria-hidden>
+        <span className="h-px w-10" style={{ background: p.line }} />
+        <svg viewBox="0 0 24 14" className="w-6 h-3.5">
+          <path
+            d="M12,12 q-8,-1 -10,-9 q9,1 10,9 q1,-8 10,-9 q-2,8 -10,9"
+            fill="none"
+            stroke={p.accent}
+            strokeWidth="1.1"
+          />
+        </svg>
+        <span className="h-px w-10" style={{ background: p.line }} />
+      </div>
     </motion.div>
   );
 
   const sectionBlocks: Partial<Record<PartId, React.ReactNode>> = {
     story: (
-      <section key="story" id="story" className="py-24">
+      <section key="story" id="story" className="pt-16 pb-24 relative">
         <motion.div
           variants={stagger}
           {...inViewProps}
           className="max-w-3xl mx-auto px-6 text-center"
         >
           {heading(<E k="story.heading" />)}
-          <motion.p
+          {/* The pressed page: story mounted like a specimen sheet */}
+          <motion.div
             variants={fadeUp}
-            className="font-serif-display text-xl leading-relaxed whitespace-pre-line"
-            style={{ color: p.inkSoft }}
+            className="relative px-7 py-10 sm:px-12 sm:py-12 mx-auto"
+            style={{
+              background: p.surface,
+              border: `1px solid ${p.line}`,
+              boxShadow: '0 18px 40px -28px rgba(50,60,40,0.35)',
+            }}
           >
-            <EditableContent field="story" value={data.story} multiline />
-          </motion.p>
+            <BranchSketch
+              color={`color-mix(in srgb, ${p.accent} 70%, ${p.inkSoft})`}
+              reduced={reduced}
+              className="absolute -top-8 -left-6 opacity-60"
+            />
+            <BranchSketch
+              color={`color-mix(in srgb, ${p.accent} 70%, ${p.inkSoft})`}
+              reduced={reduced}
+              delay={0.4}
+              className="absolute -bottom-8 -right-6 rotate-180 opacity-60"
+            />
+            <p
+              className="font-serif-display text-xl leading-loose whitespace-pre-line"
+              style={{ color: p.inkSoft }}
+            >
+              <EditableContent field="story" value={data.story} multiline />
+            </p>
+          </motion.div>
 
-          <div className="flex justify-center gap-10 sm:gap-16 mt-14">
-            {[
-              { name: data.brideName, photo: data.galleryImages[1]?.url ?? null },
-              { name: data.groomName, photo: data.galleryImages[2]?.url ?? null },
-            ].map((person) => (
-              <motion.div key={person.name} variants={fadeUp} className="text-center">
-                {/* Arch silhouette — holds a real photo when available */}
-                <div
-                  className="w-32 h-40 sm:w-40 sm:h-52 mx-auto mb-4 overflow-hidden flex items-end justify-center"
-                  style={{
-                    background: person.photo ? undefined : p.heroGradient,
-                    borderRadius: '999px 999px 18px 18px',
-                    border: `1px solid ${p.line}`,
-                  }}
-                >
-                  {person.photo ? (
-                    <img
-                      src={person.photo}
-                      alt={person.name}
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="font-script text-5xl pb-6" style={{ color: p.onHero }}>
-                      {person.name[0]}
-                    </span>
-                  )}
-                </div>
-                <p className="font-serif-display text-2xl" style={{ color: p.primary }}>
-                  {person.name}
-                </p>
-              </motion.div>
-            ))}
+          <div className="flex justify-center items-end gap-8 sm:gap-16 mt-16">
+            <Cameo
+              photo={data.galleryImages[1]?.url ?? null}
+              name={data.brideName}
+              palette={p}
+              reduced={reduced}
+            />
+            <span className="font-script text-4xl pb-10" style={{ color: p.accent }} aria-hidden>
+              &amp;
+            </span>
+            <Cameo
+              photo={data.galleryImages[2]?.url ?? null}
+              name={data.groomName}
+              palette={p}
+              reduced={reduced}
+            />
           </div>
         </motion.div>
       </section>
     ),
 
     events: showEvents ? (
-      <section key="events" id="events" className="py-24" style={{ background: p.surface }}>
-        <motion.div variants={stagger} {...inViewProps} className="max-w-3xl mx-auto px-6">
-          {heading(<E k="events.heading" />)}
-          <div className="space-y-6">
-            {data.events.map((event) => {
+      <section key="events" id="events" className="relative" style={{ background: p.surface }}>
+        <WaveEdge fill={p.bg} flip />
+        <div className="py-20 max-w-3xl mx-auto px-6">
+          <motion.div variants={stagger} {...inViewProps}>
+            {heading(<E k="events.heading" />)}
+          </motion.div>
+          <div className="flex flex-col">
+            {data.events.map((event, i) => {
               const directions = directionsUrl(event.venue);
+              const leafRadius = i % 2 ? '12px 56px 12px 56px' : '56px 12px 56px 12px';
               return (
-                <motion.div
-                  key={event.id}
-                  variants={fadeUp}
-                  className="rounded-3xl p-8 text-center"
-                  style={{ background: p.bg, border: `1px solid ${p.line}` }}
-                >
-                  <p
-                    className="text-xs uppercase mb-2"
-                    style={{ color: p.accent, letterSpacing: '0.2em' }}
+                <div key={event.id}>
+                  {i > 0 && (
+                    <StemConnector
+                      color={`color-mix(in srgb, ${p.accent} 75%, ${p.inkSoft})`}
+                      mirror={i % 2 === 0}
+                      reduced={reduced}
+                    />
+                  )}
+                  <motion.div
+                    variants={fadeUp}
+                    {...inViewProps}
+                    className={`w-full max-w-md p-8 text-center ${i % 2 ? 'self-end ml-auto' : 'self-start mr-auto'}`}
+                    style={{
+                      background: p.bg,
+                      border: `1px solid ${p.line}`,
+                      borderRadius: leafRadius,
+                      boxShadow: '0 16px 36px -28px rgba(50,60,40,0.4)',
+                    }}
                   >
-                    {formatEventDate(event.date, {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                    })}
-                    {' · '}
-                    {formatEventTime(event.start_time)}
-                  </p>
-                  <h3
-                    className="font-serif-display italic text-3xl mb-2"
-                    style={{ color: p.primary }}
-                  >
-                    {event.name}
-                  </h3>
-                  {event.venue && (
-                    <p className="text-sm mb-1" style={{ color: p.inkSoft }}>
-                      {event.venue.name}
-                      {event.venue.city ? `, ${event.venue.city}` : ''}
+                    <p
+                      className="text-xs uppercase mb-2"
+                      style={{ color: p.accent, letterSpacing: '0.2em' }}
+                    >
+                      {formatEventDate(event.date, {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                      })}
+                      {' · '}
+                      {formatEventTime(event.start_time)}
                     </p>
-                  )}
-                  {event.description && (
-                    <p className="text-sm mb-1" style={{ color: p.inkSoft }}>
-                      {event.description}
-                    </p>
-                  )}
-                  {event.dress_code && (
-                    <p className="text-sm italic" style={{ color: p.inkSoft }}>
-                      <E k="events.dressCode" /> {event.dress_code}
-                    </p>
-                  )}
-                  <div className="mt-4 flex justify-center gap-6 text-sm">
-                    <a
-                      href={calendarUrl(event, coupleNames)}
-                      download={icsFileName(event.name)}
-                      className="hover:opacity-70 underline underline-offset-4"
+                    <h3
+                      className="font-serif-display italic text-3xl mb-2"
                       style={{ color: p.primary }}
                     >
-                      <SharedE k="events.addToCalendar" />
-                    </a>
-                    {directions && (
+                      {event.name}
+                    </h3>
+                    {event.venue && (
+                      <p className="text-sm mb-1" style={{ color: p.inkSoft }}>
+                        {event.venue.name}
+                        {event.venue.city ? `, ${event.venue.city}` : ''}
+                      </p>
+                    )}
+                    {event.description && (
+                      <p className="text-sm mb-1" style={{ color: p.inkSoft }}>
+                        {event.description}
+                      </p>
+                    )}
+                    {event.dress_code && (
+                      <p className="text-sm italic" style={{ color: p.inkSoft }}>
+                        <E k="events.dressCode" /> {event.dress_code}
+                      </p>
+                    )}
+                    <div className="mt-4 flex justify-center gap-6 text-sm">
                       <a
-                        href={directions}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href={calendarUrl(event, coupleNames)}
+                        download={icsFileName(event.name)}
                         className="hover:opacity-70 underline underline-offset-4"
                         style={{ color: p.primary }}
                       >
-                        <SharedE k="events.directions" />
+                        <SharedE k="events.addToCalendar" />
                       </a>
-                    )}
-                  </div>
-                </motion.div>
+                      {directions && (
+                        <a
+                          href={directions}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:opacity-70 underline underline-offset-4"
+                          style={{ color: p.primary }}
+                        >
+                          <SharedE k="events.directions" />
+                        </a>
+                      )}
+                    </div>
+                  </motion.div>
+                </div>
               );
             })}
           </div>
-        </motion.div>
+        </div>
+        <WaveEdge fill={p.bg} />
       </section>
     ) : null,
 
     rsvp: (
-      <section key="rsvp" id="rsvp" className="py-24" style={{ background: p.heroGradient }}>
-        <motion.div variants={stagger} {...inViewProps} className="max-w-2xl mx-auto px-6">
+      <section
+        key="rsvp"
+        id="rsvp"
+        className="py-24 relative overflow-hidden"
+        style={{ background: p.heroGradient }}
+      >
+        <PetalDrift color={p.accent} />
+        <motion.div variants={stagger} {...inViewProps} className="relative max-w-2xl mx-auto px-6">
           <motion.h2
             variants={fadeUp}
             className="font-serif-display italic text-4xl sm:text-5xl text-center mb-3"
@@ -244,7 +460,15 @@ export default function Botanical({ data }: TemplateProps) {
           <motion.p variants={fadeUp} className="text-center mb-10" style={{ color: p.onHeroSoft }}>
             <E k="rsvp.subheading" />
           </motion.p>
-          <motion.div variants={fadeUp}>
+          <motion.div
+            variants={fadeUp}
+            className="p-4 sm:p-6"
+            style={{
+              border: `1px solid color-mix(in srgb, ${p.onHeroSoft} 50%, transparent)`,
+              borderRadius: '160px 160px 24px 24px',
+              paddingTop: '2.5rem',
+            }}
+          >
             <RsvpForm slug={data.slug} preview={data.preview} />
           </motion.div>
         </motion.div>
@@ -252,38 +476,80 @@ export default function Botanical({ data }: TemplateProps) {
     ),
 
     gallery: showGallery ? (
-      <section key="gallery" id="gallery" className="py-24">
+      <section key="gallery" id="gallery" className="py-24 relative overflow-hidden">
+        {/* One petal keeps falling across the grid — the gallery stays "outside" */}
+        {!reduced && (
+          <motion.div
+            aria-hidden
+            className="absolute pointer-events-none"
+            style={{
+              width: 13,
+              height: 18,
+              background: p.accent,
+              borderRadius: '50% 0 50% 50%',
+              top: 0,
+              left: '12%',
+            }}
+            animate={{
+              x: [0, 140, 60, 220],
+              y: [0, 320, 640, 980],
+              rotate: [0, 150, 270, 430],
+              opacity: [0, 0.5, 0.5, 0],
+            }}
+            transition={{ duration: 10, repeat: Infinity, ease: 'linear', repeatDelay: 1.5 }}
+          />
+        )}
         <motion.div variants={stagger} {...inViewProps} className="max-w-4xl mx-auto px-6">
           {heading(<E k="gallery.heading" />)}
           {data.gallerySubtitle && (
             <motion.p
               variants={fadeUp}
-              className="text-center -mt-6 mb-10"
+              className="text-center -mt-6 mb-10 font-serif-display italic text-lg"
               style={{ color: p.inkSoft }}
             >
               {data.gallerySubtitle}
             </motion.p>
           )}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
-            {data.galleryImages.map((image, i) => (
-              <motion.button
-                key={image.url}
-                variants={fadeUp}
-                onClick={() => setLightboxIndex(i)}
-                className="overflow-hidden group"
-                style={{
-                  borderRadius: i % 2 === 0 ? '999px 999px 20px 20px' : '20px',
-                  aspectRatio: '4 / 5',
-                }}
-              >
-                <img
-                  src={image.url}
-                  alt=""
-                  loading="lazy"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </motion.button>
-            ))}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+            {data.galleryImages.map((image, i) => {
+              const arch = i % 2 === 0;
+              const tilt = [-1.6, 1.2, -0.8, 1.8][i % 4] ?? 0;
+              return (
+                <motion.button
+                  key={image.url}
+                  variants={fadeUp}
+                  onClick={() => setLightboxIndex(i)}
+                  className="relative group"
+                  style={{ rotate: reduced ? 0 : `${tilt}deg` }}
+                >
+                  {/* Washi tape pins the specimen to the page */}
+                  <span
+                    className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-16 h-5 z-10 -rotate-3"
+                    style={{
+                      background: `color-mix(in srgb, ${p.accent} 35%, ${p.surface})`,
+                      opacity: 0.85,
+                    }}
+                    aria-hidden
+                  />
+                  <span
+                    className="block overflow-hidden"
+                    style={{
+                      borderRadius: arch ? '999px 999px 20px 20px' : '20px',
+                      aspectRatio: '4 / 5',
+                      border: `6px solid ${p.surface}`,
+                      boxShadow: '0 14px 30px -18px rgba(50,60,40,0.45)',
+                    }}
+                  >
+                    <img
+                      src={image.url}
+                      alt=""
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </span>
+                </motion.button>
+              );
+            })}
           </div>
         </motion.div>
       </section>
@@ -292,83 +558,101 @@ export default function Botanical({ data }: TemplateProps) {
 
   return (
     <div style={{ ...vars, background: p.bg, color: p.ink }} className="min-h-screen font-body">
-      {!data.preview && <ScrollProgress color={p.accent} />}
+      <ScrollProgress color={p.accent} />
       {data.musicUrl && <MusicPlayer url={data.musicUrl} disabled={data.preview} startTime={data.musicStartTime} endTime={data.musicEndTime} />}
-
-      {/* Nav */}
-      {anyEnabled && (
-      <nav
-        className="fixed top-0 left-0 right-0 z-50 backdrop-blur border-b"
-        style={{ background: `${p.bg}E6`, borderColor: p.line }}
-      >
-        <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-center gap-7">
-          <a href={`/${data.slug}`} className="font-script text-xl" style={{ color: p.primary }}>
-            {data.brideName[0]} &amp; {data.groomName[0]}
-          </a>
-          {enabled
-            .filter(
-              (s) =>
-                s.id !== 'hero' &&
-                SECTION_LABELS[s.id] &&
-                (s.id !== 'gallery' || showGallery) &&
-                (s.id !== 'events' || showEvents),
-            )
-            .map((s) => (
-              <a
-                key={s.id}
-                href={`#${s.id}`}
-                className="hidden sm:block text-sm hover:opacity-60"
-                style={{ color: p.inkSoft }}
-              >
-                {SECTION_LABELS[s.id]}
-              </a>
-            ))}
-          {invitePage && (
-            <Link
-              to={`/${data.slug}/${invitePage.pageSlug}`}
-              className="hidden sm:block text-sm hover:opacity-60"
-              style={{ color: p.accent }}
-            >
-              {invitePage.title}
-            </Link>
-          )}
-          {data.authed && (
-            <Link
-              to={`/${data.slug}/dashboard`}
-              className="text-sm hover:opacity-60"
-              style={{ color: p.accent }}
-            >
-              Dashboard
-            </Link>
-          )}
-        </div>
-      </nav>
-      )}
 
       {/* Hero */}
       {showHero && (
       <section
+        ref={heroRef}
         className="min-h-screen flex items-center justify-center pt-14 px-6 relative overflow-hidden"
         style={{ background: p.heroGradient }}
       >
-        <PetalDrift color={p.accent} />
-        {/* Arch outline echoing the portrait arches below — the template's motif */}
-        <div
-          className="absolute z-0 pointer-events-none hidden sm:block left-1/2 top-1/2"
-          style={{
-            width: 'min(360px, 70vw)',
-            height: 'min(480px, 84vh)',
-            transform: 'translate(-50%, -50%)',
-            border: `1px solid color-mix(in srgb, ${p.onHeroSoft} 45%, transparent)`,
-            borderRadius: '999px 999px 12px 12px',
-          }}
-          aria-hidden
+        {/* Nav — transparent, lives inside the hero rather than as a separate chrome bar */}
+        {anyEnabled && (
+        <nav className="absolute top-0 left-0 right-0 z-20">
+          <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-center gap-7">
+            <a href={`/${data.slug}`} className="font-script text-xl" style={{ color: p.onHero }}>
+              {data.brideName[0]} &amp; {data.groomName[0]}
+            </a>
+            {enabled
+              .filter(
+                (s) =>
+                  s.id !== 'hero' &&
+                  SECTION_LABELS[s.id] &&
+                  (s.id !== 'gallery' || showGallery) &&
+                  (s.id !== 'events' || showEvents),
+              )
+              .map((s) => (
+                <a
+                  key={s.id}
+                  href={`#${s.id}`}
+                  className="hidden sm:block text-sm hover:opacity-60"
+                  style={{ color: p.onHeroSoft }}
+                >
+                  {SECTION_LABELS[s.id]}
+                </a>
+              ))}
+            {invitePage && (
+              <Link
+                to={`/${data.slug}/${invitePage.pageSlug}`}
+                className="hidden sm:block text-sm hover:opacity-60"
+                style={{ color: p.onHero }}
+              >
+                {invitePage.title}
+              </Link>
+            )}
+            {data.authed && (
+              <Link
+                to={`/${data.slug}/dashboard`}
+                className="text-sm hover:opacity-60"
+                style={{ color: p.onHero }}
+              >
+                Dashboard
+              </Link>
+            )}
+          </div>
+        </nav>
+        )}
+        {show3d ? (
+          <Suspense fallback={null}>
+            <BotanicalHeroScene palette={p} progress={heroProgress} className="absolute inset-0" />
+          </Suspense>
+        ) : (
+          <>
+            <PetalDrift color={p.accent} />
+            {/* Flat arch outline — the pre-3D motif, kept as the fallback */}
+            <div
+              className="absolute z-0 pointer-events-none hidden sm:block left-1/2 top-1/2"
+              style={{
+                width: 'min(360px, 70vw)',
+                height: 'min(480px, 84vh)',
+                transform: 'translate(-50%, -50%)',
+                border: `1px solid color-mix(in srgb, ${p.onHeroSoft} 45%, transparent)`,
+                borderRadius: '999px 999px 12px 12px',
+              }}
+              aria-hidden
+            />
+          </>
+        )}
+        {/* Hand-sketched branches grow in from opposite corners */}
+        <BranchSketch
+          color={`color-mix(in srgb, ${p.onHeroSoft} 85%, transparent)`}
+          reduced={reduced}
+          className="absolute top-16 left-3 sm:top-20 sm:left-10 z-10 pointer-events-none"
+        />
+        <BranchSketch
+          color={`color-mix(in srgb, ${p.onHeroSoft} 85%, transparent)`}
+          reduced={reduced}
+          delay={0.6}
+          className="absolute bottom-6 right-3 sm:bottom-12 sm:right-10 rotate-180 z-10 pointer-events-none"
         />
         <motion.div
           variants={stagger}
           initial="hidden"
           animate="visible"
           className="text-center py-20 relative z-10"
+          {...(show3d ? { style: { y: namesY } } : {})}
         >
           <motion.p
             variants={fadeUp}
@@ -459,13 +743,16 @@ export default function Botanical({ data }: TemplateProps) {
 
       {/* Footer */}
       {anyEnabled && (
-      <footer className="py-14 text-center" style={{ background: p.surface }}>
-        <p className="font-script text-3xl mb-2" style={{ color: p.primary }}>
-          {coupleNames}
-        </p>
-        <p className="text-sm" style={{ color: p.inkSoft }}>
-          <E k="footer.note" />
-        </p>
+      <footer className="relative" style={{ background: p.surface }}>
+        <WaveEdge fill={p.bg} flip />
+        <div className="py-12 text-center">
+          <p className="font-script text-3xl mb-2" style={{ color: p.primary }}>
+            {coupleNames}
+          </p>
+          <p className="text-sm" style={{ color: p.inkSoft }}>
+            <E k="footer.note" />
+          </p>
+        </div>
       </footer>
       )}
 

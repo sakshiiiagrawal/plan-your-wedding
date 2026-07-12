@@ -95,6 +95,26 @@ module.exports = [
       'no-undef': 'off',
       'react/react-in-jsx-scope': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
+      // Align with frontend/eslint.config.ts: underscore = intentionally unused.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+        },
+      ],
+    },
+  },
+
+  // --- react-three-fiber scenes: R3F's JSX (mesh, planeGeometry, args,
+  // uniforms, ...) is resolved by its reconciler, not the DOM — the react
+  // plugin's DOM property check doesn't apply there. ---
+  {
+    files: ['frontend/src/site/three/**/*.tsx', 'frontend/src/site/templates/*Scene.tsx'],
+    rules: {
+      'react/no-unknown-property': 'off',
     },
   },
 ];

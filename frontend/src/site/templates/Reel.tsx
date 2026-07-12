@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, useMotionValueEvent, useReducedMotion, useScroll } from 'framer-motion';
 import type { TemplateProps } from '../types';
 import { REEL_COPY } from '../copy/templates/reel';
 import { EditableContent, makeEditable } from '../copy/useCopy';
@@ -16,6 +16,46 @@ import MusicPlayer from '../effects/MusicPlayer';
 
 const { E } = makeEditable('reel', REEL_COPY);
 
+/** The stories-feed progress rail: segments fill as the guest moves through
+ *  the reel, exactly like a story on their phone. */
+function StoriesBar({
+  count,
+  progress,
+  active,
+  onIndex,
+}: {
+  count: number;
+  progress: import('framer-motion').MotionValue<number>;
+  active: number;
+  onIndex: (i: number) => void;
+}) {
+  useMotionValueEvent(progress, 'change', (v) => {
+    const idx = Math.min(count - 1, Math.max(0, Math.round(v * (count - 1))));
+    if (idx !== active) onIndex(idx);
+  });
+  return (
+    <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-50 px-3 pt-3 pointer-events-none">
+      <div className="flex gap-1.5">
+        {Array.from({ length: count }, (_, i) => (
+          <span
+            key={i}
+            className="flex-1 h-[3px] rounded-full overflow-hidden"
+            style={{ background: 'rgba(255,255,255,0.28)' }}
+          >
+            <span
+              className="block h-full rounded-full transition-transform duration-500 origin-left"
+              style={{
+                background: 'rgba(255,255,255,0.95)',
+                transform: i <= active ? 'scaleX(1)' : 'scaleX(0)',
+              }}
+            />
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /**
  * "Photo Reel" — the swipe-through photo-story invite: each slide is a
  * full-viewport gallery photo with a scrim and one text overlay, snapping
@@ -25,6 +65,9 @@ export default function Reel({ data }: TemplateProps) {
   const p = data.palette;
   const countdown = useCountdown(data.weddingDate);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [activeSlide, setActiveSlide] = useState(0);
+  const { scrollYProgress } = useScroll();
+  const reduced = useReducedMotion() ?? false;
   const enabled = data.sections.filter((s) => s.enabled);
 
   const coupleNames = `${data.brideName} & ${data.groomName}`;
@@ -240,6 +283,11 @@ export default function Reel({ data }: TemplateProps) {
         style={{ ...cssVars, background: p.bg, color: p.ink, scrollSnapType: 'y proximity' }}
       >
         {data.musicUrl && <MusicPlayer url={data.musicUrl} disabled={data.preview} startTime={data.musicStartTime} endTime={data.musicEndTime} />}
+        {/* Stories progress: one segment per slide, tracking the scroll like a
+            story feed — the signature that tells guests "keep going". */}
+        {slides.length > 1 && !reduced && (
+          <StoriesBar count={slides.length} progress={scrollYProgress} active={activeSlide} onIndex={setActiveSlide} />
+        )}
         {slides}
 
         {lightboxIndex !== null && (
