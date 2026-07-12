@@ -1134,14 +1134,14 @@ export default function Venues() {
                           <div
                             style={{
                               display: 'grid',
-                              gridTemplateColumns: `repeat(${canSeeMoney ? 4 : 1}, 1fr)`,
+                              gridTemplateColumns: canSeeMoney ? 'repeat(3, minmax(0, 1fr))' : '1fr',
                               gap: 6,
                               padding: '7px 10px',
                               background: 'var(--bg-raised)',
                               borderRadius: 8,
                             }}
                           >
-                            <div>
+                            <div style={{ gridColumn: canSeeMoney ? '1 / -1' : undefined, minWidth: 0 }}>
                               <div
                                 className="uppercase-eyebrow"
                                 style={{ marginBottom: 2, fontSize: 9 }}
@@ -1170,7 +1170,7 @@ export default function Venues() {
                             </div>
                             {canSeeMoney && (
                               <>
-                                <div>
+                                <div style={{ minWidth: 0 }}>
                                   <div
                                     className="uppercase-eyebrow"
                                     style={{ marginBottom: 2, fontSize: 9 }}
@@ -1193,7 +1193,7 @@ export default function Venues() {
                                     )}
                                   </div>
                                 </div>
-                                <div>
+                                <div style={{ minWidth: 0 }}>
                                   <div
                                     className="uppercase-eyebrow"
                                     style={{ marginBottom: 2, fontSize: 9 }}
@@ -1210,7 +1210,7 @@ export default function Venues() {
                                     {paid > 0 ? formatCurrency(paid) : '—'}
                                   </div>
                                 </div>
-                                <div>
+                                <div style={{ minWidth: 0 }}>
                                   <div
                                     className="uppercase-eyebrow"
                                     style={{ marginBottom: 2, fontSize: 9 }}
