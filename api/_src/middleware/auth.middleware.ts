@@ -71,9 +71,7 @@ export const verifyToken = async (
 
     const { data: user, error } = await supabase
       .from('users')
-      .select(
-        'id, email, name, slug, email_verified, currency, active_owner_id, password_changed_at, reminder_prefs',
-      )
+      .select('id, email, name, email_verified, active_wedding_id, password_changed_at, reminder_prefs')
       .eq('id', decoded.id)
       .single();
 
@@ -95,47 +93,93 @@ export const verifyToken = async (
       return;
     }
 
-    let ownerId = user.id;
-    let slug = user.slug;
-    let currency = user.currency ?? 'INR';
+    // Resolve the active wedding: everything the user owns plus every wedding
+    // they're an active member of, then pick active_wedding_id if it still
+    // matches (re-validated every request so a revoked membership drops
+    // instantly), else the oldest owned wedding, else the first membership.
+    interface WeddingRow {
+      id: string;
+      slug: string | null;
+      title: string;
+      currency: string | null;
+    }
+    interface MembershipRow {
+      wedding_id: string | null;
+      role: AuthenticatedUser['role'];
+      allowed_sections: string[] | null;
+      permissions: string[] | null;
+      wedding: WeddingRow | null;
+    }
+    const [ownedRes, membershipRes] = await Promise.all([
+      supabase
+        .from('weddings')
+        .select('id, slug, title, currency')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('wedding_members')
+        .select(
+          'wedding_id, role, allowed_sections, permissions, wedding:weddings!wedding_id(id, slug, title, currency)',
+        )
+        .eq('member_id', user.id)
+        .eq('status', 'active'),
+    ]);
+    const owned = (ownedRes.data ?? []) as WeddingRow[];
+    const memberships = ((membershipRes.data ?? []) as unknown as MembershipRow[]).filter(
+      (m) => m.wedding !== null,
+    );
+
+    let weddingId: string | null = null;
+    let weddingTitle: string | null = null;
+    let isOwner = false;
+    let slug: string | null = null;
+    let currency = 'INR';
     let role: AuthenticatedUser['role'] = 'admin';
     let allowedSections: string[] | null = null;
     let permissions: string[] = [];
 
-    // Users default to their own wedding. A collaborator can switch into a
-    // wedding they're an active member of (see setActiveWedding); that choice is
-    // stored in active_owner_id. Re-validate the membership every request so a
-    // revoked invite silently drops them back to their own wedding.
-    if (user.active_owner_id && user.active_owner_id !== user.id) {
-      const { data: membership } = await supabase
-        .from('wedding_members')
-        .select('role, allowed_sections, permissions, owner:users!owner_id(slug, currency)')
-        .eq('member_id', user.id)
-        .eq('owner_id', user.active_owner_id)
-        .eq('status', 'active')
-        .maybeSingle();
+    const applyOwned = (w: WeddingRow) => {
+      weddingId = w.id;
+      weddingTitle = w.title;
+      isOwner = true;
+      slug = w.slug;
+      currency = w.currency ?? 'INR';
+      role = 'admin';
+      allowedSections = null;
+      permissions = [];
+    };
+    const applyMembership = (m: MembershipRow) => {
+      const w = m.wedding as WeddingRow;
+      weddingId = w.id;
+      weddingTitle = w.title;
+      isOwner = false;
+      slug = w.slug;
+      currency = w.currency ?? 'INR';
+      role = m.role;
+      // Admins always get every section/permission, whatever the row says
+      allowedSections = role === 'admin' ? null : (m.allowed_sections ?? null);
+      permissions = role === 'admin' ? [] : (m.permissions ?? []);
+    };
 
-      if (membership) {
-        const owner = membership.owner as unknown as {
-          slug: string | null;
-          currency: string | null;
-        } | null;
-        ownerId = user.active_owner_id;
-        role = membership.role as AuthenticatedUser['role'];
-        // Admins always get every section/permission, whatever the row says
-        allowedSections =
-          role === 'admin' ? null : ((membership.allowed_sections as string[] | null) ?? null);
-        permissions = role === 'admin' ? [] : ((membership.permissions as string[] | null) ?? []);
-        slug = owner?.slug ?? null;
-        currency = owner?.currency ?? 'INR';
-      }
-    }
+    const target = user.active_wedding_id as string | null;
+    const targetOwned = target ? owned.find((w) => w.id === target) : undefined;
+    const targetMembership = target
+      ? memberships.find((m) => m.wedding_id === target)
+      : undefined;
+    if (targetOwned) applyOwned(targetOwned);
+    else if (targetMembership) applyMembership(targetMembership);
+    else if (owned.length > 0) applyOwned(owned[0]!);
+    else if (memberships.length > 0) applyMembership(memberships[0]!);
+    // else: no wedding at all — weddingId stays null; wedding-scoped routes
+    // reject via getWeddingId, account routes (/auth/*, invites) still work.
 
     req.user = {
       id: user.id,
       email: user.email,
       name: user.name,
-      ownerId,
+      weddingId,
+      weddingTitle,
+      isOwner,
       slug,
       emailVerified: user.email_verified ?? false,
       currency,

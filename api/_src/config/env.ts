@@ -12,6 +12,11 @@ const envSchema = z
     // Guards /api/v1/cron/* — Vercel Cron sends it as a bearer token. Unset
     // means the cron endpoints always 401 (safe default, digest just won't run).
     CRON_SECRET: z.string().optional(),
+    // Unset/empty = auto: 'smtp' when SMTP_HOST is set, 'console' otherwise
+    EMAIL_PROVIDER: z.preprocess(
+      (v) => (v === '' ? undefined : v),
+      z.enum(['smtp', 'console']).optional(),
+    ),
     SMTP_HOST: z.string().optional(),
     SMTP_PORT: z.coerce.number().optional(),
     SMTP_USER: z.string().optional(),

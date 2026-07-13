@@ -1634,14 +1634,10 @@ export const useUpdateProfile = () =>
     mutationFn: (updates: {
       name?: string;
       email?: string;
-      slug?: string;
-      currency?: string;
       reminder_prefs?: { email_digest: boolean; payment_lead_days: number };
     }) =>
       api
         .patch<{
-          slug?: string | null;
-          currency?: string;
           email_verified?: boolean;
           verification_email_sent?: boolean;
         }>('/auth/me', updates)
@@ -1672,7 +1668,7 @@ export const useDeleteAccount = () =>
 
 export interface WeddingMember {
   id: string;
-  owner_id: string;
+  wedding_id: string;
   member_id: string | null;
   invited_email: string;
   role: 'admin' | 'editor' | 'viewer';
@@ -1703,18 +1699,28 @@ export const useInviteMember = () => {
   });
 };
 
+/** The wedding an accepted invite joined — callers decide whether to switch into it. */
+export interface AcceptedInviteWedding {
+  id: string;
+  slug: string | null;
+  title: string;
+}
+
 export const useAcceptInvite = () =>
   useMutation({
-    mutationFn: (token: string) => api.post('/members/accept', { token }).then((res) => res.data),
+    mutationFn: (token: string) =>
+      api
+        .post<{ wedding: AcceptedInviteWedding }>('/members/accept', { token })
+        .then((res) => res.data),
   });
 
 export interface PendingInvite {
   id: string;
-  owner_id: string;
+  wedding_id: string;
   role: 'admin' | 'editor' | 'viewer';
   allowed_sections: string[] | null;
   created_at: string;
-  owner: { name: string | null; slug: string | null } | null;
+  wedding: { title: string; slug: string | null } | null;
 }
 
 /** Invites addressed to the logged-in user's email, not yet accepted. */
@@ -1728,7 +1734,10 @@ export const usePendingInvites = (enabled = true) =>
 export const useAcceptPendingInvite = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.post(`/members/pending/${id}/accept`).then((res) => res.data),
+    mutationFn: (id: string) =>
+      api
+        .post<{ wedding: AcceptedInviteWedding }>(`/members/pending/${id}/accept`)
+        .then((res) => res.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-invites'] });
       queryClient.invalidateQueries({ queryKey: ['weddings'] });
@@ -1821,14 +1830,22 @@ export const useRemoveMember = () => {
 // =====================================================
 
 export interface WeddingOption {
-  ownerId: string;
-  label: string;
+  id: string;
+  slug: string | null;
+  title: string;
+  currency: string;
   role: 'admin' | 'editor' | 'viewer';
-  isOwn: boolean;
+  isOwner: boolean;
+}
+
+export interface WeddingsPayload {
+  activeWeddingId: string | null;
+  weddings: WeddingOption[];
+  pendingInviteCount: number;
 }
 
 export const useWeddings = () =>
-  useQuery<{ activeOwnerId: string; weddings: WeddingOption[] }>({
+  useQuery<WeddingsPayload>({
     queryKey: ['weddings'],
     queryFn: () => api.get('/auth/weddings').then((res) => res.data),
     staleTime: 5 * 60 * 1000,
@@ -1836,9 +1853,56 @@ export const useWeddings = () =>
 
 export const useSetActiveWedding = () =>
   useMutation({
-    mutationFn: (ownerId: string) =>
-      api.post('/auth/active-wedding', { ownerId }).then((res) => res.data),
+    mutationFn: (weddingId: string) =>
+      api.post('/auth/active-wedding', { weddingId }).then((res) => res.data),
     // Switching changes every scoped query, the slug and the currency; a full
     // reload re-resolves the auth context and refetches everything cleanly.
     onSuccess: () => window.location.reload(),
   });
+
+export interface Wedding {
+  id: string;
+  owner_id: string;
+  slug: string | null;
+  title: string;
+  currency: string;
+}
+
+export const useCreateWedding = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: {
+      slug: string;
+      title?: string;
+      brideName?: string;
+      groomName?: string;
+      weddingDate?: string;
+      currency?: string;
+    }) => api.post<Wedding>('/weddings', payload).then((res) => res.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['weddings'] }),
+  });
+};
+
+export const useUpdateWedding = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...updates
+    }: {
+      id: string;
+      slug?: string;
+      title?: string;
+      currency?: string;
+    }) => api.patch<Wedding>(`/weddings/${id}`, updates).then((res) => res.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['weddings'] }),
+  });
+};
+
+export const useDeleteWedding = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/weddings/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['weddings'] }),
+  });
+};

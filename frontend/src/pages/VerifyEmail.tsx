@@ -32,7 +32,7 @@ export default function VerifyEmail() {
 
   // Where "continue" leads depends on the session: dashboard for couples,
   // invites for collaborator accounts, login for logged-out visitors.
-  const nextHref = isAuthenticated ? (slug ? `/${slug}/dashboard` : '/invites') : '/login';
+  const nextHref = isAuthenticated ? (slug ? `/${slug}/dashboard` : '/hub') : '/login';
   const nextLabel = isAuthenticated
     ? slug
       ? 'Go to dashboard'

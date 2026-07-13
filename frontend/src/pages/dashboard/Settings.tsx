@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -25,6 +25,9 @@ import {
   useUpdateMember,
   useRemoveMember,
   useResendVerification,
+  useWeddings,
+  useUpdateWedding,
+  useDeleteWedding,
 } from '../../hooks/useApi';
 
 type MemberRole = 'admin' | 'editor' | 'viewer';
@@ -410,16 +413,32 @@ export default function Settings() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
-  // Working on someone else's wedding: the slug/currency shown belong to that
-  // wedding, and member management is the owner's (admins') business.
-  const onOwnWedding = !user?.ownerId || user.ownerId === user.id;
+  // Wedding settings (URL, currency, delete) belong to the owner and admins;
+  // the owner alone may delete the wedding itself.
+  const canManageWedding = user?.isOwner === true || user?.role === 'admin';
+  const isOwner = user?.isOwner === true;
   const canManageMembers = can(user, 'members:manage');
+
+  const { data: weddingData } = useWeddings();
+  const activeWedding = weddingData?.weddings.find((w) => w.id === user?.weddingId) ?? null;
 
   const [name, setName] = useState(user?.name ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
+  const [weddingTitle, setWeddingTitle] = useState('');
   const [newSlug, setNewSlug] = useState(slug ?? '');
   const [currency, setCurrency] = useState(user?.currency ?? 'INR');
   const updateProfile = useUpdateProfile();
+  const updateWedding = useUpdateWedding();
+  const deleteWedding = useDeleteWedding();
+
+  // Seed the wedding fields once the switcher payload resolves.
+  useEffect(() => {
+    if (activeWedding) {
+      setWeddingTitle(activeWedding.title);
+      setNewSlug(activeWedding.slug ?? '');
+      setCurrency(activeWedding.currency);
+    }
+  }, [activeWedding]);
 
   const [emailDigest, setEmailDigest] = useState(user?.reminderPrefs?.email_digest !== false);
   const [paymentLeadDays, setPaymentLeadDays] = useState(
@@ -431,6 +450,7 @@ export default function Settings() {
   const changePassword = useChangePassword();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteWedding, setShowDeleteWedding] = useState(false);
   const deleteAccount = useDeleteAccount();
   const resendVerification = useResendVerification();
 
@@ -446,28 +466,54 @@ export default function Settings() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // On someone else's wedding the slug/currency fields are hidden AND
-      // omitted here — newSlug holds that wedding's slug, not this user's.
-      const updated = await updateProfile.mutateAsync(
-        onOwnWedding ? { name, email, slug: newSlug, currency } : { name, email },
-      );
+      const updated = await updateProfile.mutateAsync({ name, email });
       toast.success('Profile updated');
-      if (updated.slug && updated.slug !== slug) {
-        localStorage.setItem('slug', updated.slug);
-        // Full reload so AuthContext re-reads the new slug from storage
-        window.location.href = `/${updated.slug}/dashboard/settings`;
-      } else if (updated.email_verified === false && user?.emailVerified !== false) {
+      if (updated.email_verified === false && user?.emailVerified !== false) {
         // Email changed → the address is unverified again. Reload so AuthContext
         // picks up the flag and the verify banner (with its resend button) shows —
         // the banner also covers the case where the verification email failed to send.
-        window.location.reload();
-      } else if (updated.currency && updated.currency !== user?.currency) {
-        // Full reload so AuthContext (and every money display) picks up the change
         window.location.reload();
       }
     } catch (error) {
       const err = error as { response?: { data?: { error?: string } } };
       toast.error(err?.response?.data?.error || 'Failed to update profile');
+    }
+  };
+
+  const handleSaveWedding = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.weddingId) return;
+    try {
+      const updated = await updateWedding.mutateAsync({
+        id: user.weddingId,
+        title: weddingTitle,
+        slug: newSlug,
+        currency,
+      });
+      toast.success('Wedding updated');
+      if (updated.slug && updated.slug !== slug) {
+        localStorage.setItem('slug', updated.slug);
+        // Full reload so AuthContext re-reads the new slug from storage
+        window.location.href = `/${updated.slug}/dashboard/settings`;
+      } else if (updated.currency !== user.currency) {
+        // Full reload so AuthContext (and every money display) picks up the change
+        window.location.reload();
+      }
+    } catch (error) {
+      const err = error as { response?: { data?: { error?: string } } };
+      toast.error(err?.response?.data?.error || 'Failed to update wedding');
+    }
+  };
+
+  const handleDeleteWedding = async () => {
+    if (!user?.weddingId) return;
+    try {
+      await deleteWedding.mutateAsync(user.weddingId);
+      // Switching context away from the deleted wedding: the hub picks the
+      // next one (or offers create/join). Full reload re-resolves auth.
+      window.location.href = '/hub';
+    } catch {
+      toast.error('Failed to delete wedding');
     }
   };
 
@@ -517,32 +563,6 @@ export default function Settings() {
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          {onOwnWedding && (
-            <>
-              <div>
-                <label className="label">Wedding URL</label>
-                <input
-                  className="input"
-                  value={newSlug}
-                  onChange={(e) => setNewSlug(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="label">Currency</label>
-                <select
-                  className="input"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                >
-                  {CURRENCY_OPTIONS.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </>
-          )}
           <button type="submit" disabled={updateProfile.isPending} className="btn-primary">
             {updateProfile.isPending ? 'Saving...' : 'Save changes'}
           </button>
@@ -561,6 +581,40 @@ export default function Settings() {
           </div>
         )}
       </Card>
+
+      {/* Wedding settings — owner or admin only; the API enforces the same. */}
+      {canManageWedding && (
+        <Card title="Wedding">
+          <form onSubmit={handleSaveWedding} className="space-y-4">
+            <div>
+              <label className="label">Wedding name</label>
+              <input
+                className="input"
+                value={weddingTitle}
+                onChange={(e) => setWeddingTitle(e.target.value)}
+                placeholder="Shown in your workspace switcher"
+              />
+            </div>
+            <div>
+              <label className="label">Wedding URL</label>
+              <input className="input" value={newSlug} onChange={(e) => setNewSlug(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Currency</label>
+              <select className="input" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                {CURRENCY_OPTIONS.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button type="submit" disabled={updateWedding.isPending} className="btn-primary">
+              {updateWedding.isPending ? 'Saving...' : 'Save wedding'}
+            </button>
+          </form>
+        </Card>
+      )}
 
       <Card title="Reminders">
         <form
@@ -652,32 +706,75 @@ export default function Settings() {
       </Card>
 
       <Card title="Danger zone">
-        {!showDeleteConfirm ? (
-          <button onClick={() => setShowDeleteConfirm(true)} className="btn-outline text-red-600">
-            Delete account
-          </button>
-        ) : (
-          <div className="space-y-3">
-            <p style={{ color: 'var(--err)', fontSize: 13 }}>
-              This permanently deletes your account and any wedding data you own (collaborators lose
-              access to it). Weddings you collaborate on are not deleted — you just leave them. This
-              cannot be undone.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowDeleteConfirm(false)} className="btn-outline">
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteAccount}
-                disabled={deleteAccount.isPending}
-                className="btn-primary"
-                style={{ background: 'var(--err)' }}
-              >
-                {deleteAccount.isPending ? 'Deleting...' : 'Yes, delete my account'}
-              </button>
+        <div className="space-y-6">
+          {/* Delete this wedding — owner only. Leaves the account and other weddings intact. */}
+          {isOwner && (
+            <div>
+              {!showDeleteWedding ? (
+                <button
+                  onClick={() => setShowDeleteWedding(true)}
+                  className="btn-outline text-red-600"
+                >
+                  Delete this wedding
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <p style={{ color: 'var(--err)', fontSize: 13 }}>
+                    This permanently deletes <b>{activeWedding?.title ?? 'this wedding'}</b> — its
+                    guests, budget, website, and members. Your account and any other weddings you own
+                    are untouched. This cannot be undone.
+                  </p>
+                  <div className="flex gap-3">
+                    <button onClick={() => setShowDeleteWedding(false)} className="btn-outline">
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleDeleteWedding}
+                      disabled={deleteWedding.isPending}
+                      className="btn-primary"
+                      style={{ background: 'var(--err)' }}
+                    >
+                      {deleteWedding.isPending ? 'Deleting...' : 'Yes, delete this wedding'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
+          )}
+
+          {/* Delete account — takes every wedding this account owns with it. */}
+          <div>
+            {!showDeleteConfirm ? (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="btn-outline text-red-600"
+              >
+                Delete account
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <p style={{ color: 'var(--err)', fontSize: 13 }}>
+                  This permanently deletes your account and every wedding you own (collaborators lose
+                  access to them). Weddings you only collaborate on are not deleted — you just leave
+                  them. This cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={() => setShowDeleteConfirm(false)} className="btn-outline">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={deleteAccount.isPending}
+                    className="btn-primary"
+                    style={{ background: 'var(--err)' }}
+                  >
+                    {deleteAccount.isPending ? 'Deleting...' : 'Yes, delete my account'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </Card>
     </div>
   );

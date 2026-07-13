@@ -19,6 +19,8 @@ const RESERVED_SEGMENTS = new Set([
   'login',
   'onboard',
   'invites',
+  'hub',
+  'weddings',
   'forgot-password',
   'reset-password',
   'accept-invite',

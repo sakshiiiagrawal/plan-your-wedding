@@ -1,0 +1,20 @@
+-- Migration 045 (DEFERRED): drop the legacy user==wedding columns.
+--
+-- ⚠ Do NOT apply with the 041–043 cutover. This file is named *.sql.deferred so
+-- scripts/migrate.mjs and docker-init-db.sh skip it. After the weddings-table
+-- release has baked in production (all serverless instances rotated, no code
+-- reads users.slug/currency/active_owner_id or wedding_members.owner_id),
+-- rename it to 045_users_wedding_cleanup.sql and migrate.
+
+-- Invites written by pre-cutover instances during the deploy window have
+-- owner_id but no wedding_id — reconcile before locking the column down.
+UPDATE wedding_members SET wedding_id = owner_id WHERE wedding_id IS NULL;
+ALTER TABLE wedding_members ALTER COLUMN wedding_id SET NOT NULL;
+ALTER TABLE wedding_members DROP COLUMN IF EXISTS owner_id;
+
+ALTER TABLE users DROP COLUMN IF EXISTS active_owner_id;
+ALTER TABLE users DROP COLUMN IF EXISTS slug;
+ALTER TABLE users DROP COLUMN IF EXISTS currency;
+
+-- Superseded by wedding_digest_log (041).
+DROP TABLE IF EXISTS digest_log;

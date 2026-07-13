@@ -16,7 +16,7 @@ import SlugGuard from './components/SlugGuard';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AcceptInvite from './pages/AcceptInvite';
-import PendingInvites from './pages/PendingInvites';
+import Hub from './pages/Hub';
 import VerifyEmail from './pages/VerifyEmail';
 
 // Context
@@ -68,11 +68,16 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />
-            <Route path="/invites" element={<PendingInvites />} />
+            {/* Workspace hub: your weddings, shared weddings, pending invites.
+                /invites is the pre-hub URL (old invite emails/bookmarks). */}
+            <Route path="/hub" element={<Hub />} />
+            <Route path="/invites" element={<Navigate to="/hub" replace />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
 
-            {/* Onboarding wizard */}
+            {/* Onboarding wizard; /weddings/new is the same wizard for a
+                logged-in account adding a(nother) wedding */}
             <Route path="/onboard" element={<Onboard />} />
+            <Route path="/weddings/new" element={<Onboard createOnly />} />
 
             {/* Slug-scoped public wedding pages — each page owns all chrome.
                 Static segments (login/dashboard below) outrank :pageSlug. */}

@@ -9,8 +9,12 @@ export interface AuthUser {
   slug?: string | null;
   emailVerified?: boolean;
   currency?: string;
-  /** id of the wedding owner the user is currently working on (self or a membership) */
-  ownerId?: string;
+  /** id of the active wedding — null when the account has no wedding yet */
+  weddingId?: string | null;
+  /** display label of the active wedding */
+  weddingTitle?: string | null;
+  /** true when the logged-in user owns the active wedding */
+  isOwner?: boolean;
   /** role within the active wedding; 'admin' on your own wedding */
   role?: 'admin' | 'editor' | 'viewer';
   /** null/undefined = full access; a non-empty array limits nav + API to those sections */
@@ -25,15 +29,10 @@ interface RegisterData {
   name: string;
   email: string;
   password: string;
-  /** required when creating a wedding; omitted when joining via invite */
-  slug?: string;
   /** joining an existing wedding — activates the membership during signup */
   inviteToken?: string;
-  /** 'collaborator' = planner/family account with no wedding of its own */
+  /** 'collaborator' = account with no wedding of its own (weddings are created separately) */
   accountType?: 'couple' | 'collaborator';
-  brideName?: string;
-  groomName?: string;
-  weddingDate?: string;
 }
 
 interface AuthContextValue {
@@ -72,9 +71,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setActiveCurrency(response.data.currency);
       // The server resolves the active wedding's slug (accounting for
       // membership), which may differ from what was cached at login time.
+      // No slug means no wedding — clear the stale cache too.
       if (response.data.slug) {
         localStorage.setItem('slug', response.data.slug);
         setSlug(response.data.slug);
+      } else {
+        localStorage.removeItem('slug');
+        setSlug(null);
       }
       return response.data;
     } catch {
@@ -104,6 +107,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (me.slug) {
         localStorage.setItem('slug', me.slug);
         setSlug(me.slug);
+      } else {
+        localStorage.removeItem('slug');
+        setSlug(null);
       }
       setUser(me);
       return { user: me, slug: me.slug ?? null };

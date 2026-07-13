@@ -2,18 +2,19 @@ import { randomBytes } from 'crypto';
 import { can, canAccessSection, type WeddingSection, type MemberPermission } from '../../../shared/src';
 import { supabase } from '../config/database';
 import { env } from '../config/env';
-import { sendEmail } from './mailer';
+import { sendEmail } from './email';
+import { inviteEmail } from './email/templates';
 import { NotFoundError, ConflictError, BadRequestError, ForbiddenError } from '../shared/errors/HttpError';
 import { hashToken } from '../shared/utils/token.utils';
 import { invalidateAuthCache } from '../middleware/auth.middleware';
 import type { AuthenticatedUser } from '../types/express';
 
 const MEMBER_COLUMNS =
-  'id, owner_id, member_id, invited_email, role, status, allowed_sections, permissions, created_at';
+  'id, wedding_id, member_id, invited_email, role, status, allowed_sections, permissions, created_at';
 
 export interface MemberRow {
   id: string;
-  owner_id: string;
+  wedding_id: string;
   member_id: string | null;
   invited_email: string;
   role: 'admin' | 'editor' | 'viewer';
@@ -22,6 +23,20 @@ export interface MemberRow {
   allowed_sections: string[] | null;
   permissions: string[];
   created_at: string;
+}
+
+export interface MemberWeddingInfo {
+  id: string;
+  slug: string | null;
+  title: string;
+}
+
+/** The actor's active wedding, required for any member management call. */
+function getActorWeddingId(actor: AuthenticatedUser): string {
+  if (!actor.weddingId) {
+    throw new ForbiddenError('No active wedding — create or join one first');
+  }
+  return actor.weddingId;
 }
 
 /**
@@ -68,11 +83,11 @@ function assertCanGrant(
   }
 }
 
-export async function listMembers(ownerId: string): Promise<MemberRow[]> {
+export async function listMembers(weddingId: string): Promise<MemberRow[]> {
   const { data, error } = await supabase
     .from('wedding_members')
     .select(MEMBER_COLUMNS)
-    .eq('owner_id', ownerId)
+    .eq('wedding_id', weddingId)
     .order('created_at', { ascending: true });
   if (error) throw error;
   return (data ?? []) as MemberRow[];
@@ -87,22 +102,23 @@ export async function inviteMember(
 ): Promise<MemberRow & { email_sent: boolean }> {
   assertCanGrant(actor, { role, sections, permissions });
 
-  const ownerId = actor.ownerId;
+  const weddingId = getActorWeddingId(actor);
   const invitedEmail = email.toLowerCase().trim();
 
-  const { data: ownerRows } = await supabase
-    .from('users')
-    .select('email, name')
-    .eq('id', ownerId)
+  const { data: weddingRow } = await supabase
+    .from('weddings')
+    .select('id, title, owner:users!owner_id(email)')
+    .eq('id', weddingId)
     .single();
-  if (ownerRows?.email === invitedEmail) {
-    throw new BadRequestError('You already have full access to this wedding');
+  const ownerEmail = (weddingRow?.owner as unknown as { email: string } | null)?.email;
+  if (ownerEmail === invitedEmail) {
+    throw new BadRequestError('They already have full access to this wedding');
   }
 
   const { data: existingRows } = await supabase
     .from('wedding_members')
     .select('id, status')
-    .eq('owner_id', ownerId)
+    .eq('wedding_id', weddingId)
     .eq('invited_email', invitedEmail)
     .limit(1);
   const existing = existingRows?.[0];
@@ -128,7 +144,7 @@ export async function inviteMember(
         })
         .eq('id', existing.id)
     : supabase.from('wedding_members').insert({
-        owner_id: ownerId,
+        wedding_id: weddingId,
         invited_email: invitedEmail,
         role,
         allowed_sections,
@@ -144,17 +160,10 @@ export async function inviteMember(
   // 500 that makes the admin think nothing happened. Report it so the UI can
   // offer a resend (re-inviting the same email refreshes the token).
   const link = `${env.FRONTEND_URL ?? ''}/accept-invite?token=${token}`;
-  const inviterName = ownerRows?.name || 'Someone';
+  const inviterName = actor.name || 'Someone';
   let emailSent = true;
   try {
-    await sendEmail({
-      to: email,
-      subject: `${inviterName} invited you to help plan their wedding`,
-      html:
-        `<p>${inviterName} has invited you to collaborate on their wedding as a <b>${role}</b>.</p>` +
-        `<p>Click below to accept — you can sign in or create an account on the same page:</p>` +
-        `<p><a href="${link}">${link}</a></p>`,
-    });
+    await sendEmail({ to: email, ...inviteEmail({ inviterName, role, link }) });
   } catch (err) {
     console.error('[mailer] invite email failed:', err);
     emailSent = false;
@@ -165,11 +174,11 @@ export async function inviteMember(
 
 export interface PendingInviteRow {
   id: string;
-  owner_id: string;
+  wedding_id: string;
   role: 'admin' | 'editor' | 'viewer';
   allowed_sections: string[] | null;
   created_at: string;
-  owner: { name: string | null; slug: string | null } | null;
+  wedding: { title: string; slug: string | null } | null;
 }
 
 /**
@@ -180,12 +189,34 @@ export interface PendingInviteRow {
 export async function listPendingInvitesForEmail(email: string): Promise<PendingInviteRow[]> {
   const { data, error } = await supabase
     .from('wedding_members')
-    .select('id, owner_id, role, allowed_sections, created_at, owner:users!owner_id(name, slug)')
+    .select(
+      'id, wedding_id, role, allowed_sections, created_at, wedding:weddings!wedding_id(title, slug)',
+    )
     .eq('invited_email', email.toLowerCase().trim())
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as unknown as PendingInviteRow[];
+}
+
+/** True when the wedding belongs to this user — an invite to it is redundant. */
+async function isWeddingOwner(weddingId: string, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('weddings')
+    .select('id')
+    .eq('id', weddingId)
+    .eq('owner_id', userId)
+    .maybeSingle();
+  return Boolean(data);
+}
+
+async function findMemberWedding(weddingId: string): Promise<MemberWeddingInfo> {
+  const { data } = await supabase
+    .from('weddings')
+    .select('id, slug, title')
+    .eq('id', weddingId)
+    .single();
+  return (data as MemberWeddingInfo | null) ?? { id: weddingId, slug: null, title: 'Wedding' };
 }
 
 /**
@@ -196,7 +227,7 @@ export async function listPendingInvitesForEmail(email: string): Promise<Pending
 export async function acceptPendingInvite(
   user: { id: string; email: string; emailVerified: boolean },
   inviteId: string,
-): Promise<MemberRow> {
+): Promise<MemberRow & { wedding: MemberWeddingInfo }> {
   if (!user.emailVerified) {
     throw new BadRequestError('Verify your email address first, then accept the invite');
   }
@@ -210,7 +241,7 @@ export async function acceptPendingInvite(
     .maybeSingle();
   if (error || !row) throw new NotFoundError('This invite is invalid or has already been used');
 
-  if (row.owner_id === user.id) {
+  if (await isWeddingOwner(row.wedding_id, user.id)) {
     throw new BadRequestError('This is an invite to your own wedding');
   }
 
@@ -222,10 +253,12 @@ export async function acceptPendingInvite(
     .single();
   if (updateError) throw updateError;
 
-  await supabase.from('users').update({ active_owner_id: row.owner_id }).eq('id', user.id);
+  // Deliberately NOT switching active_wedding_id here — accepting an invite
+  // must never silently yank someone out of the wedding they're working on.
+  // The caller gets the wedding back and offers the switch explicitly.
   invalidateAuthCache();
 
-  return updated as MemberRow;
+  return { ...(updated as MemberRow), wedding: await findMemberWedding(row.wedding_id) };
 }
 
 /**
@@ -254,17 +287,20 @@ export async function declinePendingInvite(
 /** Look up a pending invite by its raw token (register-with-invite pre-check). */
 export async function findPendingInvite(
   token: string,
-): Promise<{ id: string; owner_id: string; invited_email: string } | null> {
+): Promise<{ id: string; wedding_id: string; invited_email: string } | null> {
   const { data } = await supabase
     .from('wedding_members')
-    .select('id, owner_id, invited_email')
+    .select('id, wedding_id, invited_email')
     .eq('token_hash', hashToken(token))
     .eq('status', 'pending')
     .maybeSingle();
   return data ?? null;
 }
 
-export async function acceptInvite(userId: string, token: string): Promise<MemberRow> {
+export async function acceptInvite(
+  userId: string,
+  token: string,
+): Promise<MemberRow & { wedding: MemberWeddingInfo }> {
   const { data: row, error } = await supabase
     .from('wedding_members')
     .select(MEMBER_COLUMNS)
@@ -273,7 +309,7 @@ export async function acceptInvite(userId: string, token: string): Promise<Membe
     .single();
   if (error || !row) throw new NotFoundError('This invite is invalid or has already been used');
 
-  if (row.owner_id === userId) {
+  if (await isWeddingOwner(row.wedding_id, userId)) {
     throw new BadRequestError('This is an invite to your own wedding');
   }
 
@@ -285,20 +321,20 @@ export async function acceptInvite(userId: string, token: string): Promise<Membe
     .single();
   if (updateError) throw updateError;
 
-  // Accepting is an explicit "take me into this wedding" — switch their active
-  // wedding to it. They can switch back to their own via the wedding switcher.
-  await supabase.from('users').update({ active_owner_id: row.owner_id }).eq('id', userId);
+  // Deliberately NOT switching active_wedding_id — the frontend decides
+  // whether to offer the switch (it only auto-switches when the user has no
+  // wedding at all, e.g. fresh invite signups).
   invalidateAuthCache();
 
-  return updated as MemberRow;
+  return { ...(updated as MemberRow), wedding: await findMemberWedding(row.wedding_id) };
 }
 
-async function loadMemberRow(ownerId: string, memberRowId: string): Promise<MemberRow> {
+async function loadMemberRow(weddingId: string, memberRowId: string): Promise<MemberRow> {
   const { data, error } = await supabase
     .from('wedding_members')
     .select(MEMBER_COLUMNS)
     .eq('id', memberRowId)
-    .eq('owner_id', ownerId)
+    .eq('wedding_id', weddingId)
     .maybeSingle();
   if (error || !data) throw new NotFoundError('Member not found');
   return data as MemberRow;
@@ -309,8 +345,8 @@ export async function updateMember(
   memberRowId: string,
   updates: { role?: 'admin' | 'editor' | 'viewer'; sections?: string[] | null; permissions?: string[] },
 ): Promise<MemberRow> {
-  const ownerId = actor.ownerId;
-  const target = await loadMemberRow(ownerId, memberRowId);
+  const weddingId = getActorWeddingId(actor);
+  const target = await loadMemberRow(weddingId, memberRowId);
   assertCanGrant(actor, { ...updates, target });
 
   const patch: Record<string, unknown> = {};
@@ -327,7 +363,7 @@ export async function updateMember(
     .from('wedding_members')
     .update(patch)
     .eq('id', memberRowId)
-    .eq('owner_id', ownerId)
+    .eq('wedding_id', weddingId)
     .select(MEMBER_COLUMNS)
     .single();
   if (error || !data) throw new NotFoundError('Member not found');
@@ -335,9 +371,9 @@ export async function updateMember(
 }
 
 export async function removeMember(actor: AuthenticatedUser, memberRowId: string): Promise<void> {
-  const ownerId = actor.ownerId;
+  const weddingId = getActorWeddingId(actor);
   if (actor.role !== 'admin') {
-    const target = await loadMemberRow(ownerId, memberRowId);
+    const target = await loadMemberRow(weddingId, memberRowId);
     assertCanGrant(actor, { target });
   }
 
@@ -345,6 +381,6 @@ export async function removeMember(actor: AuthenticatedUser, memberRowId: string
     .from('wedding_members')
     .delete()
     .eq('id', memberRowId)
-    .eq('owner_id', ownerId);
+    .eq('wedding_id', weddingId);
   if (error) throw error;
 }

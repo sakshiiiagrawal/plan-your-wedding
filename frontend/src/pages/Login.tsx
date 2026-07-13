@@ -40,7 +40,7 @@ export default function Login() {
         navigate(`/${targetSlug}/dashboard`);
       } else {
         // No wedding yet (collaborator account) — invites live here
-        navigate('/invites');
+        navigate('/hub');
       }
     } catch (error) {
       const err = error as { response?: { data?: { error?: string } } };

@@ -22,6 +22,8 @@ export const RESERVED_WEDDING_SLUGS = [
   'logout',
   'onboard',
   'invites',
+  'hub',
+  'weddings',
   'accept-invite',
   'verify-email',
   'forgot-password',

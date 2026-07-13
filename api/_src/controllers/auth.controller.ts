@@ -175,7 +175,7 @@ export const setActiveWedding = async (
 ): Promise<void> => {
   try {
     const { id } = getAuthUser(req);
-    await authService.setActiveWedding(id, req.body.ownerId);
+    await authService.setActiveWedding(id, req.body.weddingId ?? req.body.ownerId);
     res.json({ message: 'Active wedding updated' });
   } catch (error) {
     next(error);

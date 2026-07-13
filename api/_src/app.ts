@@ -77,13 +77,18 @@ const PUBLIC_PATHS: string[] = [
 ];
 
 // Public path prefixes (any path starting with these is public)
-const PUBLIC_PREFIXES: string[] = ['/api/v1/weddings/', '/api/v1/public/'];
+const PUBLIC_PREFIXES: string[] = ['/api/v1/public/'];
+
+// The only public weddings endpoint is the slug existence check
+// (GET /weddings/:slug); create/update/delete require a token.
+const PUBLIC_WEDDING_LOOKUP = /^\/api\/v1\/weddings\/[^/]+$/;
 
 // Top-level prefixes mounted in routes/index.ts. A path outside all of these
 // isn't a real route at all, so it should 404 rather than 401 — otherwise an
 // unauthenticated request can't tell "wrong URL" from "needs a token".
 const PROTECTED_PREFIXES: string[] = [
   '/api/v1/auth/',
+  '/api/v1/weddings',
   '/api/v1/geocode',
   '/api/v1/dashboard',
   '/api/v1/events',
@@ -107,8 +112,11 @@ app.use((req, res, next) => {
   // Exact public paths
   if (PUBLIC_PATHS.includes(path)) return next();
 
-  // Public path prefixes (weddings lookup, public slug-scoped data)
+  // Public path prefixes (public slug-scoped data)
   if (PUBLIC_PREFIXES.some((prefix) => path.startsWith(prefix))) return next();
+
+  // Public slug existence check (GET only — management routes need a token)
+  if (req.method === 'GET' && PUBLIC_WEDDING_LOOKUP.test(path)) return next();
 
   // Not a registered route at all — 404, don't demand a token for a URL that
   // was never going to resolve to anything.
@@ -126,6 +134,10 @@ app.use((req, res, next) => {
       WRITE_METHODS.has(req.method) &&
       req.user?.role === 'viewer' &&
       !path.startsWith('/api/v1/auth/') &&
+      // Wedding management enforces owner/admin per target wedding itself — a
+      // viewer in their ACTIVE wedding may still own another wedding, or be
+      // creating their first.
+      !path.startsWith('/api/v1/weddings') &&
       path !== '/api/v1/members/accept' &&
       !path.startsWith('/api/v1/members/pending/')
     ) {

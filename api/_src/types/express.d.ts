@@ -2,7 +2,12 @@ export interface AuthenticatedUser {
   id: string;
   email: string;
   name: string;
-  ownerId: string;
+  /** The active wedding's id — null when the account has no wedding yet (create or join first). */
+  weddingId: string | null;
+  /** Display label of the active wedding (weddings.title). */
+  weddingTitle: string | null;
+  /** True when the logged-in user owns the active wedding. */
+  isOwner: boolean;
   slug: string | null;
   emailVerified: boolean;
   currency: string;

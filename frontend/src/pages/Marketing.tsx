@@ -8,8 +8,8 @@ export default function Marketing() {
 
   useEffect(() => {
     if (loading || !isAuthenticated) return;
-    // Collaborator accounts have no wedding of their own — their home is /invites
-    navigate(slug ? `/${slug}/dashboard` : '/invites', { replace: true });
+    // Accounts with no wedding yet — their home is the workspace hub
+    navigate(slug ? `/${slug}/dashboard` : '/hub', { replace: true });
   }, [loading, isAuthenticated, slug, navigate]);
 
   return (

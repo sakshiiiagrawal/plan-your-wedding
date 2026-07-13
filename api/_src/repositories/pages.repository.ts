@@ -94,6 +94,6 @@ export async function deletePage(id: string, ownerId: string): Promise<void> {
 }
 
 export async function findOwnerBySlug(slug: string): Promise<string | null> {
-  const { data } = await supabase.from('users').select('id').eq('slug', slug).maybeSingle();
+  const { data } = await supabase.from('weddings').select('id').eq('slug', slug).maybeSingle();
   return data?.id ?? null;
 }

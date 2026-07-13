@@ -1,25 +1,10 @@
--- Migration 023: Let account deletion succeed (DELETE /auth/me)
--- payments.user_id (005), the created_by/updated_by audit stamps (012), and
--- finance_activity.actor_user_id (011) reference users(id) with NO ACTION /
--- RESTRICT, so deleting any user with real data failed with an FK violation.
--- Wedding-scoped rows die with the user; audit stamps null out.
--- ponytail: core tables' user_id columns carry no FK at all, so their rows are
--- orphaned (unreachable — every query filters by owner) rather than purged;
--- add real FKs if true data purging ever matters.
-
--- 011 rebuilt payments without user_id (payments hang off expenses), so this
--- FK only applies to databases whose payments table predates 011. Running it
--- unconditionally breaks fresh installs — hence the column-existence guard.
-DO $$ BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'payments' AND column_name = 'user_id'
-  ) THEN
-    ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_user_id_fkey;
-    ALTER TABLE payments ADD CONSTRAINT payments_user_id_fkey
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-  END IF;
-END $$;
+-- Migration 044: re-assert 023's FK delete actions.
+-- 023 is recorded as applied on databases where it actually failed partway
+-- (its payments block referenced a column 011 had dropped), leaving
+-- finance_activity.actor_user_id ON DELETE RESTRICT and the created_by/
+-- updated_by stamps without SET NULL — which is what makes DELETE /auth/me
+-- fail for any user who ever wrote finance data. Idempotent re-run of the
+-- surviving 023 statements.
 
 ALTER TABLE guests DROP CONSTRAINT IF EXISTS guests_created_by_fkey;
 ALTER TABLE guests ADD CONSTRAINT guests_created_by_fkey

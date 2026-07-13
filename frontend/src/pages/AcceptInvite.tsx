@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
-import { useAcceptInvite } from '../hooks/useApi';
+import {
+  useAcceptInvite,
+  useSetActiveWedding,
+  type AcceptedInviteWedding,
+} from '../hooks/useApi';
 
 /**
  * Landing page for invite emails. Three cases:
@@ -14,10 +18,14 @@ import { useAcceptInvite } from '../hooks/useApi';
 export default function AcceptInvite() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
-  const { isAuthenticated, loading, register, refresh } = useAuth();
+  const { user, isAuthenticated, loading, register, refresh } = useAuth();
   const acceptInvite = useAcceptInvite();
+  const setActiveWedding = useSetActiveWedding();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'pending' | 'error'>('pending');
+  // Set when the user already had an active wedding: joining must never
+  // silently switch them, so we ask instead.
+  const [joined, setJoined] = useState<AcceptedInviteWedding | null>(null);
   // StrictMode runs effects twice in dev; the second accept would find the
   // invite already consumed and falsely report it invalid.
   const fired = useRef(false);
@@ -28,21 +36,29 @@ export default function AcceptInvite() {
   const [submitting, setSubmitting] = useState(false);
 
   const goToDashboard = (slug: string | null | undefined) => {
-    navigate(slug ? `/${slug}/dashboard` : '/invites', { replace: true });
+    navigate(slug ? `/${slug}/dashboard` : '/hub', { replace: true });
   };
 
-  // Already signed in: accept straight away and enter the wedding
+  const openJoinedWedding = (wedding: AcceptedInviteWedding) => {
+    // useSetActiveWedding reloads on success; point the URL at the new
+    // wedding's dashboard first so the reload lands there.
+    if (wedding.slug) window.history.replaceState(null, '', `/${wedding.slug}/dashboard`);
+    setActiveWedding.mutate(wedding.id);
+  };
+
+  // Already signed in: accept straight away
   useEffect(() => {
     if (loading || !token || !isAuthenticated || fired.current) return;
     fired.current = true;
 
+    const hadWedding = Boolean(user?.weddingId);
     acceptInvite.mutate(token, {
-      onSuccess: async () => {
+      onSuccess: ({ wedding }) => {
         toast.success("You're in! Welcome aboard.");
-        // Accepting switched the active wedding server-side; re-resolve the
-        // session so the slug/role point at the new wedding before navigating.
-        const me = await refresh();
-        goToDashboard(me?.slug);
+        // No wedding before this → the new one is simply theirs, jump in.
+        // Otherwise stay put and offer the switch explicitly below.
+        if (!hadWedding) openJoinedWedding(wedding);
+        else setJoined(wedding);
       },
       onError: () => setStatus('error'),
     });
@@ -73,8 +89,38 @@ export default function AcceptInvite() {
           <p className="text-gray-600 text-center">This invite link is missing its token.</p>
         )}
 
-        {token && isAuthenticated && status === 'pending' && (
+        {token && isAuthenticated && status === 'pending' && !joined && (
           <p className="text-gray-600 text-center">Accepting invite...</p>
+        )}
+
+        {joined && (
+          <div className="text-center space-y-4">
+            <h1 className="text-2xl font-display font-bold text-maroon-800">
+              You&apos;ve joined {joined.title}
+            </h1>
+            <p className="text-sm text-gray-500">
+              You&apos;re currently working on <b>{user?.weddingTitle ?? 'your wedding'}</b>.
+              Switch now, or keep going — {joined.title} stays in your wedding switcher.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => openJoinedWedding(joined)}
+                disabled={setActiveWedding.isPending}
+                className="btn-primary px-6 py-3 disabled:opacity-50"
+              >
+                Open {joined.title} →
+              </button>
+              <button
+                onClick={async () => {
+                  await refresh();
+                  goToDashboard(user?.slug);
+                }}
+                className="btn-secondary px-6 py-3"
+              >
+                Keep working on {user?.weddingTitle ?? 'my wedding'}
+              </button>
+            </div>
+          </div>
         )}
 
         {token && status === 'error' && (

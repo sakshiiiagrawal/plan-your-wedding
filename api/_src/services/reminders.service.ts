@@ -2,7 +2,8 @@ import { supabase } from '../config/database';
 import { withPgClient } from '../config/postgres';
 import { env } from '../config/env';
 import * as tasksRepo from '../repositories/tasks.repository';
-import { sendEmail } from './mailer';
+import { sendEmail } from './email';
+import { digestEmail, escapeHtml } from './email/templates';
 
 // ---------------------------------------------------------------------------
 // Feed — the single source for the topbar bell and the daily email digest.
@@ -178,22 +179,26 @@ function fmtDate(iso: string): string {
   });
 }
 
-function renderSection(
-  heading: string,
-  items: ReminderItem[],
-  currency: string,
-  linkBase: string,
-): string {
+function itemLine(i: ReminderItem, currency: string): string {
+  const amount = i.amount != null ? ` — ${fmtAmount(i.amount, currency)}` : '';
+  const label = i.kind === 'payment' ? 'Payment: ' : '';
+  return `${label}${i.title}${amount} (${fmtDate(i.date)})`;
+}
+
+function renderSection(heading: string, items: ReminderItem[], currency: string): string {
   if (items.length === 0) return '';
   const rows = items
-    .map((i) => {
-      const amount = i.amount != null ? ` — ${fmtAmount(i.amount, currency)}` : '';
-      const label = i.kind === 'payment' ? 'Payment: ' : '';
-      return `<li>${label}${i.title}${amount} <span style="color:#8a8577">(${fmtDate(i.date)})</span></li>`;
-    })
+    .map(
+      (i) =>
+        `<li style="margin:4px 0">${escapeHtml(itemLine(i, currency)).replace(/\(([^)]+)\)$/, '<span style="color:#8a7a6b">($1)</span>')}</li>`,
+    )
     .join('');
-  const href = `${linkBase}/dashboard/${items.some((i) => i.kind === 'payment') ? 'budget' : 'tasks'}`;
-  return `<h3 style="margin:16px 0 4px">${heading}</h3><ul style="margin:4px 0">${rows}</ul><p style="margin:2px 0"><a href="${href}">Open dashboard</a></p>`;
+  return `<h3 style="margin:20px 0 4px;font-size:15px;letter-spacing:0.5px;text-transform:uppercase;color:#7e6227">${heading}</h3><ul style="margin:4px 0;padding-left:20px">${rows}</ul>`;
+}
+
+function renderSectionText(heading: string, items: ReminderItem[], currency: string): string {
+  if (items.length === 0) return '';
+  return `${heading}:\n${items.map((i) => `  - ${itemLine(i, currency)}`).join('\n')}\n\n`;
 }
 
 export interface DigestRunResult {
@@ -203,33 +208,42 @@ export interface DigestRunResult {
 
 export async function sendDailyDigests(): Promise<DigestRunResult> {
   const today = todayIST();
-  // ponytail: single unpaginated fetch — revisit past ~1000 users.
-  const { data: users, error } = await supabase
-    .from('users')
-    .select('id, email, name, slug, currency, reminder_prefs');
+  // One digest per WEDDING, emailed to its owner — an owner of two weddings
+  // gets one per wedding, each scoped and linked to that wedding's dashboard.
+  // ponytail: single unpaginated fetch — revisit past ~1000 weddings.
+  const { data: weddings, error } = await supabase
+    .from('weddings')
+    .select('id, slug, title, currency, owner:users!owner_id(id, email, name, reminder_prefs)');
   if (error) throw error;
 
   let processed = 0;
   let sent = 0;
 
-  for (const u of users ?? []) {
-    const prefs = ((u as Record<string, unknown>)['reminder_prefs'] ?? {}) as ReminderPrefs;
+  for (const w of weddings ?? []) {
+    const owner = w.owner as unknown as {
+      id: string;
+      email: string;
+      name: string | null;
+      reminder_prefs: ReminderPrefs | null;
+    } | null;
+    if (!owner) continue;
+    const prefs = owner.reminder_prefs ?? {};
     if (prefs.email_digest === false) continue;
     processed += 1;
 
     try {
       // Insert-first claim: a cron retry or double-fire can't double-email.
       const { data: claimed, error: claimError } = await supabase
-        .from('digest_log')
-        .upsert({ user_id: u.id, sent_on: today }, { ignoreDuplicates: true })
+        .from('wedding_digest_log')
+        .upsert({ wedding_id: w.id, sent_on: today }, { ignoreDuplicates: true })
         .select();
       if (claimError) throw claimError;
       if (!claimed || claimed.length === 0) continue; // already sent today
 
       const leadDays = prefs.payment_lead_days ?? 7;
-      // Digest v1 goes to wedding owners about their own wedding — owners see
+      // Digest v1 goes to wedding owners about their wedding — owners see
       // everything, so no section filtering here (members: phase 4).
-      const feed = await buildFeed(u.id, {
+      const feed = await buildFeed(w.id, {
         includeTasks: true,
         includePayments: true,
         paymentLeadDays: leadDays,
@@ -238,23 +252,30 @@ export async function sendDailyDigests(): Promise<DigestRunResult> {
       const count = digest.overdue.length + digest.today.length + digest.upcoming.length;
       if (count === 0) continue;
 
-      const currency = (u as Record<string, unknown>)['currency'] as string | undefined;
-      const linkBase = `${env.FRONTEND_URL ?? ''}/${u.slug ?? ''}`;
-      const html =
-        `<p>Hi ${u.name || 'there'}, here's what needs your attention today:</p>` +
-        renderSection('Overdue', digest.overdue, currency ?? 'INR', linkBase) +
-        renderSection('Due today', digest.today, currency ?? 'INR', linkBase) +
-        renderSection('Coming up', digest.upcoming, currency ?? 'INR', linkBase);
+      const currency = (w.currency as string | null) ?? 'INR';
+      const sectionsHtml =
+        renderSection('Overdue', digest.overdue, currency) +
+        renderSection('Due today', digest.today, currency) +
+        renderSection('Coming up', digest.upcoming, currency);
+      const sectionsText =
+        renderSectionText('Overdue', digest.overdue, currency) +
+        renderSectionText('Due today', digest.today, currency) +
+        renderSectionText('Coming up', digest.upcoming, currency);
 
       await sendEmail({
-        to: u.email,
-        subject: `Wedding planner — ${count} reminder${count === 1 ? '' : 's'} for today`,
-        html,
+        to: owner.email,
+        ...digestEmail({
+          name: owner.name ?? undefined,
+          count,
+          sectionsHtml,
+          sectionsText,
+          dashboardLink: `${env.FRONTEND_URL ?? ''}/${w.slug ?? ''}/dashboard`,
+        }),
       });
       sent += 1;
     } catch (err) {
-      // One user's failure must not kill the whole run.
-      console.error(`[digest] failed for user ${u.id}:`, err);
+      // One wedding's failure must not kill the whole run.
+      console.error(`[digest] failed for wedding ${w.id}:`, err);
     }
   }
 

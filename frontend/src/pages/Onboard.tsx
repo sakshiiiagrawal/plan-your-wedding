@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { useCreateWedding } from '../hooks/useApi';
 
 import Step1_Welcome from './onboard/Step1_Welcome';
 import Step2_WeddingDetails from './onboard/Step2_WeddingDetails';
@@ -21,21 +22,52 @@ interface FormData {
   confirmPassword: string;
 }
 
-export default function Onboard() {
-  const { register, isAuthenticated, slug, loading } = useAuth();
+/**
+ * Two shapes of the same wizard:
+ *  - default (/onboard): the signup funnel. Couples get account + wedding in
+ *    one pass (register, then POST /weddings — split API, single flow);
+ *    partners/helpers get an account-only signup and land on /hub.
+ *  - createOnly (/weddings/new): a logged-in user adding a(nother) wedding —
+ *    just the wedding-details and review steps, no account screens.
+ */
+export default function Onboard({ createOnly = false }: { createOnly?: boolean }) {
+  const { user, register, isAuthenticated, slug, loading } = useAuth();
+  const createWedding = useCreateWedding();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
 
   const [submitting, setSubmitting] = useState(false);
   const [successSlug, setSuccessSlug] = useState<string | null>(null);
+  // Set once register() succeeds mid-submit: a slug conflict on the wedding
+  // call must not re-register (and re-fail) on retry.
+  const [accountCreated, setAccountCreated] = useState(false);
 
-  // Already signed in → leave the wizard (collaborators' home is /invites).
-  // Registering here sets the auth state too, so skip the redirect once the
-  // success screen is up — otherwise it would never be seen.
+  // Already signed in → leave the signup wizard (accounts without a wedding
+  // live on /hub, which links back to /weddings/new). Only bounce from the
+  // welcome screen so a submit-in-progress or retry isn't yanked away.
   useEffect(() => {
-    if (loading || !isAuthenticated || successSlug || submitting) return;
-    navigate(slug ? `/${slug}/dashboard` : '/invites', { replace: true });
-  }, [loading, isAuthenticated, slug, successSlug, submitting, navigate]);
+    if (createOnly || loading || !isAuthenticated || successSlug || submitting) return;
+    if (step !== 1 || accountCreated) return;
+    navigate(slug ? `/${slug}/dashboard` : '/hub', { replace: true });
+  }, [
+    createOnly,
+    loading,
+    isAuthenticated,
+    slug,
+    successSlug,
+    submitting,
+    step,
+    accountCreated,
+    navigate,
+  ]);
+
+  // createOnly requires a session — it's reached from the hub/switcher.
+  useEffect(() => {
+    if (createOnly && !loading && !isAuthenticated) {
+      navigate(`/login?next=${encodeURIComponent('/weddings/new')}`, { replace: true });
+    }
+  }, [createOnly, loading, isAuthenticated, navigate]);
+
   // 'couple' creates a wedding + website; 'collaborator' (planner / family /
   // friend) and 'partner' (spouse whose partner already started planning)
   // both create an account-only signup — they join weddings via invites.
@@ -59,16 +91,21 @@ export default function Onboard() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const { slug } = await register({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
+      if (!createOnly && !isAuthenticated && !accountCreated) {
+        await register({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        });
+        setAccountCreated(true);
+      }
+      const wedding = await createWedding.mutateAsync({
+        slug: formData.slug,
         brideName: formData.brideName,
         groomName: formData.groomName,
         ...(formData.weddingDate ? { weddingDate: formData.weddingDate } : {}),
-        slug: formData.slug,
       });
-      setSuccessSlug(slug);
+      setSuccessSlug(wedding.slug);
     } catch (error) {
       const err = error as { response?: { data?: { error?: string } } };
       toast.error(err?.response?.data?.error || 'Setup failed. Please try again.');
@@ -91,7 +128,7 @@ export default function Onboard() {
         accountType: 'collaborator',
       });
       toast.success('Account created!');
-      navigate(mode === 'partner' ? '/invites?partner=1' : '/invites', { replace: true });
+      navigate(mode === 'partner' ? '/hub?partner=1' : '/hub', { replace: true });
     } catch (error) {
       const err = error as { response?: { data?: { error?: string } } };
       toast.error(err?.response?.data?.error || 'Setup failed. Please try again.');
@@ -100,13 +137,20 @@ export default function Onboard() {
     }
   };
 
-  const STEPS = mode === 'collaborator' || mode === 'partner' ? 2 : 4;
+  // createOnly: details → review. Couple: welcome → details → account → review.
+  const STEPS = createOnly ? 2 : mode === 'collaborator' || mode === 'partner' ? 2 : 4;
+  const detailsStep = createOnly ? 1 : 2;
+  const reviewStep = createOnly ? 2 : 4;
+
+  if (createOnly && (loading || !isAuthenticated)) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-maroon-800 via-maroon-700 to-gold-600 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <p className="font-script text-3xl text-cream">Wedding Planner Setup</p>
+          <p className="font-script text-3xl text-cream">
+            {createOnly ? 'Plan a New Wedding' : 'Wedding Planner Setup'}
+          </p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-8">
@@ -134,9 +178,9 @@ export default function Onboard() {
                 brideName={formData.brideName}
                 groomName={formData.groomName}
                 slug={successSlug}
-                email={formData.email}
+                email={createOnly ? '' : formData.email}
               />
-            ) : step === 1 ? (
+            ) : !createOnly && step === 1 ? (
               <Step1_Welcome
                 key="step1"
                 onNext={() => {
@@ -152,7 +196,7 @@ export default function Onboard() {
                   setStep(2);
                 }}
               />
-            ) : mode === 'collaborator' || mode === 'partner' ? (
+            ) : !createOnly && (mode === 'collaborator' || mode === 'partner') ? (
               <Step3_Account
                 key="collab-account"
                 data={{
@@ -169,7 +213,7 @@ export default function Onboard() {
                 }}
                 onBack={() => setStep(1)}
               />
-            ) : step === 2 ? (
+            ) : step === detailsStep ? (
               <Step2_WeddingDetails
                 key="step2"
                 data={{
@@ -180,11 +224,11 @@ export default function Onboard() {
                 }}
                 onNext={(v) => {
                   mergeData(v);
-                  setStep(3);
+                  setStep(detailsStep + 1);
                 }}
-                onBack={() => setStep(1)}
+                onBack={createOnly ? () => navigate('/hub') : () => setStep(1)}
               />
-            ) : step === 3 ? (
+            ) : !createOnly && step === 3 ? (
               <Step3_Account
                 key="step3"
                 data={{
@@ -199,15 +243,19 @@ export default function Onboard() {
                 }}
                 onBack={() => setStep(2)}
               />
-            ) : (
+            ) : step === reviewStep ? (
               <Step4_Review
                 key="step4"
-                data={formData}
+                data={
+                  createOnly
+                    ? { ...formData, name: user?.name ?? '', email: user?.email ?? '' }
+                    : formData
+                }
                 onSubmit={handleSubmit}
-                onBack={() => setStep(3)}
+                onBack={() => setStep(reviewStep - 1)}
                 loading={submitting}
               />
-            )}
+            ) : null}
           </AnimatePresence>
         </div>
       </div>

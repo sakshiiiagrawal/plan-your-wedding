@@ -276,6 +276,186 @@ function RemindersBell({ basePath }: { basePath: string }) {
   );
 }
 
+/**
+ * Always-visible workspace switcher: the active wedding + a popover with every
+ * wedding the user owns or collaborates on, pending-invite count, and the
+ * doors to /weddings/new and /hub. Rendered under the sidebar brand block so
+ * multi-wedding access is discoverable, not buried.
+ */
+function WeddingSwitcher({
+  weddings,
+  activeWeddingId,
+  pendingInviteCount,
+  onPick,
+}: {
+  weddings: { id: string; title: string; role: string; isOwner: boolean }[];
+  activeWeddingId: string | null;
+  pendingInviteCount: number;
+  onPick: (w: { id: string; title: string }) => void;
+}) {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  useModalDismiss(open, () => setOpen(false));
+
+  const active = weddings.find((w) => w.id === activeWeddingId);
+  const roleLabel = (w: { role: string; isOwner: boolean }) =>
+    w.isOwner ? 'owner' : w.role;
+
+  const itemStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    width: '100%',
+    padding: '9px 14px',
+    fontSize: 12.5,
+    color: 'var(--ink-mid)',
+    background: 'transparent',
+    cursor: 'pointer',
+    textAlign: 'left',
+  };
+
+  return (
+    <div style={{ position: 'relative', padding: '10px 16px 12px' }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        title="Switch wedding"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+          width: '100%',
+          padding: '8px 10px',
+          borderRadius: 8,
+          border: '1px solid var(--line)',
+          background: 'var(--bg-raised)',
+          cursor: 'pointer',
+        }}
+      >
+        <span style={{ minWidth: 0, textAlign: 'left' }}>
+          <span
+            style={{
+              display: 'block',
+              fontSize: 12.5,
+              fontWeight: 500,
+              color: 'var(--ink-high)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {active?.title ?? 'My wedding'}
+          </span>
+          <span style={{ display: 'block', fontSize: 10, color: 'var(--ink-dim)' }}>
+            {active ? roleLabel(active) : ''}
+            {pendingInviteCount > 0 && (
+              <span style={{ color: 'var(--gold-deep)', fontWeight: 600 }}>
+                {active ? ' · ' : ''}
+                {pendingInviteCount} invite{pendingInviteCount === 1 ? '' : 's'}
+              </span>
+            )}
+          </span>
+        </span>
+        <HiOutlineChevronRight
+          style={{
+            width: 13,
+            height: 13,
+            flexShrink: 0,
+            color: 'var(--ink-dim)',
+            transform: open ? 'rotate(-90deg)' : 'rotate(90deg)',
+            transition: 'transform 150ms',
+          }}
+        />
+      </button>
+
+      {open && (
+        <>
+          {/* click-away backdrop */}
+          <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setOpen(false)} />
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 16,
+              right: 16,
+              zIndex: 41,
+              background: 'var(--bg-panel)',
+              border: '1px solid var(--line)',
+              borderRadius: 10,
+              boxShadow: '0 10px 30px rgba(0,0,0,0.14)',
+              overflow: 'hidden',
+            }}
+          >
+            {weddings.map((w) => (
+              <button
+                key={w.id}
+                style={{
+                  ...itemStyle,
+                  ...(w.id === activeWeddingId
+                    ? { background: 'var(--gold-glow)', color: 'var(--gold-deep)', fontWeight: 500 }
+                    : {}),
+                }}
+                onClick={() => {
+                  setOpen(false);
+                  if (w.id !== activeWeddingId) onPick(w);
+                }}
+              >
+                <span
+                  style={{
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {w.title}
+                </span>
+                <span style={{ fontSize: 10, color: 'var(--ink-dim)', flexShrink: 0 }}>
+                  {roleLabel(w)}
+                </span>
+              </button>
+            ))}
+            <button
+              style={{ ...itemStyle, borderTop: '1px solid var(--line-soft)' }}
+              onClick={() => {
+                setOpen(false);
+                navigate('/weddings/new');
+              }}
+            >
+              + Plan a new wedding
+            </button>
+            <button
+              style={{ ...itemStyle, borderTop: '1px solid var(--line-soft)' }}
+              onClick={() => {
+                setOpen(false);
+                navigate('/hub');
+              }}
+            >
+              <span>All weddings &amp; invites</span>
+              {pendingInviteCount > 0 && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: '#fff',
+                    background: 'var(--gold-deep)',
+                    borderRadius: 999,
+                    padding: '1px 7px',
+                    flexShrink: 0,
+                  }}
+                >
+                  {pendingInviteCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardLayout() {
   const { logout, user, slug: authSlug, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
@@ -336,9 +516,7 @@ export default function DashboardLayout() {
 
   // Switching weddings hard-reloads the app — confirm so mid-edit work isn't
   // silently discarded by a stray dropdown change.
-  const [pendingSwitch, setPendingSwitch] = useState<{ ownerId: string; label: string } | null>(
-    null,
-  );
+  const [pendingSwitch, setPendingSwitch] = useState<{ id: string; title: string } | null>(null);
 
   const handleLogout = () => {
     logout();
@@ -364,6 +542,12 @@ export default function DashboardLayout() {
 
   if (!isAuthenticated) {
     return <Navigate to={`/${slug}/login`} replace />;
+  }
+
+  // Signed in but no wedding (deleted their last one, or membership revoked):
+  // the hub is home — it offers create-or-join instead of a broken dashboard.
+  if (!authSlug) {
+    return <Navigate to="/hub" replace />;
   }
 
   // Deep link into a section this member can't access → back to Overview
@@ -434,6 +618,15 @@ export default function DashboardLayout() {
 
         <hr className="hairline" style={{ margin: '0 24px' }} />
 
+        <WeddingSwitcher
+          weddings={weddings}
+          activeWeddingId={weddingData?.activeWeddingId ?? null}
+          pendingInviteCount={weddingData?.pendingInviteCount ?? 0}
+          onPick={(w) => setPendingSwitch(w)}
+        />
+
+        <hr className="hairline" style={{ margin: '0 24px' }} />
+
         {/* Navigation */}
         <nav style={{ padding: '16px 12px', flex: 1, overflowY: 'auto' }}>
           {visibleNavItems.map((item) => {
@@ -474,39 +667,6 @@ export default function DashboardLayout() {
 
         {/* Footer */}
         <div style={{ padding: '16px 20px' }}>
-          {/* Wedding switcher — only when the user collaborates on more than
-              their own wedding. Switching reloads to re-scope all data. */}
-          {weddings.length > 1 && (
-            <div style={{ marginBottom: 12 }}>
-              <div className="uppercase-eyebrow" style={{ marginBottom: 6 }}>
-                Working on
-              </div>
-              <select
-                value={weddingData?.activeOwnerId ?? ''}
-                disabled={setActiveWedding.isPending}
-                onChange={(e) => {
-                  const target = weddings.find((w) => w.ownerId === e.target.value);
-                  if (target) setPendingSwitch({ ownerId: target.ownerId, label: target.label });
-                }}
-                style={{
-                  width: '100%',
-                  fontSize: 12,
-                  padding: '7px 8px',
-                  borderRadius: 6,
-                  border: '1px solid var(--line)',
-                  background: 'var(--bg-raised)',
-                  color: 'var(--ink-high)',
-                  cursor: setActiveWedding.isPending ? 'wait' : 'pointer',
-                }}
-              >
-                {weddings.map((w) => (
-                  <option key={w.ownerId} value={w.ownerId}>
-                    {w.isOwn ? `${w.label} (mine)` : `${w.label} · ${w.role}`}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <div
               className="avatar"
@@ -700,11 +860,11 @@ export default function DashboardLayout() {
       <ConfirmDialog
         open={pendingSwitch !== null}
         title="Switch wedding?"
-        message={`Open ${pendingSwitch?.label ?? ''}? The page will reload and any unsaved changes here will be lost.`}
+        message={`Open ${pendingSwitch?.title ?? ''}? The page will reload and any unsaved changes here will be lost.`}
         confirmLabel="Switch"
         isPending={setActiveWedding.isPending}
         onConfirm={() => {
-          if (pendingSwitch) setActiveWedding.mutate(pendingSwitch.ownerId);
+          if (pendingSwitch) setActiveWedding.mutate(pendingSwitch.id);
         }}
         onCancel={() => setPendingSwitch(null)}
       />

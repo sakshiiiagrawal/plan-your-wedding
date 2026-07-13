@@ -9,8 +9,16 @@ import {
   UnauthorizedError,
   NotFoundError,
 } from '../shared/errors/HttpError';
-import { sendEmail } from './mailer';
+import { sendEmail } from './email';
+import { verificationEmail, passwordResetEmail } from './email/templates';
 import { acceptInvite, findPendingInvite } from './members.service';
+import {
+  assertSlugAvailable,
+  createWedding,
+  purgeWeddingData,
+  listOwnedWeddingIds,
+} from './weddings.service';
+import { withPgTransaction } from '../config/postgres';
 import { hashToken } from '../shared/utils/token.utils';
 import { invalidateAuthCache } from '../middleware/auth.middleware';
 import type { RegisterInput, UpdateProfileInput } from '../validators/auth.validator';
@@ -41,70 +49,110 @@ export async function comparePasswords(password: string, hash: string): Promise<
 }
 
 export interface WeddingOption {
-  ownerId: string;
-  label: string;
+  id: string;
+  slug: string | null;
+  title: string;
+  currency: string;
   role: 'admin' | 'editor' | 'viewer';
-  isOwn: boolean;
+  isOwner: boolean;
 }
 
-/** The user's own wedding plus every wedding they're an active member of. */
-export async function listUserWeddings(
-  userId: string,
-): Promise<{ activeOwnerId: string; weddings: WeddingOption[] }> {
+/**
+ * Every wedding the user owns plus every wedding they're an active member of,
+ * with the pending-invite count for the switcher/hub badge. activeWeddingId
+ * mirrors the middleware's resolution (explicit choice, else oldest owned,
+ * else first membership) so the UI never disagrees with the API's scoping.
+ */
+export async function listUserWeddings(userId: string): Promise<{
+  activeWeddingId: string | null;
+  weddings: WeddingOption[];
+  pendingInviteCount: number;
+}> {
   const { data: me, error } = await supabase
     .from('users')
-    .select('id, name, slug, active_owner_id')
+    .select('id, email, active_wedding_id')
     .eq('id', userId)
     .single();
   if (error || !me) throw new NotFoundError('User not found');
 
-  const { data: memberships } = await supabase
-    .from('wedding_members')
-    .select('owner_id, role, owner:users!owner_id(name, slug)')
-    .eq('member_id', userId)
-    .eq('status', 'active');
+  const [ownedRes, membershipRes, pendingRes] = await Promise.all([
+    supabase
+      .from('weddings')
+      .select('id, slug, title, currency')
+      .eq('owner_id', userId)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('wedding_members')
+      .select('wedding_id, role, wedding:weddings!wedding_id(id, slug, title, currency)')
+      .eq('member_id', userId)
+      .eq('status', 'active'),
+    supabase
+      .from('wedding_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('invited_email', me.email)
+      .eq('status', 'pending'),
+  ]);
 
-  // Collaborator-only accounts (registered via invite, never claimed a slug)
-  // have no wedding of their own worth switching to — hide the empty entry.
-  // It reappears as a fallback if every membership gets revoked.
-  const hasOwnWedding = me.slug !== null || (memberships ?? []).length === 0;
-  const weddings: WeddingOption[] = hasOwnWedding
-    ? [{ ownerId: me.id, label: me.name || me.slug || 'My wedding', role: 'admin', isOwn: true }]
-    : [];
+  const weddings: WeddingOption[] = (ownedRes.data ?? []).map((w) => ({
+    id: w.id as string,
+    slug: (w.slug as string | null) ?? null,
+    title: (w.title as string) || 'My wedding',
+    currency: (w.currency as string) ?? 'INR',
+    role: 'admin' as const,
+    isOwner: true,
+  }));
 
-  for (const m of memberships ?? []) {
-    const owner = m.owner as unknown as { name: string | null; slug: string | null } | null;
+  for (const m of membershipRes.data ?? []) {
+    const w = m.wedding as unknown as {
+      id: string;
+      slug: string | null;
+      title: string;
+      currency: string | null;
+    } | null;
+    if (!w) continue;
     weddings.push({
-      ownerId: m.owner_id,
-      label: owner?.name || owner?.slug || 'Wedding',
+      id: w.id,
+      slug: w.slug,
+      title: w.title || 'Wedding',
+      currency: w.currency ?? 'INR',
       role: m.role as WeddingOption['role'],
-      isOwn: false,
+      isOwner: false,
     });
   }
 
-  return { activeOwnerId: me.active_owner_id ?? me.id, weddings };
+  const explicit = weddings.find((w) => w.id === me.active_wedding_id);
+  const activeWeddingId = explicit?.id ?? weddings[0]?.id ?? null;
+
+  return { activeWeddingId, weddings, pendingInviteCount: pendingRes.count ?? 0 };
 }
 
 /**
- * Switch the user's active wedding. Passing their own id clears the override
- * (back to their own wedding); any other id must be a wedding they're an active
- * member of, otherwise it's rejected.
+ * Switch the user's active wedding — any wedding they own or are an active
+ * member of. Revoked/stale choices fall back via the middleware's default
+ * resolution, so a bad stored id can never lock anyone out.
  */
-export async function setActiveWedding(userId: string, targetOwnerId: string): Promise<void> {
-  if (targetOwnerId !== userId) {
+export async function setActiveWedding(userId: string, weddingId: string): Promise<void> {
+  const { data: owned } = await supabase
+    .from('weddings')
+    .select('id')
+    .eq('id', weddingId)
+    .eq('owner_id', userId)
+    .maybeSingle();
+
+  if (!owned) {
     const { data: membership } = await supabase
       .from('wedding_members')
       .select('id')
       .eq('member_id', userId)
-      .eq('owner_id', targetOwnerId)
+      .eq('wedding_id', weddingId)
       .eq('status', 'active')
       .maybeSingle();
-    if (!membership) throw new BadRequestError('You are not an active member of that wedding');
+    if (!membership) throw new BadRequestError('You are not a member of that wedding');
   }
 
   const { error } = await supabase
     .from('users')
-    .update({ active_owner_id: targetOwnerId === userId ? null : targetOwnerId })
+    .update({ active_wedding_id: weddingId })
     .eq('id', userId);
   if (error) throw error;
   invalidateAuthCache();
@@ -145,30 +193,24 @@ export async function createUser(input: RegisterInput): Promise<UserRow> {
     }
   }
 
-  if (slug) {
-    const { data: slugConflict } = await supabase
-      .from('users')
-      .select('id')
-      .eq('slug', slug)
-      .limit(1);
-
-    if (slugConflict && slugConflict.length > 0) {
-      throw new ConflictError('That URL is already taken. Please choose another.');
-    }
-  }
+  // Legacy one-shot register (couple wizard bundles account + wedding into one
+  // call for a release of compat): validate the slug before the user insert so
+  // a conflict doesn't leave an orphaned, wedding-less account behind.
+  if (slug) await assertSlugAvailable(slug);
 
   const password_hash = await hashPassword(password);
   const normalizedEmail = email.toLowerCase().trim();
   // The invite email proved inbox ownership — no separate verification needed
   const verifiedViaInvite = pendingInvite?.invited_email === normalizedEmail;
 
+  // Accounts no longer carry a slug — weddings do (users.slug is legacy, kept
+  // until 045 for pre-cutover deploys; new accounts never write it).
   const { data: user, error: userError } = await supabase
     .from('users')
     .insert({
       name,
       email: normalizedEmail,
       password_hash,
-      slug: slug ?? null,
       ...(verifiedViaInvite ? { email_verified: true } : {}),
     })
     .select('id, email, name, slug')
@@ -179,51 +221,15 @@ export async function createUser(input: RegisterInput): Promise<UserRow> {
 
   const newUser = user as UserRow;
 
-  // Collaborator accounts (invite, no slug) don't get a wedding site of their
-  // own — they join the inviter's wedding instead. Everything below is
-  // per-wedding seeding, only meaningful when this account owns a site.
   if (slug) {
-    // Seed every website-content section so fresh accounts never 404 on
-    // hero/couple/story/gallery reads (dashboard, editor, and public site all
-    // fetch them before the user has saved anything).
-    const heroContent =
-      (brideName ?? groomName ?? weddingDate)
-        ? {
-            bride_name: brideName ?? '',
-            groom_name: groomName ?? '',
-            wedding_date: weddingDate ?? null,
-            tagline: `${brideName ?? 'Bride'} & ${groomName ?? 'Groom'} are getting married!`,
-          }
-        : {};
-    const seedSections = [
-      { section_name: 'hero', content: heroContent, display_order: 1 },
-      { section_name: 'couple', content: {}, display_order: 2 },
-      { section_name: 'our_story', content: { story: '' }, display_order: 3 },
-      { section_name: 'gallery', content: { images: [] }, display_order: 4 },
-    ];
-    await supabase.from('website_content').upsert(
-      seedSections.map((s) => ({ ...s, user_id: newUser.id })),
-      { onConflict: 'section_name,user_id' },
-    );
-
-    // Every wedding starts with a home page (the multi-page public site model);
-    // more pages (e.g. an invitation) are added from the Site Studio.
-    await supabase.from('public_pages').upsert(
-      {
-        user_id: newUser.id,
-        page_slug: '',
-        kind: 'website',
-        title: 'Main website',
-        template: 'classic',
-        palette: 'royal',
-        config: {},
-      },
-      { onConflict: 'user_id,page_slug' },
-    );
+    const wedding = await createWedding(newUser.id, { slug, brideName, groomName, weddingDate });
+    // The register response's slug drives the old wizard's redirect.
+    newUser.slug = wedding.slug;
   }
 
   if (inviteToken) {
-    // Membership activates + active wedding switches to the inviter's
+    // Membership activates; with no wedding of their own, the middleware's
+    // default resolution lands them in the inviter's wedding on first load.
     await acceptInvite(newUser.id, inviteToken);
   }
 
@@ -236,7 +242,11 @@ export async function createUser(input: RegisterInput): Promise<UserRow> {
   return newUser;
 }
 
-export async function requestEmailVerification(user: { id: string; email: string }): Promise<void> {
+export async function requestEmailVerification(user: {
+  id: string;
+  email: string;
+  name?: string;
+}): Promise<void> {
   const token = randomBytes(32).toString('hex');
   const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
@@ -246,11 +256,7 @@ export async function requestEmailVerification(user: { id: string; email: string
   if (error) throw error;
 
   const link = `${env.FRONTEND_URL ?? ''}/verify-email?token=${token}`;
-  await sendEmail({
-    to: user.email,
-    subject: 'Verify your email',
-    html: `<p>Click the link below to verify your email address. This link expires in 24 hours.</p><p><a href="${link}">${link}</a></p>`,
-  });
+  await sendEmail({ to: user.email, ...verificationEmail({ name: user.name, link }) });
 }
 
 export async function verifyEmail(token: string): Promise<void> {
@@ -291,11 +297,9 @@ export async function requestPasswordReset(email: string): Promise<void> {
   // Fire-and-forget: awaiting the SMTP round-trip would make response time a
   // user-enumeration oracle (unknown emails return instantly) and block the UI
   const link = `${env.FRONTEND_URL ?? ''}/reset-password?token=${token}`;
-  void sendEmail({
-    to: user.email,
-    subject: 'Reset your password',
-    html: `<p>Click the link below to reset your password. This link expires in 1 hour.</p><p><a href="${link}">${link}</a></p>`,
-  }).catch((err) => console.error('[mailer] password reset email failed:', err));
+  void sendEmail({ to: user.email, ...passwordResetEmail({ name: user.name, link }) }).catch(
+    (err) => console.error('[mailer] password reset email failed:', err),
+  );
 }
 
 export async function resetPassword(token: string, newPassword: string): Promise<void> {
@@ -331,7 +335,8 @@ export async function updateProfile(
   ownerId: string,
   updates: UpdateProfileInput,
 ): Promise<UserRow & { verification_email_sent?: boolean }> {
-  const { name, email, slug, currency, reminder_prefs } = updates;
+  // slug/currency are wedding settings now — PATCH /weddings/:id owns them.
+  const { name, email, reminder_prefs } = updates;
 
   const current = await findUserById(ownerId);
   if (!current) throw new UnauthorizedError('User not found');
@@ -349,16 +354,6 @@ export async function updateProfile(
     if (data && data.length > 0) throw new ConflictError('That email is already in use');
   }
 
-  if (slug) {
-    const { data } = await supabase
-      .from('users')
-      .select('id')
-      .eq('slug', slug)
-      .neq('id', ownerId)
-      .limit(1);
-    if (data && data.length > 0) throw new ConflictError('That URL is already taken');
-  }
-
   const patch: Record<string, string | boolean | object> = {};
   if (name) patch.name = name;
   if (reminder_prefs) patch.reminder_prefs = reminder_prefs;
@@ -369,8 +364,6 @@ export async function updateProfile(
     // set would let anyone claim invites addressed to someone else's inbox.
     patch.email_verified = false;
   }
-  if (slug) patch.slug = slug;
-  if (currency) patch.currency = currency;
 
   // PostgREST rejects an empty update — treat "nothing to change" as a no-op
   if (Object.keys(patch).length === 0) {
@@ -392,7 +385,7 @@ export async function updateProfile(
     // unverified and needs to know whether a link is actually in their inbox.
     let verificationEmailSent = true;
     try {
-      await requestEmailVerification({ id: ownerId, email: normalizedEmail });
+      await requestEmailVerification({ id: ownerId, email: normalizedEmail, name: current.name });
     } catch (err) {
       console.error('[mailer] verification email failed:', err);
       verificationEmailSent = false;
@@ -429,7 +422,19 @@ export async function changePassword(
   invalidateAuthCache();
 }
 
+/**
+ * Deletes the account and every wedding it owns (finance chains cleared
+ * explicitly — see purgeWeddingData). Weddings the user merely collaborates
+ * on are untouched; their membership rows cascade away with the user.
+ */
 export async function deleteAccount(userId: string): Promise<void> {
-  const { error } = await supabase.from('users').delete().eq('id', userId);
-  if (error) throw error;
+  const ownedIds = await listOwnedWeddingIds(userId);
+  await withPgTransaction(async (client) => {
+    for (const weddingId of ownedIds) {
+      await purgeWeddingData(client, weddingId);
+    }
+    await client.query('DELETE FROM weddings WHERE owner_id = $1', [userId]);
+    await client.query('DELETE FROM users WHERE id = $1', [userId]);
+  });
+  invalidateAuthCache();
 }
