@@ -13,6 +13,7 @@ import {
 } from '@wedding-planner/shared';
 import { SectionHeader, Checkbox } from '../../components/ui';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import PasswordInput from '../../components/ui/PasswordInput';
 import { formatDate } from '../../utils/date';
 import { useAuth } from '../../contexts/AuthContext';
 import { CURRENCY_OPTIONS } from '../../utils/currency';
@@ -680,9 +681,7 @@ export default function Settings() {
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div>
             <label className="label">Current password</label>
-            <input
-              className="input"
-              type="password"
+            <PasswordInput
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
               required
@@ -690,9 +689,7 @@ export default function Settings() {
           </div>
           <div>
             <label className="label">New password</label>
-            <input
-              className="input"
-              type="password"
+            <PasswordInput
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               minLength={8}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import PasswordInput from '../components/ui/PasswordInput';
 import {
   useAcceptInvite,
   useSetActiveWedding,
@@ -170,9 +171,7 @@ export default function AcceptInvite() {
               </div>
               <div>
                 <label className="label">Password</label>
-                <input
-                  className="input"
-                  type="password"
+                <PasswordInput
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 8 characters"

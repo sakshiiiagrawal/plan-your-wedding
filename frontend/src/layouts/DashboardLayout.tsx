@@ -25,6 +25,9 @@ import {
   HiOutlineCog,
   HiOutlinePrinter,
   HiOutlineBell,
+  HiCheck,
+  HiOutlinePlus,
+  HiOutlineViewGrid,
 } from 'react-icons/hi';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
@@ -276,11 +279,68 @@ function RemindersBell({ basePath }: { basePath: string }) {
   );
 }
 
+// ── Workspace switcher ───────────────────────────────────────────────────────
+
+/** Letter tile that gives each wedding a stable visual identity in lists. */
+function WeddingMonogram({ title, size = 26 }: { title: string; size?: number }) {
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: size,
+        height: size,
+        borderRadius: Math.round(size * 0.28),
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--gold-glow)',
+        border: '1px solid var(--gold-glow)',
+        color: 'var(--gold-deep)',
+        fontFamily: 'var(--font-display)',
+        fontWeight: 600,
+        fontSize: Math.round(size * 0.54),
+        lineHeight: 1,
+      }}
+    >
+      {(title.trim().charAt(0) || 'W').toUpperCase()}
+    </span>
+  );
+}
+
+function RoleChip({ isOwner, role }: { isOwner: boolean; role: string }) {
+  return (
+    <span
+      style={{
+        fontSize: 8.5,
+        fontWeight: 600,
+        letterSpacing: '0.07em',
+        textTransform: 'uppercase',
+        padding: '2px 6px',
+        borderRadius: 999,
+        flexShrink: 0,
+        background: isOwner ? 'var(--gold-glow)' : 'var(--bg-raised)',
+        color: isOwner ? 'var(--gold-deep)' : 'var(--ink-low)',
+      }}
+    >
+      {isOwner ? 'owner' : role}
+    </span>
+  );
+}
+
+type SwitcherWedding = {
+  id: string;
+  slug: string | null;
+  title: string;
+  role: string;
+  isOwner: boolean;
+};
+
 /**
  * Always-visible workspace switcher: the active wedding + a popover with every
- * wedding the user owns or collaborates on, pending-invite count, and the
- * doors to /weddings/new and /hub. Rendered under the sidebar brand block so
- * multi-wedding access is discoverable, not buried.
+ * wedding the user owns or collaborates on (grouped owned/shared), pending-
+ * invite count, and the doors to /weddings/new and /hub. Rendered under the
+ * sidebar brand block so multi-wedding access is discoverable, not buried.
  */
 function WeddingSwitcher({
   weddings,
@@ -288,7 +348,7 @@ function WeddingSwitcher({
   pendingInviteCount,
   onPick,
 }: {
-  weddings: { id: string; title: string; role: string; isOwner: boolean }[];
+  weddings: SwitcherWedding[];
   activeWeddingId: string | null;
   pendingInviteCount: number;
   onPick: (w: { id: string; title: string }) => void;
@@ -298,21 +358,91 @@ function WeddingSwitcher({
   useModalDismiss(open, () => setOpen(false));
 
   const active = weddings.find((w) => w.id === activeWeddingId);
-  const roleLabel = (w: { role: string; isOwner: boolean }) =>
-    w.isOwner ? 'owner' : w.role;
+  const shared = weddings.filter((w) => !w.isOwner);
+  // Eyebrow labels only earn their space once both groups exist.
+  const groups: Array<[string | null, SwitcherWedding[]]> =
+    shared.length > 0
+      ? [
+          ['Your weddings', weddings.filter((w) => w.isOwner)],
+          ['Shared with you', shared],
+        ]
+      : [[null, weddings]];
+
+  const hoverable = {
+    onMouseEnter: (e: React.MouseEvent<HTMLElement>) => {
+      e.currentTarget.style.background = 'var(--bg-raised)';
+    },
+    onMouseLeave: (e: React.MouseEvent<HTMLElement>) => {
+      e.currentTarget.style.background = 'transparent';
+    },
+  };
 
   const itemStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
+    gap: 10,
     width: '100%',
-    padding: '9px 14px',
+    padding: '8px 12px',
     fontSize: 12.5,
     color: 'var(--ink-mid)',
     background: 'transparent',
     cursor: 'pointer',
     textAlign: 'left',
+    transition: 'background 120ms',
+  };
+
+  const weddingRow = (w: SwitcherWedding) => {
+    const isActive = w.id === activeWeddingId;
+    return (
+      <button
+        key={w.id}
+        {...(isActive ? {} : hoverable)}
+        style={{
+          ...itemStyle,
+          ...(isActive ? { background: 'var(--gold-glow)', cursor: 'default' } : {}),
+        }}
+        onClick={() => {
+          setOpen(false);
+          if (!isActive) onPick(w);
+        }}
+      >
+        <WeddingMonogram title={w.title} size={24} />
+        <span style={{ minWidth: 0, flex: 1 }}>
+          <span
+            style={{
+              display: 'block',
+              fontWeight: isActive ? 600 : 450,
+              color: isActive ? 'var(--gold-deep)' : 'var(--ink-high)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {w.title}
+          </span>
+          <span
+            className="mono"
+            style={{
+              display: 'block',
+              fontSize: 10,
+              color: 'var(--ink-dim)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {w.slug ? `/${w.slug}` : 'no public site yet'}
+          </span>
+        </span>
+        {isActive ? (
+          <HiCheck
+            style={{ width: 14, height: 14, flexShrink: 0, color: 'var(--gold-deep)' }}
+          />
+        ) : (
+          <RoleChip isOwner={w.isOwner} role={w.role} />
+        )}
+      </button>
+    );
   };
 
   return (
@@ -320,20 +450,29 @@ function WeddingSwitcher({
       <button
         onClick={() => setOpen((v) => !v)}
         title="Switch wedding"
+        aria-haspopup="menu"
+        aria-expanded={open}
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8,
+          gap: 10,
           width: '100%',
           padding: '8px 10px',
           borderRadius: 8,
           border: '1px solid var(--line)',
-          background: 'var(--bg-raised)',
+          background: open ? 'var(--bg-highest)' : 'var(--bg-raised)',
           cursor: 'pointer',
+          transition: 'background 120ms, border-color 120ms',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = 'var(--line-strong)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = 'var(--line)';
         }}
       >
-        <span style={{ minWidth: 0, textAlign: 'left' }}>
+        <WeddingMonogram title={active?.title ?? 'My wedding'} />
+        <span style={{ minWidth: 0, flex: 1, textAlign: 'left' }}>
           <span
             style={{
               display: 'block',
@@ -348,10 +487,16 @@ function WeddingSwitcher({
             {active?.title ?? 'My wedding'}
           </span>
           <span style={{ display: 'block', fontSize: 10, color: 'var(--ink-dim)' }}>
-            {active ? roleLabel(active) : ''}
+            {active ? (active.isOwner ? 'owner' : active.role) : ''}
+            {weddings.length > 1 && (
+              <>
+                {active ? ' · ' : ''}
+                {weddings.length} weddings
+              </>
+            )}
             {pendingInviteCount > 0 && (
               <span style={{ color: 'var(--gold-deep)', fontWeight: 600 }}>
-                {active ? ' · ' : ''}
+                {' · '}
                 {pendingInviteCount} invite{pendingInviteCount === 1 ? '' : 's'}
               </span>
             )}
@@ -374,6 +519,7 @@ function WeddingSwitcher({
           {/* click-away backdrop */}
           <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setOpen(false)} />
           <div
+            role="menu"
             style={{
               position: 'absolute',
               top: '100%',
@@ -382,73 +528,75 @@ function WeddingSwitcher({
               zIndex: 41,
               background: 'var(--bg-panel)',
               border: '1px solid var(--line)',
-              borderRadius: 10,
-              boxShadow: '0 10px 30px rgba(0,0,0,0.14)',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: '0 16px 40px rgba(0,0,0,0.16)',
               overflow: 'hidden',
             }}
           >
-            {weddings.map((w) => (
+            <div style={{ maxHeight: 300, overflowY: 'auto', padding: '6px 0' }}>
+              {groups.map(([label, group]) => (
+                <div key={label ?? 'all'}>
+                  {label && (
+                    <div
+                      className="uppercase-eyebrow"
+                      style={{ fontSize: 9, padding: '8px 12px 4px' }}
+                    >
+                      {label}
+                    </div>
+                  )}
+                  {group.map(weddingRow)}
+                </div>
+              ))}
+            </div>
+            <div style={{ borderTop: '1px solid var(--line-soft)', padding: '4px 0' }}>
               <button
-                key={w.id}
-                style={{
-                  ...itemStyle,
-                  ...(w.id === activeWeddingId
-                    ? { background: 'var(--gold-glow)', color: 'var(--gold-deep)', fontWeight: 500 }
-                    : {}),
-                }}
+                {...hoverable}
+                style={{ ...itemStyle, color: 'var(--gold-deep)', fontWeight: 500 }}
                 onClick={() => {
                   setOpen(false);
-                  if (w.id !== activeWeddingId) onPick(w);
+                  navigate('/weddings/new');
                 }}
               >
-                <span
-                  style={{
-                    minWidth: 0,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {w.title}
-                </span>
-                <span style={{ fontSize: 10, color: 'var(--ink-dim)', flexShrink: 0 }}>
-                  {roleLabel(w)}
-                </span>
+                <HiOutlinePlus
+                  style={{ width: 14, height: 14, flexShrink: 0, margin: '0 5px' }}
+                />
+                Plan a new wedding
               </button>
-            ))}
-            <button
-              style={{ ...itemStyle, borderTop: '1px solid var(--line-soft)' }}
-              onClick={() => {
-                setOpen(false);
-                navigate('/weddings/new');
-              }}
-            >
-              + Plan a new wedding
-            </button>
-            <button
-              style={{ ...itemStyle, borderTop: '1px solid var(--line-soft)' }}
-              onClick={() => {
-                setOpen(false);
-                navigate('/hub');
-              }}
-            >
-              <span>All weddings &amp; invites</span>
-              {pendingInviteCount > 0 && (
-                <span
+              <button
+                {...hoverable}
+                style={itemStyle}
+                onClick={() => {
+                  setOpen(false);
+                  navigate('/hub');
+                }}
+              >
+                <HiOutlineViewGrid
                   style={{
-                    fontSize: 10,
-                    fontWeight: 600,
-                    color: '#fff',
-                    background: 'var(--gold-deep)',
-                    borderRadius: 999,
-                    padding: '1px 7px',
+                    width: 14,
+                    height: 14,
                     flexShrink: 0,
+                    margin: '0 5px',
+                    color: 'var(--ink-dim)',
                   }}
-                >
-                  {pendingInviteCount}
-                </span>
-              )}
-            </button>
+                />
+                <span style={{ flex: 1 }}>All weddings &amp; invites</span>
+                {pendingInviteCount > 0 && (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: '#fff',
+                      background: 'var(--gold-deep)',
+                      borderRadius: 999,
+                      padding: '1px 7px',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {pendingInviteCount}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
         </>
       )}

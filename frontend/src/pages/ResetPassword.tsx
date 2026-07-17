@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useResetPassword } from '../hooks/useApi';
+import PasswordInput from '../components/ui/PasswordInput';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -42,11 +43,9 @@ export default function ResetPassword() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="label">New password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="input"
                   placeholder="••••••••"
                   minLength={8}
                   required
@@ -54,11 +53,9 @@ export default function ResetPassword() {
               </div>
               <div>
                 <label className="label">Confirm password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="input"
                   placeholder="••••••••"
                   minLength={8}
                   required

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useHeroContent } from '../hooks/useApi';
+import PasswordInput from '../components/ui/PasswordInput';
 import toast from 'react-hot-toast';
 
 export default function Login() {
@@ -89,11 +90,9 @@ export default function Login() {
 
             <div>
               <label className="label">Password</label>
-              <input
-                type="password"
+              <PasswordInput
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="input"
                 placeholder="••••••••"
                 required
               />

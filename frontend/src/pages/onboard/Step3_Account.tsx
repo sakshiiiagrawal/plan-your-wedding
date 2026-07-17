@@ -1,6 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import PasswordInput from '../../components/ui/PasswordInput';
 
 interface PasswordStrengthProps {
   password: string;
@@ -68,7 +68,6 @@ export default function Step3_Account({
   } = useForm<Step3Data>({
     defaultValues: data,
   });
-  const [showPass, setShowPass] = useState(false);
   const password = watch('password', '');
 
   const onSubmit = (values: Step3Data) => onNext(values);
@@ -109,24 +108,13 @@ export default function Step3_Account({
 
         <div>
           <label className="label">Password *</label>
-          <div className="relative">
-            <input
-              type={showPass ? 'text' : 'password'}
-              {...register('password', {
-                required: 'Password is required',
-                minLength: { value: 8, message: 'Must be at least 8 characters' },
-              })}
-              className="input pr-12"
-              placeholder="Min. 8 characters"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPass((s) => !s)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
-            >
-              {showPass ? 'Hide' : 'Show'}
-            </button>
-          </div>
+          <PasswordInput
+            {...register('password', {
+              required: 'Password is required',
+              minLength: { value: 8, message: 'Must be at least 8 characters' },
+            })}
+            placeholder="Min. 8 characters"
+          />
           <PasswordStrength password={password} />
           {errors.password && (
             <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>
@@ -135,13 +123,11 @@ export default function Step3_Account({
 
         <div>
           <label className="label">Confirm Password *</label>
-          <input
-            type="password"
+          <PasswordInput
             {...register('confirmPassword', {
               required: 'Please confirm your password',
               validate: (v) => v === password || 'Passwords do not match',
             })}
-            className="input"
             placeholder="••••••••"
           />
           {errors.confirmPassword && (

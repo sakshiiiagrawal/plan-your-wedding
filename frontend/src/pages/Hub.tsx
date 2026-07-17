@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams, Navigate, Link } from 'react-router-dom';
+import { useSearchParams, Navigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { SECTION_LABELS, type WeddingSection } from '@wedding-planner/shared';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -22,7 +22,6 @@ import {
  */
 export default function Hub() {
   const { user, isAuthenticated, loading, refresh, logout } = useAuth();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fromPartnerSignup = searchParams.get('partner') === '1';
   const { data: invites = [], isLoading, isFetching, refetch } = usePendingInvites(isAuthenticated);
@@ -82,36 +81,47 @@ export default function Hub() {
     }
   };
 
-  const weddingCard = (w: WeddingOption) => (
-    <div
-      key={w.id}
-      className="flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3"
-    >
-      <div className="min-w-0">
-        <p className="font-medium text-gray-800 truncate">{w.title}</p>
-        <p className="text-xs text-gray-500 truncate">
-          {w.slug ? `/${w.slug}` : 'No public site yet'}
-          {!w.isOwner && (
-            <>
-              {' · '}
-              <span className="capitalize">{w.role}</span>
-            </>
-          )}
-        </p>
-      </div>
+  const weddingCard = (w: WeddingOption) => {
+    const isCurrent = w.id === weddingData?.activeWeddingId;
+    return (
       <button
+        key={w.id}
         onClick={() => openWedding(w)}
         disabled={setActiveWedding.isPending}
-        className="btn-primary px-5 py-2 text-sm shrink-0 ml-3 disabled:opacity-50"
+        className="group w-full flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3 text-left transition-all hover:border-gold-300 hover:shadow-md disabled:opacity-50"
       >
-        Open →
+        <span className="w-10 h-10 rounded-lg bg-gold-50 border border-gold-100 text-gold-700 font-display font-semibold text-lg flex items-center justify-center shrink-0">
+          {(w.title.trim().charAt(0) || 'W').toUpperCase()}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <span className="font-medium text-gray-800 truncate">{w.title}</span>
+            {isCurrent && (
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-gold-700 bg-gold-50 rounded-full px-2 py-0.5 shrink-0">
+                Current
+              </span>
+            )}
+          </span>
+          <span className="block text-xs text-gray-500 truncate">
+            {w.slug ? `/${w.slug}` : 'No public site yet'}
+            {!w.isOwner && (
+              <>
+                {' · '}
+                <span className="capitalize">{w.role}</span>
+              </>
+            )}
+          </span>
+        </span>
+        <span className="text-sm font-medium text-maroon-700 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
+          Open →
+        </span>
       </button>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-maroon-800 via-maroon-700 to-gold-600 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-8">
         <h1 className="text-2xl font-display font-bold text-maroon-800 text-center mb-1">
           Your weddings
         </h1>
@@ -133,6 +143,9 @@ export default function Hub() {
         )}
 
         {/* Owned weddings + create */}
+        {shared.length > 0 && (
+          <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Yours</p>
+        )}
         <div className="space-y-3 mb-6">
           {owned.map(weddingCard)}
           {owned.length === 0 && weddings.length === 0 && !fromPartnerSignup && (
