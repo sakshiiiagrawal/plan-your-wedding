@@ -68,9 +68,9 @@ export default function Website() {
   const [device, setDevice] = useState<Device>(() => {
     try {
       const saved = localStorage.getItem('siteStudioDevice');
-      return saved === 'mobile' || saved === 'desktop' ? saved : 'mobile';
+      return saved === 'mobile' || saved === 'desktop' ? saved : 'desktop';
     } catch {
-      return 'mobile';
+      return 'desktop';
     }
   });
   useEffect(() => {
