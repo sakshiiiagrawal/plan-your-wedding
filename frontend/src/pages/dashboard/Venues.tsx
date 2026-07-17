@@ -1134,14 +1134,21 @@ export default function Venues() {
                           <div
                             style={{
                               display: 'grid',
-                              gridTemplateColumns: canSeeMoney ? 'repeat(3, minmax(0, 1fr))' : '1fr',
+                              gridTemplateColumns: canSeeMoney
+                                ? 'repeat(3, minmax(0, 1fr))'
+                                : '1fr',
                               gap: 6,
                               padding: '7px 10px',
                               background: 'var(--bg-raised)',
                               borderRadius: 8,
                             }}
                           >
-                            <div style={{ gridColumn: canSeeMoney ? '1 / -1' : undefined, minWidth: 0 }}>
+                            <div
+                              style={{
+                                gridColumn: canSeeMoney ? '1 / -1' : undefined,
+                                minWidth: 0,
+                              }}
+                            >
                               <div
                                 className="uppercase-eyebrow"
                                 style={{ marginBottom: 2, fontSize: 9 }}
@@ -1527,12 +1534,9 @@ export default function Venues() {
                 </div>
 
                 <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: canSeeMoney ? '1.4fr 1fr' : '1fr',
-                    columnGap: 16,
-                    alignItems: 'end',
-                  }}
+                  className={`grid grid-cols-1 gap-3 md:items-end ${
+                    canSeeMoney ? 'md:grid-cols-[1.4fr_1fr]' : ''
+                  }`}
                 >
                   <div style={{ minWidth: 0 }}>
                     <label className="label">Venue Name *</label>
@@ -1625,15 +1629,10 @@ export default function Venues() {
                   {/* ── TAB 0: DETAILS ── */}
                   {activeTab === 0 && (
                     <div
-                      style={{
-                        height: '100%',
-                        overflowY: 'auto',
-                        padding: 24,
-                        display: 'grid',
-                        gridTemplateColumns: canSeeMoney ? '1fr 300px' : '1fr',
-                        gap: 24,
-                        alignContent: 'start',
-                      }}
+                      className={`grid grid-cols-1 gap-6 content-start ${
+                        canSeeMoney ? 'md:grid-cols-[1fr_300px]' : ''
+                      }`}
+                      style={{ height: '100%', overflowY: 'auto', padding: 24 }}
                     >
                       {/* Left: Basic venue info */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -1650,7 +1649,7 @@ export default function Venues() {
                           Venue Info
                         </p>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
                             <label className="label">Type *</label>
                             <select
@@ -1783,7 +1782,7 @@ export default function Venues() {
                           </div>
                         )}
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
                             <label className="label">Contact Person</label>
                             <input
@@ -2217,12 +2216,18 @@ export default function Venues() {
                         )}
 
                         {roomCategories.length > 0 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          /* Spreadsheet-style editor keeps its column widths;
+                             narrow screens pan horizontally instead */
+                          <div
+                            className="overflow-x-auto"
+                            style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+                          >
                             <div
                               style={{
                                 display: 'grid',
                                 gridTemplateColumns: '1.1fr 56px 64px 88px 48px 260px 28px',
                                 gap: 6,
+                                minWidth: 620,
                               }}
                             >
                               {[
@@ -2254,6 +2259,7 @@ export default function Venues() {
                                     gridTemplateColumns: '1.1fr 56px 64px 88px 48px 260px 28px',
                                     gap: 6,
                                     alignItems: 'center',
+                                    minWidth: 620,
                                   }}
                                 >
                                   {cat.is_custom ? (

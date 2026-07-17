@@ -91,7 +91,9 @@ export interface PaymentTimelinePanelProps {
   canRecordPayment: boolean;
   disabledReason?: string;
   // D3: mark a scheduled payment as paid. Absent hides the action.
-  onUpdate?: ((paymentId: string, payload: Record<string, unknown>) => Promise<unknown>) | undefined;
+  onUpdate?:
+    | ((paymentId: string, payload: Record<string, unknown>) => Promise<unknown>)
+    | undefined;
   isUpdating?: boolean | undefined;
   // D6: line-item picker + allocation chips.
   items?: PanelItem[] | undefined;
@@ -190,7 +192,8 @@ export default function PaymentTimelinePanel({
       payment_date: todayLocal(),
       payment_method: payment.payment_method ?? prev.payment_method,
       paid_by_side: payment.paid_by_side ?? prev.paid_by_side,
-      paid_bride_share_percentage: payment.paid_bride_share_percentage ?? prev.paid_bride_share_percentage,
+      paid_bride_share_percentage:
+        payment.paid_bride_share_percentage ?? prev.paid_bride_share_percentage,
       apply_to_item_id: null,
       reverses_payment_id: payment.id,
       notes: `Reversal of ${formatCurrency(payment.amount)} payment`,
@@ -323,7 +326,8 @@ export default function PaymentTimelinePanel({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', fontSize: 12 }}>
         <span style={{ color: 'var(--ink-low)' }}>
-          Allocated: <strong style={{ color: 'var(--ink-mid)' }}>{formatCurrency(committed)}</strong>
+          Allocated:{' '}
+          <strong style={{ color: 'var(--ink-mid)' }}>{formatCurrency(committed)}</strong>
         </span>
         <span style={{ color: 'var(--ok)' }}>
           Paid: <strong>{formatCurrency(paid)}</strong>
@@ -384,7 +388,7 @@ export default function PaymentTimelinePanel({
 
         <ModeToggle mode={formData.mode} onChange={setMode} />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="label">Amount</label>
             <input
@@ -406,7 +410,7 @@ export default function PaymentTimelinePanel({
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="label">Payment Method</label>
             <select
@@ -548,13 +552,15 @@ export default function PaymentTimelinePanel({
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="label">Extra Amount Label</label>
                 <input
                   type="text"
                   value={formData.extra_description}
-                  onChange={(e) => setFormData((p) => ({ ...p, extra_description: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, extra_description: e.target.value }))
+                  }
                   className="input"
                   placeholder="Tip, late fee, extra service"
                 />
@@ -661,7 +667,11 @@ function PaymentTimelineItem({
   const isScheduled = payment.status === 'scheduled';
   const isInflow = payment.direction === 'inflow';
   const isPostedOutflow = payment.status === 'posted' && !isInflow;
-  const amtColor = isInflow ? '#0369a1' : payment.status === 'posted' ? 'var(--ok)' : 'var(--gold-deep)';
+  const amtColor = isInflow
+    ? '#0369a1'
+    : payment.status === 'posted'
+      ? 'var(--ok)'
+      : 'var(--gold-deep)';
 
   return (
     <div

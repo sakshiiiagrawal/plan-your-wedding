@@ -455,9 +455,7 @@ function WeddingSwitcher({
           </span>
         </span>
         {isActive ? (
-          <HiCheck
-            style={{ width: 14, height: 14, flexShrink: 0, color: 'var(--gold-deep)' }}
-          />
+          <HiCheck style={{ width: 14, height: 14, flexShrink: 0, color: 'var(--gold-deep)' }} />
         ) : (
           <RoleChip isOwner={w.isOwner} role={w.role} />
         )}
@@ -593,9 +591,7 @@ function WeddingSwitcher({
                   navigate('/weddings/new');
                 }}
               >
-                <HiOutlinePlus
-                  style={{ width: 14, height: 14, flexShrink: 0, margin: '0 5px' }}
-                />
+                <HiOutlinePlus style={{ width: 14, height: 14, flexShrink: 0, margin: '0 5px' }} />
                 Plan a new wedding
               </button>
               <button
@@ -742,7 +738,7 @@ export default function DashboardLayout() {
   return (
     <div
       className="flex print-expand"
-      style={{ background: 'var(--bg-page)', height: '100vh', overflow: 'hidden' }}
+      style={{ background: 'var(--bg-page)', height: '100dvh', overflow: 'hidden' }}
     >
       {/* Backdrop */}
       {sidebarOpen && (
@@ -760,10 +756,11 @@ export default function DashboardLayout() {
         }`}
         style={{
           width: 248,
+          maxWidth: '85vw',
           flexShrink: 0,
           background: 'var(--bg-panel)',
           borderRight: '1px solid var(--line-soft)',
-          height: '100vh',
+          height: '100dvh',
           overflowY: 'hidden',
         }}
       >
@@ -887,7 +884,7 @@ export default function DashboardLayout() {
           minWidth: 0,
           display: 'flex',
           flexDirection: 'column',
-          height: '100vh',
+          height: '100dvh',
           overflow: 'hidden',
         }}
       >
@@ -898,8 +895,8 @@ export default function DashboardLayout() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 16,
-            padding: '14px 28px',
+            gap: 12,
+            padding: '14px clamp(12px, 3vw, 28px)',
             borderBottom: '1px solid var(--line-soft)',
             background: 'rgba(250,246,239,0.85)',
             backdropFilter: 'blur(12px)',
@@ -1001,7 +998,7 @@ export default function DashboardLayout() {
           className="print-expand"
           style={{
             flex: 1,
-            padding: subPath === '/website' ? 0 : '32px 40px',
+            padding: subPath === '/website' ? 0 : 'clamp(16px, 3.5vw, 32px) clamp(14px, 4vw, 40px)',
             overflow: 'auto',
             minHeight: 0,
           }}

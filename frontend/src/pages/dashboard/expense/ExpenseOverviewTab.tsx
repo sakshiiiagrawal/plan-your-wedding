@@ -15,9 +15,7 @@ export default function ExpenseOverviewTab({
   expenseOverview,
   formatCurrency,
 }: ExpenseOverviewTabProps) {
-  const [sortBy, setSortBy] = useState<'committed' | 'planned' | 'allocated' | 'name'>(
-    'committed',
-  );
+  const [sortBy, setSortBy] = useState<'committed' | 'planned' | 'allocated' | 'name'>('committed');
 
   // Naming: `allocated` = category budget (allocated_amount), `committed` =
   // amount allocated to expenses. In the UI these read "Budget" / "Allocated".
@@ -69,13 +67,8 @@ export default function ExpenseOverviewTab({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* ── Top row: Pie + totals ── */}
       <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 16,
-          position: 'relative',
-          zIndex: 0,
-        }}
+        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        style={{ position: 'relative', zIndex: 0 }}
       >
         {/* Pie */}
         <div className="card" style={{ overflow: 'visible', position: 'relative', zIndex: 2 }}>
@@ -275,10 +268,12 @@ export default function ExpenseOverviewTab({
       >
         {/* Header */}
         <div
+          className="flex-wrap"
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            gap: 8,
             padding: '14px 20px',
             borderBottom: '1px solid var(--line-soft)',
           }}
@@ -315,221 +310,9 @@ export default function ExpenseOverviewTab({
           </div>
         </div>
 
-        {/* Column headers */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: visibleHasBudgets
-              ? '1fr 100px 100px 100px 70px 140px'
-              : '1fr 110px 130px 180px',
-            gap: 8,
-            padding: '8px 20px',
-            background: 'var(--bg-raised)',
-            borderBottom: '1px solid var(--line-soft)',
-          }}
-        >
-          {(visibleHasBudgets
-            ? ['Category', 'Budget', 'Planned', 'Allocated', 'Used', 'Spend bar']
-            : ['Category', 'Planned', 'Allocated', 'Spend bar']
-          ).map((h) => (
-            <span
-              key={h}
-              className="uppercase-eyebrow"
-              style={{ fontSize: 9, textAlign: h !== 'Category' ? 'right' : 'left' }}
-            >
-              {h}
-            </span>
-          ))}
-        </div>
-
-        {/* Rows */}
-        {sorted.length === 0 ? (
-          <div
-            style={{
-              padding: '32px 20px',
-              textAlign: 'center',
-              fontSize: 13,
-              color: 'var(--ink-dim)',
-              fontStyle: 'italic',
-            }}
-          >
-            No categories with allocated expenses yet.
-          </div>
-        ) : (
-          <div>
-            {sorted.map((cat, i) => {
-              const catHasBudget = cat.allocated > 0;
-              const pct = catHasBudget ? (cat.committed / cat.allocated) * 100 : null;
-              const isOver = pct != null && pct > 100;
-              const isNear = pct != null && pct >= 80 && !isOver;
-              const barColor = isOver ? 'var(--err)' : isNear ? 'var(--warn)' : 'var(--gold)';
-              const pctColor = isOver ? 'var(--err)' : isNear ? 'var(--warn)' : 'var(--ok)';
-              // when budgets set: bar = % of allocated; otherwise: bar = % of max committed
-              const barFill =
-                pct != null ? Math.min(100, pct) : (cat.committed / maxCommitted) * 100;
-
-              return (
-                <div
-                  key={cat.name}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: visibleHasBudgets
-                      ? '1fr 100px 100px 100px 70px 140px'
-                      : '1fr 110px 130px 180px',
-                    gap: 8,
-                    padding: '11px 20px',
-                    borderBottom: i < sorted.length - 1 ? '1px solid var(--line-soft)' : 'none',
-                    alignItems: 'center',
-                    background: isOver ? 'rgba(220,38,38,0.02)' : 'transparent',
-                    transition: 'background 120ms',
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.background = isOver
-                      ? 'rgba(220,38,38,0.05)'
-                      : 'var(--bg-raised)';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.background = isOver
-                      ? 'rgba(220,38,38,0.02)'
-                      : 'transparent';
-                  }}
-                >
-                  {/* Name */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                    <span
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        flexShrink: 0,
-                        background: COLORS[i % COLORS.length],
-                      }}
-                    />
-                    <span
-                      style={{
-                        fontSize: 13,
-                        color: 'var(--ink-high)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {cat.name}
-                    </span>
-                    {isOver && (
-                      <span
-                        style={{
-                          fontSize: 9,
-                          padding: '1px 6px',
-                          borderRadius: 100,
-                          background: 'rgba(220,38,38,0.1)',
-                          color: 'var(--err)',
-                          fontWeight: 700,
-                          flexShrink: 0,
-                        }}
-                      >
-                        OVER
-                      </span>
-                    )}
-                    {cat.committed === 0 && (
-                      <span
-                        style={{
-                          fontSize: 9,
-                          padding: '1px 6px',
-                          borderRadius: 100,
-                          background: 'var(--bg-raised)',
-                          color: 'var(--ink-dim)',
-                          fontWeight: 600,
-                          flexShrink: 0,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        planned only
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Budget — only when budgets exist */}
-                  {visibleHasBudgets && (
-                    <span
-                      className="mono"
-                      style={{
-                        fontSize: 12,
-                        color: catHasBudget ? 'var(--ink-mid)' : 'var(--ink-dim)',
-                        textAlign: 'right',
-                      }}
-                    >
-                      {catHasBudget ? formatCurrency(cat.allocated) : '—'}
-                    </span>
-                  )}
-
-                  {/* Planned */}
-                  <span
-                    className="mono"
-                    style={{
-                      fontSize: 12,
-                      color: cat.planned > 0 ? 'var(--ink-mid)' : 'var(--ink-dim)',
-                      textAlign: 'right',
-                    }}
-                  >
-                    {cat.planned > 0 ? formatCurrency(cat.planned) : '—'}
-                  </span>
-
-                  {/* Allocated */}
-                  <span
-                    className="mono"
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: cat.committed > 0 ? 'var(--gold-deep)' : 'var(--ink-dim)',
-                      textAlign: 'right',
-                    }}
-                  >
-                    {cat.committed > 0 ? formatCurrency(cat.committed) : '—'}
-                  </span>
-
-                  {/* % used — only when budgets exist */}
-                  {visibleHasBudgets && (
-                    <span
-                      className="mono"
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: pct != null ? pctColor : 'var(--ink-dim)',
-                        textAlign: 'right',
-                      }}
-                    >
-                      {pct != null ? `${pct.toFixed(0)}%` : '—'}
-                    </span>
-                  )}
-
-                  {/* Bar */}
-                  <div
-                    style={{
-                      height: 8,
-                      borderRadius: 4,
-                      background: 'var(--line-soft)',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <div
-                      style={{
-                        height: '100%',
-                        borderRadius: 4,
-                        width: `${barFill}%`,
-                        background: barColor,
-                        transition: 'width 600ms',
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Footer totals */}
-        {sorted.length > 0 && (
+        {/* Grid-as-table keeps its column widths; narrow screens pan sideways */}
+        <div className="overflow-x-auto">
+          {/* Column headers */}
           <div
             style={{
               display: 'grid',
@@ -537,13 +320,242 @@ export default function ExpenseOverviewTab({
                 ? '1fr 100px 100px 100px 70px 140px'
                 : '1fr 110px 130px 180px',
               gap: 8,
-              padding: '10px 20px',
+              padding: '8px 20px',
               background: 'var(--bg-raised)',
-              borderTop: '1px solid var(--line)',
+              borderBottom: '1px solid var(--line-soft)',
+              minWidth: visibleHasBudgets ? 680 : 560,
             }}
           >
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-mid)' }}>Total</span>
-            {visibleHasBudgets && (
+            {(visibleHasBudgets
+              ? ['Category', 'Budget', 'Planned', 'Allocated', 'Used', 'Spend bar']
+              : ['Category', 'Planned', 'Allocated', 'Spend bar']
+            ).map((h) => (
+              <span
+                key={h}
+                className="uppercase-eyebrow"
+                style={{ fontSize: 9, textAlign: h !== 'Category' ? 'right' : 'left' }}
+              >
+                {h}
+              </span>
+            ))}
+          </div>
+
+          {/* Rows */}
+          {sorted.length === 0 ? (
+            <div
+              style={{
+                padding: '32px 20px',
+                textAlign: 'center',
+                fontSize: 13,
+                color: 'var(--ink-dim)',
+                fontStyle: 'italic',
+              }}
+            >
+              No categories with allocated expenses yet.
+            </div>
+          ) : (
+            <div>
+              {sorted.map((cat, i) => {
+                const catHasBudget = cat.allocated > 0;
+                const pct = catHasBudget ? (cat.committed / cat.allocated) * 100 : null;
+                const isOver = pct != null && pct > 100;
+                const isNear = pct != null && pct >= 80 && !isOver;
+                const barColor = isOver ? 'var(--err)' : isNear ? 'var(--warn)' : 'var(--gold)';
+                const pctColor = isOver ? 'var(--err)' : isNear ? 'var(--warn)' : 'var(--ok)';
+                // when budgets set: bar = % of allocated; otherwise: bar = % of max committed
+                const barFill =
+                  pct != null ? Math.min(100, pct) : (cat.committed / maxCommitted) * 100;
+
+                return (
+                  <div
+                    key={cat.name}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: visibleHasBudgets
+                        ? '1fr 100px 100px 100px 70px 140px'
+                        : '1fr 110px 130px 180px',
+                      gap: 8,
+                      padding: '11px 20px',
+                      minWidth: visibleHasBudgets ? 680 : 560,
+                      borderBottom: i < sorted.length - 1 ? '1px solid var(--line-soft)' : 'none',
+                      alignItems: 'center',
+                      background: isOver ? 'rgba(220,38,38,0.02)' : 'transparent',
+                      transition: 'background 120ms',
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = isOver
+                        ? 'rgba(220,38,38,0.05)'
+                        : 'var(--bg-raised)';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = isOver
+                        ? 'rgba(220,38,38,0.02)'
+                        : 'transparent';
+                    }}
+                  >
+                    {/* Name */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          flexShrink: 0,
+                          background: COLORS[i % COLORS.length],
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: 13,
+                          color: 'var(--ink-high)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {cat.name}
+                      </span>
+                      {isOver && (
+                        <span
+                          style={{
+                            fontSize: 9,
+                            padding: '1px 6px',
+                            borderRadius: 100,
+                            background: 'rgba(220,38,38,0.1)',
+                            color: 'var(--err)',
+                            fontWeight: 700,
+                            flexShrink: 0,
+                          }}
+                        >
+                          OVER
+                        </span>
+                      )}
+                      {cat.committed === 0 && (
+                        <span
+                          style={{
+                            fontSize: 9,
+                            padding: '1px 6px',
+                            borderRadius: 100,
+                            background: 'var(--bg-raised)',
+                            color: 'var(--ink-dim)',
+                            fontWeight: 600,
+                            flexShrink: 0,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          planned only
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Budget — only when budgets exist */}
+                    {visibleHasBudgets && (
+                      <span
+                        className="mono"
+                        style={{
+                          fontSize: 12,
+                          color: catHasBudget ? 'var(--ink-mid)' : 'var(--ink-dim)',
+                          textAlign: 'right',
+                        }}
+                      >
+                        {catHasBudget ? formatCurrency(cat.allocated) : '—'}
+                      </span>
+                    )}
+
+                    {/* Planned */}
+                    <span
+                      className="mono"
+                      style={{
+                        fontSize: 12,
+                        color: cat.planned > 0 ? 'var(--ink-mid)' : 'var(--ink-dim)',
+                        textAlign: 'right',
+                      }}
+                    >
+                      {cat.planned > 0 ? formatCurrency(cat.planned) : '—'}
+                    </span>
+
+                    {/* Allocated */}
+                    <span
+                      className="mono"
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: cat.committed > 0 ? 'var(--gold-deep)' : 'var(--ink-dim)',
+                        textAlign: 'right',
+                      }}
+                    >
+                      {cat.committed > 0 ? formatCurrency(cat.committed) : '—'}
+                    </span>
+
+                    {/* % used — only when budgets exist */}
+                    {visibleHasBudgets && (
+                      <span
+                        className="mono"
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: pct != null ? pctColor : 'var(--ink-dim)',
+                          textAlign: 'right',
+                        }}
+                      >
+                        {pct != null ? `${pct.toFixed(0)}%` : '—'}
+                      </span>
+                    )}
+
+                    {/* Bar */}
+                    <div
+                      style={{
+                        height: 8,
+                        borderRadius: 4,
+                        background: 'var(--line-soft)',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: '100%',
+                          borderRadius: 4,
+                          width: `${barFill}%`,
+                          background: barColor,
+                          transition: 'width 600ms',
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Footer totals */}
+          {sorted.length > 0 && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: visibleHasBudgets
+                  ? '1fr 100px 100px 100px 70px 140px'
+                  : '1fr 110px 130px 180px',
+                gap: 8,
+                padding: '10px 20px',
+                background: 'var(--bg-raised)',
+                borderTop: '1px solid var(--line)',
+                minWidth: visibleHasBudgets ? 680 : 560,
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-mid)' }}>Total</span>
+              {visibleHasBudgets && (
+                <span
+                  className="mono"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: 'var(--ink-mid)',
+                    textAlign: 'right',
+                  }}
+                >
+                  {formatCurrency(visibleTotalAllocated)}
+                </span>
+              )}
               <span
                 className="mono"
                 style={{
@@ -553,47 +565,37 @@ export default function ExpenseOverviewTab({
                   textAlign: 'right',
                 }}
               >
-                {formatCurrency(visibleTotalAllocated)}
+                {formatCurrency(visibleTotalPlanned)}
               </span>
-            )}
-            <span
-              className="mono"
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: 'var(--ink-mid)',
-                textAlign: 'right',
-              }}
-            >
-              {formatCurrency(visibleTotalPlanned)}
-            </span>
-            <span
-              className="mono"
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: 'var(--gold-deep)',
-                textAlign: 'right',
-              }}
-            >
-              {formatCurrency(visibleTotalCommitted)}
-            </span>
-            {visibleHasBudgets && (
               <span
                 className="mono"
                 style={{
                   fontSize: 12,
                   fontWeight: 700,
-                  color: visibleTotalCommitted > visibleTotalAllocated ? 'var(--err)' : 'var(--ok)',
+                  color: 'var(--gold-deep)',
                   textAlign: 'right',
                 }}
               >
-                {`${((visibleTotalCommitted / visibleTotalAllocated) * 100).toFixed(0)}%`}
+                {formatCurrency(visibleTotalCommitted)}
               </span>
-            )}
-            <span />
-          </div>
-        )}
+              {visibleHasBudgets && (
+                <span
+                  className="mono"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color:
+                      visibleTotalCommitted > visibleTotalAllocated ? 'var(--err)' : 'var(--ok)',
+                    textAlign: 'right',
+                  }}
+                >
+                  {`${((visibleTotalCommitted / visibleTotalAllocated) * 100).toFixed(0)}%`}
+                </span>
+              )}
+              <span />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -597,7 +597,7 @@ export default function Tasks() {
       />
 
       {/* KPI strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
         <KPICard eyebrow="Total" value={String(stats?.total ?? 0)} />
         <KPICard eyebrow="To do" value={String(stats?.pending ?? 0)} />
         <KPICard eyebrow="In progress" value={String(stats?.in_progress ?? 0)} accent="gold" />
@@ -612,7 +612,16 @@ export default function Tasks() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+          {/* Columns keep a usable min width; narrow screens pan sideways */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, minmax(min(240px, 78vw), 1fr))',
+              gap: 14,
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
             {COLUMNS.map((col) => {
               const colTasks = tasks.filter((t: any) => t.status === col.status);
               return (
@@ -939,7 +948,7 @@ export default function Tasks() {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Due Date</label>
                     <DatePicker
@@ -966,7 +975,7 @@ export default function Tasks() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Reminder</label>
                     <select
@@ -1058,7 +1067,7 @@ export default function Tasks() {
                   </label>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Priority</label>
                     <select

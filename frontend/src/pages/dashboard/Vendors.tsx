@@ -191,7 +191,9 @@ function VendorsListView({
 
   return (
     <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: canSeeMoney ? 760 : 520 }}>
+      <table
+        style={{ width: '100%', borderCollapse: 'collapse', minWidth: canSeeMoney ? 760 : 520 }}
+      >
         <thead>
           <tr>
             <th style={th}>Vendor</th>
@@ -214,7 +216,11 @@ function VendorsListView({
             const paid = vendor.finance_summary?.paid_amount ?? 0;
             const outstanding = vendor.finance_summary?.outstanding_amount ?? 0;
             const statusLabel =
-              paid >= committed && committed > 0 ? 'Confirmed' : paid > 0 ? 'Deposit paid' : 'Quoted';
+              paid >= committed && committed > 0
+                ? 'Confirmed'
+                : paid > 0
+                  ? 'Deposit paid'
+                  : 'Quoted';
             const statusDotColor =
               paid >= committed && committed > 0
                 ? '#16a34a'
@@ -266,7 +272,11 @@ function VendorsListView({
                 {canSeeMoney && (
                   <>
                     <td style={numTd}>
-                      {committed > 0 ? formatCurrency(committed) : <span style={{ color: 'var(--ink-dim)' }}>—</span>}
+                      {committed > 0 ? (
+                        formatCurrency(committed)
+                      ) : (
+                        <span style={{ color: 'var(--ink-dim)' }}>—</span>
+                      )}
                     </td>
                     <td style={{ ...numTd, color: paid > 0 ? '#16a34a' : 'var(--ink-dim)' }}>
                       {paid > 0 ? formatCurrency(paid) : '—'}
@@ -278,7 +288,10 @@ function VendorsListView({
                 )}
                 <td style={{ ...td, color: 'var(--ink-mid)', whiteSpace: 'nowrap' }}>
                   {vendor.phone ? (
-                    <a href={`tel:${vendor.phone}`} style={{ color: 'var(--gold-deep)', textDecoration: 'none' }}>
+                    <a
+                      href={`tel:${vendor.phone}`}
+                      style={{ color: 'var(--gold-deep)', textDecoration: 'none' }}
+                    >
                       {vendor.phone}
                     </a>
                   ) : (
@@ -289,14 +302,26 @@ function VendorsListView({
                   <button
                     onClick={() => onEdit(vendor)}
                     title="Edit vendor"
-                    style={{ padding: '5px 7px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
+                    style={{
+                      padding: '5px 7px',
+                      borderRadius: 6,
+                      color: 'var(--ink-dim)',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                    }}
                   >
                     <HiOutlinePencil style={{ width: 14, height: 14 }} />
                   </button>
                   <button
                     onClick={() => onDelete(vendor.id)}
                     title="Delete vendor"
-                    style={{ padding: '5px 7px', borderRadius: 6, color: 'var(--ink-dim)', background: 'transparent', cursor: 'pointer' }}
+                    style={{
+                      padding: '5px 7px',
+                      borderRadius: 6,
+                      color: 'var(--ink-dim)',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                    }}
                   >
                     <HiOutlineTrash style={{ width: 14, height: 14 }} />
                   </button>
@@ -598,9 +623,7 @@ export default function Vendors() {
                 ...installmentToPaymentPayload(row, canSeeSplits),
               });
             }
-            toast.success(
-              rowsToRecord.length > 1 ? 'Installments recorded.' : 'Payment recorded.',
-            );
+            toast.success(rowsToRecord.length > 1 ? 'Installments recorded.' : 'Payment recorded.');
           } catch {
             toast.error(
               'Vendor saved but failed to record all payments. You can add the rest from the Payments tab.',
@@ -963,59 +986,59 @@ export default function Vendors() {
                   </div>
 
                   {canSeeMoney && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div className="uppercase-eyebrow">Payment status</div>
-                    <div style={{ display: 'grid', gap: 8 }}>
-                      {paymentFilterOptions.map((option) => {
-                        const checked = paymentFilters.includes(option.id);
-                        return (
-                          <button
-                            key={option.id}
-                            type="button"
-                            onClick={() =>
-                              toggleSelection(option.id, paymentFilters, setPaymentFilters)
-                            }
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'flex-start',
-                              gap: 8,
-                              width: '100%',
-                              minHeight: 36,
-                              padding: '8px 10px',
-                              borderRadius: 10,
-                              border: `1px solid ${checked ? 'rgba(176,141,62,0.35)' : 'var(--line-soft)'}`,
-                              background: checked ? 'var(--gold-glow)' : 'var(--bg-raised)',
-                              cursor: 'pointer',
-                              fontSize: 12,
-                              color: 'var(--ink-high)',
-                              textTransform: 'none',
-                              letterSpacing: 'normal',
-                            }}
-                          >
-                            <Checkbox
-                              className="pointer-events-none"
-                              checked={checked}
-                              onChange={() =>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div className="uppercase-eyebrow">Payment status</div>
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        {paymentFilterOptions.map((option) => {
+                          const checked = paymentFilters.includes(option.id);
+                          return (
+                            <button
+                              key={option.id}
+                              type="button"
+                              onClick={() =>
                                 toggleSelection(option.id, paymentFilters, setPaymentFilters)
                               }
-                            />
-                            <span
                               style={{
-                                display: 'block',
-                                color: checked ? 'var(--gold-deep)' : 'var(--ink-high)',
-                                fontWeight: checked ? 600 : 500,
-                                lineHeight: 1.3,
-                                textAlign: 'left',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'flex-start',
+                                gap: 8,
+                                width: '100%',
+                                minHeight: 36,
+                                padding: '8px 10px',
+                                borderRadius: 10,
+                                border: `1px solid ${checked ? 'rgba(176,141,62,0.35)' : 'var(--line-soft)'}`,
+                                background: checked ? 'var(--gold-glow)' : 'var(--bg-raised)',
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                color: 'var(--ink-high)',
+                                textTransform: 'none',
+                                letterSpacing: 'normal',
                               }}
                             >
-                              {option.label}
-                            </span>
-                          </button>
-                        );
-                      })}
+                              <Checkbox
+                                className="pointer-events-none"
+                                checked={checked}
+                                onChange={() =>
+                                  toggleSelection(option.id, paymentFilters, setPaymentFilters)
+                                }
+                              />
+                              <span
+                                style={{
+                                  display: 'block',
+                                  color: checked ? 'var(--gold-deep)' : 'var(--ink-high)',
+                                  fontWeight: checked ? 600 : 500,
+                                  lineHeight: 1.3,
+                                  textAlign: 'left',
+                                }}
+                              >
+                                {option.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
                   )}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1275,57 +1298,57 @@ export default function Vendors() {
                   </div>
 
                   {canSeeMoney && (
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(3, 1fr)',
-                      gap: 6,
-                      padding: '7px 10px',
-                      background: 'var(--bg-raised)',
-                      borderRadius: 8,
-                    }}
-                  >
-                    <div>
-                      <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
-                        Committed
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: 6,
+                        padding: '7px 10px',
+                        background: 'var(--bg-raised)',
+                        borderRadius: 8,
+                      }}
+                    >
+                      <div>
+                        <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
+                          Committed
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--ink-high)', fontWeight: 500 }}>
+                          {committed > 0 ? (
+                            formatCurrency(committed)
+                          ) : (
+                            <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>—</span>
+                          )}
+                        </div>
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--ink-high)', fontWeight: 500 }}>
-                        {committed > 0 ? (
-                          formatCurrency(committed)
-                        ) : (
-                          <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>—</span>
-                        )}
+                      <div>
+                        <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
+                          Paid
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: paid > 0 ? '#16a34a' : 'var(--ink-dim)',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {paid > 0 ? formatCurrency(paid) : '—'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
+                          Due
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: outstanding > 0 ? '#ea580c' : 'var(--ink-dim)',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {outstanding > 0 ? formatCurrency(outstanding) : '—'}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
-                        Paid
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: paid > 0 ? '#16a34a' : 'var(--ink-dim)',
-                          fontWeight: 500,
-                        }}
-                      >
-                        {paid > 0 ? formatCurrency(paid) : '—'}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
-                        Due
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: outstanding > 0 ? '#ea580c' : 'var(--ink-dim)',
-                          fontWeight: 500,
-                        }}
-                      >
-                        {outstanding > 0 ? formatCurrency(outstanding) : '—'}
-                      </div>
-                    </div>
-                  </div>
                   )}
 
                   {canSeeMoney && committed > 0 && (
@@ -1785,12 +1808,9 @@ export default function Vendors() {
                 </div>
 
                 <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: canSeeMoney ? '1.4fr 1fr' : '1fr',
-                    columnGap: 16,
-                    alignItems: 'end',
-                  }}
+                  className={`grid grid-cols-1 gap-3 md:items-end ${
+                    canSeeMoney ? 'md:grid-cols-[1.4fr_1fr]' : ''
+                  }`}
                 >
                   <div style={{ minWidth: 0 }}>
                     <label className="label">Vendor Name *</label>
@@ -1884,15 +1904,10 @@ export default function Vendors() {
                 <div style={{ flex: 1, overflow: 'hidden' }}>
                   {activeTab === 0 && (
                     <div
-                      style={{
-                        height: '100%',
-                        overflowY: 'auto',
-                        padding: 24,
-                        display: 'grid',
-                        gridTemplateColumns: canSeeMoney ? '1fr 320px' : '1fr',
-                        gap: 24,
-                        alignContent: 'start',
-                      }}
+                      className={`grid grid-cols-1 gap-6 content-start ${
+                        canSeeMoney ? 'md:grid-cols-[1fr_320px]' : ''
+                      }`}
+                      style={{ height: '100%', overflowY: 'auto', padding: 24 }}
                     >
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         <p
@@ -1908,7 +1923,7 @@ export default function Vendors() {
                           Vendor details
                         </p>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
                             <label className="label">Category *</label>
                             <CategoryCombobox
@@ -1934,7 +1949,7 @@ export default function Vendors() {
                           </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
                             <label className="label">Phone</label>
                             <input
@@ -2157,183 +2172,199 @@ export default function Vendors() {
                       </div>
 
                       {canSeeMoney && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: 10,
-                            fontWeight: 600,
-                            color: 'var(--ink-dim)',
-                            letterSpacing: '0.08em',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          Financial details
-                        </p>
-
-                        <div>
-                          <label className="label">Obligation Date</label>
-                          <DatePicker
-                            value={formData.expense_date}
-                            onChange={(value) =>
-                              setFormData((prev) => ({ ...prev, expense_date: value }))
-                            }
-                            placeholder="Obligation date"
-                          />
-                        </div>
-
-                        {canSeeSplits && (
-                        <div>
-                          <label className="label">Liability Side</label>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            {(['bride', 'groom', 'shared'] as const).map((side) => {
-                              const isActive = formData.side === side;
-                              const activeColors =
-                                side === 'bride'
-                                  ? {
-                                      border: '#be185d',
-                                      bg: 'rgba(190,24,93,0.08)',
-                                      color: '#be185d',
-                                    }
-                                  : side === 'groom'
-                                    ? {
-                                        border: '#1d4ed8',
-                                        bg: 'rgba(29,78,216,0.08)',
-                                        color: '#1d4ed8',
-                                      }
-                                    : {
-                                        border: 'var(--gold)',
-                                        bg: 'var(--gold-glow)',
-                                        color: 'var(--gold-deep)',
-                                      };
-                              return (
-                                <button
-                                  key={side}
-                                  type="button"
-                                  onClick={() => setFormData((prev) => ({ ...prev, side }))}
-                                  style={{
-                                    flex: 1,
-                                    padding: '6px 4px',
-                                    borderRadius: 8,
-                                    fontSize: 11,
-                                    border: `2px solid ${isActive ? activeColors.border : 'var(--line)'}`,
-                                    background: isActive ? activeColors.bg : 'transparent',
-                                    color: isActive ? activeColors.color : 'var(--ink-mid)',
-                                    cursor: 'pointer',
-                                    fontWeight: isActive ? 500 : 400,
-                                  }}
-                                >
-                                  {side === 'shared'
-                                    ? 'Shared'
-                                    : side.charAt(0).toUpperCase() + side.slice(1)}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        )}
-
-                        {canSeeSplits && formData.side === 'shared' && (
-                          <SplitShare
-                            total={Number(formData.total_cost) || 0}
-                            bridePercentage={formData.bride_share_percentage}
-                            onChange={(percentage) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                bride_share_percentage: percentage,
-                              }))
-                            }
-                          />
-                        )}
-
-                        {editingVendor && (
-                          <div
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                          <p
                             style={{
-                              marginTop: 4,
-                              padding: 14,
-                              background: 'var(--bg-raised)',
-                              borderRadius: 10,
-                              border: '1px solid var(--line-soft)',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: 10,
+                              margin: 0,
+                              fontSize: 10,
+                              fontWeight: 600,
+                              color: 'var(--ink-dim)',
+                              letterSpacing: '0.08em',
+                              textTransform: 'uppercase',
                             }}
                           >
-                            <p
-                              style={{
-                                margin: 0,
-                                fontSize: 10,
-                                fontWeight: 600,
-                                color: 'var(--ink-dim)',
-                                letterSpacing: '0.08em',
-                                textTransform: 'uppercase',
-                              }}
-                            >
-                              Payment Summary
-                            </p>
-                            <div
-                              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}
-                            >
-                              <div>
-                                <div
-                                  style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}
-                                >
-                                  Committed
-                                </div>
-                                <div
-                                  style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-mid)' }}
-                                >
-                                  {formatCurrency(paymentCommitted)}
-                                </div>
-                              </div>
-                              <div>
-                                <div
-                                  style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}
-                                >
-                                  Paid
-                                </div>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>
-                                  {formatCurrency(paymentPaid)}
-                                </div>
-                              </div>
-                              <div style={{ gridColumn: '1 / -1' }}>
-                                <div
-                                  style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}
-                                >
-                                  Outstanding
-                                </div>
-                                <div
-                                  style={{
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    color: paymentOutstanding > 0 ? '#ea580c' : 'var(--ink-dim)',
-                                  }}
-                                >
-                                  {formatCurrency(paymentOutstanding)}
-                                </div>
+                            Financial details
+                          </p>
+
+                          <div>
+                            <label className="label">Obligation Date</label>
+                            <DatePicker
+                              value={formData.expense_date}
+                              onChange={(value) =>
+                                setFormData((prev) => ({ ...prev, expense_date: value }))
+                              }
+                              placeholder="Obligation date"
+                            />
+                          </div>
+
+                          {canSeeSplits && (
+                            <div>
+                              <label className="label">Liability Side</label>
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                {(['bride', 'groom', 'shared'] as const).map((side) => {
+                                  const isActive = formData.side === side;
+                                  const activeColors =
+                                    side === 'bride'
+                                      ? {
+                                          border: '#be185d',
+                                          bg: 'rgba(190,24,93,0.08)',
+                                          color: '#be185d',
+                                        }
+                                      : side === 'groom'
+                                        ? {
+                                            border: '#1d4ed8',
+                                            bg: 'rgba(29,78,216,0.08)',
+                                            color: '#1d4ed8',
+                                          }
+                                        : {
+                                            border: 'var(--gold)',
+                                            bg: 'var(--gold-glow)',
+                                            color: 'var(--gold-deep)',
+                                          };
+                                  return (
+                                    <button
+                                      key={side}
+                                      type="button"
+                                      onClick={() => setFormData((prev) => ({ ...prev, side }))}
+                                      style={{
+                                        flex: 1,
+                                        padding: '6px 4px',
+                                        borderRadius: 8,
+                                        fontSize: 11,
+                                        border: `2px solid ${isActive ? activeColors.border : 'var(--line)'}`,
+                                        background: isActive ? activeColors.bg : 'transparent',
+                                        color: isActive ? activeColors.color : 'var(--ink-mid)',
+                                        cursor: 'pointer',
+                                        fontWeight: isActive ? 500 : 400,
+                                      }}
+                                    >
+                                      {side === 'shared'
+                                        ? 'Shared'
+                                        : side.charAt(0).toUpperCase() + side.slice(1)}
+                                    </button>
+                                  );
+                                })}
                               </div>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => setActiveTab(1)}
+                          )}
+
+                          {canSeeSplits && formData.side === 'shared' && (
+                            <SplitShare
+                              total={Number(formData.total_cost) || 0}
+                              bridePercentage={formData.bride_share_percentage}
+                              onChange={(percentage) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  bride_share_percentage: percentage,
+                                }))
+                              }
+                            />
+                          )}
+
+                          {editingVendor && (
+                            <div
                               style={{
+                                marginTop: 4,
+                                padding: 14,
+                                background: 'var(--bg-raised)',
+                                borderRadius: 10,
+                                border: '1px solid var(--line-soft)',
                                 display: 'flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                fontSize: 12,
-                                color: 'var(--gold-deep)',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                fontWeight: 500,
-                                padding: 0,
+                                flexDirection: 'column',
+                                gap: 10,
                               }}
                             >
-                              <HiOutlineCurrencyRupee style={{ width: 13, height: 13 }} /> Manage
-                              payments →
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                              <p
+                                style={{
+                                  margin: 0,
+                                  fontSize: 10,
+                                  fontWeight: 600,
+                                  color: 'var(--ink-dim)',
+                                  letterSpacing: '0.08em',
+                                  textTransform: 'uppercase',
+                                }}
+                              >
+                                Payment Summary
+                              </p>
+                              <div
+                                style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}
+                              >
+                                <div>
+                                  <div
+                                    style={{
+                                      fontSize: 10,
+                                      color: 'var(--ink-dim)',
+                                      marginBottom: 2,
+                                    }}
+                                  >
+                                    Committed
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: 13,
+                                      fontWeight: 600,
+                                      color: 'var(--ink-mid)',
+                                    }}
+                                  >
+                                    {formatCurrency(paymentCommitted)}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div
+                                    style={{
+                                      fontSize: 10,
+                                      color: 'var(--ink-dim)',
+                                      marginBottom: 2,
+                                    }}
+                                  >
+                                    Paid
+                                  </div>
+                                  <div style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>
+                                    {formatCurrency(paymentPaid)}
+                                  </div>
+                                </div>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                  <div
+                                    style={{
+                                      fontSize: 10,
+                                      color: 'var(--ink-dim)',
+                                      marginBottom: 2,
+                                    }}
+                                  >
+                                    Outstanding
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: 13,
+                                      fontWeight: 600,
+                                      color: paymentOutstanding > 0 ? '#ea580c' : 'var(--ink-dim)',
+                                    }}
+                                  >
+                                    {formatCurrency(paymentOutstanding)}
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setActiveTab(1)}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  fontSize: 12,
+                                  color: 'var(--gold-deep)',
+                                  background: 'transparent',
+                                  cursor: 'pointer',
+                                  fontWeight: 500,
+                                  padding: 0,
+                                }}
+                              >
+                                <HiOutlineCurrencyRupee style={{ width: 13, height: 13 }} /> Manage
+                                payments →
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}

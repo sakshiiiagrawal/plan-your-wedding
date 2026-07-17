@@ -25,7 +25,13 @@ import {
   HiOutlineSave,
   HiOutlinePhone,
 } from 'react-icons/hi';
-import { SectionHeader, SegmentedControl, KPICard, DrawerPanel, Checkbox } from '../../components/ui';
+import {
+  SectionHeader,
+  SegmentedControl,
+  KPICard,
+  DrawerPanel,
+  Checkbox,
+} from '../../components/ui';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import { formatDate } from '../../utils/date';
@@ -641,7 +647,7 @@ export default function Guests() {
         title="RSVPs & guest management"
         description={`${totalGuests} invited · ${confirmed} confirmed · ${pending} pending. Import from Excel, manage meal preferences, allocate rooms.`}
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setShowImportModal(true)}
               className="flex items-center gap-1.5 px-3 py-2 text-sm border border-line-strong rounded-lg hover:bg-surface-raised text-ink-mid transition-colors"
@@ -1126,7 +1132,7 @@ export default function Guests() {
                 onSubmit={handleEditSubmit}
                 style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}
               >
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="label">First Name *</label>
                     <input
@@ -1150,7 +1156,7 @@ export default function Guests() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Phone</label>
                     <input
@@ -1173,7 +1179,7 @@ export default function Guests() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Side *</label>
                     <select
@@ -1199,7 +1205,7 @@ export default function Guests() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Meal Preference</label>
                     <select

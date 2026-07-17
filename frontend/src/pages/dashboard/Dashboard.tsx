@@ -122,7 +122,12 @@ export default function Dashboard() {
   if (isLoading) {
     return (
       <div
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '96px 0' }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '96px 0',
+        }}
       >
         <div
           style={{
@@ -144,7 +149,7 @@ export default function Dashboard() {
       <div
         className="card card-ornate fade-up"
         style={{
-          padding: '40px 48px',
+          padding: 'clamp(24px, 5vw, 40px) clamp(16px, 5vw, 48px)',
           marginBottom: 28,
           position: 'relative',
           overflow: 'hidden',
@@ -185,16 +190,22 @@ export default function Dashboard() {
         <h1
           className="display"
           style={{
-            fontSize: 68,
+            fontSize: 'clamp(32px, 8vw, 68px)',
             margin: '18px 0 4px',
             fontWeight: 400,
             letterSpacing: '0.01em',
             color: 'var(--ink-high)',
+            overflowWrap: 'break-word',
           }}
         >
           {brideName}
           <span
-            style={{ fontStyle: 'italic', color: 'var(--gold)', fontSize: 52, margin: '0 16px' }}
+            style={{
+              fontStyle: 'italic',
+              color: 'var(--gold)',
+              fontSize: 'clamp(26px, 6vw, 52px)',
+              margin: '0 clamp(8px, 2vw, 16px)',
+            }}
           >
             &amp;
           </span>
@@ -272,11 +283,11 @@ export default function Dashboard() {
           >
             {cdUnits.map((u, i) => (
               <Fragment key={u.label}>
-                <div style={{ textAlign: 'center', minWidth: 72 }}>
+                <div style={{ textAlign: 'center', minWidth: 'clamp(56px, 15vw, 72px)' }}>
                   <div
                     className="display tnum"
                     style={{
-                      fontSize: 44,
+                      fontSize: 'clamp(30px, 7vw, 44px)',
                       lineHeight: 1,
                       color: 'var(--gold-soft)',
                       fontWeight: 500,
@@ -318,8 +329,7 @@ export default function Dashboard() {
           <div>
             <div className="uppercase-eyebrow">Getting started</div>
             <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--ink-mid)' }}>
-              Welcome! Start by adding your events and guest list — everything else builds on
-              them.
+              Welcome! Start by adding your events and guest list — everything else builds on them.
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -335,12 +345,7 @@ export default function Dashboard() {
 
       {/* ── KPI Strip ──────────────────────────────────────────────── */}
       <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${canSeeMoney ? 4 : 3}, 1fr)`,
-          gap: 16,
-          marginBottom: 28,
-        }}
+        className={`grid grid-cols-2 gap-4 mb-7 ${canSeeMoney ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}
       >
         <KPICard
           eyebrow="RSVPs confirmed"
@@ -379,7 +384,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Two-column: Timeline + Tasks ────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20, marginBottom: 28 }}>
+      <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-5 mb-7">
         {/* Events timeline */}
         <div className="card">
           <div
@@ -731,7 +736,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Bottom: Activity + Quick Actions ─────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Recent activity */}
         <div className="card">
           <div className="uppercase-eyebrow" style={{ marginBottom: 14 }}>

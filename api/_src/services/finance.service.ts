@@ -1473,24 +1473,29 @@ export async function updateExpense(
   });
 }
 
+// finance_activity.expense_id is ON DELETE RESTRICT, so its rows must be cleared
+// before the expense row — otherwise the DELETE raises FK error 23503. We also
+// can't log a 'deleted' activity row: the table is keyed on the expense we're
+// removing (expense_id NOT NULL REFERENCES expenses), so the log dies with it.
+// Callers must have already ensured there are no payments (payments/allocations
+// are the other RESTRICT chains; expense_items is ON DELETE CASCADE).
+async function deleteExpenseRow(
+  client: PoolClient,
+  ownerId: string,
+  expenseId: string,
+): Promise<void> {
+  await client.query(`DELETE FROM finance_activity WHERE expense_id = $1`, [expenseId]);
+  await client.query(`DELETE FROM expenses WHERE id = $1 AND user_id = $2`, [expenseId, ownerId]);
+}
+
 export async function deleteExpense(ownerId: string, expenseId: string): Promise<void> {
   await withPgTransaction(async (client) => {
-    const expense = await lockExpenseHeader(client, ownerId, expenseId);
+    await lockExpenseHeader(client, ownerId, expenseId);
     const payments = await loadExpensePayments(client, expenseId);
     if (payments.length > 0) {
       throw new ConflictError('Expenses with payment history cannot be deleted.');
     }
-    await client.query(`DELETE FROM expenses WHERE id = $1 AND user_id = $2`, [expenseId, ownerId]);
-    await insertActivity(
-      client,
-      ownerId,
-      expenseId,
-      'expense',
-      expenseId,
-      'deleted',
-      expense,
-      null,
-    );
+    await deleteExpenseRow(client, ownerId, expenseId);
   });
 }
 
@@ -1597,21 +1602,8 @@ export async function upsertSourceExpenseTx(
         'This vendor or venue already has payment history, so its finance obligation cannot be cleared.',
       );
     }
-    const expense = await lockExpenseHeader(client, ownerId, existingId);
-    await client.query(`DELETE FROM expenses WHERE id = $1 AND user_id = $2`, [
-      existingId,
-      ownerId,
-    ]);
-    await insertActivity(
-      client,
-      ownerId,
-      existingId,
-      'expense',
-      existingId,
-      'deleted',
-      expense,
-      null,
-    );
+    await lockExpenseHeader(client, ownerId, existingId);
+    await deleteExpenseRow(client, ownerId, existingId);
     return null;
   }
 

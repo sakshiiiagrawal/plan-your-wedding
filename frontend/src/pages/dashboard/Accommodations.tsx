@@ -1878,8 +1878,8 @@ export default function Accommodations() {
                       )}
 
                       {roomCategories.length > 0 && (
-                        <div className="space-y-2">
-                          <div className="grid grid-cols-[1fr_72px_72px_100px_32px] gap-2">
+                        <div className="space-y-2 overflow-x-auto">
+                          <div className="grid grid-cols-[1fr_72px_72px_100px_32px] gap-2 min-w-[440px]">
                             <span className="text-xs text-ink-low font-medium">Category</span>
                             <span className="text-xs text-ink-low font-medium">Count</span>
                             <span className="text-xs text-ink-low font-medium">Occupancy</span>
@@ -1889,7 +1889,7 @@ export default function Accommodations() {
                           {roomCategories.map((cat, idx) => (
                             <div
                               key={idx}
-                              className="grid grid-cols-[1fr_72px_72px_100px_32px] gap-2 items-center"
+                              className="grid grid-cols-[1fr_72px_72px_100px_32px] gap-2 items-center min-w-[440px]"
                             >
                               {cat.is_custom ? (
                                 <input

@@ -28,6 +28,7 @@ import DatePicker from '../../components/ui/DatePicker';
 import TimePicker from '../../components/ui/TimePicker';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { formatDate } from '../../utils/date';
 
 // ── PAN India wedding event types ──────────────────────────────────────────
@@ -345,6 +346,7 @@ function getEventFormState(event?: any): EventFormData {
 export default function Events() {
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'timeline' | 'cards'>('cards');
+  const isMobile = useIsMobile();
   const [detailEvent, setDetailEvent] = useState<any>(null);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -552,9 +554,9 @@ export default function Events() {
                 className="evt-hover-parent"
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '100px 1fr auto',
-                  gap: 20,
-                  padding: '18px 24px',
+                  gridTemplateColumns: 'clamp(60px, 16vw, 100px) 1fr auto',
+                  gap: 'clamp(10px, 2.5vw, 20px)',
+                  padding: '18px clamp(14px, 3vw, 24px)',
                   cursor: 'pointer',
                   borderTop: index > 0 ? '1px solid var(--line-soft)' : 'none',
                   transition: 'background 150ms',
@@ -684,11 +686,13 @@ export default function Events() {
               </div>
             );
           }
-          const CARD_W = 340;
+          // Phones get a straight single-file timeline: no zigzag offset,
+          // cards sized to the viewport instead of a fixed 340px.
+          const CARD_W = isMobile ? Math.min(340, window.innerWidth - 60) : 340;
           const CARD_H = 180;
-          const GAP_Y = 80;
-          const OFFSET_X = 260;
-          const PAD_X = 24;
+          const GAP_Y = isMobile ? 48 : 80;
+          const OFFSET_X = isMobile ? 0 : 260;
+          const PAD_X = isMobile ? 8 : 24;
           const PAD_Y = 24;
           const stepY = CARD_H + GAP_Y;
           const contentW = PAD_X * 2 + CARD_W + OFFSET_X;
@@ -1199,7 +1203,7 @@ export default function Events() {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Event Type *</label>
                     <EventTypeCombobox
@@ -1231,7 +1235,7 @@ export default function Events() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Venue</label>
                     <select
@@ -1260,7 +1264,7 @@ export default function Events() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="label">End Time</label>
                     <TimePicker
@@ -1287,7 +1291,7 @@ export default function Events() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Theme</label>
                     <input

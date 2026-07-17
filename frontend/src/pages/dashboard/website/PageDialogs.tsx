@@ -36,7 +36,8 @@ export function AddPageDialog({
 
   const selectKind = (k: PageKind) => {
     setKind(k);
-    const defaults = k === 'invite' ? { title: 'Invitation', slug: 'invite' } : { title: 'Website', slug: 'site' };
+    const defaults =
+      k === 'invite' ? { title: 'Invitation', slug: 'invite' } : { title: 'Website', slug: 'site' };
     if (!titleEdited) setTitle(defaults.title);
     if (!slugEdited) setPageSlug(suggestSlug(defaults.slug));
   };
@@ -88,7 +89,7 @@ export function AddPageDialog({
         <div className="uppercase-eyebrow" style={{ marginBottom: 8 }}>
           Type
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3.5">
           {(
             [
               { id: 'invite', label: 'Invitation', hint: 'Tap-to-open story-scroll invite' },
@@ -217,9 +218,7 @@ export function EditPageDialog({
             marginBottom: 14,
           }}
         >
-          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink-high)' }}>
-            Edit page
-          </span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink-high)' }}>Edit page</span>
           <button
             onClick={onClose}
             aria-label="Close"

@@ -183,7 +183,9 @@ a:focus-visible,
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--ink-high);
-  font-feature-settings: 'lnum' 1, 'tnum' 1;
+  font-feature-settings:
+    'lnum' 1,
+    'tnum' 1;
   font-variant-numeric: lining-nums tabular-nums;
 }
 .kpi-num.gold-accent {
@@ -356,7 +358,10 @@ a:focus-visible,
   box-shadow:
     0 10px 30px -8px rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
-  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -958,4 +963,57 @@ a:focus-visible,
 }
 .evt-hover-parent:hover .evt-hover-edit {
   opacity: 1;
+}
+/* Touch devices have no hover — keep edit affordances visible */
+@media (hover: none) {
+  .evt-hover-edit {
+    opacity: 1;
+  }
+}
+
+/* ── Mobile refinements ──────────────────────────────────────────────────
+   Layout responsiveness lives in the components (Tailwind responsive
+   classes / fluid CSS). This layer only tunes the shared design-system
+   classes for small screens: type scale, panel density, and touch
+   affordances.
+
+   Tables: wrap any `.tbl` in `.tbl-scroll` so wide tables pan horizontally
+   instead of stretching the page. */
+
+.tbl-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 767px) {
+  .tbl-scroll .tbl {
+    min-width: 560px;
+  }
+}
+
+@media (max-width: 767px) {
+  /* Type scale steps down so headings don't dominate a phone screen */
+  .page-title {
+    font-size: 25px;
+  }
+  .section-title {
+    font-size: 21px;
+  }
+  .kpi-num {
+    font-size: 30px;
+  }
+  .stat-value {
+    font-size: 26px;
+  }
+
+  /* Panels breathe less on small screens */
+  .card,
+  .card-hover,
+  .stat-card {
+    padding: 16px;
+  }
+
+  /* iOS Safari zooms the page when a focused input's font-size is <16px */
+  .input {
+    font-size: 16px;
+  }
 }

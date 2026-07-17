@@ -299,13 +299,8 @@ export default function ExpenseCategoriesTab({
                     </div>
 
                     <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr 1fr 1fr',
-                        gap: 4,
-                        fontSize: 11,
-                        color: 'var(--ink-dim)',
-                      }}
+                      className="grid grid-cols-2 md:grid-cols-4 gap-1"
+                      style={{ fontSize: 11, color: 'var(--ink-dim)' }}
                     >
                       <span>
                         Paid:{' '}

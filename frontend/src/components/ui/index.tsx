@@ -147,7 +147,7 @@ export function SectionHeader({
         <h1
           className="display"
           style={{
-            fontSize: 30,
+            fontSize: 'clamp(24px, 5.5vw, 30px)',
             color: 'var(--ink-high)',
             fontWeight: 600,
             letterSpacing: '-0.015em',
@@ -234,6 +234,7 @@ export function DrawerPanel({
       <div
         style={{
           width,
+          maxWidth: 'calc(100vw - 44px)',
           background: 'var(--bg-panel)',
           borderLeft: '1px solid var(--line-soft)',
           boxShadow: '-20px 0 60px -20px rgba(0,0,0,0.2)',
@@ -335,10 +336,7 @@ export function Eyebrow({
 
 // ─── Checkbox ─────────────────────────────────────────────────────────────────
 /** Neumorphic checkbox — drop-in for a native <input type="checkbox">. */
-export function Checkbox({
-  className = '',
-  ...rest
-}: React.InputHTMLAttributes<HTMLInputElement>) {
+export function Checkbox({ className = '', ...rest }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className={`neu-check ${className}`}>
       <input type="checkbox" {...rest} />

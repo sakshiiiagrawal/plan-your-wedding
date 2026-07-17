@@ -2,7 +2,11 @@ import { useRef } from 'react';
 import { HiOutlinePlus, HiOutlinePhotograph, HiOutlineTrash } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { SectionHeader } from '../../components/ui';
-import { useGalleryContent, useUploadGalleryImage, useDeleteGalleryImage } from '../../hooks/useApi';
+import {
+  useGalleryContent,
+  useUploadGalleryImage,
+  useDeleteGalleryImage,
+} from '../../hooks/useApi';
 
 const GRADIENTS = [
   'from-gold-100 to-gold-200',
@@ -94,12 +98,17 @@ export default function Gallery() {
       <div
         className="grid gap-3"
         style={{
-          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
           gridAutoFlow: 'dense',
         }}
       >
         {images.map((img, i) => (
-          <GalleryCard key={img.url} url={img.url} index={i} onDelete={() => handleDelete(img.url)} />
+          <GalleryCard
+            key={img.url}
+            url={img.url}
+            index={i}
+            onDelete={() => handleDelete(img.url)}
+          />
         ))}
 
         <div

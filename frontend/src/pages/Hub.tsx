@@ -134,7 +134,7 @@ export default function Hub() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-maroon-800 via-maroon-700 to-gold-600 flex items-center justify-center p-4">
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-8">
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-5 sm:p-8">
         <h1 className="text-2xl font-display font-bold text-maroon-800 text-center mb-1">
           Your weddings
         </h1>
@@ -213,9 +213,7 @@ export default function Hub() {
         <div className="space-y-3">
           {invites.map((invite) => (
             <div key={invite.id} className="border border-gray-200 rounded-xl p-4">
-              <p className="font-medium text-gray-800">
-                {invite.wedding?.title || 'A wedding'}
-              </p>
+              <p className="font-medium text-gray-800">{invite.wedding?.title || 'A wedding'}</p>
               <p className="text-xs text-gray-500 mb-1">
                 Role: <b>{invite.role}</b>
                 {invite.allowed_sections && (
