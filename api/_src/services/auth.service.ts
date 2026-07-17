@@ -85,7 +85,10 @@ export async function listUserWeddings(userId: string): Promise<{
       .from('wedding_members')
       .select('wedding_id, role, wedding:weddings!wedding_id(id, slug, title, currency)')
       .eq('member_id', userId)
-      .eq('status', 'active'),
+      .eq('status', 'active')
+      // Match the auth middleware's stable ordering so the UI's resolved
+      // activeWeddingId fallback never disagrees with the API's scoping.
+      .order('created_at', { ascending: true }),
     supabase
       .from('wedding_members')
       .select('id', { count: 'exact', head: true })
