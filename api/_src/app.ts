@@ -24,6 +24,11 @@ app.use(helmet());
 const allowedOrigins: string[] = [
   'http://localhost:5173',
   'http://localhost:3000',
+  // Custom production domains. Frontend and API are served together on these
+  // hosts, but browsers still attach an Origin header to same-origin POSTs, so
+  // the cors middleware rejects them unless the host is explicitly allow-listed.
+  'https://shaadi.diy',
+  'https://www.shaadi.diy',
   ...(env.FRONTEND_URL ? [env.FRONTEND_URL] : []),
   ...[
     process.env.VERCEL_URL,
