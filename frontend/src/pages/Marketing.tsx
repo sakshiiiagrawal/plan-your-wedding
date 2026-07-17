@@ -505,7 +505,10 @@ export default function Marketing() {
             </a>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/login" className="px-2 text-sm text-[#6f655b] transition-colors hover:text-[#201a17]">
+            <a
+              href="/login"
+              className="px-2 text-sm text-[#6f655b] transition-colors hover:text-[#201a17]"
+            >
               Sign in
             </a>
             <button
@@ -535,7 +538,7 @@ export default function Marketing() {
               transition={{ duration: 0.65 }}
               className="mb-6 text-[11px] font-semibold uppercase tracking-[0.32em] text-[#9b7a3e]"
             >
-              For couples, parents and planners
+              For couples, parents, and planners
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 22 }}
@@ -543,7 +546,7 @@ export default function Marketing() {
               transition={{ duration: 0.7, delay: 0.08 }}
               className="font-serif-display text-5xl font-semibold leading-[0.98] tracking-[-0.035em] text-[#201a17] sm:text-7xl"
             >
-              Organise guests, rooms, vendors and payments in one place.
+              Keep headcount, rooms, and payments consistent.
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 22 }}
@@ -551,9 +554,9 @@ export default function Marketing() {
               transition={{ duration: 0.7, delay: 0.18 }}
               className="mt-7 max-w-2xl text-lg leading-8 text-[#5f554d]"
             >
-              PlanYourWedding helps the people coordinating the wedding work from the same records:
-              guest lists, WhatsApp RSVPs, room allocation, vendor details, budgets, events and the
-              wedding website.
+              From invitations to accommodations, vendor coordination to your wedding
+              website—everything lives in one shared workspace for you, your family, and your
+              friends.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 22 }}
@@ -565,14 +568,14 @@ export default function Marketing() {
                 onClick={() => navigate('/onboard')}
                 className="group flex items-center gap-2 rounded-full bg-[#3a1722] px-7 py-3.5 text-base font-semibold text-white shadow-[0_18px_42px_-26px_rgba(58,23,34,0.85)] transition-all hover:-translate-y-0.5 hover:bg-[#4a1d2b]"
               >
-                Create your wedding plan
+                Start planning free
                 <FiArrowRight className="transition-transform group-hover:translate-x-1" />
               </button>
               <a
                 href="#platform"
                 className="rounded-full border border-[#d6c8b5] px-6 py-3.5 text-base font-medium text-[#3e3732] transition-all hover:-translate-y-0.5 hover:border-[#b79b62] hover:bg-white/70"
               >
-                See how it works
+                Explore features
               </a>
             </motion.div>
             <motion.div
@@ -581,7 +584,7 @@ export default function Marketing() {
               transition={{ delay: 0.5, duration: 0.8 }}
               className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#6f655b]"
             >
-              {['Free to start', 'No credit card required', 'Invite family when needed'].map((item) => (
+              {['Free to start', 'No credit card required', 'Invite family anytime'].map((item) => (
                 <span key={item} className="inline-flex items-center gap-2">
                   <FiCheck className="text-[#9b7a3e]" />
                   {item}
@@ -601,7 +604,9 @@ export default function Marketing() {
                 <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#9b7a3e]">
                   Planning status
                 </p>
-                <p className="mt-1 text-sm text-[#6f655b]">Guest, stay and payment updates in one view.</p>
+                <p className="mt-1 text-sm text-[#6f655b]">
+                  Guest, stay and payment updates in one view.
+                </p>
               </div>
               <span className="text-sm font-semibold text-[#3a1722]">240 guests</span>
             </div>
@@ -613,7 +618,9 @@ export default function Marketing() {
                 ['₹2.9L', 'pending'],
               ].map(([value, label]) => (
                 <div key={label}>
-                  <p className="font-serif-display text-2xl font-semibold text-[#201a17]">{value}</p>
+                  <p className="font-serif-display text-2xl font-semibold text-[#201a17]">
+                    {value}
+                  </p>
                   <p className="text-[11px] uppercase tracking-[0.18em] text-[#8a7a6b]">{label}</p>
                 </div>
               ))}
@@ -759,7 +766,10 @@ export default function Marketing() {
       {/* ── Everything else ── */}
       <section id="more" className="bg-[#fbf7ef]">
         <div className="mx-auto max-w-6xl px-6 py-24">
-          <motion.div {...rise} className="mb-12 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+          <motion.div
+            {...rise}
+            className="mb-12 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end"
+          >
             <div>
               <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.35em] text-gold-700">
                 Planning modules
