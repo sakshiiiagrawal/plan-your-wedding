@@ -175,7 +175,16 @@ export const addPayment = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.status(201).json(await service.addPayment(req.params.id, getWeddingOwnerId(req), req.body));
+    res
+      .status(201)
+      .json(
+        await service.addPayment(
+          req.params.id,
+          getWeddingOwnerId(req),
+          getAuthUser(req).id,
+          req.body,
+        ),
+      );
   } catch (e) {
     next(e);
   }
@@ -187,7 +196,7 @@ export const deletePayment = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    await service.deletePayment(req.params.paymentId, getWeddingOwnerId(req));
+    await service.deletePayment(req.params.paymentId, getWeddingOwnerId(req), getAuthUser(req).id);
     res.status(204).send();
   } catch (e) {
     next(e);

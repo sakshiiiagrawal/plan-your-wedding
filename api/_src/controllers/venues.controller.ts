@@ -47,7 +47,7 @@ export const getById = async (
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const ownerId = getWeddingOwnerId(req);
-    res.status(201).json(await service.createVenue(req.body, ownerId));
+    res.status(201).json(await service.createVenue(req.body, ownerId, getAuthUser(req).id));
   } catch (error) {
     next(error);
   }
@@ -70,8 +70,9 @@ export const update = async (
 ): Promise<void> => {
   try {
     const ownerId = getWeddingOwnerId(req);
-    const tier = financeTier(getAuthUser(req));
-    res.json(await service.updateVenue(req.params.id, ownerId, req.body, tier));
+    const user = getAuthUser(req);
+    const tier = financeTier(user);
+    res.json(await service.updateVenue(req.params.id, ownerId, user.id, req.body, tier));
   } catch (error) {
     next(error);
   }
@@ -373,7 +374,14 @@ export const addPayment = async (
   try {
     res
       .status(201)
-      .json(await service.addVenuePayment(req.params.id, getWeddingOwnerId(req), req.body));
+      .json(
+        await service.addVenuePayment(
+          req.params.id,
+          getWeddingOwnerId(req),
+          getAuthUser(req).id,
+          req.body,
+        ),
+      );
   } catch (e) {
     next(e);
   }
@@ -385,7 +393,11 @@ export const deletePayment = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    await service.deleteVenuePayment(req.params.paymentId, getWeddingOwnerId(req));
+    await service.deleteVenuePayment(
+      req.params.paymentId,
+      getWeddingOwnerId(req),
+      getAuthUser(req).id,
+    );
     res.status(204).send();
   } catch (e) {
     next(e);

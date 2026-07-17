@@ -12,6 +12,11 @@ export default function Marketing() {
     navigate(slug ? `/${slug}/dashboard` : '/hub', { replace: true });
   }, [loading, isAuthenticated, slug, navigate]);
 
+  // A returning (token-bearing) user is about to be redirected the instant
+  // /auth/me resolves. On slow mobile that round-trip is visible — don't flash
+  // the marketing CTA (and tempt a "Sign In" tap) while we still might redirect.
+  if (loading || isAuthenticated) return null;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-maroon-800 via-maroon-700 to-gold-600 flex flex-col items-center justify-center p-4">
       <div className="text-center max-w-2xl mx-auto">

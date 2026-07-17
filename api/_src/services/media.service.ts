@@ -35,7 +35,12 @@ export async function uploadGalleryImage(
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
-    .upload(path, file.buffer, { contentType: IMAGE_CONTENT_TYPES[imageType] });
+    // Random-UUID path → content is immutable; cache a year so the CDN stops
+    // missing (default is 1h). Fewer origin fetches = fewer transient blanks.
+    .upload(path, file.buffer, {
+      contentType: IMAGE_CONTENT_TYPES[imageType],
+      cacheControl: '31536000',
+    });
   if (uploadError) throw uploadError;
 
   const {
@@ -73,7 +78,7 @@ export async function uploadMusic(ownerId: string, file: Express.Multer.File): P
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
-    .upload(path, file.buffer, { contentType: file.mimetype });
+    .upload(path, file.buffer, { contentType: file.mimetype, cacheControl: '31536000' });
   if (uploadError) throw uploadError;
 
   const {

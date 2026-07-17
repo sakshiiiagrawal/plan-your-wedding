@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { getWeddingOwnerId } from '../shared/utils/auth.utils';
+import { getWeddingOwnerId, getAuthUser } from '../shared/utils/auth.utils';
 import * as service from '../services/expense.service';
 
 type IdParam = { id: string };
@@ -200,7 +200,9 @@ export const createExpense = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.status(201).json(await service.createExpense(req.body, getWeddingOwnerId(req)));
+    res
+      .status(201)
+      .json(await service.createExpense(req.body, getWeddingOwnerId(req), getAuthUser(req).id));
   } catch (e) {
     next(e);
   }
@@ -212,7 +214,14 @@ export const updateExpense = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.json(await service.updateExpense(req.params.id, getWeddingOwnerId(req), req.body));
+    res.json(
+      await service.updateExpense(
+        req.params.id,
+        getWeddingOwnerId(req),
+        getAuthUser(req).id,
+        req.body,
+      ),
+    );
   } catch (e) {
     next(e);
   }
@@ -287,7 +296,14 @@ export const createExpensePayment = async (
   try {
     res
       .status(201)
-      .json(await service.createExpensePayment(req.params.id, getWeddingOwnerId(req), req.body));
+      .json(
+        await service.createExpensePayment(
+          req.params.id,
+          getWeddingOwnerId(req),
+          getAuthUser(req).id,
+          req.body,
+        ),
+      );
   } catch (e) {
     next(e);
   }
@@ -300,7 +316,12 @@ export const updateExpensePayment = async (
 ): Promise<void> => {
   try {
     res.json(
-      await service.updateExpensePayment(req.params.paymentId, getWeddingOwnerId(req), req.body),
+      await service.updateExpensePayment(
+        req.params.paymentId,
+        getWeddingOwnerId(req),
+        getAuthUser(req).id,
+        req.body,
+      ),
     );
   } catch (e) {
     next(e);
@@ -313,7 +334,11 @@ export const deleteExpensePayment = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    await service.deleteExpensePayment(req.params.paymentId, getWeddingOwnerId(req));
+    await service.deleteExpensePayment(
+      req.params.paymentId,
+      getWeddingOwnerId(req),
+      getAuthUser(req).id,
+    );
     res.status(204).send();
   } catch (e) {
     next(e);

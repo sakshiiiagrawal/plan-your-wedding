@@ -325,6 +325,7 @@ export async function createVendor(
     const linkedExpense = await upsertSourceExpenseTx(
       client,
       ownerId,
+      userId ?? ownerId,
       'vendor',
       vendor.id,
       financeInput,
@@ -497,7 +498,14 @@ export async function updateVendor(
                 items: [],
                 payments: [],
               };
-      linkedExpense = await upsertSourceExpenseTx(client, ownerId, 'vendor', id, financeInput);
+      linkedExpense = await upsertSourceExpenseTx(
+        client,
+        ownerId,
+        userId ?? ownerId,
+        'vendor',
+        id,
+        financeInput,
+      );
     }
 
     return mergeVendorWithFinance(vendor, linkedExpense);
@@ -563,16 +571,21 @@ export async function getPayments(vendorId: string, ownerId: string) {
   return expense?.payments ?? [];
 }
 
-export async function addPayment(vendorId: string, ownerId: string, payload: PaymentMutationInput) {
+export async function addPayment(
+  vendorId: string,
+  ownerId: string,
+  actorId: string,
+  payload: PaymentMutationInput,
+) {
   const expenseId = await getSourceExpenseId(ownerId, 'vendor', vendorId);
   if (!expenseId) {
     throw new NotFoundError('Create a vendor obligation before recording payments.');
   }
-  return createExpensePayment(ownerId, expenseId, payload);
+  return createExpensePayment(ownerId, actorId, expenseId, payload);
 }
 
-export async function deletePayment(paymentId: string, ownerId: string) {
-  return deleteExpensePayment(ownerId, paymentId);
+export async function deletePayment(paymentId: string, ownerId: string, actorId: string) {
+  return deleteExpensePayment(ownerId, actorId, paymentId);
 }
 
 export async function getVendorExpenseSummary(ownerId: string) {

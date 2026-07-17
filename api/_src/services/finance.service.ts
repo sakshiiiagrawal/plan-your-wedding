@@ -198,9 +198,14 @@ function mapVenueTypeToCategoryName(venueType: string | null | undefined): strin
   }
 }
 
+// actorId is the acting user's id (users.id) — NOT the wedding/owner id. For
+// backfilled solo weddings weddings.id == users.id so the two coincide, but for
+// collaborators (members whose weddingId != userId) they differ, and
+// actor_user_id REFERENCES users(id), so passing the wedding id would raise an
+// FK error on every finance mutation.
 async function insertActivity(
   client: PoolClient,
-  ownerId: string,
+  actorId: string,
   expenseId: string,
   entityType: string,
   entityId: string,
@@ -228,7 +233,7 @@ async function insertActivity(
       actionType,
       beforeState == null ? null : JSON.stringify(beforeState),
       afterState == null ? null : JSON.stringify(afterState),
-      ownerId,
+      actorId,
     ],
   );
 }
@@ -616,6 +621,7 @@ async function insertExpenseHeader(
 async function updateExpenseHeader(
   client: PoolClient,
   ownerId: string,
+  actorId: string,
   expenseId: string,
   payload: Partial<ExpenseInsert>,
 ): Promise<ExpenseRow> {
@@ -646,7 +652,7 @@ async function updateExpenseHeader(
   const updated = mapExpenseRow(rows[0] ?? {});
   await insertActivity(
     client,
-    ownerId,
+    actorId,
     expenseId,
     'expense',
     expenseId,
@@ -660,6 +666,7 @@ async function updateExpenseHeader(
 async function syncExpenseItems(
   client: PoolClient,
   ownerId: string,
+  actorId: string,
   expenseId: string,
   items: ExpenseItemInput[],
 ): Promise<ExpenseItemRow[]> {
@@ -723,7 +730,7 @@ async function syncExpenseItems(
       nextRows.push(updated);
       await insertActivity(
         client,
-        ownerId,
+        actorId,
         expenseId,
         'expense_item',
         updated.id,
@@ -773,7 +780,7 @@ async function syncExpenseItems(
     nextRows.push(created);
     await insertActivity(
       client,
-      ownerId,
+      actorId,
       expenseId,
       'expense_item',
       created.id,
@@ -797,7 +804,7 @@ async function syncExpenseItems(
       );
     }
     await client.query(`DELETE FROM expense_items WHERE id = $1`, [row.id]);
-    await insertActivity(client, ownerId, expenseId, 'expense_item', row.id, 'deleted', row, null);
+    await insertActivity(client, actorId, expenseId, 'expense_item', row.id, 'deleted', row, null);
   }
 
   return nextRows.sort((a, b) => a.display_order - b.display_order);
@@ -854,7 +861,7 @@ function autoAllocateProportionally(
 
 async function insertPaymentAllocations(
   client: PoolClient,
-  ownerId: string,
+  actorId: string,
   expenseId: string,
   paymentId: string,
   allocations: PaymentAllocationInput[],
@@ -875,7 +882,7 @@ async function insertPaymentAllocations(
     const created = mapAllocationRow(rows[0] ?? {});
     await insertActivity(
       client,
-      ownerId,
+      actorId,
       expenseId,
       'payment_allocation',
       created.id,
@@ -888,7 +895,7 @@ async function insertPaymentAllocations(
 
 async function removeExistingAllocations(
   client: PoolClient,
-  ownerId: string,
+  actorId: string,
   expenseId: string,
   paymentId: string,
 ): Promise<Map<string, number>> {
@@ -910,7 +917,7 @@ async function removeExistingAllocations(
     await client.query(`DELETE FROM payment_allocations WHERE id = $1`, [before.id]);
     await insertActivity(
       client,
-      ownerId,
+      actorId,
       expenseId,
       'payment_allocation',
       before.id,
@@ -961,6 +968,7 @@ function buildWorkingAvailability(params: {
 export async function createPaymentRecordTx(
   client: PoolClient,
   ownerId: string,
+  actorId: string,
   expenseId: string,
   payload: PaymentMutationInput,
   currentPayment: PaymentRow | null = null,
@@ -980,7 +988,7 @@ export async function createPaymentRecordTx(
   const lockedCurrentPayment = currentLockedPayments[0] ?? currentPayment;
   const removedAllocations =
     lockedCurrentPayment != null
-      ? await removeExistingAllocations(client, ownerId, expenseId, lockedCurrentPayment.id)
+      ? await removeExistingAllocations(client, actorId, expenseId, lockedCurrentPayment.id)
       : new Map<string, number>();
 
   if (normalized.new_items && normalized.new_items.length > 0) {
@@ -997,7 +1005,7 @@ export async function createPaymentRecordTx(
       })),
       ...normalized.new_items,
     ];
-    await syncExpenseItems(client, ownerId, expenseId, nextItems);
+    await syncExpenseItems(client, ownerId, actorId, expenseId, nextItems);
   }
 
   const balances = await getItemBalanceMap(client, expenseId);
@@ -1120,7 +1128,7 @@ export async function createPaymentRecordTx(
     payment = mapPaymentRow(rows[0] ?? {});
     await insertActivity(
       client,
-      ownerId,
+      actorId,
       expenseId,
       'payment',
       payment.id,
@@ -1166,7 +1174,7 @@ export async function createPaymentRecordTx(
     payment = mapPaymentRow(rows[0] ?? {});
     await insertActivity(
       client,
-      ownerId,
+      actorId,
       expenseId,
       'payment',
       payment.id,
@@ -1177,7 +1185,7 @@ export async function createPaymentRecordTx(
   }
 
   if (allocations.length > 0) {
-    await insertPaymentAllocations(client, ownerId, header.id, payment.id, allocations);
+    await insertPaymentAllocations(client, actorId, header.id, payment.id, allocations);
   }
 
   return payment;
@@ -1185,7 +1193,7 @@ export async function createPaymentRecordTx(
 
 export async function deleteScheduledPaymentTx(
   client: PoolClient,
-  ownerId: string,
+  actorId: string,
   paymentId: string,
 ): Promise<void> {
   const payments = await lockPayments(client, [paymentId]);
@@ -1197,7 +1205,7 @@ export async function deleteScheduledPaymentTx(
   await client.query(`DELETE FROM payments WHERE id = $1`, [paymentId]);
   await insertActivity(
     client,
-    ownerId,
+    actorId,
     payment.expense_id,
     'payment',
     paymentId,
@@ -1209,7 +1217,7 @@ export async function deleteScheduledPaymentTx(
 
 async function normalizeTerminatedExpense(
   client: PoolClient,
-  ownerId: string,
+  actorId: string,
   expenseId: string,
 ): Promise<void> {
   await client.query(
@@ -1232,7 +1240,7 @@ async function normalizeTerminatedExpense(
       await client.query(`DELETE FROM expense_items WHERE id = $1`, [item.id]);
       await insertActivity(
         client,
-        ownerId,
+        actorId,
         expenseId,
         'expense_item',
         item.id,
@@ -1254,7 +1262,7 @@ async function normalizeTerminatedExpense(
     );
     await insertActivity(
       client,
-      ownerId,
+      actorId,
       expenseId,
       'expense_item',
       item.id,
@@ -1419,6 +1427,7 @@ export async function getExpense(ownerId: string, expenseId: string): Promise<Ex
 
 export async function createManualExpense(
   ownerId: string,
+  actorId: string,
   payload: ExpenseWriteInput,
 ): Promise<ExpenseWithDetails> {
   return withPgTransaction(async (client) => {
@@ -1431,7 +1440,7 @@ export async function createManualExpense(
     });
     await insertActivity(
       client,
-      ownerId,
+      actorId,
       expense.id,
       'expense',
       expense.id,
@@ -1439,9 +1448,9 @@ export async function createManualExpense(
       null,
       expense,
     );
-    await syncExpenseItems(client, ownerId, expense.id, payload.items);
+    await syncExpenseItems(client, ownerId, actorId, expense.id, payload.items);
     for (const payment of payload.payments ?? []) {
-      await createPaymentRecordTx(client, ownerId, expense.id, payment);
+      await createPaymentRecordTx(client, ownerId, actorId, expense.id, payment);
     }
     return getExpenseDetailsTx(client, ownerId, expense.id);
   });
@@ -1449,24 +1458,25 @@ export async function createManualExpense(
 
 export async function updateExpense(
   ownerId: string,
+  actorId: string,
   expenseId: string,
   payload: Partial<ExpenseWriteInput>,
 ): Promise<ExpenseWithDetails> {
   return withPgTransaction(async (client) => {
     const current = await lockExpenseHeader(client, ownerId, expenseId);
-    const next = await updateExpenseHeader(client, ownerId, expenseId, payload);
+    const next = await updateExpenseHeader(client, ownerId, actorId, expenseId, payload);
     if (payload.items) {
-      await syncExpenseItems(client, ownerId, expenseId, payload.items);
+      await syncExpenseItems(client, ownerId, actorId, expenseId, payload.items);
     } else {
       await lockExpenseItems(client, expenseId);
     }
 
     if (current.status !== 'terminated' && next.status === 'terminated') {
-      await normalizeTerminatedExpense(client, ownerId, expenseId);
+      await normalizeTerminatedExpense(client, actorId, expenseId);
     }
 
     for (const payment of payload.payments ?? []) {
-      await createPaymentRecordTx(client, ownerId, expenseId, payment);
+      await createPaymentRecordTx(client, ownerId, actorId, expenseId, payment);
     }
 
     return getExpenseDetailsTx(client, ownerId, expenseId);
@@ -1509,17 +1519,19 @@ export async function listExpensePayments(
 
 export async function createExpensePayment(
   ownerId: string,
+  actorId: string,
   expenseId: string,
   payload: PaymentMutationInput,
 ): Promise<ExpenseWithDetails> {
   return withPgTransaction(async (client) => {
-    await createPaymentRecordTx(client, ownerId, expenseId, payload);
+    await createPaymentRecordTx(client, ownerId, actorId, expenseId, payload);
     return getExpenseDetailsTx(client, ownerId, expenseId);
   });
 }
 
 export async function updateExpensePayment(
   ownerId: string,
+  actorId: string,
   paymentId: string,
   payload: PaymentMutationInput,
 ): Promise<ExpenseWithDetails> {
@@ -1531,13 +1543,17 @@ export async function updateExpensePayment(
       throw new ConflictError('Cancelled scheduled payments cannot be edited.');
     }
     const merged: PaymentMutationInput = { ...payment, ...payload };
-    await createPaymentRecordTx(client, ownerId, payment.expense_id, merged, payment);
+    await createPaymentRecordTx(client, ownerId, actorId, payment.expense_id, merged, payment);
     return getExpenseDetailsTx(client, ownerId, payment.expense_id);
   });
 }
 
-export async function deleteExpensePayment(ownerId: string, paymentId: string): Promise<void> {
-  await withPgTransaction((client) => deleteScheduledPaymentTx(client, ownerId, paymentId));
+export async function deleteExpensePayment(
+  ownerId: string,
+  actorId: string,
+  paymentId: string,
+): Promise<void> {
+  await withPgTransaction((client) => deleteScheduledPaymentTx(client, actorId, paymentId));
 }
 
 export async function getSourceExpenseId(
@@ -1575,6 +1591,7 @@ export async function getSourceExpense(
 export async function upsertSourceExpenseTx(
   client: PoolClient,
   ownerId: string,
+  actorId: string,
   sourceType: Exclude<SourceType, 'manual'>,
   sourceId: string,
   input: SourceFinanceInput,
@@ -1608,15 +1625,15 @@ export async function upsertSourceExpenseTx(
   }
 
   if (existingId) {
-    await updateExpenseHeader(client, ownerId, existingId, {
+    await updateExpenseHeader(client, ownerId, actorId, existingId, {
       description: input.description,
       expense_date: input.expense_date,
       notes: input.notes ?? null,
       status: 'active',
     });
-    await syncExpenseItems(client, ownerId, existingId, items);
+    await syncExpenseItems(client, ownerId, actorId, existingId, items);
     for (const payment of input.payments ?? []) {
-      await createPaymentRecordTx(client, ownerId, existingId, payment);
+      await createPaymentRecordTx(client, ownerId, actorId, existingId, payment);
     }
     return getExpenseDetailsTx(client, ownerId, existingId);
   }
@@ -1632,7 +1649,7 @@ export async function upsertSourceExpenseTx(
   });
   await insertActivity(
     client,
-    ownerId,
+    actorId,
     created.id,
     'expense',
     created.id,
@@ -1640,21 +1657,22 @@ export async function upsertSourceExpenseTx(
     null,
     created,
   );
-  await syncExpenseItems(client, ownerId, created.id, items);
+  await syncExpenseItems(client, ownerId, actorId, created.id, items);
   for (const payment of input.payments ?? []) {
-    await createPaymentRecordTx(client, ownerId, created.id, payment);
+    await createPaymentRecordTx(client, ownerId, actorId, created.id, payment);
   }
   return getExpenseDetailsTx(client, ownerId, created.id);
 }
 
 export async function upsertSourceExpense(
   ownerId: string,
+  actorId: string,
   sourceType: Exclude<SourceType, 'manual'>,
   sourceId: string,
   input: SourceFinanceInput,
 ): Promise<ExpenseWithDetails | null> {
   return withPgTransaction((client) =>
-    upsertSourceExpenseTx(client, ownerId, sourceType, sourceId, input),
+    upsertSourceExpenseTx(client, ownerId, actorId, sourceType, sourceId, input),
   );
 }
 

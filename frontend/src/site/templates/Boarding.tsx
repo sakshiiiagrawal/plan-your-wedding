@@ -1,3 +1,4 @@
+import SiteImage from '../SiteImage';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -296,7 +297,7 @@ export default function Boarding({ data }: TemplateProps) {
         {showHero && (
           <section className="relative flex flex-col items-center justify-center px-4 py-12" style={{ minHeight: '100svh' }}>
             {heroPhoto ? (
-              <img src={heroPhoto} alt="" loading="eager" className="absolute inset-0 w-full h-full object-cover" />
+              <SiteImage src={heroPhoto} alt="" loading="eager" className="absolute inset-0 w-full h-full object-cover" />
             ) : (
               <div className="absolute inset-0" style={{ background: p.heroGradient }} />
             )}

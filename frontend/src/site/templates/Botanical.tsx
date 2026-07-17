@@ -1,3 +1,4 @@
+import SiteImage from '../SiteImage';
 import { lazy, Suspense, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
@@ -227,7 +228,7 @@ function Cameo({
           }}
         >
           {photo ? (
-            <img src={photo} alt={name} loading="lazy" className="w-full h-full object-cover" />
+            <SiteImage src={photo} alt={name} loading="lazy" className="w-full h-full object-cover" />
           ) : (
             <span className="font-script text-5xl" style={{ color: palette.onHero }}>
               {name[0]}
@@ -565,7 +566,7 @@ export default function Botanical({ data }: TemplateProps) {
                       boxShadow: '0 14px 30px -18px rgba(50,60,40,0.45)',
                     }}
                   >
-                    <img
+                    <SiteImage
                       src={image.url}
                       alt=""
                       loading="lazy"

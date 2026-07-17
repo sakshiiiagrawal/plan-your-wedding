@@ -1,3 +1,4 @@
+import SiteImage from '../SiteImage';
 import { lazy, Suspense, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -150,7 +151,7 @@ function Medallion({
           }}
         >
           {photo ? (
-            <img src={photo} alt={name} loading="lazy" className="w-full h-full object-cover" />
+            <SiteImage src={photo} alt={name} loading="lazy" className="w-full h-full object-cover" />
           ) : (
             <span className="font-script text-6xl" style={{ color: textColor }}>
               {name[0]}
@@ -634,7 +635,7 @@ export default function Classic({ data }: TemplateProps) {
         {/* DOM photo+scrim stays underneath always: it is the loading state,
             the reduced-motion path, and the WebGL-failure fallback. */}
         {heroPhoto && (
-          <img
+          <SiteImage
             src={heroPhoto}
             alt=""
             loading="eager"

@@ -1,3 +1,4 @@
+import SiteImage from '../SiteImage';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -395,7 +396,7 @@ export default function Midnight({ data }: TemplateProps) {
                   className={`overflow-hidden group relative ${feature ? 'col-span-2 row-span-2' : ''}`}
                   style={{ border: `1px solid ${p.line}`, aspectRatio: '1 / 1' }}
                 >
-                  <img
+                  <SiteImage
                     src={image.url}
                     alt=""
                     loading="lazy"

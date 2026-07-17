@@ -277,16 +277,18 @@ export async function createExpense(
     payments?: finance.PaymentMutationInput[];
   },
   ownerId: string,
+  actorId: string,
 ) {
-  return finance.createManualExpense(ownerId, { ...payload, items: payload.items });
+  return finance.createManualExpense(ownerId, actorId, { ...payload, items: payload.items });
 }
 
 export async function updateExpense(
   id: string,
   ownerId: string,
+  actorId: string,
   payload: Partial<finance.ExpenseWriteInput>,
 ) {
-  return finance.updateExpense(ownerId, id, payload);
+  return finance.updateExpense(ownerId, actorId, id, payload);
 }
 
 export async function deleteExpense(id: string, ownerId: string) {
@@ -502,21 +504,23 @@ export async function getExpensePayments(
 export async function createExpensePayment(
   expenseId: string,
   ownerId: string,
+  actorId: string,
   payload: finance.PaymentMutationInput,
 ) {
-  return finance.createExpensePayment(ownerId, expenseId, payload);
+  return finance.createExpensePayment(ownerId, actorId, expenseId, payload);
 }
 
 export async function updateExpensePayment(
   paymentId: string,
   ownerId: string,
+  actorId: string,
   payload: finance.PaymentMutationInput,
 ) {
-  return finance.updateExpensePayment(ownerId, paymentId, payload);
+  return finance.updateExpensePayment(ownerId, actorId, paymentId, payload);
 }
 
-export async function deleteExpensePayment(paymentId: string, ownerId: string) {
-  return finance.deleteExpensePayment(ownerId, paymentId);
+export async function deleteExpensePayment(paymentId: string, ownerId: string, actorId: string) {
+  return finance.deleteExpensePayment(ownerId, actorId, paymentId);
 }
 
 export async function getPaymentAttachments(

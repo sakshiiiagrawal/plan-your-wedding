@@ -1,3 +1,4 @@
+import SiteImage from '../SiteImage';
 import { motion } from 'framer-motion';
 import type { GalleryLayoutId, Palette } from '../types';
 import { fadeUp, flipIn, staggerTight, inViewProps } from '../motion';
@@ -32,7 +33,7 @@ export default function GalleryGrid({
   const hoverWrap = reduced ? {} : hover.wrap;
 
   const photo = (url: string, className = '') => (
-    <img
+    <SiteImage
       src={url}
       alt=""
       loading="lazy"
@@ -59,7 +60,7 @@ export default function GalleryGrid({
             onClick={() => onOpen(i)}
             className="group relative block w-full mb-4 overflow-hidden rounded-xl break-inside-avoid"
           >
-            <img
+            <SiteImage
               src={image.url}
               alt=""
               loading="lazy"

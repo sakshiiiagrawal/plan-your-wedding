@@ -1,3 +1,4 @@
+import SiteImage from '../SiteImage';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion, useScroll, useSpring } from 'framer-motion';
@@ -347,7 +348,7 @@ export default function Journey({ data }: TemplateProps) {
                       style={{ background: p.surface, boxShadow: '0 16px 36px -16px rgba(0,0,0,0.35)', border: `1px solid ${p.line}` }}
                     >
                       <span className="block overflow-hidden">
-                        <img src={m.photo} alt="" loading="lazy" className={`w-full object-cover ${galleryHover.imgClass}`} style={{ aspectRatio: '4/3' }} />
+                        <SiteImage src={m.photo} alt="" loading="lazy" className={`w-full object-cover ${galleryHover.imgClass}`} style={{ aspectRatio: '4/3' }} />
                       </span>
                       <span className="block font-script text-xl pt-2 pb-1 text-center" style={{ color: p.inkSoft }}>
                         {typeof m.title === 'string' ? m.title : coupleNames}

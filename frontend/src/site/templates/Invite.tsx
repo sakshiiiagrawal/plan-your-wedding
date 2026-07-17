@@ -1,3 +1,4 @@
+import SiteImage from '../SiteImage';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useScroll, useSpring, type Variants } from 'framer-motion';
@@ -295,7 +296,7 @@ export default function Invite({ data }: TemplateProps) {
   const photoSlide = (photo: string | null, children: React.ReactNode) => (
     <div className="relative flex flex-col" style={{ minHeight: '100svh' }}>
       {photo ? (
-        <img
+        <SiteImage
           src={photo}
           alt=""
           loading="eager"
@@ -428,7 +429,7 @@ export default function Invite({ data }: TemplateProps) {
                     border: `1px solid ${p.line}`,
                   }}
                 >
-                  <img
+                  <SiteImage
                     src={image.url}
                     alt=""
                     loading="lazy"

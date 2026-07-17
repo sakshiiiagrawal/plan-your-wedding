@@ -1,3 +1,4 @@
+import SiteImage from './SiteImage';
 import { useCallback, useEffect, useRef } from 'react';
 import { HiOutlineChevronLeft, HiOutlineChevronRight, HiOutlineX } from 'react-icons/hi';
 
@@ -81,7 +82,7 @@ export default function Lightbox({ images, index, onClose, onNavigate }: Lightbo
           <HiOutlineChevronLeft className="w-8 h-8" />
         </button>
       )}
-      <img
+      <SiteImage
         src={current.url}
         alt=""
         className="max-h-[88vh] max-w-[92vw] object-contain rounded"

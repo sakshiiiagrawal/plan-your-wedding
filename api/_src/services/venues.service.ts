@@ -165,6 +165,7 @@ export async function createVenue(
     } | null;
   },
   ownerId: string,
+  actorId: string,
 ): Promise<VenueRow> {
   assertDateOrder(payload.default_check_in_date, payload.default_check_out_date, 'Default dates');
   return withPgTransaction(async (client) => {
@@ -264,7 +265,7 @@ export async function createVenue(
       notes: venue.notes,
       finance: finance ?? null,
     });
-    await upsertSourceExpenseTx(client, ownerId, 'venue', venue.id, financeInput);
+    await upsertSourceExpenseTx(client, ownerId, actorId, 'venue', venue.id, financeInput);
     return venue;
   });
 }
@@ -272,6 +273,7 @@ export async function createVenue(
 export async function updateVenue(
   id: string,
   ownerId: string,
+  actorId: string,
   payload: Partial<VenueInsert> & {
     rooms?: RoomInput[];
     total_cost?: number | null;
@@ -472,7 +474,7 @@ export async function updateVenue(
                 items: [],
                 payments: [],
               };
-      await upsertSourceExpenseTx(client, ownerId, 'venue', id, financeInput);
+      await upsertSourceExpenseTx(client, ownerId, actorId, 'venue', id, financeInput);
     }
 
     return venue;
@@ -1392,15 +1394,16 @@ export async function getVenuePayments(venueId: string, ownerId: string) {
 export async function addVenuePayment(
   venueId: string,
   ownerId: string,
+  actorId: string,
   payload: PaymentMutationInput,
 ) {
   const finance = await getSourceExpense(ownerId, 'venue', venueId);
   if (!finance) {
     throw new NotFoundError('Create a venue obligation before recording payments.');
   }
-  return createExpensePayment(ownerId, finance.id, payload);
+  return createExpensePayment(ownerId, actorId, finance.id, payload);
 }
 
-export async function deleteVenuePayment(paymentId: string, ownerId: string) {
-  return deleteExpensePayment(ownerId, paymentId);
+export async function deleteVenuePayment(paymentId: string, ownerId: string, actorId: string) {
+  return deleteExpensePayment(ownerId, actorId, paymentId);
 }

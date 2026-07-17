@@ -1,3 +1,4 @@
+import SiteImage from '../SiteImage';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -477,7 +478,7 @@ export default function Fiesta({ data }: TemplateProps) {
                           boxShadow: '0 14px 28px -14px rgba(0,0,0,0.35)',
                         }}
                       >
-                        <img
+                        <SiteImage
                           src={image.url}
                           alt=""
                           loading="lazy"

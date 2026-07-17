@@ -1,3 +1,4 @@
+import SiteImage from '../SiteImage';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useMotionValueEvent, useReducedMotion, useScroll } from 'framer-motion';
@@ -92,7 +93,7 @@ export default function Reel({ data }: TemplateProps) {
       style={{ minHeight: '100svh', scrollSnapAlign: 'start' }}
     >
       {photo ? (
-        <img src={photo} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
+        <SiteImage src={photo} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
       ) : (
         <div className="absolute inset-0" style={{ background: p.heroGradient }} />
       )}

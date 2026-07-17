@@ -1,3 +1,4 @@
+import SiteImage from '../SiteImage';
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion, useScroll, useSpring } from 'framer-motion';
@@ -105,7 +106,7 @@ function CoverPlate({
         className="relative overflow-hidden"
         style={{ border: `1px solid ${line}`, rotateX: tiltX, rotateY: tiltY }}
       >
-        <img
+        <SiteImage
           src={url}
           alt=""
           loading="eager"
@@ -460,7 +461,7 @@ export default function Editorial({ data }: TemplateProps) {
                       className="block overflow-hidden group"
                       style={{ border: `1px solid ${p.line}` }}
                     >
-                      <img
+                      <SiteImage
                         src={image.url}
                         alt=""
                         loading="lazy"
