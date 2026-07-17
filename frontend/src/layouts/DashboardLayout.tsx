@@ -366,11 +366,12 @@ function WeddingSwitcher({
 
   const active = weddings.find((w) => w.id === activeWeddingId);
   const shared = weddings.filter((w) => !w.isOwner);
+  const owned = weddings.filter((w) => w.isOwner);
   // Eyebrow labels only earn their space once both groups exist.
   const groups: Array<[string | null, SwitcherWedding[]]> =
-    shared.length > 0
+    shared.length > 0 && owned.length > 0
       ? [
-          ['Your weddings', weddings.filter((w) => w.isOwner)],
+          ['Your weddings', owned],
           ['Shared with you', shared],
         ]
       : [[null, weddings]];
