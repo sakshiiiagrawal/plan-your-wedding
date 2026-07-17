@@ -337,17 +337,24 @@ type SwitcherWedding = {
 };
 
 /**
- * Always-visible workspace switcher: the active wedding + a popover with every
- * wedding the user owns or collaborates on (grouped owned/shared), pending-
- * invite count, and the doors to /weddings/new and /hub. Rendered under the
- * sidebar brand block so multi-wedding access is discoverable, not buried.
+ * The sidebar brand block doubling as the workspace switcher: the couple's
+ * names in display type ARE the trigger (no separate button repeating the
+ * wedding title), with a meta line carrying date/role/counts and a popover
+ * listing every wedding the user owns or collaborates on (grouped owned/
+ * shared), pending-invite count, and the doors to /weddings/new and /hub.
  */
 function WeddingSwitcher({
+  brideName,
+  groomName,
+  weddingDate,
   weddings,
   activeWeddingId,
   pendingInviteCount,
   onPick,
 }: {
+  brideName: string;
+  groomName: string;
+  weddingDate: string;
   weddings: SwitcherWedding[];
   activeWeddingId: string | null;
   pendingInviteCount: number;
@@ -446,72 +453,89 @@ function WeddingSwitcher({
   };
 
   return (
-    <div style={{ position: 'relative', padding: '10px 16px 12px' }}>
+    <div style={{ position: 'relative' }}>
       <button
         onClick={() => setOpen((v) => !v)}
         title="Switch wedding"
         aria-haspopup="menu"
         aria-expanded={open}
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
+          display: 'block',
           width: '100%',
-          padding: '8px 10px',
-          borderRadius: 8,
-          border: '1px solid var(--line)',
-          background: open ? 'var(--bg-highest)' : 'var(--bg-raised)',
+          padding: '24px 24px 18px',
+          textAlign: 'left',
+          background: open ? 'var(--bg-raised)' : 'transparent',
           cursor: 'pointer',
-          transition: 'background 120ms, border-color 120ms',
+          transition: 'background 120ms',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = 'var(--line-strong)';
+          e.currentTarget.style.background = 'var(--bg-raised)';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = 'var(--line)';
+          if (!open) e.currentTarget.style.background = 'transparent';
         }}
       >
-        <WeddingMonogram title={active?.title ?? 'My wedding'} />
-        <span style={{ minWidth: 0, flex: 1, textAlign: 'left' }}>
-          <span
-            style={{
-              display: 'block',
-              fontSize: 12.5,
-              fontWeight: 500,
-              color: 'var(--ink-high)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {active?.title ?? 'My wedding'}
-          </span>
-          <span style={{ display: 'block', fontSize: 10, color: 'var(--ink-dim)' }}>
-            {active ? (active.isOwner ? 'owner' : active.role) : ''}
-            {weddings.length > 1 && (
-              <>
-                {active ? ' · ' : ''}
-                {weddings.length} weddings
-              </>
-            )}
-            {pendingInviteCount > 0 && (
-              <span style={{ color: 'var(--gold-deep)', fontWeight: 600 }}>
-                {' · '}
-                {pendingInviteCount} invite{pendingInviteCount === 1 ? '' : 's'}
-              </span>
-            )}
-          </span>
-        </span>
-        <HiOutlineChevronRight
+        <span
           style={{
-            width: 13,
-            height: 13,
-            flexShrink: 0,
-            color: 'var(--ink-dim)',
-            transform: open ? 'rotate(-90deg)' : 'rotate(90deg)',
-            transition: 'transform 150ms',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            marginBottom: 8,
           }}
-        />
+        >
+          <span className="uppercase-eyebrow">The Wedding of</span>
+          <HiOutlineChevronRight
+            style={{
+              width: 12,
+              height: 12,
+              flexShrink: 0,
+              color: 'var(--ink-dim)',
+              transform: open ? 'rotate(-90deg)' : 'rotate(90deg)',
+              transition: 'transform 150ms',
+            }}
+          />
+        </span>
+        <span
+          className="display"
+          style={{
+            display: 'block',
+            fontSize: 21,
+            lineHeight: 1.2,
+            color: 'var(--ink-high)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {brideName}{' '}
+          <span style={{ fontStyle: 'italic', color: 'var(--gold)', fontSize: 17 }}>&amp;</span>{' '}
+          {groomName}
+        </span>
+        <span
+          className="mono"
+          style={{
+            display: 'block',
+            marginTop: 7,
+            fontSize: 9.5,
+            letterSpacing: '0.09em',
+            textTransform: 'uppercase',
+            color: 'var(--ink-dim)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {weddingDate || (active ? (active.isOwner ? 'owner' : active.role) : 'My wedding')}
+          {weddingDate && active && !active.isOwner && ` · ${active.role}`}
+          {weddings.length > 1 && ` · ${weddings.length} weddings`}
+          {pendingInviteCount > 0 && (
+            <span style={{ color: 'var(--gold-deep)', fontWeight: 600 }}>
+              {' · '}
+              {pendingInviteCount} invite{pendingInviteCount === 1 ? '' : 's'}
+            </span>
+          )}
+        </span>
       </button>
 
       {open && (
@@ -731,42 +755,11 @@ export default function DashboardLayout() {
           overflowY: 'hidden',
         }}
       >
-        {/* Brand */}
-        <div style={{ padding: '28px 24px 24px', position: 'relative' }}>
-          <div className="uppercase-eyebrow" style={{ marginBottom: 10 }}>
-            The Wedding of
-          </div>
-          <div
-            className="display"
-            style={{ fontSize: 26, lineHeight: 1.05, color: 'var(--ink-high)' }}
-          >
-            {brideName}
-            <div
-              style={{ fontStyle: 'italic', color: 'var(--gold)', fontSize: 20, margin: '2px 0' }}
-            >
-              &amp;
-            </div>
-            {groomName}
-          </div>
-          {weddingDate && (
-            <div
-              className="mono"
-              style={{
-                marginTop: 10,
-                fontSize: 10,
-                letterSpacing: '0.1em',
-                color: 'var(--ink-dim)',
-                textTransform: 'uppercase',
-              }}
-            >
-              {weddingDate}
-            </div>
-          )}
-        </div>
-
-        <hr className="hairline" style={{ margin: '0 24px' }} />
-
+        {/* Brand block = workspace switcher (one unit, no repeated names) */}
         <WeddingSwitcher
+          brideName={brideName}
+          groomName={groomName}
+          weddingDate={weddingDate}
           weddings={weddings}
           activeWeddingId={weddingData?.activeWeddingId ?? null}
           pendingInviteCount={weddingData?.pendingInviteCount ?? 0}
