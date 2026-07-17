@@ -43,20 +43,18 @@ const NAV_ITEMS = [
   { path: '', label: 'Overview', icon: HiOutlineHome, end: true },
   { path: '/venues', label: 'Venues', icon: HiOutlineLocationMarker, section: 'venues' },
   { path: '/events', label: 'Events', icon: HiOutlineCalendar, section: 'events' },
-  // Grouped right after Venues — this is room allocation for the venues
-  // marked "Has Accommodation" there, not a separate venue type.
   { path: '/guests', label: 'Guests & RSVP', icon: HiOutlineUserGroup, section: 'guests' },
   { path: '/vendors', label: 'Vendors', icon: HiOutlineBriefcase, section: 'vendors' },
+  { path: '/budget', label: 'Budget', icon: HiOutlineCurrencyRupee, section: 'budget' },
+  { path: '/gallery', label: 'Gallery', icon: HiOutlinePhotograph, section: 'website' },
+  { path: '/website', label: 'Pages', icon: HiOutlineGlobe, section: 'website' },
+  { path: '/tasks', label: 'Tasks', icon: HiOutlineClipboardList, section: 'tasks' },
   {
     path: '/accommodations',
     label: 'Room Allocation',
     icon: HiOutlineOfficeBuilding,
     section: 'venues',
   },
-  { path: '/budget', label: 'Budget', icon: HiOutlineCurrencyRupee, section: 'budget' },
-  { path: '/tasks', label: 'Tasks', icon: HiOutlineClipboardList, section: 'tasks' },
-  { path: '/gallery', label: 'Gallery', icon: HiOutlinePhotograph, section: 'website' },
-  { path: '/website', label: 'Public Site', icon: HiOutlineGlobe, section: 'website' },
   { path: '/settings', label: 'Settings', icon: HiOutlineCog },
 ];
 
@@ -83,7 +81,7 @@ const CRUMB_MAP: Record<string, string> = {
   '/budget': 'budget',
   '/tasks': 'tasks',
   '/gallery': 'gallery',
-  '/website': 'public site',
+  '/website': 'pages',
   '/settings': 'settings',
 };
 
