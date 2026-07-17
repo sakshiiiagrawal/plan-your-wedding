@@ -71,7 +71,7 @@ function App() {
             {/* Workspace hub: your weddings, shared weddings, pending invites.
                 /invites is the pre-hub URL (old invite emails/bookmarks). */}
             <Route path="/hub" element={<Hub />} />
-            <Route path="/invites" element={<Navigate to="/hub" replace />} />
+            <Route path="/invites" element={<Navigate to="/hub?manage=1" replace />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
 
             {/* Onboarding wizard; /weddings/new is the same wizard for a

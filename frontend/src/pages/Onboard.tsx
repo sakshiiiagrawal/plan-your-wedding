@@ -226,7 +226,7 @@ export default function Onboard({ createOnly = false }: { createOnly?: boolean }
                   mergeData(v);
                   setStep(detailsStep + 1);
                 }}
-                onBack={createOnly ? () => navigate('/hub') : () => setStep(1)}
+                onBack={createOnly ? () => navigate('/hub?manage=1') : () => setStep(1)}
               />
             ) : !createOnly && step === 3 ? (
               <Step3_Account

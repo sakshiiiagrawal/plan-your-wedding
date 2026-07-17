@@ -21,9 +21,15 @@ import {
  * dashboard switcher.
  */
 export default function Hub() {
-  const { user, isAuthenticated, loading, refresh, logout } = useAuth();
+  const { user, isAuthenticated, loading, slug, refresh, logout } = useAuth();
   const [searchParams] = useSearchParams();
   const fromPartnerSignup = searchParams.get('partner') === '1';
+  // The hub is a deliberate "manage weddings / see invites" destination — the
+  // switcher and old /invites links arrive with ?manage=1. A plain visit
+  // (bookmark, marketing redirect, a stray /hub) from someone who already has
+  // an active workspace should drop them straight into it, never onto this
+  // list. partner=1 is an explicit "waiting for my invite" landing too.
+  const wantsHub = searchParams.get('manage') === '1' || fromPartnerSignup;
   const { data: invites = [], isLoading, isFetching, refetch } = usePendingInvites(isAuthenticated);
   const { data: weddingData } = useWeddings();
   const acceptPending = useAcceptPendingInvite();
@@ -37,6 +43,13 @@ export default function Hub() {
   if (loading) return null;
   if (!isAuthenticated) {
     return <Navigate to={`/login?next=${encodeURIComponent('/hub')}`} replace />;
+  }
+  // slug is the resolved active-workspace slug (from /auth/me, cached in
+  // localStorage) — present the instant a returning collaborator loads, so
+  // this redirect fires before the hub ever paints. No active workspace →
+  // slug is null and the hub renders as the create-or-join home.
+  if (slug && !wantsHub) {
+    return <Navigate to={`/${slug}/dashboard`} replace />;
   }
 
   const emailVerified = user?.emailVerified !== false;

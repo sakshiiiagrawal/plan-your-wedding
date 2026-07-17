@@ -496,6 +496,7 @@ function WeddingSwitcher({
             }}
           />
         </span>
+        {/* Long name pairs wrap to a second line — never ellipsize the couple */}
         <span
           className="display"
           style={{
@@ -503,9 +504,7 @@ function WeddingSwitcher({
             fontSize: 21,
             lineHeight: 1.2,
             color: 'var(--ink-high)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+            overflowWrap: 'break-word',
           }}
         >
           {brideName}{' '}
@@ -591,7 +590,7 @@ function WeddingSwitcher({
                 style={itemStyle}
                 onClick={() => {
                   setOpen(false);
-                  navigate('/hub');
+                  navigate('/hub?manage=1');
                 }}
               >
                 <HiOutlineViewGrid

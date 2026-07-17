@@ -122,7 +122,11 @@ export const verifyToken = async (
           'wedding_id, role, allowed_sections, permissions, wedding:weddings!wedding_id(id, slug, title, currency)',
         )
         .eq('member_id', user.id)
-        .eq('status', 'active'),
+        .eq('status', 'active')
+        // Stable order so the "first membership" fallback (when active_wedding_id
+        // is unset/stale) is deterministic — the oldest membership, not whatever
+        // the DB happened to return first.
+        .order('created_at', { ascending: true }),
     ]);
     const owned = (ownedRes.data ?? []) as WeddingRow[];
     const memberships = ((membershipRes.data ?? []) as unknown as MembershipRow[]).filter(
