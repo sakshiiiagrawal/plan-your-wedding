@@ -29,7 +29,7 @@ import {
   HiOutlinePlus,
   HiOutlineViewGrid,
 } from 'react-icons/hi';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useModalDismiss } from '../hooks/useModalDismiss';
@@ -362,7 +362,21 @@ function WeddingSwitcher({
 }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   useModalDismiss(open, () => setOpen(false));
+
+  // Close on any click outside the switcher — more robust than the backdrop,
+  // which sibling UI in a higher stacking context (sidebar nav) can occlude.
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [open]);
 
   const active = weddings.find((w) => w.id === activeWeddingId);
   const shared = weddings.filter((w) => !w.isOwner);
@@ -454,7 +468,7 @@ function WeddingSwitcher({
   };
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div ref={rootRef} style={{ position: 'relative' }}>
       <button
         onClick={() => setOpen((v) => !v)}
         title="Switch wedding"
