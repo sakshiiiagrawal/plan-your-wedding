@@ -12,7 +12,7 @@ import { parseGuestExcel, validateGuest, generateGuestTemplate } from '../excel/
  * every event they're linked to, tentative if any event is tentative,
  * pending otherwise (including no events).
  */
-function aggregateRsvpStatus(rsvps: { rsvp_status: string }[]): string {
+export function aggregateRsvpStatus(rsvps: { rsvp_status: string }[]): string {
   if (rsvps.length === 0) return 'pending';
   if (rsvps.some((r) => r.rsvp_status === 'confirmed')) return 'confirmed';
   if (rsvps.every((r) => r.rsvp_status === 'declined')) return 'declined';

@@ -54,8 +54,15 @@ app.use(
 // Logging
 app.use(morgan('dev'));
 
-// Body parsing
-app.use(express.json());
+// Body parsing. rawBody is kept for webhook signature verification
+// (Meta signs the exact bytes, not the parsed JSON).
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: true }));
 
 // Health check
@@ -103,6 +110,7 @@ const PROTECTED_PREFIXES: string[] = [
   '/api/v1/expense',
   '/api/v1/tasks',
   '/api/v1/reminders',
+  '/api/v1/whatsapp',
   '/api/v1/website-content',
   '/api/v1/members',
   '/api/v1/pages',

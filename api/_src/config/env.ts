@@ -22,6 +22,14 @@ const envSchema = z
     SMTP_USER: z.string().optional(),
     SMTP_PASS: z.string().optional(),
     EMAIL_FROM: z.string().optional(),
+    // WhatsApp Cloud API — all unset disables the feature (endpoints 503)
+    WHATSAPP_ACCESS_TOKEN: z.string().optional(),
+    WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+    WHATSAPP_WABA_ID: z.string().optional(),
+    // Echoed back to Meta on webhook GET verification
+    WHATSAPP_VERIFY_TOKEN: z.string().optional(),
+    // Meta app secret; set to enforce X-Hub-Signature-256 on inbound webhooks
+    WHATSAPP_APP_SECRET: z.string().optional(),
   })
   .superRefine((cfg, ctx) => {
     // Every invite/verification/reset email builds its link from FRONTEND_URL;

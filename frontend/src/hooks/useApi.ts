@@ -1906,3 +1906,96 @@ export const useDeleteWedding = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['weddings'] }),
   });
 };
+
+// =====================================================
+// WHATSAPP HOOKS
+// =====================================================
+
+export interface WaTemplate {
+  name: string;
+  known: boolean;
+  status: string;
+  category: string;
+  body: string;
+  buttons: string[];
+  description: string;
+  startsRsvpFlow: boolean;
+  needsEvent: boolean;
+}
+
+export interface WaMessage {
+  id: string;
+  guest_id: string | null;
+  phone: string;
+  direction: 'outbound' | 'inbound';
+  template_name: string | null;
+  body: string | null;
+  status: string;
+  error: string | null;
+  created_at: string;
+  guests: { first_name: string; last_name: string | null } | null;
+}
+
+export const useWaTemplates = () =>
+  useQuery<WaTemplate[]>({
+    queryKey: ['whatsapp', 'templates'],
+    queryFn: () => api.get('/whatsapp/templates').then((res) => res.data),
+    staleTime: 60 * 1000,
+    retry: false,
+  });
+
+export const useWaMessages = () =>
+  useQuery<WaMessage[]>({
+    queryKey: ['whatsapp', 'messages'],
+    queryFn: () => api.get('/whatsapp/messages').then((res) => res.data),
+    refetchInterval: 15 * 1000,
+  });
+
+export const useSyncWaTemplates = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post('/whatsapp/templates/sync').then((res) => res.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['whatsapp', 'templates'] }),
+  });
+};
+
+export const useSendWaCampaign = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { template_name: string; guest_ids?: string[]; event_id?: string }) =>
+      api.post('/whatsapp/send', payload).then((res) => res.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['whatsapp', 'messages'] }),
+  });
+};
+
+export interface WaPoll {
+  id: string;
+  question: string;
+  created_at: string;
+  total_votes: number;
+  options: { label: string; votes: number; voters: string[] }[];
+}
+
+export const useWaPolls = () =>
+  useQuery<WaPoll[]>({
+    queryKey: ['whatsapp', 'polls'],
+    queryFn: () => api.get('/whatsapp/polls').then((res) => res.data),
+    refetchInterval: 15 * 1000,
+  });
+
+export const useSendWaPoll = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: {
+      question: string;
+      options: string[];
+      guest_ids?: string[];
+      rsvp_filter?: string;
+      side?: string;
+    }) => api.post('/whatsapp/polls', payload).then((res) => res.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['whatsapp', 'polls'] });
+      queryClient.invalidateQueries({ queryKey: ['whatsapp', 'messages'] });
+    },
+  });
+};

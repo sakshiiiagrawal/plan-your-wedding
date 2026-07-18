@@ -18,6 +18,8 @@ import { validateBody } from '../middleware/validate.middleware';
 import { publicRsvpSchema } from '../validators/guests.validator';
 import { publicRsvpLimiter } from '../middleware/rate-limit.middleware';
 import weddingsRoutes from './weddings.routes';
+import whatsappRoutes from './whatsapp.routes';
+import { verifyWebhook, receiveWebhook } from '../controllers/whatsapp.controller';
 import geocodeRoutes from './geocode.routes';
 import membersRoutes from './members.routes';
 import pagesRoutes from './pages.routes';
@@ -47,6 +49,11 @@ router.post(
 // Cron (public path in app.ts; guarded inside by CRON_SECRET, not a user token)
 router.get('/cron/daily-digest', runDailyDigest);
 
+// Meta WhatsApp webhook (public; GET guarded by verify token, POST by
+// optional payload signature)
+router.get('/public/whatsapp/webhook', verifyWebhook);
+router.post('/public/whatsapp/webhook', receiveWebhook);
+
 // Auth (login/register are public; /me uses global middleware)
 router.use('/auth', authRoutes);
 
@@ -56,6 +63,8 @@ router.use('/geocode', geocodeRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/events', requireSection('events'), eventsRoutes);
 router.use('/guests', requireSection('guests'), guestsRoutes);
+// WhatsApp campaigns operate on the guest list, so they share its section gate
+router.use('/whatsapp', requireSection('guests'), whatsappRoutes);
 router.use('/venues', requireSection('venues'), applyFinanceTier, venuesRoutes);
 router.use('/vendors', requireSection('vendors'), applyFinanceTier, vendorsRoutes);
 router.use('/expense', requireSection('budget'), applyFinanceTier, expenseRoutes);

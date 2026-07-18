@@ -28,6 +28,7 @@ import {
   HiCheck,
   HiOutlinePlus,
   HiOutlineViewGrid,
+  HiOutlineChat,
 } from 'react-icons/hi';
 import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
@@ -44,6 +45,7 @@ const NAV_ITEMS = [
   { path: '/venues', label: 'Venues', icon: HiOutlineLocationMarker, section: 'venues' },
   { path: '/events', label: 'Events', icon: HiOutlineCalendar, section: 'events' },
   { path: '/guests', label: 'Guests & RSVP', icon: HiOutlineUserGroup, section: 'guests' },
+  { path: '/whatsapp', label: 'WhatsApp', icon: HiOutlineChat, section: 'guests' },
   { path: '/vendors', label: 'Vendors', icon: HiOutlineBriefcase, section: 'vendors' },
   { path: '/budget', label: 'Budget', icon: HiOutlineCurrencyRupee, section: 'budget' },
   { path: '/gallery', label: 'Gallery', icon: HiOutlinePhotograph, section: 'website' },
@@ -74,6 +76,7 @@ const PRINTABLE_PATHS = new Set([
 const CRUMB_MAP: Record<string, string> = {
   '': 'overview',
   '/guests': 'guests & rsvp',
+  '/whatsapp': 'whatsapp',
   '/events': 'events',
   '/venues': 'venues',
   '/accommodations': 'room allocation',

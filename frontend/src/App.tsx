@@ -26,6 +26,7 @@ import { AuthProvider } from './contexts/AuthContext';
 const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
 const Events = lazy(() => import('./pages/dashboard/Events'));
 const Guests = lazy(() => import('./pages/dashboard/Guests'));
+const WhatsAppPage = lazy(() => import('./pages/dashboard/WhatsApp'));
 const Venues = lazy(() => import('./pages/dashboard/Venues'));
 const Accommodations = lazy(() => import('./pages/dashboard/Accommodations'));
 const Vendors = lazy(() => import('./pages/dashboard/Vendors'));
@@ -148,6 +149,20 @@ function App() {
                     }
                   >
                     <Guests />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="whatsapp"
+                element={
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center py-12 text-gray-500">
+                        Loading...
+                      </div>
+                    }
+                  >
+                    <WhatsAppPage />
                   </Suspense>
                 }
               />
