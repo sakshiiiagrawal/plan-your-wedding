@@ -10,7 +10,7 @@ import {
   HiOutlinePhotograph,
   HiOutlineChevronRight,
 } from 'react-icons/hi';
-import { CornerFlourish, Ornament, ProgressRing, KPICard } from '../../components/ui';
+import { CornerFlourish, Ornament, ProgressRing } from '../../components/ui';
 import { formatDate, parseLocalDate } from '../../utils/date';
 import { formatCurrencyCompact } from '../../utils/currency';
 import { useAuth } from '../../contexts/AuthContext';
@@ -35,6 +35,31 @@ const QUICK_ACTIONS = [
   { label: 'Upload to gallery', icon: HiOutlinePhotograph, path: '/gallery' },
   { label: 'Publish website', icon: HiOutlineGlobe, path: '/website' },
 ];
+
+function RingStat({
+  value,
+  label,
+  caption,
+  hint,
+}: {
+  value: number;
+  label: string;
+  caption: string;
+  hint?: string;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
+      <ProgressRing value={value} size={56} label={`${Math.round(value * 100)}%`} />
+      <div>
+        <div className="uppercase-eyebrow" style={{ fontSize: 10 }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--ink-mid)', marginTop: 2 }}>{caption}</div>
+        {hint && <div style={{ fontSize: 10, color: 'var(--ink-low)', marginTop: 1 }}>{hint}</div>}
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { slug } = useParams<{ slug: string }>();
@@ -183,6 +208,16 @@ export default function Dashboard() {
           }}
         />
 
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 'clamp(24px, 4vw, 56px)',
+            flexWrap: 'wrap',
+          }}
+        >
+        <div style={{ flex: '1 1 340px' }}>
         <div className="uppercase-eyebrow" style={{ marginBottom: 14 }}>
           Together with their families
         </div>
@@ -311,6 +346,259 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 24,
+            borderLeft: '1px solid var(--line-soft)',
+            paddingLeft: 'clamp(24px, 3vw, 40px)',
+            textAlign: 'left',
+          }}
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, auto)',
+              gap: '20px clamp(24px, 3vw, 40px)',
+            }}
+          >
+            <RingStat
+              value={rsvpPct}
+              label="RSVP"
+              caption={`${rsvpConfirmed} of ${totalGuests}`}
+              hint={`${rsvpPending} pending · ${rsvpDeclined} regrets`}
+            />
+            <RingStat
+              value={tasksPct}
+              label="Tasks"
+              caption={`${tasksCompleted} of ${tasksTotal}`}
+            />
+            {canSeeMoney && (
+              <RingStat
+                value={budgetPct}
+                label="Budget"
+                caption={budgetTotal > 0 ? fmtLakh(budgetPaid) : 'No budget set'}
+              />
+            )}
+            <RingStat
+              value={vendors.length > 0 ? vendorsBooked / vendors.length : 0}
+              label="Vendors"
+              caption={`${vendorsBooked} of ${vendors.length}`}
+            />
+          </div>
+
+          {/* Payments due */}
+          {canSeeMoney &&
+            paymentAlerts &&
+            (paymentAlerts.overdueCount > 0 || paymentAlerts.upcomingCount > 0) && (
+              <div>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 10,
+                  }}
+                >
+                  <div className="uppercase-eyebrow">Payments due</div>
+                  <Link
+                    to={`/${slug}/dashboard/expense?tab=payments`}
+                    style={{ fontSize: 12, color: 'var(--gold-deep)', textDecoration: 'none' }}
+                  >
+                    →
+                  </Link>
+                </div>
+
+                {paymentAlerts.overdueCount > 0 && (
+                  <Link
+                    to={`/${slug}/dashboard/expense?tab=payments`}
+                    style={{
+                      display: 'block',
+                      fontSize: 13,
+                      color: '#b91c1c',
+                      marginBottom: 10,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    {paymentAlerts.overdueCount} overdue ·{' '}
+                    {formatCurrencyCompact(paymentAlerts.overdueTotal)}
+                  </Link>
+                )}
+
+                {paymentAlerts.upcomingPayments.slice(0, 3).map((p) => (
+                  <div
+                    key={p.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '8px 0',
+                      borderTop: '1px solid var(--line-soft)',
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: 'var(--ink-high)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {p.expense.description}
+                      </div>
+                      {p.due_date && (
+                        <div style={{ fontSize: 11, color: 'var(--ink-low)' }}>
+                          Due {formatDate(p.due_date, { month: 'short', day: 'numeric' })}
+                        </div>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gold-deep)' }}>
+                      {formatCurrencyCompact(p.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+          {/* Open tasks */}
+          <div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 10,
+              }}
+            >
+              <div className="uppercase-eyebrow">Up next</div>
+              <Link
+                to={`/${slug}/dashboard/tasks`}
+                style={{ fontSize: 12, color: 'var(--gold-deep)', textDecoration: 'none' }}
+              >
+                →
+              </Link>
+            </div>
+
+            {upcomingTasks.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--ink-dim)', padding: '8px 0' }}>
+                {tasksTotal === 0 ? (
+                  <>
+                    No tasks yet —{' '}
+                    <Link to={`/${slug}/dashboard/tasks`} style={{ color: 'var(--gold-deep)' }}>
+                      add your first task
+                    </Link>
+                    .
+                  </>
+                ) : (
+                  'All tasks done! 🎉'
+                )}
+              </p>
+            ) : (
+              <div>
+                {upcomingTasks.slice(0, 5).map((t: any) => {
+                  const isInProgress = t.status === 'in_progress';
+                  return (
+                    <div
+                      key={t.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '8px 0',
+                        borderTop: '1px solid var(--line-soft)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 14,
+                          height: 14,
+                          borderRadius: 4,
+                          flexShrink: 0,
+                          border: `1.5px solid ${isInProgress ? 'var(--gold)' : 'var(--line-strong)'}`,
+                          background: isInProgress ? 'var(--gold-glow)' : 'transparent',
+                        }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: 'var(--ink-high)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {t.title}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--ink-low)' }}>{t.assigned_to}</div>
+                      </div>
+                      {t.due_date && (
+                        <span className="pill muted" style={{ fontSize: 10, flexShrink: 0 }}>
+                          {formatDate(t.due_date, {
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+        </div>
+
+        {/* Quick actions */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 'clamp(8px, 2vw, 16px)',
+            flexWrap: 'wrap',
+            marginTop: 32,
+            paddingTop: 24,
+            borderTop: '1px solid var(--line-soft)',
+          }}
+        >
+          {QUICK_ACTIONS.map((action) => (
+            <Link
+              key={action.label}
+              to={`/${slug}/dashboard${action.path}`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 16px',
+                borderRadius: 8,
+                border: '1px solid var(--line-soft)',
+                background: 'transparent',
+                color: 'var(--ink-mid)',
+                fontSize: 13,
+                textDecoration: 'none',
+                transition: 'all 150ms',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.background = 'var(--bg-raised)';
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--line)';
+                (e.currentTarget as HTMLElement).style.color = 'var(--ink-high)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.background = 'transparent';
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--line-soft)';
+                (e.currentTarget as HTMLElement).style.color = 'var(--ink-mid)';
+              }}
+            >
+              <action.icon style={{ width: 15, height: 15, color: 'var(--gold)', flexShrink: 0 }} />
+              <span>{action.label}</span>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* ── First-run guide ─────────────────────────────────────── */}
@@ -343,48 +631,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── KPI Strip ──────────────────────────────────────────────── */}
-      <div
-        className={`grid grid-cols-2 gap-4 mb-7 ${canSeeMoney ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}
-      >
-        <KPICard
-          eyebrow="RSVPs confirmed"
-          value={rsvpConfirmed}
-          suffix={`of ${totalGuests}`}
-          hint={`${rsvpPending} pending · ${rsvpDeclined} regrets`}
-          accent
-        />
-        {canSeeMoney && (
-          <KPICard
-            eyebrow="Budget spent"
-            value={fmtLakh(budgetPaid)}
-            {...(budgetTotal > 0 ? { suffix: `of ${fmtLakh(budgetTotal)}` } : {})}
-            hint={
-              budgetTotal > 0 ? `${Math.round(budgetPct * 100)}% of total budget` : 'No budget set'
-            }
-          />
-        )}
-        <KPICard
-          eyebrow="Tasks done"
-          value={String(tasksCompleted)}
-          suffix={`/ ${tasksTotal}`}
-          hint={`${Math.round(tasksPct * 100)}% complete · ${tasksPending} open`}
-        />
-        <KPICard
-          eyebrow="Vendors booked"
-          value={vendorsBooked}
-          suffix={`of ${vendors.length}`}
-          {...(canSeeMoney
-            ? {
-                hint: `${vendors.filter((v: any) => (v.finance_summary?.paid_amount ?? 0) > 0).length} with payments logged`,
-              }
-            : {})}
-          accent
-        />
-      </div>
-
-      {/* ── Two-column: Timeline + Tasks ────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-5 mb-7">
+      {/* ── Festivities + Recent activity ───────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Events timeline */}
         <div className="card">
           <div
@@ -520,223 +768,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Right: Progress rings + tasks */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Progress rings */}
-          <div className="card">
-            <div className="uppercase-eyebrow" style={{ marginBottom: 14 }}>
-              Progress
-            </div>
-            <div style={{ display: 'flex', gap: 18, justifyContent: 'space-around' }}>
-              <ProgressRing
-                value={rsvpPct}
-                size={76}
-                label={`${Math.round(rsvpPct * 100)}%`}
-                sublabel="RSVP"
-              />
-              {canSeeMoney && (
-                <ProgressRing
-                  value={budgetPct}
-                  size={76}
-                  label={`${Math.round(budgetPct * 100)}%`}
-                  sublabel="Budget"
-                />
-              )}
-              <ProgressRing
-                value={tasksPct}
-                size={76}
-                label={`${Math.round(tasksPct * 100)}%`}
-                sublabel="Tasks"
-              />
-            </div>
-          </div>
-
-          {/* Payments due */}
-          {canSeeMoney &&
-            paymentAlerts &&
-            (paymentAlerts.overdueCount > 0 || paymentAlerts.upcomingCount > 0) && (
-              <div className="card">
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 12,
-                  }}
-                >
-                  <div className="uppercase-eyebrow">Payments due</div>
-                  <Link
-                    to={`/${slug}/dashboard/expense?tab=payments`}
-                    style={{ fontSize: 12, color: 'var(--gold-deep)', textDecoration: 'none' }}
-                  >
-                    →
-                  </Link>
-                </div>
-
-                {paymentAlerts.overdueCount > 0 && (
-                  <Link
-                    to={`/${slug}/dashboard/expense?tab=payments`}
-                    style={{
-                      display: 'block',
-                      fontSize: 13,
-                      color: '#b91c1c',
-                      marginBottom: 10,
-                      textDecoration: 'none',
-                    }}
-                  >
-                    {paymentAlerts.overdueCount} overdue ·{' '}
-                    {formatCurrencyCompact(paymentAlerts.overdueTotal)}
-                  </Link>
-                )}
-
-                {paymentAlerts.upcomingPayments.slice(0, 3).map((p) => (
-                  <div
-                    key={p.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: '8px 0',
-                      borderTop: '1px solid var(--line-soft)',
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontSize: 13,
-                          color: 'var(--ink-high)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {p.expense.description}
-                      </div>
-                      {p.due_date && (
-                        <div style={{ fontSize: 11, color: 'var(--ink-low)' }}>
-                          Due {formatDate(p.due_date, { month: 'short', day: 'numeric' })}
-                        </div>
-                      )}
-                    </div>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gold-deep)' }}>
-                      {formatCurrencyCompact(p.amount)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-          {/* Open tasks */}
-          <div className="card" style={{ flex: 1 }}>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 14,
-              }}
-            >
-              <div>
-                <div className="uppercase-eyebrow">Up next</div>
-                <h3
-                  className="display"
-                  style={{
-                    margin: '3px 0 0',
-                    fontSize: 18,
-                    color: 'var(--ink-high)',
-                    fontWeight: 500,
-                  }}
-                >
-                  Open tasks
-                </h3>
-              </div>
-              <Link
-                to={`/${slug}/dashboard/tasks`}
-                style={{ fontSize: 12, color: 'var(--gold-deep)', textDecoration: 'none' }}
-              >
-                →
-              </Link>
-            </div>
-
-            {upcomingTasks.length === 0 ? (
-              <p
-                style={{
-                  fontSize: 13,
-                  color: 'var(--ink-dim)',
-                  textAlign: 'center',
-                  padding: '16px 0',
-                }}
-              >
-                {tasksTotal === 0 ? (
-                  <>
-                    No tasks yet —{' '}
-                    <Link to={`/${slug}/dashboard/tasks`} style={{ color: 'var(--gold-deep)' }}>
-                      add your first task
-                    </Link>
-                    .
-                  </>
-                ) : (
-                  'All tasks done! 🎉'
-                )}
-              </p>
-            ) : (
-              <div>
-                {upcomingTasks.slice(0, 5).map((t: any) => {
-                  const isInProgress = t.status === 'in_progress';
-                  return (
-                    <div
-                      key={t.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12,
-                        padding: '8px 0',
-                        borderTop: '1px solid var(--line-soft)',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 14,
-                          height: 14,
-                          borderRadius: 4,
-                          flexShrink: 0,
-                          border: `1.5px solid ${isInProgress ? 'var(--gold)' : 'var(--line-strong)'}`,
-                          background: isInProgress ? 'var(--gold-glow)' : 'transparent',
-                        }}
-                      />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          style={{
-                            fontSize: 13,
-                            color: 'var(--ink-high)',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {t.title}
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--ink-low)' }}>{t.assigned_to}</div>
-                      </div>
-                      {t.due_date && (
-                        <span className="pill muted" style={{ fontSize: 10, flexShrink: 0 }}>
-                          {formatDate(t.due_date, {
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Bottom: Activity + Quick Actions ─────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Recent activity */}
         <div className="card">
           <div className="uppercase-eyebrow" style={{ marginBottom: 14 }}>
@@ -782,49 +813,6 @@ export default function Dashboard() {
               </div>
             ))
           )}
-        </div>
-
-        {/* Quick actions */}
-        <div className="card">
-          <div className="uppercase-eyebrow" style={{ marginBottom: 14 }}>
-            Quick actions
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {QUICK_ACTIONS.map((action) => (
-              <Link
-                key={action.label}
-                to={`/${slug}/dashboard${action.path}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '14px 14px',
-                  borderRadius: 8,
-                  border: '1px solid var(--line-soft)',
-                  background: 'transparent',
-                  color: 'var(--ink-mid)',
-                  fontSize: 13,
-                  textDecoration: 'none',
-                  transition: 'all 150ms',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = 'var(--bg-raised)';
-                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--line)';
-                  (e.currentTarget as HTMLElement).style.color = 'var(--ink-high)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = 'transparent';
-                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--line-soft)';
-                  (e.currentTarget as HTMLElement).style.color = 'var(--ink-mid)';
-                }}
-              >
-                <action.icon
-                  style={{ width: 15, height: 15, color: 'var(--gold)', flexShrink: 0 }}
-                />
-                <span>{action.label}</span>
-              </Link>
-            ))}
-          </div>
         </div>
       </div>
     </div>

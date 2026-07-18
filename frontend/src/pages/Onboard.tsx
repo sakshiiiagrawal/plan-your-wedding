@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useCreateWedding } from '../hooks/useApi';
+import AuthShell from '../components/ui/AuthShell';
 
 import Step1_Welcome from './onboard/Step1_Welcome';
 import Step2_WeddingDetails from './onboard/Step2_WeddingDetails';
@@ -145,120 +146,113 @@ export default function Onboard({ createOnly = false }: { createOnly?: boolean }
   if (createOnly && (loading || !isAuthenticated)) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-maroon-800 via-maroon-700 to-gold-600 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-6">
-          <p className="font-script text-3xl text-cream">
-            {createOnly ? 'Plan a New Wedding' : 'Wedding Planner Setup'}
-          </p>
+    <AuthShell
+      title={createOnly ? 'Plan a new wedding' : 'Start planning'}
+      cardClassName="bg-white rounded-2xl shadow-[0_28px_70px_-28px_rgba(64,48,32,0.4)] ring-1 ring-[#eadfce] p-5 sm:p-8"
+    >
+      {!successSlug && (
+        <div className="flex justify-center gap-2 mb-8">
+          {Array.from({ length: STEPS }, (_, i) => (
+            <div
+              key={i}
+              className={`h-2 rounded-full transition-all duration-300 ${
+                i + 1 < step
+                  ? 'w-6 bg-maroon-800'
+                  : i + 1 === step
+                    ? 'w-8 bg-gold-500'
+                    : 'w-2 bg-gray-200'
+              }`}
+            />
+          ))}
         </div>
+      )}
 
-        <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-8">
-          {!successSlug && (
-            <div className="flex justify-center gap-2 mb-8">
-              {Array.from({ length: STEPS }, (_, i) => (
-                <div
-                  key={i}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    i + 1 < step
-                      ? 'w-6 bg-maroon-800'
-                      : i + 1 === step
-                        ? 'w-8 bg-gold-500'
-                        : 'w-2 bg-gray-200'
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-
-          <AnimatePresence mode="wait">
-            {successSlug ? (
-              <OnboardSuccess
-                key="success"
-                brideName={formData.brideName}
-                groomName={formData.groomName}
-                slug={successSlug}
-                email={createOnly ? '' : formData.email}
-              />
-            ) : !createOnly && step === 1 ? (
-              <Step1_Welcome
-                key="step1"
-                onNext={() => {
-                  setMode('couple');
-                  setStep(2);
-                }}
-                onCollaborator={() => {
-                  setMode('collaborator');
-                  setStep(2);
-                }}
-                onPartner={() => {
-                  setMode('partner');
-                  setStep(2);
-                }}
-              />
-            ) : !createOnly && (mode === 'collaborator' || mode === 'partner') ? (
-              <Step3_Account
-                key="collab-account"
-                data={{
-                  name: formData.name,
-                  email: formData.email,
-                  password: formData.password,
-                  confirmPassword: formData.confirmPassword,
-                }}
-                submitting={submitting}
-                nextLabel="Create account →"
-                onNext={(v) => {
-                  mergeData(v);
-                  void handleCollaboratorSubmit(v);
-                }}
-                onBack={() => setStep(1)}
-              />
-            ) : step === detailsStep ? (
-              <Step2_WeddingDetails
-                key="step2"
-                data={{
-                  brideName: formData.brideName,
-                  groomName: formData.groomName,
-                  weddingDate: formData.weddingDate,
-                  slug: formData.slug,
-                }}
-                onNext={(v) => {
-                  mergeData(v);
-                  setStep(detailsStep + 1);
-                }}
-                onBack={createOnly ? () => navigate('/hub?manage=1') : () => setStep(1)}
-              />
-            ) : !createOnly && step === 3 ? (
-              <Step3_Account
-                key="step3"
-                data={{
-                  name: formData.name,
-                  email: formData.email,
-                  password: formData.password,
-                  confirmPassword: formData.confirmPassword,
-                }}
-                onNext={(v) => {
-                  mergeData(v);
-                  setStep(4);
-                }}
-                onBack={() => setStep(2)}
-              />
-            ) : step === reviewStep ? (
-              <Step4_Review
-                key="step4"
-                data={
-                  createOnly
-                    ? { ...formData, name: user?.name ?? '', email: user?.email ?? '' }
-                    : formData
-                }
-                onSubmit={handleSubmit}
-                onBack={() => setStep(reviewStep - 1)}
-                loading={submitting}
-              />
-            ) : null}
-          </AnimatePresence>
-        </div>
-      </div>
-    </div>
+      <AnimatePresence mode="wait">
+        {successSlug ? (
+          <OnboardSuccess
+            key="success"
+            brideName={formData.brideName}
+            groomName={formData.groomName}
+            slug={successSlug}
+            email={createOnly ? '' : formData.email}
+          />
+        ) : !createOnly && step === 1 ? (
+          <Step1_Welcome
+            key="step1"
+            onNext={() => {
+              setMode('couple');
+              setStep(2);
+            }}
+            onCollaborator={() => {
+              setMode('collaborator');
+              setStep(2);
+            }}
+            onPartner={() => {
+              setMode('partner');
+              setStep(2);
+            }}
+          />
+        ) : !createOnly && (mode === 'collaborator' || mode === 'partner') ? (
+          <Step3_Account
+            key="collab-account"
+            data={{
+              name: formData.name,
+              email: formData.email,
+              password: formData.password,
+              confirmPassword: formData.confirmPassword,
+            }}
+            submitting={submitting}
+            nextLabel="Create account →"
+            onNext={(v) => {
+              mergeData(v);
+              void handleCollaboratorSubmit(v);
+            }}
+            onBack={() => setStep(1)}
+          />
+        ) : step === detailsStep ? (
+          <Step2_WeddingDetails
+            key="step2"
+            data={{
+              brideName: formData.brideName,
+              groomName: formData.groomName,
+              weddingDate: formData.weddingDate,
+              slug: formData.slug,
+            }}
+            onNext={(v) => {
+              mergeData(v);
+              setStep(detailsStep + 1);
+            }}
+            onBack={createOnly ? () => navigate('/hub?manage=1') : () => setStep(1)}
+          />
+        ) : !createOnly && step === 3 ? (
+          <Step3_Account
+            key="step3"
+            data={{
+              name: formData.name,
+              email: formData.email,
+              password: formData.password,
+              confirmPassword: formData.confirmPassword,
+            }}
+            onNext={(v) => {
+              mergeData(v);
+              setStep(4);
+            }}
+            onBack={() => setStep(2)}
+          />
+        ) : step === reviewStep ? (
+          <Step4_Review
+            key="step4"
+            data={
+              createOnly
+                ? { ...formData, name: user?.name ?? '', email: user?.email ?? '' }
+                : formData
+            }
+            onSubmit={handleSubmit}
+            onBack={() => setStep(reviewStep - 1)}
+            loading={submitting}
+          />
+        ) : null}
+      </AnimatePresence>
+    </AuthShell>
   );
 }

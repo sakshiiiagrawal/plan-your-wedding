@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useResendVerification, useVerifyEmail } from '../hooks/useApi';
+import AuthShell from '../components/ui/AuthShell';
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
@@ -49,40 +50,41 @@ export default function VerifyEmail() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-maroon-800 via-maroon-700 to-gold-600 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 text-center">
-        {!token && <p className="text-gray-600">This verification link is missing its token.</p>}
-        {token && status === 'pending' && <p className="text-gray-600">Verifying your email...</p>}
-        {token && status === 'done' && (
-          <>
-            <p className="text-gray-700 mb-4">Your email is verified!</p>
-            <Link to={nextHref} className="btn-primary inline-block">
-              {nextLabel}
-            </Link>
-          </>
-        )}
-        {token && status === 'error' && (
-          <div className="space-y-3">
-            <p className="text-red-600">This verification link is invalid or has expired.</p>
-            {isAuthenticated ? (
-              <button
-                onClick={handleResend}
-                disabled={resendVerification.isPending}
-                className="btn-primary disabled:opacity-50"
-              >
-                {resendVerification.isPending ? 'Sending...' : 'Send a new verification email'}
-              </button>
-            ) : (
-              <p className="text-sm text-gray-500">
-                <Link to="/login" className="text-maroon-700 font-medium hover:underline">
-                  Log in
-                </Link>{' '}
-                and use &ldquo;Resend email&rdquo; in Settings to get a fresh link.
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+    <AuthShell
+      title="Verify your email"
+      cardClassName="bg-white rounded-2xl shadow-[0_28px_70px_-28px_rgba(64,48,32,0.4)] ring-1 ring-[#eadfce] p-8 text-center"
+    >
+      {!token && <p className="text-gray-600">This verification link is missing its token.</p>}
+      {token && status === 'pending' && <p className="text-gray-600">Verifying your email...</p>}
+      {token && status === 'done' && (
+        <>
+          <p className="text-gray-700 mb-4">Your email is verified!</p>
+          <Link to={nextHref} className="btn-primary inline-block">
+            {nextLabel}
+          </Link>
+        </>
+      )}
+      {token && status === 'error' && (
+        <div className="space-y-3">
+          <p className="text-red-600">This verification link is invalid or has expired.</p>
+          {isAuthenticated ? (
+            <button
+              onClick={handleResend}
+              disabled={resendVerification.isPending}
+              className="btn-primary disabled:opacity-50"
+            >
+              {resendVerification.isPending ? 'Sending...' : 'Send a new verification email'}
+            </button>
+          ) : (
+            <p className="text-sm text-gray-500">
+              <Link to="/login" className="text-maroon-700 font-medium hover:underline">
+                Log in
+              </Link>{' '}
+              and use &ldquo;Resend email&rdquo; in Settings to get a fresh link.
+            </p>
+          )}
+        </div>
+      )}
+    </AuthShell>
   );
 }
