@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { FaWhatsapp } from 'react-icons/fa';
+import ConversationsTab from '../../components/comms/ConversationsTab';
+import ComposerDrawer from '../../components/comms/ComposerDrawer';
 import {
   useGuest,
   useGuestsPageData,
@@ -372,6 +376,12 @@ function GuestDrawer({
 
 export default function Guests() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get('tab') === 'conversations' ? 'conversations' : 'list';
+  const setTab = (t: 'list' | 'conversations') =>
+    setSearchParams(t === 'list' ? {} : { tab: t }, { replace: true });
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [composerOpen, setComposerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sideFilter, setSideFilter] = useState('all');
   const [rsvpFilter, setRsvpFilter] = useState('all');
@@ -444,6 +454,15 @@ export default function Guests() {
         error?.response?.data?.message || error?.response?.data?.error || 'Failed to save guest';
       toast.error(errorMessage);
     }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const markForDelete = (id: string) => {
@@ -617,6 +636,22 @@ export default function Guests() {
     });
   }, [guests, searchTerm, rsvpFilter, showVendorTeams]);
 
+  // Select-all applies to the filtered view, so the RSVP/side/search filters
+  // double as audience building. Guests without a phone can't be selected.
+  const selectableIds = useMemo(
+    () => filteredGuests.filter((g: any) => g.phone).map((g: any) => g.id),
+    [filteredGuests],
+  );
+  const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
+  const toggleSelectAll = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allSelected) selectableIds.forEach((id) => next.delete(id));
+      else selectableIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
   if (guestsLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 256 }}>
@@ -642,6 +677,13 @@ export default function Guests() {
 
   return (
     <div className="space-y-5">
+      {tab === 'conversations' ? (
+        <SectionHeader
+          eyebrow="Guests & RSVP"
+          title="Conversations"
+          description="Your WhatsApp inbox — delivery and read receipts, guided RSVP replies, polls and message templates, all tied to the guest list."
+        />
+      ) : (
       <SectionHeader
         eyebrow="Guest List"
         title="RSVPs & guest management"
@@ -673,7 +715,45 @@ export default function Guests() {
           </div>
         }
       />
+      )}
 
+      {/* Guest List | Conversations tabs (URL-synced via ?tab=) */}
+      <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--line-soft)' }}>
+        {(
+          [
+            ['list', 'Guest List'],
+            ['conversations', 'Conversations'],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            onClick={() => setTab(value)}
+            role="tab"
+            aria-selected={tab === value}
+            style={{
+              padding: '8px 14px',
+              fontSize: 13,
+              fontWeight: tab === value ? 600 : 500,
+              color: tab === value ? 'var(--gold-deep)' : 'var(--ink-low)',
+              borderBottom: tab === value ? '2px solid var(--gold)' : '2px solid transparent',
+              marginBottom: -1,
+              background: 'transparent',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            {value === 'conversations' && <FaWhatsapp style={{ width: 13, height: 13 }} />}
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'conversations' && <ConversationsTab guests={pageData?.guests ?? []} />}
+
+      {tab === 'list' && (
+      <>
       {/* Stats row — 4 KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard eyebrow="Invited" value={totalGuests} hint="Total invites sent" />
@@ -756,6 +836,14 @@ export default function Guests() {
           <table className="tbl">
             <thead>
               <tr>
+                <th style={{ width: 36 }}>
+                  <Checkbox
+                    checked={allSelected}
+                    disabled={selectableIds.length === 0}
+                    onChange={toggleSelectAll}
+                    title="Select all filtered guests with a phone"
+                  />
+                </th>
                 <th>Guest</th>
                 <th>Side</th>
                 <th className="hidden sm:table-cell">Phone</th>
@@ -785,6 +873,14 @@ export default function Guests() {
                     onClick={() => !isMarkedForDelete && setSelectedGuest(guest)}
                     className={isMarkedForDelete ? 'opacity-40 line-through' : 'cursor-pointer'}
                   >
+                    <td onClick={(e) => e.stopPropagation()} style={{ width: 36 }}>
+                      <Checkbox
+                        checked={selected.has(guest.id)}
+                        disabled={!guest.phone}
+                        onChange={() => toggleSelect(guest.id)}
+                        title={guest.phone ? undefined : 'No phone number — can’t message'}
+                      />
+                    </td>
                     <td className="strong">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div
@@ -888,7 +984,7 @@ export default function Guests() {
 
               {filteredGuests.length === 0 && pendingRows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-ink-low">
+                  <td colSpan={7} className="p-8 text-center text-ink-low">
                     {searchTerm || rsvpFilter !== 'all'
                       ? 'No guests match your search.'
                       : 'No guests yet — add your first guest.'}
@@ -898,6 +994,7 @@ export default function Guests() {
 
               {pendingRows.map((row) => (
                 <tr key={row._key} style={{ background: 'var(--gold-glow)' }}>
+                  <td />
                   <td className="p-2">
                     <div className="flex gap-1">
                       <input
@@ -972,7 +1069,7 @@ export default function Guests() {
 
               {pendingRows.length > 0 && (
                 <tr className="bg-amber-50/20">
-                  <td colSpan={6} className="px-4 py-3">
+                  <td colSpan={7} className="px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
                       <button
                         onClick={duplicateLastRow}
@@ -1015,7 +1112,7 @@ export default function Guests() {
               )}
               {pendingDeletes.size > 0 && pendingRows.length === 0 && (
                 <tr className="bg-red-50/60">
-                  <td colSpan={6} className="px-4 py-3">
+                  <td colSpan={7} className="px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm text-red-700 font-medium">
                         {pendingDeletes.size} guest{pendingDeletes.size > 1 ? 's' : ''} marked for
@@ -1047,6 +1144,38 @@ export default function Guests() {
           </table>
         </div>
       </div>
+
+      {/* Selection action bar — the entry point for bulk WhatsApp sends */}
+      {selected.size > 0 && (
+        <div style={{ position: 'sticky', bottom: 16, zIndex: 30 }}>
+          <div
+            className="card flex flex-wrap items-center justify-between gap-3"
+            style={{ padding: '10px 16px', boxShadow: '0 10px 34px rgba(0,0,0,0.14)' }}
+          >
+            <span className="text-sm text-ink-high">
+              <strong>{selected.size}</strong> guest{selected.size === 1 ? '' : 's'} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSelected(new Set())}
+                className="btn-outline text-sm py-1.5 px-3"
+              >
+                Clear
+              </button>
+              <button
+                onClick={() => setComposerOpen(true)}
+                className="btn-primary flex items-center gap-1.5 text-sm py-1.5 px-4"
+                style={{ background: '#128C7E' }}
+              >
+                <FaWhatsapp className="w-4 h-4" />
+                Send WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      </>
+      )}
 
       {/* ── Guest Detail Drawer ── */}
       <DrawerPanel open={!!selectedGuest} onClose={() => setSelectedGuest(null)} width={440}>
@@ -1495,6 +1624,13 @@ export default function Guests() {
           </div>
         </Portal>
       )}
+
+      <ComposerDrawer
+        open={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        guests={pageData?.guests ?? []}
+        initialGuestIds={[...selected]}
+      />
     </div>
   );
 }

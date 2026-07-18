@@ -1,18 +1,11 @@
-import type { GuestRow } from '../../../../shared/src';
+import type { GuestRow } from '../../../../../shared/src';
+import type { CampaignContext } from '../provider';
 
 /**
  * Catalog of templates this app knows how to send. Meta owns approval; this
  * maps a template name to its body variables and whether sending it starts
  * the interactive RSVP conversation flow.
  */
-export interface CampaignContext {
-  weddingTitle: string;
-  weddingDate: string; // human-readable, from earliest event
-  eventName?: string;
-  eventDate?: string;
-  eventVenue?: string;
-}
-
 export interface TemplateSpec {
   /** Body preview shown in the dashboard before Meta returns its copy. */
   description: string;

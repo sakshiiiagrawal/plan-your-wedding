@@ -1,5 +1,5 @@
-import { env } from '../../config/env';
-import { BadRequestError } from '../../shared/errors/HttpError';
+import { env } from '../../../config/env';
+import { ProviderSendError } from '../errors';
 
 const GRAPH = 'https://graph.facebook.com/v21.0';
 
@@ -18,9 +18,12 @@ async function graph<T = unknown>(path: string, init?: RequestInit): Promise<T> 
       ...init?.headers,
     },
   });
-  const json = (await res.json()) as T & { error?: { message?: string } };
+  const json = (await res.json()) as T & { error?: { message?: string; code?: number } };
   if (!res.ok) {
-    throw new BadRequestError(json.error?.message ?? `WhatsApp API error (${res.status})`);
+    throw new ProviderSendError(
+      json.error?.message ?? `WhatsApp API error (${res.status})`,
+      json.error?.code,
+    );
   }
   return json;
 }

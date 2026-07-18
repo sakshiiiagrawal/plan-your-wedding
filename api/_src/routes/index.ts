@@ -18,8 +18,8 @@ import { validateBody } from '../middleware/validate.middleware';
 import { publicRsvpSchema } from '../validators/guests.validator';
 import { publicRsvpLimiter } from '../middleware/rate-limit.middleware';
 import weddingsRoutes from './weddings.routes';
-import whatsappRoutes from './whatsapp.routes';
-import { verifyWebhook, receiveWebhook } from '../controllers/whatsapp.controller';
+import communicationsRoutes from './communications.routes';
+import { verifyWebhook, receiveWebhook } from '../controllers/whatsapp-webhook.controller';
 import geocodeRoutes from './geocode.routes';
 import membersRoutes from './members.routes';
 import pagesRoutes from './pages.routes';
@@ -63,8 +63,8 @@ router.use('/geocode', geocodeRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/events', requireSection('events'), eventsRoutes);
 router.use('/guests', requireSection('guests'), guestsRoutes);
-// WhatsApp campaigns operate on the guest list, so they share its section gate
-router.use('/whatsapp', requireSection('guests'), whatsappRoutes);
+// Messaging operates on the guest list, so it shares its section gate
+router.use('/communications', requireSection('guests'), communicationsRoutes);
 router.use('/venues', requireSection('venues'), applyFinanceTier, venuesRoutes);
 router.use('/vendors', requireSection('vendors'), applyFinanceTier, vendorsRoutes);
 router.use('/expense', requireSection('budget'), applyFinanceTier, expenseRoutes);

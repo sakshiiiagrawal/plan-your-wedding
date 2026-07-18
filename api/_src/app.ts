@@ -110,7 +110,7 @@ const PROTECTED_PREFIXES: string[] = [
   '/api/v1/expense',
   '/api/v1/tasks',
   '/api/v1/reminders',
-  '/api/v1/whatsapp',
+  '/api/v1/communications',
   '/api/v1/website-content',
   '/api/v1/members',
   '/api/v1/pages',

@@ -8,7 +8,6 @@ export const ROUTES = {
     dashboard: (slug: string) => `/${slug}/dashboard`,
     events: (slug: string) => `/${slug}/dashboard/events`,
     guests: (slug: string) => `/${slug}/dashboard/guests`,
-    whatsapp: (slug: string) => `/${slug}/dashboard/whatsapp`,
     venues: (slug: string) => `/${slug}/dashboard/venues`,
     accommodations: (slug: string) => `/${slug}/dashboard/accommodations`,
     vendors: (slug: string) => `/${slug}/dashboard/vendors`,

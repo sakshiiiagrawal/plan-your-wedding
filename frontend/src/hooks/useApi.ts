@@ -1908,10 +1908,22 @@ export const useDeleteWedding = () => {
 };
 
 // =====================================================
-// WHATSAPP HOOKS
+// COMMUNICATIONS HOOKS (WhatsApp today; channel-agnostic)
 // =====================================================
 
-export interface WaTemplate {
+export interface CommsChannel {
+  channel: string;
+  configured: boolean;
+  config_hint: string;
+  capabilities: {
+    supportsPolls: boolean;
+    supportsReadReceipts: boolean;
+    supportsTemplates: boolean;
+    sessionWindowHours: number | null;
+  };
+}
+
+export interface CommsTemplate {
   name: string;
   known: boolean;
   status: string;
@@ -1923,52 +1935,38 @@ export interface WaTemplate {
   needsEvent: boolean;
 }
 
-export interface WaMessage {
+export interface CommsMessage {
   id: string;
+  channel: string;
   guest_id: string | null;
-  phone: string;
+  address: string;
   direction: 'outbound' | 'inbound';
   template_name: string | null;
   body: string | null;
   status: string;
   error: string | null;
   created_at: string;
-  guests: { first_name: string; last_name: string | null } | null;
+  guests?: { first_name: string; last_name: string | null } | null;
 }
 
-export const useWaTemplates = () =>
-  useQuery<WaTemplate[]>({
-    queryKey: ['whatsapp', 'templates'],
-    queryFn: () => api.get('/whatsapp/templates').then((res) => res.data),
-    staleTime: 60 * 1000,
-    retry: false,
-  });
+export interface CommsConversation {
+  guest_id: string;
+  guest_name: string;
+  address: string;
+  channel: string;
+  flow_step: string | null;
+  unread: boolean;
+  last_message: {
+    body: string | null;
+    template_name: string | null;
+    direction: string;
+    status: string;
+    created_at: string;
+  };
+  last_outbound_status: string | null;
+}
 
-export const useWaMessages = () =>
-  useQuery<WaMessage[]>({
-    queryKey: ['whatsapp', 'messages'],
-    queryFn: () => api.get('/whatsapp/messages').then((res) => res.data),
-    refetchInterval: 15 * 1000,
-  });
-
-export const useSyncWaTemplates = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => api.post('/whatsapp/templates/sync').then((res) => res.data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['whatsapp', 'templates'] }),
-  });
-};
-
-export const useSendWaCampaign = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: { template_name: string; guest_ids?: string[]; event_id?: string }) =>
-      api.post('/whatsapp/send', payload).then((res) => res.data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['whatsapp', 'messages'] }),
-  });
-};
-
-export interface WaPoll {
+export interface CommsPoll {
   id: string;
   question: string;
   created_at: string;
@@ -1976,14 +1974,111 @@ export interface WaPoll {
   options: { label: string; votes: number; voters: string[] }[];
 }
 
-export const useWaPolls = () =>
-  useQuery<WaPoll[]>({
-    queryKey: ['whatsapp', 'polls'],
-    queryFn: () => api.get('/whatsapp/polls').then((res) => res.data),
+export interface SendResult {
+  sent: number;
+  failed: { guest_id: string; name: string; error: string }[];
+  total: number;
+}
+
+export const useCommsChannels = () =>
+  useQuery<CommsChannel[]>({
+    queryKey: ['comms', 'channels'],
+    queryFn: () => api.get('/communications/channels').then((res) => res.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
+export const useCommsTemplates = () =>
+  useQuery<CommsTemplate[]>({
+    queryKey: ['comms', 'templates'],
+    queryFn: () => api.get('/communications/templates').then((res) => res.data),
+    staleTime: 60 * 1000,
+    retry: false,
+  });
+
+export const useSyncTemplates = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post('/communications/templates/sync').then((res) => res.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['comms', 'templates'] }),
+  });
+};
+
+export const useSendCampaign = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { template_name: string; guest_ids?: string[]; event_id?: string }) =>
+      api.post('/communications/send', payload).then((res) => res.data as SendResult),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['comms'] }),
+  });
+};
+
+export const useCommsMessages = () =>
+  useQuery<CommsMessage[]>({
+    queryKey: ['comms', 'messages'],
+    queryFn: () => api.get('/communications/messages').then((res) => res.data),
     refetchInterval: 15 * 1000,
   });
 
-export const useSendWaPoll = () => {
+export const useConversations = () =>
+  useQuery<CommsConversation[]>({
+    queryKey: ['comms', 'conversations'],
+    queryFn: () => api.get('/communications/conversations').then((res) => res.data),
+    refetchInterval: 15 * 1000,
+  });
+
+export const useThread = (guestId: string | null) =>
+  useQuery<CommsMessage[]>({
+    queryKey: ['comms', 'thread', guestId],
+    queryFn: () =>
+      api.get(`/communications/conversations/${guestId}/messages`).then((res) => res.data),
+    enabled: Boolean(guestId),
+    refetchInterval: 7 * 1000,
+  });
+
+export const useSendText = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { guest_id: string; body: string }) =>
+      api.post('/communications/messages', payload).then((res) => res.data as CommsMessage),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['comms'] }),
+  });
+};
+
+export const useMarkConversationRead = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (guestId: string) =>
+      api.post(`/communications/conversations/${guestId}/read`).then((res) => res.data),
+    // Clear the unread dot immediately — the server catches up on next refetch
+    onMutate: async (guestId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['comms', 'conversations'] });
+      queryClient.setQueryData<CommsConversation[]>(['comms', 'conversations'], (rows) =>
+        rows?.map((r) => (r.guest_id === guestId ? { ...r, unread: false } : r)),
+      );
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['comms', 'conversations'] }),
+  });
+};
+
+export const useReachability = (guestIds: string[]) => {
+  const key = [...guestIds].sort().join(',');
+  return useQuery<{ reachable: Record<string, boolean>; window_hours: number | null }>({
+    queryKey: ['comms', 'reachability', key],
+    queryFn: () =>
+      api.get(`/communications/reachability?guest_ids=${key}`).then((res) => res.data),
+    enabled: guestIds.length > 0,
+    staleTime: 30 * 1000,
+  });
+};
+
+export const useCommsPolls = () =>
+  useQuery<CommsPoll[]>({
+    queryKey: ['comms', 'polls'],
+    queryFn: () => api.get('/communications/polls').then((res) => res.data),
+    refetchInterval: 15 * 1000,
+  });
+
+export const useSendPoll = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: {
@@ -1992,10 +2087,18 @@ export const useSendWaPoll = () => {
       guest_ids?: string[];
       rsvp_filter?: string;
       side?: string;
-    }) => api.post('/whatsapp/polls', payload).then((res) => res.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['whatsapp', 'polls'] });
-      queryClient.invalidateQueries({ queryKey: ['whatsapp', 'messages'] });
-    },
+    }) =>
+      api
+        .post('/communications/polls', payload)
+        .then((res) => res.data as SendResult & { poll_id: string; skipped_unreachable: number }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['comms'] }),
+  });
+};
+
+export const useDeletePoll = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (pollId: string) => api.delete(`/communications/polls/${pollId}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['comms', 'polls'] }),
   });
 };
