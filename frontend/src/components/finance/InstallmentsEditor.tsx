@@ -163,7 +163,7 @@ export default function InstallmentsEditor({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="section-title">Installments</h3>
+        <h3 className="form-section-title" style={{ margin: 0 }}>Installments</h3>
         <button
           type="button"
           onClick={addRow}

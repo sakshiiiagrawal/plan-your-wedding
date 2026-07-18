@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { HiOutlinePlus, HiOutlineDownload } from 'react-icons/hi';
+import { SectionHeader } from '../../components/ui';
 import {
   useCreateExpense,
   useDeleteExpense,
@@ -374,26 +375,29 @@ export default function Expense() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h1 className="page-title">Expense & Finance</h1>
-        <div className="flex gap-2 self-start sm:self-auto">
-          <button
-            onClick={() => exportBudget.mutate()}
-            disabled={exportBudget.isPending}
-            className="btn-outline flex items-center gap-2"
-          >
-            <HiOutlineDownload className="w-4 h-4" />
-            Export Excel
-          </button>
-          <button
-            onClick={() => setShowExpenseModal(true)}
-            className="btn-primary flex items-center gap-2"
-          >
-            <HiOutlinePlus className="w-4 h-4" />
-            Add Expense
-          </button>
-        </div>
-      </div>
+      <SectionHeader
+        eyebrow="Budget"
+        title="Expense & Finance"
+        action={
+          <div className="flex gap-2 self-start sm:self-auto">
+            <button
+              onClick={() => exportBudget.mutate()}
+              disabled={exportBudget.isPending}
+              className="btn-outline flex items-center gap-2"
+            >
+              <HiOutlineDownload className="w-4 h-4" />
+              Export Excel
+            </button>
+            <button
+              onClick={() => setShowExpenseModal(true)}
+              className="btn-primary flex items-center gap-2"
+            >
+              <HiOutlinePlus className="w-4 h-4" />
+              Add Expense
+            </button>
+          </div>
+        }
+      />
 
       {alerts &&
         (alerts.overdueCount > 0 ||

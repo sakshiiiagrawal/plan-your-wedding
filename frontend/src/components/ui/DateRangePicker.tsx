@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { HiOutlineCalendar, HiChevronLeft, HiChevronRight, HiArrowRight } from 'react-icons/hi';
+import { DayPicker, type DateRange } from 'react-day-picker';
+import { HiOutlineCalendar, HiArrowRight } from 'react-icons/hi';
+import 'react-day-picker/style.css';
 
 /**
  * Joined date-range picker — two triggers, one shared popup.
  * Picking the start date auto-advances the popup to check-out selection with a subtle fade.
- * Hover preview + range highlight mirrors the booking-site pattern.
+ * Calendar grid itself is react-day-picker (keyboard nav, month boundaries, a11y built in).
  */
 interface DateRangePickerProps {
   startValue: string;
@@ -23,20 +25,6 @@ interface DateRangePickerProps {
   className?: string;
 }
 
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
 const MONTHS_SHORT = [
   'Jan',
   'Feb',
@@ -51,8 +39,6 @@ const MONTHS_SHORT = [
   'Nov',
   'Dec',
 ];
-const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
 function parseISO(v: string): Date | null {
   if (!v) return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
@@ -66,14 +52,6 @@ function toISO(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
-}
-
-function sameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
 }
 
 function startOfDay(d: Date): number {
@@ -109,7 +87,6 @@ export default function DateRangePicker({
   const [isOpen, setIsOpen] = useState(false);
   const [stage, setStage] = useState<Stage>('start');
   const [viewMonth, setViewMonth] = useState<Date>(() => startDate || new Date());
-  const [hovered, setHovered] = useState<Date | null>(null);
   const [pickerStyle, setPickerStyle] = useState<React.CSSProperties>({});
   const [animIn, setAnimIn] = useState(false);
   const [stageFlash, setStageFlash] = useState(false);
@@ -155,7 +132,6 @@ export default function DateRangePicker({
     setStage(initialStage);
     const focusDate = initialStage === 'end' ? endDate || startDate : startDate || endDate;
     setViewMonth(focusDate || new Date());
-    setHovered(null);
     setAnimIn(false);
     setIsOpen(true);
   };
@@ -163,7 +139,6 @@ export default function DateRangePicker({
   const close = () => {
     setIsOpen(false);
     setAnimIn(false);
-    setHovered(null);
     setStage('start');
   };
 
@@ -196,56 +171,23 @@ export default function DateRangePicker({
     setTimeout(() => setStageFlash(false), 220);
   };
 
-  const handleDayClick = (d: Date) => {
-    if (isDateDisabled(d)) return;
-    if (stage === 'start') {
-      // Clear end if it would become invalid.
-      const newEnd = endDate && startOfDay(endDate) > startOfDay(d) ? endValue : '';
-      onChange({ start: toISO(d), end: newEnd });
-      setStage('end');
-      flashStage();
-      // Keep focus on the same month unless end exists in a different month.
+  const selectedRange: DateRange | undefined = startDate
+    ? { from: startDate, to: endDate ?? undefined }
+    : undefined;
+
+  const handleRangeSelect = (next: DateRange | undefined) => {
+    onChange({ start: next?.from ? toISO(next.from) : '', end: next?.to ? toISO(next.to) : '' });
+    if (next?.from && next?.to) {
+      close();
       return;
     }
-    // stage === 'end'
-    const curStart = startDate;
-    if (!curStart || startOfDay(d) < startOfDay(curStart)) {
-      // Treat as new start selection.
-      onChange({ start: toISO(d), end: '' });
+    if (next?.from) {
       setStage('end');
       flashStage();
       return;
     }
-    if (curStart && sameDay(d, curStart)) {
-      // Clicking same day as start — require at least 1 night; advance viewMonth but don't commit.
-      return;
-    }
-    onChange({ start: startValue, end: toISO(d) });
-    close();
+    setStage('start');
   };
-
-  // Range display: effective end for highlighting uses hover preview during 'end' stage.
-  const effectiveEnd: Date | null = useMemo(() => {
-    if (stage === 'end' && hovered && startDate && startOfDay(hovered) > startOfDay(startDate))
-      return hovered;
-    return endDate;
-  }, [stage, hovered, startDate, endDate]);
-
-  // Build calendar grid
-  const grid = useMemo(() => {
-    const first = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
-    const startOffset = first.getDay();
-    const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
-    const cells: (Date | null)[] = [];
-    for (let i = 0; i < startOffset; i++) cells.push(null);
-    for (let d = 1; d <= daysInMonth; d++)
-      cells.push(new Date(viewMonth.getFullYear(), viewMonth.getMonth(), d));
-    while (cells.length % 7 !== 0) cells.push(null);
-    return cells;
-  }, [viewMonth]);
-
-  const today = new Date();
-  const currentYear = viewMonth.getFullYear();
 
   const triggerPadY = size === 'sm' ? 'py-1.5' : 'py-[9px]';
   const triggerFontSize = size === 'sm' ? 12 : 13;
@@ -397,130 +339,30 @@ export default function DateRangePicker({
           {renderStageTab('end')}
         </div>
 
-        {/* Month nav */}
+        {/* Calendar — react-day-picker handles month nav, weekday header, and keyboard nav */}
         <div
-          className="flex items-center justify-between px-3 py-2"
-          style={{ borderBottom: '1px solid var(--line-soft)' }}
+          className="px-2 pt-1 pb-2"
+          style={
+            {
+              '--rdp-accent-color': 'var(--gold)',
+              '--rdp-accent-background-color': 'var(--gold-glow)',
+              '--rdp-today-color': 'var(--gold-deep)',
+              '--rdp-day-height': '36px',
+              '--rdp-day-width': '36px',
+              fontFamily: 'inherit',
+              fontSize: 13,
+            } as React.CSSProperties
+          }
         >
-          <button
-            type="button"
-            onClick={() => setViewMonth(new Date(currentYear, viewMonth.getMonth() - 1, 1))}
-            className="w-7 h-7 flex items-center justify-center rounded-md transition-colors hover:bg-[var(--bg-raised)]"
-            style={{ color: 'var(--ink-mid)' }}
-          >
-            <HiChevronLeft className="w-4 h-4" />
-          </button>
-          <div
-            className="text-sm font-medium"
-            style={{ fontFamily: 'var(--font-display)', fontSize: 14, color: 'var(--ink-high)' }}
-          >
-            {MONTHS[viewMonth.getMonth()]} {currentYear}
-          </div>
-          <button
-            type="button"
-            onClick={() => setViewMonth(new Date(currentYear, viewMonth.getMonth() + 1, 1))}
-            className="w-7 h-7 flex items-center justify-center rounded-md transition-colors hover:bg-[var(--bg-raised)]"
-            style={{ color: 'var(--ink-mid)' }}
-          >
-            <HiChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Weekdays */}
-        <div className="grid grid-cols-7 px-3 pt-2.5">
-          {WEEKDAYS.map((w, i) => (
-            <div
-              key={i}
-              className="text-center text-[10px] font-medium uppercase tracking-wider py-1"
-              style={{ color: 'var(--ink-low)', letterSpacing: '0.12em' }}
-            >
-              {w}
-            </div>
-          ))}
-        </div>
-
-        {/* Grid */}
-        <div
-          className="grid grid-cols-7 px-2 pb-2"
-          style={{ rowGap: 2 }}
-          onMouseLeave={() => setHovered(null)}
-        >
-          {grid.map((d, i) => {
-            if (!d) return <div key={i} className="h-9" />;
-            const isStart = Boolean(startDate && sameDay(d, startDate));
-            const isEnd = Boolean(effectiveEnd && sameDay(d, effectiveEnd));
-            const inRange = Boolean(
-              startDate &&
-              effectiveEnd &&
-              startOfDay(d) > startOfDay(startDate) &&
-              startOfDay(d) < startOfDay(effectiveEnd),
-            );
-            const isTodayCell = sameDay(d, today);
-            const disabledDay = isDateDisabled(d);
-            const isCap = isStart || isEnd;
-            const sameStartEnd = isStart && isEnd;
-
-            // Continuous-range background via pseudo container
-            let cellBg = 'transparent';
-            let cellColor: string = 'var(--ink-high)';
-            let cellWeight: number = 400;
-            let cellBorder: string = '1px solid transparent';
-            let borderRadius = '8px';
-
-            if (inRange) {
-              cellBg = 'var(--gold-glow)';
-              borderRadius = '0';
-              cellColor = 'var(--ink-high)';
-            }
-            if (isCap) {
-              cellBg = 'var(--gold)';
-              cellColor = '#fff';
-              cellWeight = 600;
-              if (sameStartEnd) borderRadius = '8px';
-              else if (isStart) borderRadius = '8px 0 0 8px';
-              else if (isEnd) borderRadius = '0 8px 8px 0';
-            }
-            if (!isCap && !inRange && isTodayCell) {
-              cellColor = 'var(--gold-deep)';
-              cellBorder = '1px solid var(--gold-soft)';
-              cellWeight = 600;
-            }
-            if (disabledDay) {
-              cellColor = 'var(--ink-dim)';
-            }
-
-            return (
-              <button
-                key={i}
-                type="button"
-                disabled={disabledDay}
-                onClick={() => handleDayClick(d)}
-                onMouseEnter={() => setHovered(d)}
-                className="h-9 flex items-center justify-center text-[13px] transition-colors"
-                style={{
-                  background: cellBg,
-                  color: cellColor,
-                  fontWeight: cellWeight,
-                  border: cellBorder,
-                  borderRadius,
-                  cursor: disabledDay ? 'not-allowed' : 'pointer',
-                  opacity: disabledDay ? 0.4 : 1,
-                }}
-                onMouseOver={(e) => {
-                  if (!isCap && !inRange && !disabledDay) {
-                    (e.currentTarget as HTMLElement).style.background = 'var(--bg-raised)';
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (!isCap && !inRange && !disabledDay) {
-                    (e.currentTarget as HTMLElement).style.background = 'transparent';
-                  }
-                }}
-              >
-                {d.getDate()}
-              </button>
-            );
-          })}
+          <DayPicker
+            mode="range"
+            selected={selectedRange}
+            onSelect={handleRangeSelect}
+            month={viewMonth}
+            onMonthChange={setViewMonth}
+            disabled={isDateDisabled}
+            showOutsideDays
+          />
         </div>
 
         {/* Footer */}

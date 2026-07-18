@@ -86,11 +86,24 @@ const CRUMB_MAP: Record<string, string> = {
 };
 
 // ── Topbar reminders bell ────────────────────────────────────────────────────
-// A live status indicator (overdue + due today), not an unread inbox: no read
-// state anywhere — resolving the item is what clears the badge.
+// The feed is a live view (overdue + today + upcoming) with no server-side
+// read state — resolving an item is what removes it. "Seen" is a device-local
+// layer on top: opening the panel records every visible item in localStorage,
+// the badge counts only unseen overdue/today items, and items that were unseen
+// at open time stay highlighted until the panel closes. Seen keys include the
+// bucket, so an item escalating (upcoming → today → overdue) re-notifies.
 
-function ReminderRow({ item, onOpen }: { item: ReminderItem; onOpen: (i: ReminderItem) => void }) {
+function ReminderRow({
+  item,
+  isNew,
+  onOpen,
+}: {
+  item: ReminderItem;
+  isNew: boolean;
+  onOpen: (i: ReminderItem) => void;
+}) {
   const Icon = item.kind === 'payment' ? HiOutlineCurrencyRupee : HiOutlineClipboardList;
+  const restBg = isNew ? 'var(--gold-glow)' : 'transparent';
   return (
     <button
       onClick={() => onOpen(item)}
@@ -100,7 +113,7 @@ function ReminderRow({ item, onOpen }: { item: ReminderItem; onOpen: (i: Reminde
         gap: 10,
         width: '100%',
         padding: '7px 16px',
-        background: 'transparent',
+        background: restBg,
         cursor: 'pointer',
         textAlign: 'left',
       }}
@@ -108,7 +121,7 @@ function ReminderRow({ item, onOpen }: { item: ReminderItem; onOpen: (i: Reminde
         (e.currentTarget as HTMLElement).style.background = 'var(--bg-raised)';
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.background = 'transparent';
+        (e.currentTarget as HTMLElement).style.background = restBg;
       }}
     >
       <Icon style={{ width: 14, height: 14, flexShrink: 0, color: 'var(--ink-dim)' }} />
@@ -130,6 +143,18 @@ function ReminderRow({ item, onOpen }: { item: ReminderItem; onOpen: (i: Reminde
           {item.amount != null && ` · ${formatCurrency(item.amount)}`}
         </span>
       </span>
+      {isNew && (
+        <span
+          aria-label="New"
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 999,
+            background: 'var(--gold)',
+            flexShrink: 0,
+          }}
+        />
+      )}
     </button>
   );
 }
@@ -140,13 +165,55 @@ function RemindersBell({ basePath }: { basePath: string }) {
   const { data: feed, refetch } = useReminders();
   useModalDismiss(open, () => setOpen(false));
 
+  // ponytail: seen state is per-device localStorage keyed by wedding — move it
+  // server-side only if cross-device read sync is actually asked for.
+  const storageKey = `reminders-seen:${basePath}`;
+  const [seen, setSeen] = useState<Set<string>>(() => {
+    try {
+      return new Set<string>(JSON.parse(localStorage.getItem(storageKey) ?? '[]'));
+    } catch {
+      return new Set();
+    }
+  });
+  // Keys that were unseen when the panel opened — highlighted until close.
+  const [fresh, setFresh] = useState<Set<string>>(new Set());
+
   const groups: Array<[string, ReminderItem[]]> = [
     ['Overdue', feed?.overdue ?? []],
     ['Today', feed?.today ?? []],
-    ['This week', feed?.upcoming ?? []],
+    ['Coming up', feed?.upcoming ?? []],
   ];
-  const badge = (feed?.overdue.length ?? 0) + (feed?.today.length ?? 0);
-  const total = badge + (feed?.upcoming.length ?? 0);
+  const keyOf = (bucket: string, i: ReminderItem) => `${bucket}:${i.kind}:${i.id}`;
+
+  // The badge counts only unseen overdue/today items — viewing clears it.
+  const badge = groups
+    .slice(0, 2)
+    .flatMap(([bucket, items]) => items.map((i) => keyOf(bucket, i)))
+    .filter((k) => !seen.has(k)).length;
+  const total = groups.reduce((n, [, items]) => n + items.length, 0);
+
+  // While the panel is open, everything visible becomes seen. The stored set is
+  // pruned to the current feed (resolved/deleted items needn't be remembered),
+  // and whatever was unseen goes into `fresh` so it stays highlighted — this
+  // also catches items arriving from the open-triggered refetch.
+  useEffect(() => {
+    if (!open || !feed) return;
+    const keys = groups.flatMap(([bucket, items]) => items.map((i) => keyOf(bucket, i)));
+    const unseen = keys.filter((k) => !seen.has(k));
+    if (unseen.length > 0) setFresh((prev) => new Set([...prev, ...unseen]));
+    setSeen(new Set(keys));
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(keys));
+    } catch {
+      // Storage unavailable (private mode) — seen state lasts the session only.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, feed]);
+
+  // Highlights are scoped to one viewing: closing the panel retires them.
+  useEffect(() => {
+    if (!open) setFresh(new Set());
+  }, [open]);
 
   const go = (item: ReminderItem) => {
     setOpen(false);
@@ -245,7 +312,12 @@ function RemindersBell({ basePath }: { basePath: string }) {
                           {label}
                         </div>
                         {items.map((item) => (
-                          <ReminderRow key={`${item.kind}-${item.id}`} item={item} onOpen={go} />
+                          <ReminderRow
+                            key={`${item.kind}-${item.id}`}
+                            item={item}
+                            isNew={fresh.has(keyOf(label, item))}
+                            onOpen={go}
+                          />
                         ))}
                       </div>
                     ),

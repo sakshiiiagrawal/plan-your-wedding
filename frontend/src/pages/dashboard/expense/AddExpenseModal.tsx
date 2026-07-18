@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlineX } from 'react-icons/hi';
-import Portal from '../../../components/Portal';
+import { HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi';
+import { Modal, FormSection, SectionAction, SideToggle } from '../../../components/ui/Modal';
 import CategoryCombobox from '../../../components/CategoryCombobox';
 import CustomCategoryModal from '../../../components/CustomCategoryModal';
 import DatePicker from '../../../components/ui/DatePicker';
@@ -157,346 +157,233 @@ export default function AddExpenseModal({
 
   return (
     <>
-      <Portal>
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 50,
-            padding: 16,
-          }}
-          onClick={attemptClose}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'var(--bg-panel)',
-              borderRadius: 'var(--radius-lg)',
-              width: '100%',
-              maxWidth: 768,
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '20px 24px',
-                borderBottom: '1px solid var(--line-soft)',
-              }}
+      <Modal
+        onClose={attemptClose}
+        eyebrow="Expenses"
+        title="Add expense"
+        size="lg"
+        footerLeft={
+          paymentExceedsTotal ? (
+            <span style={{ color: 'var(--err)' }}>
+              Installments exceed the allocated total — reduce them to save.
+            </span>
+          ) : (
+            <span>
+              Planned {formatCurrency(totalPlanned)} · Allocated{' '}
+              <strong style={{ color: 'var(--gold-deep)' }}>{formatCurrency(totalCommitted)}</strong>
+            </span>
+          )
+        }
+        footer={
+          <>
+            <button type="button" onClick={attemptClose} className="btn-outline">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="add-expense-form"
+              disabled={isPending || paymentExceedsTotal}
+              className="btn-primary"
+              style={{ minWidth: 150 }}
             >
-              <div>
-                <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>
-                  Expenses
-                </div>
-                <h2
-                  className="display"
-                  style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}
-                >
-                  Add Expense
-                </h2>
-              </div>
-              <button
-                onClick={attemptClose}
+              {isPending ? 'Saving…' : 'Add expense'}
+            </button>
+          </>
+        }
+      >
+        <form
+          id="add-expense-form"
+          onSubmit={handleSubmit}
+          style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
+        >
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label">Expense Title *</label>
+              <input
+                type="text"
+                value={formData.description}
+                onChange={(event) =>
+                  setFormData((prev) => ({ ...prev, description: event.target.value }))
+                }
+                className="input"
+                placeholder="Photography contract, decor advance, etc."
+                required
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="label">Expense Date *</label>
+              <DatePicker
+                value={formData.expense_date}
+                onChange={(v) => setFormData((prev) => ({ ...prev, expense_date: v }))}
+                required
+                placeholder="Expense date"
+              />
+            </div>
+          </div>
+
+          <FormSection
+            title="Line Items"
+            hint="Categories, side splits, and planned/allocated totals come from these items."
+            action={
+              <SectionAction
+                onClick={() =>
+                  setFormData((prev) => ({ ...prev, items: [...prev.items, createItem()] }))
+                }
+              >
+                <HiOutlinePlus className="w-4 h-4" />
+                Add Item
+              </SectionAction>
+            }
+          >
+            {formData.items.map((item, index) => (
+              <div
+                key={item.id}
                 style={{
-                  padding: '6px 8px',
-                  borderRadius: 6,
-                  color: 'var(--ink-dim)',
-                  background: 'transparent',
-                  cursor: 'pointer',
+                  borderRadius: 10,
+                  border: '1px solid var(--line-soft)',
+                  padding: 16,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 14,
                 }}
               >
-                <HiOutlineX style={{ width: 18, height: 18 }} />
-              </button>
-            </div>
-
-            <form id="add-expense-form" onSubmit={handleSubmit} className="p-6 space-y-6">
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Expense Title *</label>
-                  <input
-                    type="text"
-                    value={formData.description}
-                    onChange={(event) =>
-                      setFormData((prev) => ({ ...prev, description: event.target.value }))
-                    }
-                    className="input"
-                    placeholder="Photography contract, decor advance, etc."
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="label">Expense Date *</label>
-                  <DatePicker
-                    value={formData.expense_date}
-                    onChange={(v) => setFormData((prev) => ({ ...prev, expense_date: v }))}
-                    required
-                    placeholder="Expense date"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="label">Notes</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(event) =>
-                    setFormData((prev) => ({ ...prev, notes: event.target.value }))
-                  }
-                  className="input min-h-[88px]"
-                  placeholder="Optional notes about the obligation"
-                />
-              </div>
-
-              <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="section-title">Line Items</h3>
-                    <p className="text-sm text-ink-low">
-                      Categories, side splits, and planned/allocated totals come from these items.
-                    </p>
-                  </div>
+                  <h4 style={{ margin: 0, fontWeight: 600, color: 'var(--ink-high)', fontSize: 13 }}>
+                    Item {index + 1}
+                  </h4>
                   <button
                     type="button"
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, items: [...prev.items, createItem()] }))
-                    }
-                    style={{
-                      fontSize: 13,
-                      color: 'var(--gold-deep)',
-                      fontWeight: 500,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      background: 'transparent',
-                      cursor: 'pointer',
-                    }}
+                    onClick={() => removeItem(item.id)}
+                    disabled={formData.items.length === 1}
+                    aria-label={`Remove item ${index + 1}`}
+                    className="p-2 rounded-lg text-red-500 hover:bg-red-50 disabled:opacity-40"
                   >
-                    <HiOutlinePlus className="w-4 h-4" />
-                    Add Item
+                    <HiOutlineTrash className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="space-y-4">
-                  {formData.items.map((item, index) => (
-                    <div
-                      key={item.id}
-                      style={{
-                        borderRadius: 10,
-                        border: '1px solid var(--line-soft)',
-                        padding: 16,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 14,
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Item Description *</label>
+                    <input
+                      type="text"
+                      value={item.description}
+                      onChange={(event) =>
+                        updateItem(item.id, { description: event.target.value })
+                      }
+                      className="input"
+                      placeholder="Base package, flowers, travel fee"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Category *</label>
+                    <CategoryCombobox
+                      value={item.category_id}
+                      onChange={(id) => updateItem(item.id, { category_id: id })}
+                      level="subcategory"
+                      placeholder="Search categories…"
+                      allowCustom
+                      onAddCustom={(parentId) => {
+                        setCustomCategoryParentId(parentId);
+                        setShowCustomCategoryModal(true);
                       }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <h4 style={{ fontWeight: 600, color: 'var(--ink-high)', fontSize: 13 }}>
-                          Item {index + 1}
-                        </h4>
-                        <button
-                          type="button"
-                          onClick={() => removeItem(item.id)}
-                          disabled={formData.items.length === 1}
-                          className="p-2 rounded-lg text-red-500 hover:bg-red-50 disabled:opacity-40"
-                        >
-                          <HiOutlineTrash className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <div>
-                        <label className="label">Item Description *</label>
-                        <input
-                          type="text"
-                          value={item.description}
-                          onChange={(event) =>
-                            updateItem(item.id, { description: event.target.value })
-                          }
-                          className="input"
-                          placeholder="Base package, flowers, travel fee"
-                          required
-                        />
-                      </div>
-
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="label">Planned (estimate)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.planned_amount}
-                            onChange={(event) =>
-                              updateItem(item.id, { planned_amount: event.target.value })
-                            }
-                            className="input"
-                            placeholder="Defaults to allocated"
-                          />
-                        </div>
-                        <div>
-                          <label className="label">Allocated *</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.amount}
-                            onChange={(event) =>
-                              updateItem(item.id, { amount: event.target.value })
-                            }
-                            className="input"
-                            placeholder="0"
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="label">Category *</label>
-                        <CategoryCombobox
-                          value={item.category_id}
-                          onChange={(id) => updateItem(item.id, { category_id: id })}
-                          level="subcategory"
-                          placeholder="Search categories…"
-                          allowCustom
-                          onAddCustom={(parentId) => {
-                            setCustomCategoryParentId(parentId);
-                            setShowCustomCategoryModal(true);
-                          }}
-                          required
-                        />
-                      </div>
-
-                      {canSeeSplits && (
-                      <div>
-                        <label className="label">Liability Side</label>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          {(['bride', 'groom', 'shared'] as const).map((side) => {
-                            const isActive = item.side === side;
-                            const activeStyle =
-                              side === 'bride'
-                                ? {
-                                    borderColor: 'var(--bride-line)',
-                                    background: 'var(--bride-soft)',
-                                    color: 'var(--bride-deep)',
-                                  }
-                                : side === 'groom'
-                                  ? {
-                                      borderColor: 'var(--groom-line)',
-                                      background: 'var(--groom-soft)',
-                                      color: 'var(--groom-deep)',
-                                    }
-                                  : {
-                                      borderColor: 'var(--line-strong)',
-                                      background: 'var(--bg-highest)',
-                                      color: 'var(--ink-high)',
-                                    };
-                            return (
-                              <button
-                                key={side}
-                                type="button"
-                                onClick={() => updateItem(item.id, { side })}
-                                style={{
-                                  flex: 1,
-                                  padding: '8px 4px',
-                                  borderRadius: 8,
-                                  border: `2px solid ${isActive ? activeStyle.borderColor : 'var(--line)'}`,
-                                  background: isActive ? activeStyle.background : 'transparent',
-                                  color: isActive ? activeStyle.color : 'var(--ink-low)',
-                                  fontSize: 12,
-                                  fontWeight: 500,
-                                  cursor: 'pointer',
-                                  transition: 'all 150ms',
-                                  textTransform: 'capitalize',
-                                }}
-                              >
-                                {side === 'shared'
-                                  ? 'Shared'
-                                  : `${side.charAt(0).toUpperCase()}${side.slice(1)}`}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      )}
-
-                      {canSeeSplits && item.side === 'shared' && (
-                        <SplitShare
-                          total={Number(item.amount) || 0}
-                          bridePercentage={item.bride_share_percentage}
-                          onChange={(pct) => updateItem(item.id, { bride_share_percentage: pct })}
-                        />
-                      )}
-                    </div>
-                  ))}
+                      required
+                    />
+                  </div>
                 </div>
 
-                <div
-                  style={{
-                    background: 'var(--bg-raised)',
-                    borderRadius: 10,
-                    padding: '10px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    border: '1px solid var(--line-soft)',
-                  }}
-                >
-                  <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
-                    Planned {formatCurrency(totalPlanned)}
-                  </span>
-                  <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
-                    Allocated{' '}
-                    <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--gold-deep)' }}>
-                      {formatCurrency(totalCommitted)}
-                    </span>
-                  </span>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Planned (estimate)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.planned_amount}
+                      onChange={(event) =>
+                        updateItem(item.id, { planned_amount: event.target.value })
+                      }
+                      className="input"
+                      placeholder="Defaults to allocated"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Allocated *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.amount}
+                      onChange={(event) => updateItem(item.id, { amount: event.target.value })}
+                      className="input"
+                      placeholder="0"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <InstallmentsEditor
-                installments={formData.installments}
-                onChange={(installments) => setFormData((prev) => ({ ...prev, installments }))}
-                committedTotal={totalCommitted}
-                canSeeSplits={canSeeSplits}
-              />
+                {canSeeSplits && (
+                  <div>
+                    <label className="label">Liability Side</label>
+                    <SideToggle
+                      value={item.side}
+                      onChange={(side) => updateItem(item.id, { side })}
+                    />
+                  </div>
+                )}
 
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 10,
-                  paddingTop: 8,
-                  borderTop: '1px solid var(--line-soft)',
-                  marginTop: 8,
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={attemptClose}
-                  className="btn-outline"
-                  style={{ flex: 1 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isPending || paymentExceedsTotal}
-                  className="btn-primary"
-                  style={{ flex: 1, opacity: isPending || paymentExceedsTotal ? 0.5 : 1 }}
-                >
-                  {isPending ? 'Saving…' : 'Add Expense'}
-                </button>
+                {canSeeSplits && item.side === 'shared' && (
+                  <SplitShare
+                    total={Number(item.amount) || 0}
+                    bridePercentage={item.bride_share_percentage}
+                    onChange={(pct) => updateItem(item.id, { bride_share_percentage: pct })}
+                  />
+                )}
               </div>
-            </form>
-          </div>
-        </div>
-      </Portal>
+            ))}
+
+            <div
+              style={{
+                background: 'var(--bg-raised)',
+                borderRadius: 10,
+                padding: '10px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                border: '1px solid var(--line-soft)',
+              }}
+            >
+              <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
+                Planned {formatCurrency(totalPlanned)}
+              </span>
+              <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
+                Allocated{' '}
+                <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--gold-deep)' }}>
+                  {formatCurrency(totalCommitted)}
+                </span>
+              </span>
+            </div>
+          </FormSection>
+
+          <InstallmentsEditor
+            installments={formData.installments}
+            onChange={(installments) => setFormData((prev) => ({ ...prev, installments }))}
+            committedTotal={totalCommitted}
+            canSeeSplits={canSeeSplits}
+          />
+
+          <FormSection title="Notes">
+            <textarea
+              value={formData.notes}
+              onChange={(event) => setFormData((prev) => ({ ...prev, notes: event.target.value }))}
+              className="input min-h-[72px]"
+              placeholder="Optional notes about the obligation"
+            />
+          </FormSection>
+        </form>
+      </Modal>
       {unsavedDialog}
 
       <CustomCategoryModal

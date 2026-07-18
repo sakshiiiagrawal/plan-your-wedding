@@ -10,13 +10,9 @@ import {
   HiOutlineTrash,
   HiOutlineViewGrid,
   HiOutlineViewList,
-  HiOutlineX,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
-import Portal from '../../components/Portal';
 import CategoryCombobox from '../../components/CategoryCombobox';
-import PaymentAttachments from '../../components/finance/PaymentAttachments';
-import PaymentNotesEditor from '../../components/finance/PaymentNotesEditor';
 import { formatCurrency } from '../../utils/currency';
 import { parseLocalDate, todayLocal } from '../../utils/date';
 import {
@@ -34,6 +30,8 @@ import {
 import type { PaymentRow, VendorWithFinance } from '@wedding-planner/shared';
 import { financeTier } from '@wedding-planner/shared';
 import { SectionHeader, Checkbox } from '../../components/ui';
+import { Modal, FormSection, SideToggle } from '../../components/ui/Modal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import DatePicker from '../../components/ui/DatePicker';
 import SplitShare from '../../components/ui/SplitShare';
 import InstallmentsEditor, {
@@ -1711,848 +1709,550 @@ export default function Vendors() {
       </div>
 
       {showVendorModal && (
-        <Portal>
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 50,
-              padding: 16,
-            }}
-            onClick={attemptCloseVendorModal}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                background: 'var(--bg-panel)',
-                borderRadius: 'var(--radius-lg)',
-                width: '100%',
-                maxWidth: 900,
-                height: 'min(88vh, 760px)',
-                display: 'flex',
-                flexDirection: 'column',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
-              }}
-            >
-              <div
-                style={{
-                  padding: '14px 24px 16px',
-                  borderBottom: '1px solid var(--line-soft)',
-                  flexShrink: 0,
-                }}
-              >
-                <div
+        <Modal
+          onClose={attemptCloseVendorModal}
+          eyebrow="Service providers"
+          title={editingVendor ? 'Edit vendor' : 'Add vendor'}
+          size="xl"
+          height={760}
+          headerRight={
+            canRecordPayment && editingVendor ? (
+              <>
+                <span style={{ fontSize: 12, color: 'var(--ok)', whiteSpace: 'nowrap' }}>
+                  Paid: <strong>{formatCurrency(paymentPaid)}</strong>
+                </span>
+                {paymentOutstanding > 0 && (
+                  <span style={{ fontSize: 12, color: 'var(--warn)', whiteSpace: 'nowrap' }}>
+                    Outstanding: <strong>{formatCurrency(paymentOutstanding)}</strong>
+                  </span>
+                )}
+              </>
+            ) : undefined
+          }
+          headerBottom={
+            <div style={{ display: 'flex', padding: '0 24px' }}>
+              {[
+                { id: 0, label: 'Details' },
+                ...(canSeeMoney ? [{ id: 1, label: 'Payments' }] : []),
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
                   style={{
+                    padding: '10px 16px',
+                    fontSize: 13,
+                    fontWeight: activeTab === tab.id ? 600 : 400,
+                    color: activeTab === tab.id ? 'var(--gold-deep)' : 'var(--ink-low)',
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom:
+                      activeTab === tab.id ? '2px solid var(--gold)' : '2px solid transparent',
+                    cursor: 'pointer',
+                    marginBottom: -1,
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: 10,
+                    gap: 6,
                   }}
                 >
-                  <div className="uppercase-eyebrow">
-                    Service providers · {editingVendor ? 'Edit vendor' : 'Add vendor'}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {!canRecordPayment && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '5px 12px',
-                          background: 'rgba(217,119,6,0.07)',
-                          border: '1px solid rgba(217,119,6,0.2)',
-                          borderRadius: 100,
-                        }}
-                      >
-                        <HiOutlineInformationCircle
-                          style={{ width: 13, height: 13, color: 'var(--warn)', flexShrink: 0 }}
-                        />
-                        <span style={{ fontSize: 11, color: 'var(--warn)', whiteSpace: 'nowrap' }}>
-                          Set a committed amount to record payments
-                        </span>
-                      </div>
-                    )}
-                    {canRecordPayment && editingVendor && (
-                      <>
-                        <span style={{ fontSize: 12, color: 'var(--ok)', whiteSpace: 'nowrap' }}>
-                          Paid: <strong>{formatCurrency(paymentPaid)}</strong>
-                        </span>
-                        {paymentOutstanding > 0 && (
-                          <span
-                            style={{ fontSize: 12, color: 'var(--warn)', whiteSpace: 'nowrap' }}
-                          >
-                            Outstanding: <strong>{formatCurrency(paymentOutstanding)}</strong>
-                          </span>
-                        )}
-                      </>
-                    )}
-                    <button
-                      onClick={attemptCloseVendorModal}
+                  {tab.label}
+                  {tab.id === 1 && editingVendor && sortedPayments.length > 0 && (
+                    <span
                       style={{
-                        padding: '6px 8px',
-                        borderRadius: 6,
-                        color: 'var(--ink-dim)',
-                        background: 'transparent',
-                        cursor: 'pointer',
-                        flexShrink: 0,
+                        fontSize: 9,
+                        background: 'rgba(22,163,74,0.1)',
+                        color: '#16a34a',
+                        padding: '1px 6px',
+                        borderRadius: 100,
+                        border: '1px solid rgba(22,163,74,0.25)',
+                        fontWeight: 600,
                       }}
                     >
-                      <HiOutlineX style={{ width: 16, height: 16 }} />
-                    </button>
-                  </div>
-                </div>
-
-                <div
-                  className={`grid grid-cols-1 gap-3 md:items-end ${
-                    canSeeMoney ? 'md:grid-cols-[1.4fr_1fr]' : ''
-                  }`}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <label className="label">Vendor Name *</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                      className="input"
-                      placeholder="Vendor name"
-                      required
-                      form="vendor-form"
-                    />
-                  </div>
-                  {canSeeMoney && (
-                    <div style={{ minWidth: 0 }}>
-                      <label className="label">Committed Amount</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={formData.total_cost}
-                        onChange={(e) =>
-                          setFormData((prev) => ({ ...prev, total_cost: e.target.value }))
-                        }
-                        className="input"
-                        placeholder="0"
-                        form="vendor-form"
-                      />
-                    </div>
+                      {sortedPayments.length}
+                    </span>
                   )}
-                </div>
-              </div>
-
-              <div
+                </button>
+              ))}
+            </div>
+          }
+          footerLeft={
+            !canRecordPayment ? (
+              <span
                 style={{
-                  display: 'flex',
-                  borderBottom: '1px solid var(--line-soft)',
-                  padding: '0 24px',
-                  flexShrink: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  color: 'var(--warn)',
                 }}
               >
-                {[
-                  { id: 0, label: 'Details' },
-                  ...(canSeeMoney ? [{ id: 1, label: 'Payments' }] : []),
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    style={{
-                      padding: '10px 16px',
-                      fontSize: 13,
-                      fontWeight: activeTab === tab.id ? 600 : 400,
-                      color: activeTab === tab.id ? 'var(--gold-deep)' : 'var(--ink-low)',
-                      background: 'transparent',
-                      border: 'none',
-                      borderBottom:
-                        activeTab === tab.id ? '2px solid var(--gold)' : '2px solid transparent',
+                <HiOutlineInformationCircle style={{ width: 14, height: 14, flexShrink: 0 }} />
+                Set a committed amount to record payments
+              </span>
+            ) : undefined
+          }
+          footer={
+            <>
+              <button type="button" onClick={attemptCloseVendorModal} className="btn-outline">
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="vendor-form"
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="btn-primary"
+                style={{ minWidth: 170 }}
+              >
+                {createMutation.isPending || updateMutation.isPending
+                  ? 'Saving…'
+                  : editingVendor
+                    ? 'Update vendor'
+                    : installments.some((row) => Number(row.amount || 0) !== 0)
+                      ? 'Add vendor & record payments'
+                      : 'Add vendor'}
+              </button>
+            </>
+          }
+        >
+          <form
+            id="vendor-form"
+            onSubmit={handleSubmit}
+            style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
+          >
+            {activeTab === 0 && (
+              <div
+                className={`grid grid-cols-1 gap-6 content-start ${
+                  canSeeMoney ? 'md:grid-cols-[1fr_320px]' : ''
+                }`}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                  <FormSection title="Vendor details">
+                    <div>
+                      <label className="label">Vendor Name *</label>
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                        className="input"
+                        placeholder="Vendor name"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="label">Category *</label>
+                        <CategoryCombobox
+                          value={formData.category_id}
+                          onChange={(id) => setFormData((prev) => ({ ...prev, category_id: id }))}
+                          level="subcategory"
+                          placeholder="Search categories…"
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Contact Person</label>
+                        <input
+                          type="text"
+                          value={formData.contact_person}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, contact_person: e.target.value }))
+                          }
+                          className="input"
+                          placeholder="Contact name"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="label">Phone</label>
+                        <input
+                          type="tel"
+                          value={formData.phone}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                          }
+                          className="input"
+                          placeholder="Phone number"
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Email</label>
+                        <input
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, email: e.target.value }))
+                          }
+                          className="input"
+                          placeholder="Email address"
+                        />
+                      </div>
+                    </div>
+                  </FormSection>
+
+                  {(() => {
+                    const teamRelevant = formData.needs_food || formData.needs_accommodation;
+                    const renderedSize = teamRelevant ? parseTeamSize(formData.team_size) : 0;
+                    const adjustSize = (delta: number) => {
+                      const next = Math.max(
+                        1,
+                        Math.min(100, parseTeamSize(formData.team_size) + delta),
+                      );
+                      setFormData((prev) => ({ ...prev, team_size: String(next) }));
+                    };
+                    const stepperBtn = {
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
+                      border: '1px solid var(--line)',
+                      background: 'var(--bg-panel)',
+                      color: 'var(--ink-mid)',
                       cursor: 'pointer',
-                      marginBottom: -1,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6,
-                    }}
-                  >
-                    {tab.label}
-                    {tab.id === 1 && editingVendor && sortedPayments.length > 0 && (
-                      <span
-                        style={{
-                          fontSize: 9,
-                          background: 'rgba(22,163,74,0.1)',
-                          color: '#16a34a',
-                          padding: '1px 6px',
-                          borderRadius: 100,
-                          border: '1px solid rgba(22,163,74,0.25)',
-                          fontWeight: 600,
-                        }}
-                      >
-                        {sortedPayments.length}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
+                      justifyContent: 'center',
+                      fontSize: 14,
+                      lineHeight: 1,
+                    } as React.CSSProperties;
 
-              <form
-                id="vendor-form"
-                onSubmit={handleSubmit}
-                style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
-              >
-                <div style={{ flex: 1, overflow: 'hidden' }}>
-                  {activeTab === 0 && (
-                    <div
-                      className={`grid grid-cols-1 gap-6 content-start ${
-                        canSeeMoney ? 'md:grid-cols-[1fr_320px]' : ''
-                      }`}
-                      style={{ height: '100%', overflowY: 'auto', padding: 24 }}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <p
+                    return (
+                      <FormSection title="Team logistics">
+                        <div
                           style={{
-                            margin: 0,
-                            fontSize: 10,
-                            fontWeight: 600,
-                            color: 'var(--ink-dim)',
-                            letterSpacing: '0.08em',
-                            textTransform: 'uppercase',
+                            display: 'flex',
+                            gap: 16,
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
                           }}
                         >
-                          Vendor details
-                        </p>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <label className="label">Category *</label>
-                            <CategoryCombobox
-                              value={formData.category_id}
-                              onChange={(id) =>
-                                setFormData((prev) => ({ ...prev, category_id: id }))
-                              }
-                              level="subcategory"
-                              placeholder="Search categories…"
-                            />
-                          </div>
-                          <div>
-                            <label className="label">Contact Person</label>
-                            <input
-                              type="text"
-                              value={formData.contact_person}
-                              onChange={(e) =>
-                                setFormData((prev) => ({ ...prev, contact_person: e.target.value }))
-                              }
-                              className="input"
-                              placeholder="Contact name"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <label className="label">Phone</label>
-                            <input
-                              type="tel"
-                              value={formData.phone}
-                              onChange={(e) =>
-                                setFormData((prev) => ({ ...prev, phone: e.target.value }))
-                              }
-                              className="input"
-                              placeholder="Phone number"
-                            />
-                          </div>
-                          <div>
-                            <label className="label">Email</label>
-                            <input
-                              type="email"
-                              value={formData.email}
-                              onChange={(e) =>
-                                setFormData((prev) => ({ ...prev, email: e.target.value }))
-                              }
-                              className="input"
-                              placeholder="Email address"
-                            />
-                          </div>
-                        </div>
-
-                        {(() => {
-                          const teamRelevant = formData.needs_food || formData.needs_accommodation;
-                          const renderedSize = teamRelevant ? parseTeamSize(formData.team_size) : 0;
-                          const adjustSize = (delta: number) => {
-                            const next = Math.max(
-                              1,
-                              Math.min(100, parseTeamSize(formData.team_size) + delta),
-                            );
-                            setFormData((prev) => ({ ...prev, team_size: String(next) }));
-                          };
-                          const stepperBtn = {
-                            width: 28,
-                            height: 28,
-                            borderRadius: 6,
-                            border: '1px solid var(--line)',
-                            background: 'var(--bg-panel)',
-                            color: 'var(--ink-mid)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 14,
-                            lineHeight: 1,
-                          } as React.CSSProperties;
-
-                          return (
-                            <div
-                              style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 12,
-                                padding: 14,
-                                border: '1px solid var(--line-soft)',
-                                borderRadius: 8,
-                                background: 'var(--bg-raised)',
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  gap: 12,
-                                  flexWrap: 'wrap',
-                                }}
-                              >
-                                <div className="uppercase-eyebrow">Team logistics</div>
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    gap: 16,
-                                    alignItems: 'center',
-                                    flexWrap: 'wrap',
-                                  }}
-                                >
-                                  <label
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: 6,
-                                      fontSize: 13,
-                                      color: 'var(--ink-mid)',
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    <Checkbox
-                                      checked={formData.needs_food}
-                                      onChange={(e) =>
-                                        setFormData((prev) => ({
-                                          ...prev,
-                                          needs_food: e.target.checked,
-                                        }))
-                                      }
-                                    />
-                                    Needs food
-                                  </label>
-                                  <label
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: 6,
-                                      fontSize: 13,
-                                      color: 'var(--ink-mid)',
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    <Checkbox
-                                      checked={formData.needs_accommodation}
-                                      onChange={(e) =>
-                                        setFormData((prev) => ({
-                                          ...prev,
-                                          needs_accommodation: e.target.checked,
-                                        }))
-                                      }
-                                    />
-                                    Needs accommodation
-                                  </label>
-                                  {teamRelevant && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                      <span style={{ fontSize: 12, color: 'var(--ink-low)' }}>
-                                        Team size
-                                      </span>
-                                      <button
-                                        type="button"
-                                        style={stepperBtn}
-                                        onClick={() => adjustSize(-1)}
-                                        aria-label="Decrease"
-                                      >
-                                        −
-                                      </button>
-                                      <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        value={formData.team_size}
-                                        onChange={(e) => {
-                                          const cleaned = e.target.value.replace(/[^0-9]/g, '');
-                                          setFormData((prev) => ({ ...prev, team_size: cleaned }));
-                                        }}
-                                        onBlur={() => {
-                                          setFormData((prev) => ({
-                                            ...prev,
-                                            team_size: String(parseTeamSize(prev.team_size)),
-                                          }));
-                                        }}
-                                        style={{
-                                          width: 48,
-                                          height: 28,
-                                          textAlign: 'center',
-                                          borderRadius: 6,
-                                          border: '1px solid var(--line)',
-                                          background: 'var(--bg-panel)',
-                                          color: 'var(--ink-high)',
-                                          fontSize: 13,
-                                        }}
-                                      />
-                                      <button
-                                        type="button"
-                                        style={stepperBtn}
-                                        onClick={() => adjustSize(1)}
-                                        aria-label="Increase"
-                                      >
-                                        +
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              {teamRelevant && (
-                                <div>
-                                  <div
-                                    style={{
-                                      fontSize: 11,
-                                      color: 'var(--ink-low)',
-                                      marginBottom: 6,
-                                    }}
-                                  >
-                                    Team member names{' '}
-                                    <span style={{ color: 'var(--ink-dim)' }}>
-                                      · optional, auto-filled if blank
-                                    </span>
-                                  </div>
-                                  <div
-                                    style={{
-                                      display: 'grid',
-                                      gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                                      gap: 8,
-                                    }}
-                                  >
-                                    {Array.from({ length: renderedSize }).map((_, idx) => (
-                                      <input
-                                        key={idx}
-                                        type="text"
-                                        className="input"
-                                        placeholder={`Member ${idx + 1}`}
-                                        value={formData.team_member_names[idx] ?? ''}
-                                        onChange={(e) => {
-                                          const next = [...formData.team_member_names];
-                                          while (next.length <= idx) next.push('');
-                                          next[idx] = e.target.value;
-                                          setFormData((prev) => ({
-                                            ...prev,
-                                            team_member_names: next,
-                                          }));
-                                        }}
-                                      />
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-                      {canSeeMoney && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                          <p
+                          <label
                             style={{
-                              margin: 0,
-                              fontSize: 10,
-                              fontWeight: 600,
-                              color: 'var(--ink-dim)',
-                              letterSpacing: '0.08em',
-                              textTransform: 'uppercase',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              fontSize: 13,
+                              color: 'var(--ink-mid)',
+                              cursor: 'pointer',
                             }}
                           >
-                            Financial details
-                          </p>
-
-                          <div>
-                            <label className="label">Obligation Date</label>
-                            <DatePicker
-                              value={formData.expense_date}
-                              onChange={(value) =>
-                                setFormData((prev) => ({ ...prev, expense_date: value }))
-                              }
-                              placeholder="Obligation date"
-                            />
-                          </div>
-
-                          {canSeeSplits && (
-                            <div>
-                              <label className="label">Liability Side</label>
-                              <div style={{ display: 'flex', gap: 6 }}>
-                                {(['bride', 'groom', 'shared'] as const).map((side) => {
-                                  const isActive = formData.side === side;
-                                  const activeColors =
-                                    side === 'bride'
-                                      ? {
-                                          border: '#be185d',
-                                          bg: 'rgba(190,24,93,0.08)',
-                                          color: '#be185d',
-                                        }
-                                      : side === 'groom'
-                                        ? {
-                                            border: '#1d4ed8',
-                                            bg: 'rgba(29,78,216,0.08)',
-                                            color: '#1d4ed8',
-                                          }
-                                        : {
-                                            border: 'var(--gold)',
-                                            bg: 'var(--gold-glow)',
-                                            color: 'var(--gold-deep)',
-                                          };
-                                  return (
-                                    <button
-                                      key={side}
-                                      type="button"
-                                      onClick={() => setFormData((prev) => ({ ...prev, side }))}
-                                      style={{
-                                        flex: 1,
-                                        padding: '6px 4px',
-                                        borderRadius: 8,
-                                        fontSize: 11,
-                                        border: `2px solid ${isActive ? activeColors.border : 'var(--line)'}`,
-                                        background: isActive ? activeColors.bg : 'transparent',
-                                        color: isActive ? activeColors.color : 'var(--ink-mid)',
-                                        cursor: 'pointer',
-                                        fontWeight: isActive ? 500 : 400,
-                                      }}
-                                    >
-                                      {side === 'shared'
-                                        ? 'Shared'
-                                        : side.charAt(0).toUpperCase() + side.slice(1)}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-
-                          {canSeeSplits && formData.side === 'shared' && (
-                            <SplitShare
-                              total={Number(formData.total_cost) || 0}
-                              bridePercentage={formData.bride_share_percentage}
-                              onChange={(percentage) =>
+                            <Checkbox
+                              checked={formData.needs_food}
+                              onChange={(e) =>
                                 setFormData((prev) => ({
                                   ...prev,
-                                  bride_share_percentage: percentage,
+                                  needs_food: e.target.checked,
                                 }))
                               }
                             />
-                          )}
-
-                          {editingVendor && (
-                            <div
-                              style={{
-                                marginTop: 4,
-                                padding: 14,
-                                background: 'var(--bg-raised)',
-                                borderRadius: 10,
-                                border: '1px solid var(--line-soft)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 10,
-                              }}
-                            >
-                              <p
-                                style={{
-                                  margin: 0,
-                                  fontSize: 10,
-                                  fontWeight: 600,
-                                  color: 'var(--ink-dim)',
-                                  letterSpacing: '0.08em',
-                                  textTransform: 'uppercase',
-                                }}
-                              >
-                                Payment Summary
-                              </p>
-                              <div
-                                style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}
-                              >
-                                <div>
-                                  <div
-                                    style={{
-                                      fontSize: 10,
-                                      color: 'var(--ink-dim)',
-                                      marginBottom: 2,
-                                    }}
-                                  >
-                                    Committed
-                                  </div>
-                                  <div
-                                    style={{
-                                      fontSize: 13,
-                                      fontWeight: 600,
-                                      color: 'var(--ink-mid)',
-                                    }}
-                                  >
-                                    {formatCurrency(paymentCommitted)}
-                                  </div>
-                                </div>
-                                <div>
-                                  <div
-                                    style={{
-                                      fontSize: 10,
-                                      color: 'var(--ink-dim)',
-                                      marginBottom: 2,
-                                    }}
-                                  >
-                                    Paid
-                                  </div>
-                                  <div style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>
-                                    {formatCurrency(paymentPaid)}
-                                  </div>
-                                </div>
-                                <div style={{ gridColumn: '1 / -1' }}>
-                                  <div
-                                    style={{
-                                      fontSize: 10,
-                                      color: 'var(--ink-dim)',
-                                      marginBottom: 2,
-                                    }}
-                                  >
-                                    Outstanding
-                                  </div>
-                                  <div
-                                    style={{
-                                      fontSize: 13,
-                                      fontWeight: 600,
-                                      color: paymentOutstanding > 0 ? '#ea580c' : 'var(--ink-dim)',
-                                    }}
-                                  >
-                                    {formatCurrency(paymentOutstanding)}
-                                  </div>
-                                </div>
-                              </div>
+                            Needs food
+                          </label>
+                          <label
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              fontSize: 13,
+                              color: 'var(--ink-mid)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <Checkbox
+                              checked={formData.needs_accommodation}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  needs_accommodation: e.target.checked,
+                                }))
+                              }
+                            />
+                            Needs accommodation
+                          </label>
+                          {teamRelevant && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 12, color: 'var(--ink-low)' }}>
+                                Team size
+                              </span>
                               <button
                                 type="button"
-                                onClick={() => setActiveTab(1)}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 4,
-                                  fontSize: 12,
-                                  color: 'var(--gold-deep)',
-                                  background: 'transparent',
-                                  cursor: 'pointer',
-                                  fontWeight: 500,
-                                  padding: 0,
-                                }}
+                                style={stepperBtn}
+                                onClick={() => adjustSize(-1)}
+                                aria-label="Decrease"
                               >
-                                <HiOutlineCurrencyRupee style={{ width: 13, height: 13 }} /> Manage
-                                payments →
+                                −
+                              </button>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={formData.team_size}
+                                onChange={(e) => {
+                                  const cleaned = e.target.value.replace(/[^0-9]/g, '');
+                                  setFormData((prev) => ({ ...prev, team_size: cleaned }));
+                                }}
+                                onBlur={() => {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    team_size: String(parseTeamSize(prev.team_size)),
+                                  }));
+                                }}
+                                style={{
+                                  width: 48,
+                                  height: 28,
+                                  textAlign: 'center',
+                                  borderRadius: 6,
+                                  border: '1px solid var(--line)',
+                                  background: 'var(--bg-panel)',
+                                  color: 'var(--ink-high)',
+                                  fontSize: 13,
+                                }}
+                              />
+                              <button
+                                type="button"
+                                style={stepperBtn}
+                                onClick={() => adjustSize(1)}
+                                aria-label="Increase"
+                              >
+                                +
                               </button>
                             </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  )}
 
-                  {activeTab === 1 && (
-                    <div
-                      style={{
-                        height: '100%',
-                        overflowY: 'auto',
-                        padding: 24,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 14,
-                      }}
-                    >
-                      {editingVendor ? (
-                        <PaymentTimelinePanel
-                          payments={sortedPayments}
-                          committed={paymentCommitted}
-                          paid={paymentPaid}
-                          outstanding={paymentOutstanding}
-                          onCreate={(payload) =>
-                            createVendorPayment.mutateAsync({
-                              sourceId: editingVendor.id,
-                              ...payload,
-                            })
+                        {teamRelevant && (
+                          <div>
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color: 'var(--ink-low)',
+                                marginBottom: 6,
+                              }}
+                            >
+                              Team member names{' '}
+                              <span style={{ color: 'var(--ink-dim)' }}>
+                                · optional, auto-filled if blank
+                              </span>
+                            </div>
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                                gap: 8,
+                              }}
+                            >
+                              {Array.from({ length: renderedSize }).map((_, idx) => (
+                                <input
+                                  key={idx}
+                                  type="text"
+                                  className="input"
+                                  placeholder={`Member ${idx + 1}`}
+                                  value={formData.team_member_names[idx] ?? ''}
+                                  onChange={(e) => {
+                                    const next = [...formData.team_member_names];
+                                    while (next.length <= idx) next.push('');
+                                    next[idx] = e.target.value;
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      team_member_names: next,
+                                    }));
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </FormSection>
+                    );
+                  })()}
+                </div>
+
+                {canSeeMoney && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    <FormSection title="Financial details">
+                      <div>
+                        <label className="label">Committed Amount</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.total_cost}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, total_cost: e.target.value }))
                           }
-                          onDelete={(paymentId) =>
-                            deleteVendorPayment.mutateAsync({
-                              sourceId: editingVendor.id,
-                              paymentId,
-                            })
-                          }
-                          onUpdate={(paymentId, payload) =>
-                            updateExpensePayment.mutateAsync({ paymentId, ...payload })
-                          }
-                          isUpdating={updateExpensePayment.isPending}
-                          items={currentVendorFinance?.items}
-                          allocations={currentVendorFinance?.allocations}
-                          isCreating={createVendorPayment.isPending}
-                          isDeleting={deleteVendorPayment.isPending}
-                          defaultSplit={{
-                            side: currentVendorFinance?.items?.[0]?.side ?? 'shared',
-                            bridePercentage:
-                              currentVendorFinance?.items?.[0]?.bride_share_percentage ?? 50,
-                          }}
-                          canSeeSplits={canSeeSplits}
-                          canRecordPayment={!!editingVendor.expense_id}
-                          disabledReason="Link an obligation to this vendor before recording payments."
+                          className="input"
+                          placeholder="0"
                         />
-                      ) : (
-                        <>
-                          <p
-                            style={{
-                              margin: 0,
-                              fontSize: 10,
-                              fontWeight: 600,
-                              color: 'var(--ink-dim)',
-                              letterSpacing: '0.08em',
-                              textTransform: 'uppercase',
-                            }}
-                          >
-                            Initial Payments (Optional)
-                          </p>
-                          <p style={{ margin: 0, fontSize: 12, color: 'var(--ink-low)' }}>
-                            Optionally record advance, milestone, or final payments alongside the
-                            vendor. Leave empty to skip.
-                          </p>
-                          <InstallmentsEditor
-                            installments={installments}
-                            onChange={setInstallments}
-                            committedTotal={Number(formData.total_cost || 0)}
-                            canSeeSplits={canSeeSplits}
-                          />
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
+                      </div>
+                      <div>
+                        <label className="label">Obligation Date</label>
+                        <DatePicker
+                          value={formData.expense_date}
+                          onChange={(value) =>
+                            setFormData((prev) => ({ ...prev, expense_date: value }))
+                          }
+                          placeholder="Obligation date"
+                        />
+                      </div>
 
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 10,
-                    padding: '14px 24px',
-                    borderTop: '1px solid var(--line-soft)',
-                    flexShrink: 0,
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={attemptCloseVendorModal}
-                    className="btn-outline"
-                    style={{ flex: 1 }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={createMutation.isPending || updateMutation.isPending}
-                    className="btn-primary"
-                    style={{
-                      flex: 1,
-                      opacity: createMutation.isPending || updateMutation.isPending ? 0.5 : 1,
+                      {canSeeSplits && (
+                        <div>
+                          <label className="label">Liability Side</label>
+                          <SideToggle
+                            value={formData.side}
+                            onChange={(side) => setFormData((prev) => ({ ...prev, side }))}
+                          />
+                        </div>
+                      )}
+
+                      {canSeeSplits && formData.side === 'shared' && (
+                        <SplitShare
+                          total={Number(formData.total_cost) || 0}
+                          bridePercentage={formData.bride_share_percentage}
+                          onChange={(percentage) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              bride_share_percentage: percentage,
+                            }))
+                          }
+                        />
+                      )}
+                    </FormSection>
+
+                    {editingVendor && (
+                      <div
+                        style={{
+                          padding: 14,
+                          background: 'var(--bg-raised)',
+                          borderRadius: 10,
+                          border: '1px solid var(--line-soft)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 10,
+                        }}
+                      >
+                        <p className="form-section-title" style={{ margin: 0 }}>
+                          Payment Summary
+                        </p>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                          <div>
+                            <div style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}>
+                              Committed
+                            </div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-mid)' }}>
+                              {formatCurrency(paymentCommitted)}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}>
+                              Paid
+                            </div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>
+                              {formatCurrency(paymentPaid)}
+                            </div>
+                          </div>
+                          <div style={{ gridColumn: '1 / -1' }}>
+                            <div style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}>
+                              Outstanding
+                            </div>
+                            <div
+                              style={{
+                                fontSize: 13,
+                                fontWeight: 600,
+                                color: paymentOutstanding > 0 ? '#ea580c' : 'var(--ink-dim)',
+                              }}
+                            >
+                              {formatCurrency(paymentOutstanding)}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab(1)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: 12,
+                            color: 'var(--gold-deep)',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            fontWeight: 500,
+                            padding: 0,
+                          }}
+                        >
+                          <HiOutlineCurrencyRupee style={{ width: 13, height: 13 }} /> Manage
+                          payments →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 1 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {editingVendor ? (
+                  <PaymentTimelinePanel
+                    payments={sortedPayments}
+                    committed={paymentCommitted}
+                    paid={paymentPaid}
+                    outstanding={paymentOutstanding}
+                    onCreate={(payload) =>
+                      createVendorPayment.mutateAsync({
+                        sourceId: editingVendor.id,
+                        ...payload,
+                      })
+                    }
+                    onDelete={(paymentId) =>
+                      deleteVendorPayment.mutateAsync({
+                        sourceId: editingVendor.id,
+                        paymentId,
+                      })
+                    }
+                    onUpdate={(paymentId, payload) =>
+                      updateExpensePayment.mutateAsync({ paymentId, ...payload })
+                    }
+                    isUpdating={updateExpensePayment.isPending}
+                    items={currentVendorFinance?.items}
+                    allocations={currentVendorFinance?.allocations}
+                    isCreating={createVendorPayment.isPending}
+                    isDeleting={deleteVendorPayment.isPending}
+                    defaultSplit={{
+                      side: currentVendorFinance?.items?.[0]?.side ?? 'shared',
+                      bridePercentage:
+                        currentVendorFinance?.items?.[0]?.bride_share_percentage ?? 50,
                     }}
-                  >
-                    {createMutation.isPending || updateMutation.isPending
-                      ? 'Saving…'
-                      : editingVendor
-                        ? 'Update vendor'
-                        : installments.some((row) => Number(row.amount || 0) !== 0)
-                          ? 'Add vendor & record payments'
-                          : 'Add vendor'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </Portal>
+                    canSeeSplits={canSeeSplits}
+                    canRecordPayment={!!editingVendor.expense_id}
+                    disabledReason="Link an obligation to this vendor before recording payments."
+                  />
+                ) : (
+                  <>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--ink-low)' }}>
+                      Optionally record advance, milestone, or final payments alongside the vendor.
+                      Leave empty to skip.
+                    </p>
+                    <InstallmentsEditor
+                      installments={installments}
+                      onChange={setInstallments}
+                      committedTotal={Number(formData.total_cost || 0)}
+                      canSeeSplits={canSeeSplits}
+                    />
+                  </>
+                )}
+              </div>
+            )}
+          </form>
+        </Modal>
       )}
       {vendorUnsavedDialog}
 
-      {deleteConfirm && (
-        <Portal>
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 50,
-              padding: 16,
-            }}
-            onClick={() => setDeleteConfirm(null)}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                background: 'var(--bg-panel)',
-                borderRadius: 'var(--radius-lg)',
-                padding: 28,
-                maxWidth: 380,
-                width: '100%',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
-              }}
-            >
-              <h3
-                className="display"
-                style={{ margin: '0 0 8px', fontSize: 20, color: 'var(--ink-high)' }}
-              >
-                Delete vendor?
-              </h3>
-              <p style={{ fontSize: 13, color: 'var(--ink-low)', marginBottom: 24 }}>
-                This action cannot be undone.
-              </p>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button
-                  onClick={() => setDeleteConfirm(null)}
-                  className="btn-outline"
-                  style={{ flex: 1 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(deleteConfirm)}
-                  disabled={deleteMutation.isPending}
-                  style={{
-                    flex: 1,
-                    padding: '9px 16px',
-                    background: 'var(--err)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 8,
-                    fontSize: 13,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    opacity: deleteMutation.isPending ? 0.5 : 1,
-                  }}
-                >
-                  {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
+      <ConfirmDialog
+        open={deleteConfirm != null}
+        title="Delete vendor?"
+        message="This action cannot be undone."
+        isPending={deleteMutation.isPending}
+        onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   );
 }

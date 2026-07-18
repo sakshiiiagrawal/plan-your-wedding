@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlineX } from 'react-icons/hi';
-import Portal from '../../../components/Portal';
+import { HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi';
+import { Modal, FormSection, SectionAction, SideToggle } from '../../../components/ui/Modal';
 import CategoryCombobox from '../../../components/CategoryCombobox';
 import CustomCategoryModal from '../../../components/CustomCategoryModal';
 import DatePicker from '../../../components/ui/DatePicker';
@@ -204,443 +204,322 @@ export default function EditExpenseModal({
 
   return (
     <>
-      <Portal>
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 50,
-            padding: 16,
-          }}
-          onClick={attemptClose}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
+      <Modal
+        onClose={attemptClose}
+        eyebrow="Expenses"
+        title="Edit expense"
+        size="lg"
+        headerRight={
+          <span
             style={{
-              background: 'var(--bg-panel)',
-              borderRadius: 'var(--radius-lg)',
-              width: '100%',
-              maxWidth: 768,
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+              fontSize: 11,
+              padding: '2px 10px',
+              borderRadius: 100,
+              textTransform: 'capitalize',
+              background: 'var(--bg-raised)',
+              border: '1px solid var(--line-soft)',
+              color: 'var(--ink-low)',
+              whiteSpace: 'nowrap',
             }}
           >
+            {expense.status}
+          </span>
+        }
+        footerLeft={
+          <span>
+            Planned {formatCurrency(totalPlanned)} · Allocated{' '}
+            <strong style={{ color: 'var(--gold-deep)' }}>{formatCurrency(totalCommitted)}</strong>
+          </span>
+        }
+        footer={
+          <>
+            <button type="button" onClick={attemptClose} className="btn-outline">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="edit-expense-form"
+              disabled={isPending}
+              className="btn-primary"
+              style={{ minWidth: 150 }}
+            >
+              {isPending ? 'Saving…' : 'Save changes'}
+            </button>
+          </>
+        }
+      >
+        <form
+          id="edit-expense-form"
+          onSubmit={handleSubmit}
+          style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
+        >
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label">Expense Title *</label>
+              <input
+                type="text"
+                value={formData.description}
+                onChange={(event) =>
+                  setFormData((prev) => (prev ? { ...prev, description: event.target.value } : prev))
+                }
+                className="input"
+                required
+              />
+            </div>
+            <div>
+              <label className="label">Expense Date *</label>
+              <DatePicker
+                value={formData.expense_date}
+                onChange={(v) => setFormData((prev) => (prev ? { ...prev, expense_date: v } : prev))}
+                required
+                placeholder="Expense date"
+              />
+            </div>
+          </div>
+
+          <FormSection
+            title="Line Items"
+            hint="Keep the allocated amount aligned with the real category breakdown."
+            action={
+              <SectionAction
+                onClick={() =>
+                  setFormData((prev) =>
+                    prev ? { ...prev, items: [...prev.items, createItem()] } : prev,
+                  )
+                }
+              >
+                <HiOutlinePlus className="w-4 h-4" />
+                Add Item
+              </SectionAction>
+            }
+          >
+            {formData.items.map((item, index) => (
+              <div
+                key={item.local_id}
+                style={{
+                  borderRadius: 10,
+                  border: '1px solid var(--line-soft)',
+                  padding: 16,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 14,
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <h4 style={{ margin: 0, fontWeight: 600, color: 'var(--ink-high)', fontSize: 13 }}>
+                    Item {index + 1}
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item.local_id)}
+                    disabled={
+                      formData.items.length === 1 ||
+                      (!!item.id && (paidByItem.get(item.id) ?? 0) > 0)
+                    }
+                    title={
+                      item.id && (paidByItem.get(item.id) ?? 0) > 0
+                        ? `${formatCurrency(paidByItem.get(item.id) ?? 0)} paid against this item — reverse those payments first`
+                        : undefined
+                    }
+                    aria-label={`Remove item ${index + 1}`}
+                    className="p-2 rounded-lg text-red-500 hover:bg-red-50 disabled:opacity-40"
+                  >
+                    <HiOutlineTrash className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Item Description *</label>
+                    <input
+                      type="text"
+                      value={item.description}
+                      onChange={(event) =>
+                        updateItem(item.local_id, { description: event.target.value })
+                      }
+                      className="input"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Category *</label>
+                    <CategoryCombobox
+                      value={item.category_id}
+                      onChange={(id) => updateItem(item.local_id, { category_id: id })}
+                      level="subcategory"
+                      placeholder="Search categories…"
+                      allowCustom
+                      onAddCustom={(parentId) => {
+                        setCustomCategoryParentId(parentId);
+                        setShowCustomCategoryModal(true);
+                      }}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Planned (estimate)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.planned_amount}
+                      onChange={(event) =>
+                        updateItem(item.local_id, { planned_amount: event.target.value })
+                      }
+                      className="input"
+                      placeholder="Blank resets to allocated"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Allocated *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.amount}
+                      onChange={(event) => updateItem(item.local_id, { amount: event.target.value })}
+                      className="input"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {canSeeSplits && (
+                  <div>
+                    <label className="label">Liability Side</label>
+                    <SideToggle
+                      value={item.side}
+                      onChange={(side) => updateItem(item.local_id, { side })}
+                    />
+                  </div>
+                )}
+
+                {canSeeSplits && item.side === 'shared' && (
+                  <SplitShare
+                    total={Number(item.amount) || 0}
+                    bridePercentage={item.bride_share_percentage}
+                    onChange={(pct) => updateItem(item.local_id, { bride_share_percentage: pct })}
+                  />
+                )}
+              </div>
+            ))}
+
             <div
               style={{
+                background: 'var(--bg-raised)',
+                borderRadius: 10,
+                padding: '10px 16px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '20px 24px',
-                borderBottom: '1px solid var(--line-soft)',
+                border: '1px solid var(--line-soft)',
               }}
             >
-              <div>
-                <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>
-                  Expenses
-                </div>
-                <h2
-                  className="display"
-                  style={{ margin: 0, fontSize: 22, color: 'var(--ink-high)' }}
-                >
-                  Edit Expense
-                </h2>
-              </div>
-              <button
-                onClick={attemptClose}
-                style={{
-                  padding: '6px 8px',
-                  borderRadius: 6,
-                  color: 'var(--ink-dim)',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                }}
-              >
-                <HiOutlineX style={{ width: 18, height: 18 }} />
-              </button>
+              <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
+                Planned {formatCurrency(totalPlanned)}
+              </span>
+              <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
+                Allocated{' '}
+                <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--gold-deep)' }}>
+                  {formatCurrency(totalCommitted)}
+                </span>
+              </span>
             </div>
+          </FormSection>
 
-            <form id="edit-expense-form" onSubmit={handleSubmit} className="p-6 space-y-6">
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Expense Title *</label>
-                  <input
-                    type="text"
-                    value={formData.description}
-                    onChange={(event) =>
-                      setFormData((prev) =>
-                        prev ? { ...prev, description: event.target.value } : prev,
-                      )
-                    }
-                    className="input"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="label">Expense Date *</label>
-                  <DatePicker
-                    value={formData.expense_date}
-                    onChange={(v) =>
-                      setFormData((prev) => (prev ? { ...prev, expense_date: v } : prev))
-                    }
-                    required
-                    placeholder="Expense date"
-                  />
-                </div>
-              </div>
+          <FormSection title="Notes">
+            <textarea
+              value={formData.notes}
+              onChange={(event) =>
+                setFormData((prev) => (prev ? { ...prev, notes: event.target.value } : prev))
+              }
+              className="input min-h-[72px]"
+              placeholder="Optional notes"
+            />
+          </FormSection>
+        </form>
 
-              <div>
-                <label className="label">Notes</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(event) =>
-                    setFormData((prev) => (prev ? { ...prev, notes: event.target.value } : prev))
-                  }
-                  className="input min-h-[88px]"
-                  placeholder="Optional notes"
-                />
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="section-title">Line Items</h3>
-                    <p className="text-sm text-ink-low">
-                      Keep the allocated amount aligned with the real category breakdown.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData((prev) =>
-                        prev ? { ...prev, items: [...prev.items, createItem()] } : prev,
-                      )
-                    }
-                    style={{
-                      fontSize: 13,
-                      color: 'var(--gold-deep)',
-                      fontWeight: 500,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      background: 'transparent',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <HiOutlinePlus className="w-4 h-4" />
-                    Add Item
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  {formData.items.map((item, index) => (
-                    <div
-                      key={item.local_id}
-                      style={{
-                        borderRadius: 10,
-                        border: '1px solid var(--line-soft)',
-                        padding: 16,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 14,
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <h4 style={{ fontWeight: 600, color: 'var(--ink-high)', fontSize: 13 }}>
-                          Item {index + 1}
-                        </h4>
-                        <button
-                          type="button"
-                          onClick={() => removeItem(item.local_id)}
-                          disabled={
-                            formData.items.length === 1 ||
-                            (!!item.id && (paidByItem.get(item.id) ?? 0) > 0)
-                          }
-                          title={
-                            item.id && (paidByItem.get(item.id) ?? 0) > 0
-                              ? `${formatCurrency(paidByItem.get(item.id) ?? 0)} paid against this item — reverse those payments first`
-                              : undefined
-                          }
-                          className="p-2 rounded-lg text-red-500 hover:bg-red-50 disabled:opacity-40"
-                        >
-                          <HiOutlineTrash className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <div>
-                        <label className="label">Item Description *</label>
-                        <input
-                          type="text"
-                          value={item.description}
-                          onChange={(event) =>
-                            updateItem(item.local_id, { description: event.target.value })
-                          }
-                          className="input"
-                          required
-                        />
-                      </div>
-
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="label">Planned (estimate)</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.planned_amount}
-                            onChange={(event) =>
-                              updateItem(item.local_id, { planned_amount: event.target.value })
-                            }
-                            className="input"
-                            placeholder="Blank resets to allocated"
-                          />
-                        </div>
-                        <div>
-                          <label className="label">Allocated *</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.amount}
-                            onChange={(event) =>
-                              updateItem(item.local_id, { amount: event.target.value })
-                            }
-                            className="input"
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="label">Category *</label>
-                        <CategoryCombobox
-                          value={item.category_id}
-                          onChange={(id) => updateItem(item.local_id, { category_id: id })}
-                          level="subcategory"
-                          placeholder="Search categories…"
-                          allowCustom
-                          onAddCustom={(parentId) => {
-                            setCustomCategoryParentId(parentId);
-                            setShowCustomCategoryModal(true);
-                          }}
-                          required
-                        />
-                      </div>
-
-                      {canSeeSplits && (
-                      <div>
-                        <label className="label">Liability Side</label>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          {(['bride', 'groom', 'shared'] as const).map((side) => {
-                            const isActive = item.side === side;
-                            const activeStyle =
-                              side === 'bride'
-                                ? {
-                                    borderColor: 'var(--bride-line)',
-                                    background: 'var(--bride-soft)',
-                                    color: 'var(--bride-deep)',
-                                  }
-                                : side === 'groom'
-                                  ? {
-                                      borderColor: 'var(--groom-line)',
-                                      background: 'var(--groom-soft)',
-                                      color: 'var(--groom-deep)',
-                                    }
-                                  : {
-                                      borderColor: 'var(--line-strong)',
-                                      background: 'var(--bg-highest)',
-                                      color: 'var(--ink-high)',
-                                    };
-                            return (
-                              <button
-                                key={side}
-                                type="button"
-                                onClick={() => updateItem(item.local_id, { side })}
-                                style={{
-                                  flex: 1,
-                                  padding: '8px 4px',
-                                  borderRadius: 8,
-                                  border: `2px solid ${isActive ? activeStyle.borderColor : 'var(--line)'}`,
-                                  background: isActive ? activeStyle.background : 'transparent',
-                                  color: isActive ? activeStyle.color : 'var(--ink-low)',
-                                  fontSize: 12,
-                                  fontWeight: 500,
-                                  cursor: 'pointer',
-                                  transition: 'all 150ms',
-                                  textTransform: 'capitalize',
-                                }}
-                              >
-                                {side === 'shared'
-                                  ? 'Shared'
-                                  : `${side.charAt(0).toUpperCase()}${side.slice(1)}`}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      )}
-
-                      {canSeeSplits && item.side === 'shared' && (
-                        <SplitShare
-                          total={Number(item.amount) || 0}
-                          bridePercentage={item.bride_share_percentage}
-                          onChange={(pct) =>
-                            updateItem(item.local_id, { bride_share_percentage: pct })
-                          }
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <div
-                  style={{
-                    background: 'var(--bg-raised)',
-                    borderRadius: 10,
-                    padding: '10px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    border: '1px solid var(--line-soft)',
-                  }}
-                >
-                  <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
-                    Planned {formatCurrency(totalPlanned)}
-                  </span>
-                  <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
-                    Allocated{' '}
-                    <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--gold-deep)' }}>
-                      {formatCurrency(totalCommitted)}
-                    </span>
-                  </span>
-                </div>
-              </div>
-
-            </form>
-
-            {/* A8: kept outside the form so a payment-panel key press can't
-                submit the expense edit. */}
-            <div className="px-6 pb-6 space-y-6">
-              <div className="space-y-4">
-                <div>
-                  <h3 className="section-title">Payments</h3>
-                  <p className="text-sm text-ink-low">
-                    Record advance, milestone, and final payments against this expense.
-                  </p>
-                </div>
-                <PaymentTimelinePanel
-                  payments={payments}
-                  committed={detail.summary?.committed_amount ?? totalCommitted}
-                  paid={detail.summary?.paid_amount ?? 0}
-                  outstanding={detail.summary?.outstanding_amount ?? totalCommitted}
-                  onCreate={(payload) =>
-                    createExpensePayment.mutateAsync({ expenseId: expense.id, ...payload })
-                  }
-                  onDelete={(paymentId) =>
-                    deleteExpensePayment.mutateAsync({ expenseId: expense.id, paymentId })
-                  }
-                  onUpdate={(paymentId, payload) =>
-                    updateExpensePayment.mutateAsync({ paymentId, ...payload })
-                  }
-                  isUpdating={updateExpensePayment.isPending}
-                  items={detail.items}
-                  allocations={detail.allocations}
-                  isCreating={createExpensePayment.isPending}
-                  isDeleting={deleteExpensePayment.isPending}
-                  defaultSplit={{
-                    side: detail.items[0]?.side ?? 'shared',
-                    bridePercentage: detail.items[0]?.bride_share_percentage ?? 50,
-                  }}
-                  canSeeSplits={canSeeSplits}
-                  canRecordPayment={detail.items.length > 0}
-                  disabledReason="Add a line item first before recording payments."
-                />
-              </div>
-
-              {/* A5/C6: lifecycle actions */}
-              <div className="space-y-3" style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 16 }}>
-                <div className="flex items-center gap-2">
-                  <h3 className="section-title" style={{ margin: 0 }}>Status</h3>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      padding: '2px 8px',
-                      borderRadius: 100,
-                      textTransform: 'capitalize',
-                      background: 'var(--bg-raised)',
-                      color: 'var(--ink-low)',
-                    }}
-                  >
-                    {expense.status}
-                  </span>
-                </div>
-                {expense.status === 'active' ? (
-                  <div className="flex items-center gap-4">
-                    <button
-                      type="button"
-                      className="btn-outline"
-                      onClick={() => setStatusConfirm('closed')}
-                    >
-                      Close expense
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStatusConfirm('terminated')}
-                      style={{
-                        fontSize: 12,
-                        color: 'var(--ink-dim)',
-                        background: 'transparent',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Terminate…
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn-outline"
-                    onClick={() => void onSubmit(expense.id, { status: 'active' })}
-                  >
-                    Reopen
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                gap: 10,
-                padding: '16px 24px',
-                borderTop: '1px solid var(--line-soft)',
-              }}
-            >
-              <button
-                type="button"
-                onClick={attemptClose}
-                className="btn-outline"
-                style={{ flex: 1 }}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                form="edit-expense-form"
-                disabled={isPending}
-                className="btn-primary"
-                style={{ flex: 1, opacity: isPending ? 0.5 : 1 }}
-              >
-                {isPending ? 'Saving…' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
+        {/* A8: kept outside the form so a payment-panel key press can't
+            submit the expense edit. */}
+        <div style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 20 }}>
+          <PaymentTimelinePanel
+            payments={payments}
+            committed={detail.summary?.committed_amount ?? totalCommitted}
+            paid={detail.summary?.paid_amount ?? 0}
+            outstanding={detail.summary?.outstanding_amount ?? totalCommitted}
+            onCreate={(payload) =>
+              createExpensePayment.mutateAsync({ expenseId: expense.id, ...payload })
+            }
+            onDelete={(paymentId) =>
+              deleteExpensePayment.mutateAsync({ expenseId: expense.id, paymentId })
+            }
+            onUpdate={(paymentId, payload) =>
+              updateExpensePayment.mutateAsync({ paymentId, ...payload })
+            }
+            isUpdating={updateExpensePayment.isPending}
+            items={detail.items}
+            allocations={detail.allocations}
+            isCreating={createExpensePayment.isPending}
+            isDeleting={deleteExpensePayment.isPending}
+            defaultSplit={{
+              side: detail.items[0]?.side ?? 'shared',
+              bridePercentage: detail.items[0]?.bride_share_percentage ?? 50,
+            }}
+            canSeeSplits={canSeeSplits}
+            canRecordPayment={detail.items.length > 0}
+            disabledReason="Add a line item first before recording payments."
+          />
         </div>
-      </Portal>
+
+        {/* A5/C6: lifecycle actions */}
+        <div style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 20 }}>
+          <FormSection
+            title="Status"
+            hint={
+              expense.status === 'active'
+                ? 'Close the expense when it is settled, or terminate to cancel what remains.'
+                : 'This expense is not active — reopen it to make further changes.'
+            }
+          >
+            {expense.status === 'active' ? (
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => setStatusConfirm('closed')}
+                >
+                  Close expense
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusConfirm('terminated')}
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--ink-dim)',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Terminate…
+                </button>
+              </div>
+            ) : (
+              <div>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => void onSubmit(expense.id, { status: 'active' })}
+                >
+                  Reopen
+                </button>
+              </div>
+            )}
+          </FormSection>
+        </div>
+      </Modal>
 
       {unsavedDialog}
 

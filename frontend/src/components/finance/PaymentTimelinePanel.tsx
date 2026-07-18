@@ -339,7 +339,7 @@ export default function PaymentTimelinePanel({
 
       {/* Payment timeline */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <h3 className="section-title">Payment Timeline</h3>
+        <h3 className="form-section-title" style={{ margin: 0 }}>Payment Timeline</h3>
 
         {sortedPayments.length === 0 ? (
           <div
@@ -382,7 +382,7 @@ export default function PaymentTimelinePanel({
 
       {/* Add payment form */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <h3 className="section-title" id="add-payment-heading">
+        <h3 className="form-section-title" style={{ margin: 0 }} id="add-payment-heading">
           Add Payment
         </h3>
 
@@ -505,8 +505,8 @@ export default function PaymentTimelinePanel({
               color: 'var(--warn)',
             }}
           >
-            This schedules more than the {formatCurrency(unscheduled)} still unscheduled. It won't
-            change the paid total, but the schedule will exceed what's outstanding.
+            This schedules more than the {formatCurrency(unscheduled)} still unscheduled. It
+            won&apos;t change the paid total, but the schedule will exceed what&apos;s outstanding.
           </div>
         )}
 

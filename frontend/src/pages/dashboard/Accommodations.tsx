@@ -25,6 +25,7 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import SortableItem from '../../components/SortableItem';
+import { SectionHeader } from '../../components/ui';
 import {
   useAccommodationsPageData,
   useUpdateAccommodation,
@@ -849,34 +850,33 @@ export default function Accommodations() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="page-title">Accommodations & Room Allocation</h1>
-          <p className="text-xs text-ink-dim mt-0.5">
-            Tap a guest chip to cycle: expected → checked in → checked out
-          </p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setShowImportModal(true)}
-            className="btn-outline flex items-center gap-2"
-          >
-            <HiOutlineUpload className="w-4 h-4" />
-            Import
-          </button>
-          <button
-            onClick={() => exportAllocations.mutate()}
-            disabled={exportAllocations.isPending}
-            className="btn-outline flex items-center gap-2"
-          >
-            <HiOutlineDownload className="w-4 h-4" />
-            Export Excel
-          </button>
-          <button onClick={() => navigate('../venues')} className="btn-primary">
-            Add Venue
-          </button>
-        </div>
-      </div>
+      <SectionHeader
+        eyebrow="Stay & Rooms"
+        title="Accommodations & Room Allocation"
+        description="Tap a guest chip to cycle: expected → checked in → checked out"
+        action={
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="btn-outline flex items-center gap-2"
+            >
+              <HiOutlineUpload className="w-4 h-4" />
+              Import
+            </button>
+            <button
+              onClick={() => exportAllocations.mutate()}
+              disabled={exportAllocations.isPending}
+              className="btn-outline flex items-center gap-2"
+            >
+              <HiOutlineDownload className="w-4 h-4" />
+              Export Excel
+            </button>
+            <button onClick={() => navigate('../venues')} className="btn-primary">
+              Add Venue
+            </button>
+          </div>
+        }
+      />
 
       {allocationMatrix.length === 0 ? (
         <div className="card flex flex-col items-center justify-center text-center py-16 gap-4">
@@ -884,7 +884,7 @@ export default function Accommodations() {
             <HiOutlineOfficeBuilding className="w-10 h-10 text-gold-600" />
           </div>
           <div>
-            <h2 className="text-xl display font-bold text-maroon-800 mb-2">
+            <h2 className="text-xl display font-semibold text-ink-high mb-2">
               No accommodation venues yet
             </h2>
             <p className="text-ink-low text-sm max-w-sm">
@@ -1250,7 +1250,7 @@ export default function Accommodations() {
                                     <HiOutlineOfficeBuilding className="w-5 h-5 text-gold-600" />
                                   </div>
                                   <div className="min-w-0">
-                                    <h3 className="font-semibold text-maroon-800">{hotel.name}</h3>
+                                    <h3 className="font-semibold text-ink-high">{hotel.name}</h3>
                                     {hotel.city && (
                                       <p className="text-xs text-ink-low">{hotel.city}</p>
                                     )}
@@ -1824,7 +1824,7 @@ export default function Accommodations() {
                 >
                   <div className="flex items-center justify-between p-6 border-b border-gold-200">
                     <div>
-                      <h2 className="text-xl display font-bold text-maroon-800">Add Rooms</h2>
+                      <h2 className="text-xl display font-semibold text-ink-high">Add Rooms</h2>
                       {hotel && <p className="text-sm text-ink-low mt-0.5">{hotel.name}</p>}
                     </div>
                     <button
@@ -1839,7 +1839,7 @@ export default function Accommodations() {
                     <div className="border border-gold-200 rounded-xl p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="text-sm font-semibold text-maroon-800">Room Categories</h3>
+                          <h3 className="text-sm font-semibold text-ink-high">Room Categories</h3>
                           <p className="text-xs text-ink-dim mt-0.5">
                             Rooms auto-numbered per category (e.g. STD-1, STD-2…)
                           </p>
@@ -2150,7 +2150,7 @@ export default function Accommodations() {
                   {/* Header */}
                   <div className="flex items-center justify-between p-6 border-b border-gold-200 flex-shrink-0">
                     <div>
-                      <h2 className="text-xl display font-bold text-maroon-800">
+                      <h2 className="text-xl display font-semibold text-ink-high">
                         {isEditing ? 'Edit Room Assignment' : 'Assign Guests to Room'}
                       </h2>
                       <p className="text-sm text-ink-low mt-0.5">
@@ -2441,7 +2441,7 @@ export default function Accommodations() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-6 border-b border-gold-200">
-                <h2 className="text-xl display font-bold text-maroon-800">
+                <h2 className="text-xl display font-semibold text-ink-high">
                   Import Room Allocations from Excel
                 </h2>
                 <button
@@ -2530,7 +2530,7 @@ export default function Accommodations() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-6 border-b border-gold-200">
-                <h2 className="text-xl display font-bold text-maroon-800">Import Results</h2>
+                <h2 className="text-xl display font-semibold text-ink-high">Import Results</h2>
                 <button
                   onClick={() => {
                     setShowImportResultsModal(false);

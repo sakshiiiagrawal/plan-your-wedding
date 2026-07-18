@@ -1534,9 +1534,10 @@ export interface RemindersFeed {
   upcoming: ReminderItem[];
 }
 
-// Topbar bell feed. A live status indicator (overdue + due today + coming up),
-// not an unread inbox — no read state anywhere. Payment freshness rides
-// staleTime rather than invalidation across every finance mutation.
+// Topbar bell feed. A live status indicator (overdue + due today + coming up);
+// the server keeps no read state — RemindersBell layers device-local "seen"
+// tracking on top. Payment freshness rides staleTime rather than invalidation
+// across every finance mutation.
 export const useReminders = () =>
   useQuery<RemindersFeed>({
     queryKey: ['reminders'],

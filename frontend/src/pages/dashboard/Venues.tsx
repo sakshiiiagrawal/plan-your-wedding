@@ -1143,38 +1143,92 @@ export default function Venues() {
                               borderRadius: 8,
                             }}
                           >
-                            <div
-                              style={{
-                                gridColumn: canSeeMoney ? '1 / -1' : undefined,
-                                minWidth: 0,
-                              }}
-                            >
+                            {hasRooms ? (
                               <div
-                                className="uppercase-eyebrow"
-                                style={{ marginBottom: 2, fontSize: 9 }}
+                                style={{
+                                  gridColumn: canSeeMoney ? '1 / -1' : undefined,
+                                  minWidth: 0,
+                                  display: 'flex',
+                                  gap: 20,
+                                }}
                               >
-                                {hasRooms ? 'Rooms · Sleeps' : 'Capacity'}
+                                <div>
+                                  <div
+                                    className="uppercase-eyebrow"
+                                    style={{ marginBottom: 2, fontSize: 9 }}
+                                  >
+                                    Rooms
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: 12,
+                                      color: 'var(--ink-high)',
+                                      fontWeight: 500,
+                                    }}
+                                  >
+                                    {venueRooms.length > 0 ? (
+                                      venueRooms.length
+                                    ) : (
+                                      <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>
+                                        —
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div
+                                    className="uppercase-eyebrow"
+                                    style={{ marginBottom: 2, fontSize: 9 }}
+                                  >
+                                    Guest Capacity
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: 12,
+                                      color: 'var(--ink-high)',
+                                      fontWeight: 500,
+                                    }}
+                                  >
+                                    {venueRooms.length > 0 ? (
+                                      totalSleeps
+                                    ) : (
+                                      <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>
+                                        —
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
+                            ) : (
                               <div
-                                style={{ fontSize: 12, color: 'var(--ink-high)', fontWeight: 500 }}
+                                style={{
+                                  gridColumn: canSeeMoney ? '1 / -1' : undefined,
+                                  minWidth: 0,
+                                }}
                               >
-                                {hasRooms ? (
-                                  venueRooms.length > 0 ? (
-                                    `${venueRooms.length} · ${totalSleeps}`
+                                <div
+                                  className="uppercase-eyebrow"
+                                  style={{ marginBottom: 2, fontSize: 9 }}
+                                >
+                                  Capacity
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    color: 'var(--ink-high)',
+                                    fontWeight: 500,
+                                  }}
+                                >
+                                  {v.capacity && Number(v.capacity) > 0 ? (
+                                    v.capacity
                                   ) : (
                                     <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>
                                       —
                                     </span>
-                                  )
-                                ) : v.capacity && Number(v.capacity) > 0 ? (
-                                  v.capacity
-                                ) : (
-                                  <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>
-                                    —
-                                  </span>
-                                )}
+                                  )}
+                                </div>
                               </div>
-                            </div>
+                            )}
                             {canSeeMoney && (
                               <>
                                 <div style={{ minWidth: 0 }}>

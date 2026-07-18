@@ -335,12 +335,7 @@ export function Eyebrow({
 }
 
 // ─── Checkbox ─────────────────────────────────────────────────────────────────
-/** Neumorphic checkbox — drop-in for a native <input type="checkbox">. */
+/** Native checkbox styled via accent-color — proper centered tick, no hand-rolled shadow math. */
 export function Checkbox({ className = '', ...rest }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <label className={`neu-check ${className}`}>
-      <input type="checkbox" {...rest} />
-      <span className="neu-check-box" />
-    </label>
-  );
+  return <input type="checkbox" className={`checkbox-gold ${className}`} {...rest} />;
 }
