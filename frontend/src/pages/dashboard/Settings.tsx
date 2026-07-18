@@ -641,8 +641,7 @@ export default function Settings() {
               userSelect: 'none',
             }}
           >
-            <input
-              type="checkbox"
+            <Checkbox
               checked={emailDigest}
               onChange={(e) => setEmailDigest(e.target.checked)}
               style={{ marginTop: 3 }}

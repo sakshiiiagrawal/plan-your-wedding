@@ -32,7 +32,7 @@ import {
   HiOutlineViewGrid,
   HiOutlineBell,
 } from 'react-icons/hi';
-import { SectionHeader, KPICard, SegmentedControl } from '../../components/ui';
+import { SectionHeader, KPICard, SegmentedControl, Checkbox } from '../../components/ui';
 import DatePicker from '../../components/ui/DatePicker';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
@@ -1053,8 +1053,7 @@ export default function Tasks() {
                       userSelect: 'none',
                     }}
                   >
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={formData.reminder_repeat === 'daily'}
                       onChange={(e) =>
                         setFormData({

@@ -341,16 +341,11 @@ export default function DateRangePicker({
 
         {/* Calendar — react-day-picker handles month nav, weekday header, and keyboard nav */}
         <div
-          className="px-2 pt-1 pb-2"
+          className="rdp-theme px-2 pt-1 pb-2"
           style={
             {
-              '--rdp-accent-color': 'var(--gold)',
-              '--rdp-accent-background-color': 'var(--gold-glow)',
-              '--rdp-today-color': 'var(--gold-deep)',
               '--rdp-day-height': '36px',
               '--rdp-day-width': '36px',
-              fontFamily: 'inherit',
-              fontSize: 13,
             } as React.CSSProperties
           }
         >
