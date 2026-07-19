@@ -194,7 +194,7 @@ export default function CustomCategoryModal({
                   type="number"
                   value={formData.allocated_amount}
                   onChange={(e) => setFormData({ ...formData, allocated_amount: e.target.value })}
-                  className="input"
+                  className="input no-spinner"
                   style={{ paddingLeft: 28 }}
                   placeholder="0"
                   min="0"
@@ -220,13 +220,13 @@ export default function CustomCategoryModal({
               gap: 10,
               padding: '16px 24px',
               borderTop: '1px solid var(--line-soft)',
+              justifyContent: 'flex-end',
             }}
           >
             <button
               type="button"
               onClick={attemptClose}
               className="btn-outline"
-              style={{ flex: 1 }}
               disabled={createMutation.isPending}
             >
               Cancel
@@ -236,7 +236,7 @@ export default function CustomCategoryModal({
               form="custom-category-form"
               disabled={createMutation.isPending}
               className="btn-primary"
-              style={{ flex: 1, opacity: createMutation.isPending ? 0.5 : 1 }}
+              style={{ opacity: createMutation.isPending ? 0.5 : 1 }}
             >
               {createMutation.isPending ? 'Creating…' : 'Create category'}
             </button>

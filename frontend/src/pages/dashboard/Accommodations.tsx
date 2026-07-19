@@ -1278,7 +1278,14 @@ export default function Accommodations() {
                                 <button
                                   onClick={() => {
                                     setAddingRoomsToHotelId(hotel.id);
-                                    const nextRoomCategories = [{ ...DEFAULT_CATEGORY }];
+                                    // First rooms for this hotel: prefill a
+                                    // saveable batch so one click can finish.
+                                    const nextRoomCategories = [
+                                      {
+                                        ...DEFAULT_CATEGORY,
+                                        count: hotel.rooms?.length ? '' : 10,
+                                      },
+                                    ];
                                     setRoomCategories(nextRoomCategories);
                                     setInitialRoomCategories(nextRoomCategories);
                                     setShowRoomModal(true);
@@ -1962,20 +1969,30 @@ export default function Accommodations() {
                                 placeholder="0"
                                 min={1}
                               />
-                              <input
-                                type="number"
-                                value={cat.capacity}
-                                onChange={(e) =>
-                                  setRoomCategories((prev) =>
-                                    prev.map((c, i) =>
-                                      i === idx ? { ...c, capacity: e.target.value } : c,
-                                    ),
-                                  )
-                                }
-                                className="input text-sm py-1.5"
-                                placeholder="2"
-                                min={1}
-                              />
+                              {cat.is_custom ? (
+                                <input
+                                  type="number"
+                                  value={cat.capacity}
+                                  onChange={(e) =>
+                                    setRoomCategories((prev) =>
+                                      prev.map((c, i) =>
+                                        i === idx ? { ...c, capacity: e.target.value } : c,
+                                      ),
+                                    )
+                                  }
+                                  className="input text-sm py-1.5"
+                                  placeholder="2"
+                                  min={1}
+                                />
+                              ) : (
+                                /* Presets know their occupancy — nothing to ask. */
+                                <span
+                                  className="text-sm text-ink-low text-center"
+                                  title="Sleeps"
+                                >
+                                  {cat.capacity || 2}
+                                </span>
+                              )}
                               <input
                                 type="number"
                                 value={cat.rate_per_night}
@@ -2009,18 +2026,14 @@ export default function Accommodations() {
                       )}
                     </div>
 
-                    <div className="flex gap-3 pt-2">
-                      <button
-                        type="button"
-                        onClick={attemptCloseRoomModal}
-                        className="btn-outline flex-1"
-                      >
+                    <div className="flex gap-3 pt-2 justify-end">
+                      <button type="button" onClick={attemptCloseRoomModal} className="btn-outline">
                         Cancel
                       </button>
                       <button
                         type="submit"
                         disabled={updateHotelMutation.isPending || totalToAdd === 0}
-                        className="btn-primary flex-1 disabled:opacity-50"
+                        className="btn-primary disabled:opacity-50"
                       >
                         {updateHotelMutation.isPending
                           ? 'Adding...'
@@ -2376,7 +2389,7 @@ export default function Accommodations() {
                     </div>
 
                     {/* Footer */}
-                    <div className="flex gap-3 p-6 border-t border-gold-200 flex-shrink-0">
+                    <div className="flex gap-3 p-6 border-t border-gold-200 flex-shrink-0 justify-end">
                       {modalGuests.length === 0 ? (
                         <button
                           type="button"
@@ -2384,7 +2397,7 @@ export default function Accommodations() {
                             attemptCloseAllocationModal();
                             navigate('../guests');
                           }}
-                          className="btn-primary flex-1"
+                          className="btn-primary"
                         >
                           Add Guests
                         </button>
@@ -2393,7 +2406,7 @@ export default function Accommodations() {
                           <button
                             type="button"
                             onClick={attemptCloseAllocationModal}
-                            className="btn-outline flex-1"
+                            className="btn-outline"
                           >
                             Cancel
                           </button>
@@ -2405,7 +2418,7 @@ export default function Accommodations() {
                               deleteAllocationMutation.isPending ||
                               (!isEditing && allocationFormData.guest_ids.length === 0)
                             }
-                            className={`btn-primary flex-1 disabled:opacity-50 ${
+                            className={`btn-primary disabled:opacity-50 ${
                               isEditing && allocationFormData.guest_ids.length === 0
                                 ? 'bg-red-600 hover:bg-red-700'
                                 : ''
@@ -2712,13 +2725,13 @@ export default function Accommodations() {
                   )}
               </div>
 
-              <div className="flex gap-3 p-6 border-t border-gold-200">
+              <div className="flex gap-3 p-6 border-t border-gold-200 justify-end">
                 <button
                   onClick={() => {
                     setShowImportResultsModal(false);
                     setImportResults(null);
                   }}
-                  className="btn-primary flex-1"
+                  className="btn-primary"
                 >
                   Close
                 </button>

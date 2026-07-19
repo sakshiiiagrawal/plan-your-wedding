@@ -92,7 +92,7 @@ export default function MarkPaidDialog({
                 min="0"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="input"
+                className="input no-spinner"
               />
             </div>
             <div>
@@ -121,8 +121,8 @@ export default function MarkPaidDialog({
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-            <button type="button" onClick={onCancel} className="btn-outline" style={{ flex: 1 }}>
+          <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
+            <button type="button" onClick={onCancel} className="btn-outline">
               Cancel
             </button>
             <button
@@ -132,7 +132,7 @@ export default function MarkPaidDialog({
                 onConfirm({ amount: enteredAmount, paid_date: paidDate, payment_method: method })
               }
               className="btn-primary"
-              style={{ flex: 1, opacity: !canConfirm || isPending ? 0.5 : 1 }}
+              style={{ opacity: !canConfirm || isPending ? 0.5 : 1 }}
             >
               {isPending ? 'Saving…' : 'Mark paid'}
             </button>

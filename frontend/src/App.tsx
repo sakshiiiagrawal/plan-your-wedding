@@ -21,6 +21,7 @@ import VerifyEmail from './pages/VerifyEmail';
 
 // Context
 import { AuthProvider } from './contexts/AuthContext';
+import { MixpanelProvider } from './contexts/MixpanelContext';
 
 // Lazy-loaded pages (code-split for performance)
 const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
@@ -59,244 +60,246 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
-          <Routes>
-            {/* Marketing landing page */}
-            <Route path="/" element={<Marketing />} />
+          <MixpanelProvider>
+            <Routes>
+              {/* Marketing landing page */}
+              <Route path="/" element={<Marketing />} />
 
-            {/* Global login (slug-less) */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/accept-invite" element={<AcceptInvite />} />
-            {/* Workspace hub: your weddings, shared weddings, pending invites.
+              {/* Global login (slug-less) */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/accept-invite" element={<AcceptInvite />} />
+              {/* Workspace hub: your weddings, shared weddings, pending invites.
                 /invites is the pre-hub URL (old invite emails/bookmarks). */}
-            <Route path="/hub" element={<Hub />} />
-            <Route path="/invites" element={<Navigate to="/hub?manage=1" replace />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/hub" element={<Hub />} />
+              <Route path="/invites" element={<Navigate to="/hub?manage=1" replace />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
 
-            {/* Onboarding wizard; /weddings/new is the same wizard for a
+              {/* Onboarding wizard; /weddings/new is the same wizard for a
                 logged-in account adding a(nother) wedding */}
-            <Route path="/onboard" element={<Onboard />} />
-            <Route path="/weddings/new" element={<Onboard createOnly />} />
+              <Route path="/onboard" element={<Onboard />} />
+              <Route path="/weddings/new" element={<Onboard createOnly />} />
 
-            {/* Slug-scoped public wedding pages — each page owns all chrome.
+              {/* Slug-scoped public wedding pages — each page owns all chrome.
                 Static segments (login/dashboard below) outrank :pageSlug. */}
-            <Route
-              path="/:slug"
-              element={
-                <SlugGuard>
-                  <PublicPage />
-                </SlugGuard>
-              }
-            />
+              <Route
+                path="/:slug"
+                element={
+                  <SlugGuard>
+                    <PublicPage />
+                  </SlugGuard>
+                }
+              />
 
-            {/* Slug-scoped login */}
-            <Route
-              path="/:slug/login"
-              element={
-                <SlugGuard>
-                  <Login />
-                </SlugGuard>
-              }
-            />
+              {/* Slug-scoped login */}
+              <Route
+                path="/:slug/login"
+                element={
+                  <SlugGuard>
+                    <Login />
+                  </SlugGuard>
+                }
+              />
 
-            {/* Slug-scoped dashboard */}
-            <Route
-              path="/:slug/dashboard"
-              element={
-                <SlugGuard>
-                  <DashboardLayout />
-                </SlugGuard>
-              }
-            >
+              {/* Slug-scoped dashboard */}
               <Route
-                index
+                path="/:slug/dashboard"
                 element={
-                  <Suspense
-                    fallback={
-                      <div className="flex items-center justify-center py-12 text-gray-500">
-                        Loading...
-                      </div>
-                    }
-                  >
-                    <Dashboard />
-                  </Suspense>
+                  <SlugGuard>
+                    <DashboardLayout />
+                  </SlugGuard>
                 }
-              />
-              <Route
-                path="events"
-                element={
-                  <Suspense
-                    fallback={
-                      <div className="flex items-center justify-center py-12 text-gray-500">
-                        Loading...
-                      </div>
-                    }
-                  >
-                    <Events />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="guests"
-                element={
-                  <Suspense
-                    fallback={
-                      <div className="flex items-center justify-center py-12 text-gray-500">
-                        Loading...
-                      </div>
-                    }
-                  >
-                    <Guests />
-                  </Suspense>
-                }
-              />
-              {/* WhatsApp lives inside Guests now */}
-              <Route
-                path="whatsapp"
-                element={<Navigate to="../guests?tab=conversations" replace />}
-              />
-              <Route
-                path="venues"
-                element={
-                  <Suspense
-                    fallback={
-                      <div className="flex items-center justify-center py-12 text-gray-500">
-                        Loading...
-                      </div>
-                    }
-                  >
-                    <Venues />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="accommodations"
-                element={
-                  <Suspense
-                    fallback={
-                      <div className="flex items-center justify-center py-12 text-gray-500">
-                        Loading...
-                      </div>
-                    }
-                  >
-                    <Accommodations />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="vendors"
-                element={
-                  <Suspense
-                    fallback={
-                      <div className="flex items-center justify-center py-12 text-gray-500">
-                        Loading...
-                      </div>
-                    }
-                  >
-                    <Vendors />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="budget"
-                element={
-                  <Suspense
-                    fallback={
-                      <div className="flex items-center justify-center py-12 text-gray-500">
-                        Loading...
-                      </div>
-                    }
-                  >
-                    <Expense />
-                  </Suspense>
-                }
-              />
-              {/* Old bookmarks/links */}
-              <Route path="expense" element={<Navigate to="../budget" replace />} />
-              <Route
-                path="tasks"
-                element={
-                  <Suspense
-                    fallback={
-                      <div className="flex items-center justify-center py-12 text-gray-500">
-                        Loading...
-                      </div>
-                    }
-                  >
-                    <Tasks />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="gallery"
-                element={
-                  <Suspense
-                    fallback={
-                      <div className="flex items-center justify-center py-12 text-gray-500">
-                        Loading...
-                      </div>
-                    }
-                  >
-                    <Gallery />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="website"
-                element={
-                  <Suspense
-                    fallback={
-                      <div className="flex items-center justify-center py-12 text-gray-500">
-                        Loading...
-                      </div>
-                    }
-                  >
-                    <Website />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="settings"
-                element={
-                  <Suspense
-                    fallback={
-                      <div className="flex items-center justify-center py-12 text-gray-500">
-                        Loading...
-                      </div>
-                    }
-                  >
-                    <Settings />
-                  </Suspense>
-                }
-              />
-            </Route>
+              >
+                <Route
+                  index
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center py-12 text-gray-500">
+                          Loading...
+                        </div>
+                      }
+                    >
+                      <Dashboard />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="events"
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center py-12 text-gray-500">
+                          Loading...
+                        </div>
+                      }
+                    >
+                      <Events />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="guests"
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center py-12 text-gray-500">
+                          Loading...
+                        </div>
+                      }
+                    >
+                      <Guests />
+                    </Suspense>
+                  }
+                />
+                {/* WhatsApp lives inside Guests now */}
+                <Route
+                  path="whatsapp"
+                  element={<Navigate to="../guests?tab=conversations" replace />}
+                />
+                <Route
+                  path="venues"
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center py-12 text-gray-500">
+                          Loading...
+                        </div>
+                      }
+                    >
+                      <Venues />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="accommodations"
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center py-12 text-gray-500">
+                          Loading...
+                        </div>
+                      }
+                    >
+                      <Accommodations />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="vendors"
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center py-12 text-gray-500">
+                          Loading...
+                        </div>
+                      }
+                    >
+                      <Vendors />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="budget"
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center py-12 text-gray-500">
+                          Loading...
+                        </div>
+                      }
+                    >
+                      <Expense />
+                    </Suspense>
+                  }
+                />
+                {/* Old bookmarks/links */}
+                <Route path="expense" element={<Navigate to="../budget" replace />} />
+                <Route
+                  path="tasks"
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center py-12 text-gray-500">
+                          Loading...
+                        </div>
+                      }
+                    >
+                      <Tasks />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="gallery"
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center py-12 text-gray-500">
+                          Loading...
+                        </div>
+                      }
+                    >
+                      <Gallery />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="website"
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center py-12 text-gray-500">
+                          Loading...
+                        </div>
+                      }
+                    >
+                      <Website />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="settings"
+                  element={
+                    <Suspense
+                      fallback={
+                        <div className="flex items-center justify-center py-12 text-gray-500">
+                          Loading...
+                        </div>
+                      }
+                    >
+                      <Settings />
+                    </Suspense>
+                  }
+                />
+              </Route>
 
-            {/* Additional public pages (e.g. /:slug/invite) — static segments
+              {/* Additional public pages (e.g. /:slug/invite) — static segments
                 above (login, dashboard) win route ranking over :pageSlug */}
-            <Route
-              path="/:slug/:pageSlug"
-              element={
-                <SlugGuard>
-                  <PublicPage />
-                </SlugGuard>
-              }
-            />
+              <Route
+                path="/:slug/:pageSlug"
+                element={
+                  <SlugGuard>
+                    <PublicPage />
+                  </SlugGuard>
+                }
+              />
 
-            {/* Site Studio preview iframe — fed by PreviewCanvas through
+              {/* Site Studio preview iframe — fed by PreviewCanvas through
                 expandos on the iframe element; renders nothing standalone */}
-            <Route
-              path="/__preview"
-              element={
-                <Suspense fallback={null}>
-                  <PreviewFrame />
-                </Suspense>
-              }
-            />
+              <Route
+                path="/__preview"
+                element={
+                  <Suspense fallback={null}>
+                    <PreviewFrame />
+                  </Suspense>
+                }
+              />
 
-            {/* Catch all */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              {/* Catch all */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </MixpanelProvider>
         </BrowserRouter>
         <Toaster
           position="top-right"

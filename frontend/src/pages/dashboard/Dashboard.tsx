@@ -515,12 +515,11 @@ export default function Dashboard() {
                     >
                       <div
                         style={{
-                          width: 14,
-                          height: 14,
-                          borderRadius: 4,
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
                           flexShrink: 0,
-                          border: `1.5px solid ${isInProgress ? 'var(--gold)' : 'var(--line-strong)'}`,
-                          background: isInProgress ? 'var(--gold-glow)' : 'transparent',
+                          background: isInProgress ? 'var(--gold)' : 'var(--line-strong)',
                         }}
                       />
                       <div style={{ flex: 1, minWidth: 0 }}>

@@ -242,7 +242,7 @@ export default function InstallmentsEditor({
                       onChange={(event) =>
                         updateRow(installment.id, { amount: event.target.value })
                       }
-                      className="input"
+                      className="input no-spinner"
                       placeholder="Enter amount"
                       required
                     />

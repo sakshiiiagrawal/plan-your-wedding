@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentProps } from 'react';
 import { useParams } from 'react-router-dom';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { useViewPreference } from '../../hooks/useViewPreference';
 import {
   HiOutlineDeviceMobile,
@@ -47,6 +48,7 @@ import { parseLocalDate } from '../../utils/date';
 import PreviewCanvas, { type Device } from './website/PreviewCanvas';
 import ContentPanel from './website/ContentPanel';
 import DesignPanel from './website/DesignPanel';
+import MobileStudio from './website/MobileStudio';
 import { AddPageDialog, EditPageDialog } from './website/PageDialogs';
 
 const DEFAULT_MUSIC_END = 45;
@@ -55,6 +57,10 @@ type Tab = 'design' | 'content';
 
 export default function Website() {
   const { slug } = useParams<{ slug: string }>();
+  // Below the desktop breakpoint the studio swaps to the photo-editor-style
+  // mobile shell (full-bleed preview + bottom tool dock) instead of stacking
+  // the desktop panels.
+  const isMobile = useIsMobile(1024);
   const { data: heroContent } = useHeroContent(undefined);
   const { data: storyContent } = useOurStory(undefined);
   const { data: publicEvents = [] } = usePublicEvents(slug);
@@ -477,6 +483,169 @@ export default function Website() {
     { id: 'content', label: 'Content' },
   ];
 
+  // Shared by the desktop panels and the mobile studio trays.
+  const designPanelProps: ComponentProps<typeof DesignPanel> = {
+    kind,
+    templateId,
+    onSelectTemplate: selectTemplate,
+    paletteId,
+    onSelectPalette: markDirty(setPaletteId),
+    recommendedPaletteIds: template.recommendedPaletteIds,
+    galleryLayout,
+    onGalleryLayout: markDirty(setGalleryLayout),
+    showGalleryLayout:
+      !!template.supportsGalleryLayout && template.parts.some((part) => part.id === 'gallery'),
+    effectControls: template.effectControls ?? [],
+    effects,
+    onEffect: setEffect,
+  };
+
+  const contentPanelProps: ComponentProps<typeof ContentPanel> = {
+    template,
+    sections,
+    onSectionsChange: markDirty(setSections),
+    sectionNote,
+    slug,
+    brideName,
+    onBrideName: markDirty(setBrideName),
+    groomName,
+    onGroomName: markDirty(setGroomName),
+    weddingDate,
+    onWeddingDate: markDirty(setWeddingDate),
+    heroTagline,
+    onHeroTagline: markDirty(setHeroTagline),
+    storyText,
+    onStoryText: markDirty(setStoryText),
+    musicUrl,
+    musicStartTime,
+    musicEndTime,
+    uploadingMusic,
+    onMusicUpload: (file) => {
+      setMusicStartTime(0);
+      setMusicEndTime(DEFAULT_MUSIC_END);
+      void handleMusicUpload(file);
+    },
+    onMusicRemove: () => {
+      setMusicUrl(null);
+      setMusicStartTime(0);
+      setMusicEndTime(DEFAULT_MUSIC_END);
+      setIsDirty(true);
+    },
+    onMusicRange: (start, end) => {
+      setMusicStartTime(start);
+      setMusicEndTime(end);
+      setIsDirty(true);
+    },
+    qrEnabled,
+    onQrEnabled: markDirty(setQrEnabled),
+    qrStyle,
+    onQrStyle: markDirty(setQrStyle),
+    qrUrl: selectedPage ? pageUrl(selectedPage) : window.location.origin,
+    siteUrlLabel,
+    palette,
+    textOverrides,
+    onClearOverride: clearOverride,
+    onClearAllOverrides: () => {
+      setTextOverrides({});
+      setIsDirty(true);
+    },
+  };
+
+  const dialogs = (
+    <>
+      {showAddPage && (
+        <AddPageDialog
+          existingSlugs={pages.map((p) => p.page_slug)}
+          onClose={() => setShowAddPage(false)}
+          onCreate={(payload) => void handleCreatePage(payload)}
+          creating={createPage.isPending}
+        />
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          open
+          title={`Delete "${pendingDelete.title}"?`}
+          message={`Guests will no longer be able to open /${slug}/${pendingDelete.page_slug}. This can't be undone.`}
+          confirmLabel="Delete page"
+          onConfirm={() => void handleDeletePage()}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
+
+      {pendingSwitch && (
+        <ConfirmDialog
+          open
+          title="Discard unpublished changes?"
+          message={`You have edits that aren't published yet. Switching to "${pendingSwitch.title}" will discard them.`}
+          confirmLabel="Discard and switch"
+          onConfirm={() => {
+            switchToPage(pendingSwitch);
+            setPendingSwitch(null);
+          }}
+          onCancel={() => setPendingSwitch(null)}
+        />
+      )}
+
+      {pendingUnpublish && (
+        <ConfirmDialog
+          open
+          title={`Take "${pendingUnpublish.title}" offline?`}
+          message={`Guests opening ${window.location.host}/${slug}${pendingUnpublish.page_slug ? `/${pendingUnpublish.page_slug}` : ''} will see a "not published" page until you publish it again.`}
+          confirmLabel="Unpublish"
+          onConfirm={() => {
+            void togglePublished(pendingUnpublish);
+            setPendingUnpublish(null);
+          }}
+          onCancel={() => setPendingUnpublish(null)}
+        />
+      )}
+
+      {editingPage && (
+        <EditPageDialog
+          page={editingPage}
+          existingSlugs={pages.filter((p) => p.id !== editingPage.id).map((p) => p.page_slug)}
+          onClose={() => setEditingPage(null)}
+          onSave={(payload) => void handleEditPage(payload)}
+          saving={updatePage.isPending}
+        />
+      )}
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        <MobileStudio
+          pages={pages}
+          pagesLoading={pagesLoading}
+          selectedPage={selectedPage}
+          isDirty={isDirty}
+          publishing={updateContent.isPending || updatePage.isPending}
+          onPublish={() => void handlePublish()}
+          onSwitchPage={requestSwitch}
+          onAddPage={() => setShowAddPage(true)}
+          onRenamePage={setEditingPage}
+          onDeletePage={setPendingDelete}
+          onUnpublishPage={setPendingUnpublish}
+          onGoLive={(page) => void togglePublished(page)}
+          pageUrl={pageUrl}
+          siteUrlLabel={siteUrlLabel}
+          preview={{
+            data: previewData,
+            templateId,
+            kind,
+            overrides: textOverrides,
+            edit: editController,
+          }}
+          design={designPanelProps}
+          content={contentPanelProps}
+        />
+        {dialogs}
+      </>
+    );
+  }
+
   return (
     <div className="studio">
       {/* ── Toolbar: pages · url · device · actions ─────────────────────── */}
@@ -867,139 +1036,13 @@ export default function Website() {
           </div>
 
           <div style={{ flex: 1 }}>
-            {tab === 'design' && (
-              <DesignPanel
-                kind={kind}
-                templateId={templateId}
-                onSelectTemplate={selectTemplate}
-                paletteId={paletteId}
-                onSelectPalette={markDirty(setPaletteId)}
-                recommendedPaletteIds={template.recommendedPaletteIds}
-                galleryLayout={galleryLayout}
-                onGalleryLayout={markDirty(setGalleryLayout)}
-                showGalleryLayout={
-                  !!template.supportsGalleryLayout &&
-                  template.parts.some((part) => part.id === 'gallery')
-                }
-                effectControls={template.effectControls ?? []}
-                effects={effects}
-                onEffect={setEffect}
-              />
-            )}
-
-            {tab === 'content' && (
-              <ContentPanel
-                template={template}
-                sections={sections}
-                onSectionsChange={markDirty(setSections)}
-                sectionNote={sectionNote}
-                slug={slug}
-                brideName={brideName}
-                onBrideName={markDirty(setBrideName)}
-                groomName={groomName}
-                onGroomName={markDirty(setGroomName)}
-                weddingDate={weddingDate}
-                onWeddingDate={markDirty(setWeddingDate)}
-                heroTagline={heroTagline}
-                onHeroTagline={markDirty(setHeroTagline)}
-                storyText={storyText}
-                onStoryText={markDirty(setStoryText)}
-                musicUrl={musicUrl}
-                musicStartTime={musicStartTime}
-                musicEndTime={musicEndTime}
-                uploadingMusic={uploadingMusic}
-                onMusicUpload={(file) => {
-                  setMusicStartTime(0);
-                  setMusicEndTime(DEFAULT_MUSIC_END);
-                  void handleMusicUpload(file);
-                }}
-                onMusicRemove={() => {
-                  setMusicUrl(null);
-                  setMusicStartTime(0);
-                  setMusicEndTime(DEFAULT_MUSIC_END);
-                  setIsDirty(true);
-                }}
-                onMusicRange={(start, end) => {
-                  setMusicStartTime(start);
-                  setMusicEndTime(end);
-                  setIsDirty(true);
-                }}
-                qrEnabled={qrEnabled}
-                onQrEnabled={markDirty(setQrEnabled)}
-                qrStyle={qrStyle}
-                onQrStyle={markDirty(setQrStyle)}
-                qrUrl={selectedPage ? pageUrl(selectedPage) : window.location.origin}
-                siteUrlLabel={siteUrlLabel}
-                palette={palette}
-                textOverrides={textOverrides}
-                onClearOverride={clearOverride}
-                onClearAllOverrides={() => {
-                  setTextOverrides({});
-                  setIsDirty(true);
-                }}
-              />
-            )}
+            {tab === 'design' && <DesignPanel {...designPanelProps} />}
+            {tab === 'content' && <ContentPanel {...contentPanelProps} />}
           </div>
         </aside>
       </div>
 
-      {showAddPage && (
-        <AddPageDialog
-          existingSlugs={pages.map((p) => p.page_slug)}
-          onClose={() => setShowAddPage(false)}
-          onCreate={(payload) => void handleCreatePage(payload)}
-          creating={createPage.isPending}
-        />
-      )}
-
-      {pendingDelete && (
-        <ConfirmDialog
-          open
-          title={`Delete "${pendingDelete.title}"?`}
-          message={`Guests will no longer be able to open /${slug}/${pendingDelete.page_slug}. This can't be undone.`}
-          confirmLabel="Delete page"
-          onConfirm={() => void handleDeletePage()}
-          onCancel={() => setPendingDelete(null)}
-        />
-      )}
-
-      {pendingSwitch && (
-        <ConfirmDialog
-          open
-          title="Discard unpublished changes?"
-          message={`You have edits that aren't published yet. Switching to "${pendingSwitch.title}" will discard them.`}
-          confirmLabel="Discard and switch"
-          onConfirm={() => {
-            switchToPage(pendingSwitch);
-            setPendingSwitch(null);
-          }}
-          onCancel={() => setPendingSwitch(null)}
-        />
-      )}
-
-      {pendingUnpublish && (
-        <ConfirmDialog
-          open
-          title={`Take "${pendingUnpublish.title}" offline?`}
-          message={`Guests opening ${window.location.host}/${slug}${pendingUnpublish.page_slug ? `/${pendingUnpublish.page_slug}` : ''} will see a "not published" page until you publish it again.`}
-          confirmLabel="Unpublish"
-          onConfirm={() => {
-            void togglePublished(pendingUnpublish);
-            setPendingUnpublish(null);
-          }}
-          onCancel={() => setPendingUnpublish(null)}
-        />
-      )}
-
-      {editingPage && (
-        <EditPageDialog
-          page={editingPage}
-          existingSlugs={pages.filter((p) => p.id !== editingPage.id).map((p) => p.page_slug)}
-          onClose={() => setEditingPage(null)}
-          onSave={(payload) => void handleEditPage(payload)}
-          saving={updatePage.isPending}
-        />
-      )}
+      {dialogs}
     </div>
   );
 }

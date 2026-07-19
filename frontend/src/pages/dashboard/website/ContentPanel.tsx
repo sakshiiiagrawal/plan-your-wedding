@@ -11,8 +11,11 @@ import PanelSection from './PanelSection';
 import { MovableSectionRow, SectionRow } from './SectionRow';
 
 /** The merged Content tab: one ordered accordion of everything on the page —
- *  real sections (toggle/reorder/edit) plus Soundtrack and QR pseudo-rows. */
+ *  real sections (toggle/reorder/edit) plus Soundtrack and QR pseudo-rows.
+ *  `headerless` drops the PanelSection chrome for hosts that bring their own
+ *  title (the mobile studio's Content tray). */
 export default function ContentPanel({
+  headerless = false,
   template,
   sections,
   onSectionsChange,
@@ -46,6 +49,7 @@ export default function ContentPanel({
   onClearOverride,
   onClearAllOverrides,
 }: {
+  headerless?: boolean;
   template: TemplateDefinition;
   sections: SectionSetting[];
   onSectionsChange: (next: SectionSetting[]) => void;
@@ -192,11 +196,7 @@ export default function ContentPanel({
     }
   };
 
-  return (
-    <PanelSection
-      title={`Page content · ${template.name}`}
-      hint="Everything guests see on this page — toggle, reorder, and edit it here or right in the preview."
-    >
+  const body = (
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {pinned.map((s) => {
           const part = partOf(s.id)!;
@@ -489,6 +489,15 @@ export default function ContentPanel({
           );
         })()}
       </div>
+  );
+
+  if (headerless) return <div style={{ padding: '0 16px 16px' }}>{body}</div>;
+  return (
+    <PanelSection
+      title={`Page content · ${template.name}`}
+      hint="Everything guests see on this page — toggle, reorder, and edit it here or right in the preview."
+    >
+      {body}
     </PanelSection>
   );
 }

@@ -28,6 +28,7 @@ import {
   HiOutlineX,
   HiOutlineSave,
   HiOutlinePhone,
+  HiOutlineChevronRight,
 } from 'react-icons/hi';
 import {
   SectionHeader,
@@ -395,6 +396,7 @@ export default function Guests() {
   const [isImporting, setIsImporting] = useState(false);
   const [pendingRows, setPendingRows] = useState<PendingRow[]>([]);
   const [isSavingAll, setIsSavingAll] = useState(false);
+  const [showGuestExtras, setShowGuestExtras] = useState(false);
   const [selectedGuest, setSelectedGuest] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -434,11 +436,23 @@ export default function Guests() {
   const resetForm = () => {
     setFormData(DEFAULT_FORM);
     setEditingGuest(null);
+    setShowGuestExtras(false);
   };
 
   const handleEdit = (guest: any) => {
     setEditingGuest(guest);
     setFormData(getGuestFormState(guest));
+    // Preferences live behind a disclosure — open it when this guest uses any.
+    setShowGuestExtras(
+      Boolean(
+        (guest.meal_preference && guest.meal_preference !== 'vegetarian') ||
+          guest.dietary_restrictions ||
+          guest.needs_accommodation ||
+          guest.needs_pickup ||
+          guest.is_vip ||
+          guest.notes,
+      ),
+    );
     setShowEditModal(true);
   };
 
@@ -497,7 +511,9 @@ export default function Guests() {
 
   const addPendingRow = (template?: GuestFormData) => {
     const newRow: PendingRow = {
-      ...(template || DEFAULT_FORM),
+      // New guests attend every event by default — declining is the exception,
+      // and it keeps RSVP tracking meaningful without opening N drawers.
+      ...(template || { ...DEFAULT_FORM, events: allEvents.map((e: any) => e.id) }),
       _key: crypto.randomUUID(),
     };
     setPendingRows((prev) => [...prev, newRow]);
@@ -514,6 +530,29 @@ export default function Guests() {
   const duplicateLastRow = () => {
     const last = pendingRows[pendingRows.length - 1];
     if (last) addPendingRow(last);
+  };
+
+  const [isBulkMarking, setIsBulkMarking] = useState(false);
+  const bulkMarkAccommodation = async () => {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    setIsBulkMarking(true);
+    try {
+      const results = await Promise.allSettled(
+        ids.map((id) => updateMutation.mutateAsync({ id, needs_accommodation: true })),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed > 0) {
+        toast.error(`${failed} of ${ids.length} guests could not be updated`);
+      } else {
+        toast.success(
+          `${ids.length} guest${ids.length > 1 ? 's' : ''} marked as needing accommodation`,
+        );
+        setSelected(new Set());
+      }
+    } finally {
+      setIsBulkMarking(false);
+    }
   };
 
   const saveAllPending = async () => {
@@ -637,10 +676,12 @@ export default function Guests() {
   }, [guests, searchTerm, rsvpFilter, showVendorTeams]);
 
   // Select-all applies to the filtered view, so the RSVP/side/search filters
-  // double as audience building. Guests without a phone can't be selected.
-  const selectableIds = useMemo(
-    () => filteredGuests.filter((g: any) => g.phone).map((g: any) => g.id),
-    [filteredGuests],
+  // double as audience building. Selection is general-purpose (bulk edits +
+  // WhatsApp) — the composer only receives the phone-having subset.
+  const selectableIds = useMemo(() => filteredGuests.map((g: any) => g.id), [filteredGuests]);
+  const selectedWithPhone = useMemo(
+    () => filteredGuests.filter((g: any) => selected.has(g.id) && g.phone).map((g: any) => g.id),
+    [filteredGuests, selected],
   );
   const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
   const toggleSelectAll = () => {
@@ -876,9 +917,7 @@ export default function Guests() {
                     <td onClick={(e) => e.stopPropagation()} style={{ width: 36 }}>
                       <Checkbox
                         checked={selected.has(guest.id)}
-                        disabled={!guest.phone}
                         onChange={() => toggleSelect(guest.id)}
-                        title={guest.phone ? undefined : 'No phone number — can’t message'}
                       />
                     </td>
                     <td className="strong">
@@ -1163,9 +1202,25 @@ export default function Guests() {
                 Clear
               </button>
               <button
+                onClick={() => void bulkMarkAccommodation()}
+                disabled={isBulkMarking}
+                className="btn-outline text-sm py-1.5 px-3"
+                title="Flag the selected guests as needing a room"
+              >
+                {isBulkMarking ? 'Marking…' : 'Mark needs stay'}
+              </button>
+              <button
                 onClick={() => setComposerOpen(true)}
-                className="btn-primary flex items-center gap-1.5 text-sm py-1.5 px-4"
+                disabled={selectedWithPhone.length === 0}
+                className="btn-primary flex items-center gap-1.5 text-sm py-1.5 px-4 disabled:opacity-50"
                 style={{ background: '#128C7E' }}
+                title={
+                  selectedWithPhone.length === 0
+                    ? 'None of the selected guests have a phone number'
+                    : selectedWithPhone.length < selected.size
+                      ? `${selected.size - selectedWithPhone.length} selected guest(s) without a phone will be skipped`
+                      : undefined
+                }
               >
                 <FaWhatsapp className="w-4 h-4" />
                 Send WhatsApp
@@ -1334,64 +1389,42 @@ export default function Guests() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="label">Meal Preference</label>
-                    <select
-                      value={formData.meal_preference}
-                      onChange={(e) =>
-                        setFormData({ ...formData, meal_preference: e.target.value })
-                      }
-                      className="input"
-                    >
-                      <option value="vegetarian">Vegetarian</option>
-                      <option value="jain">Jain</option>
-                      <option value="vegan">Vegan</option>
-                      <option value="non_vegetarian">Non-Vegetarian</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label">Dietary Restrictions</label>
-                    <input
-                      type="text"
-                      value={formData.dietary_restrictions}
-                      onChange={(e) =>
-                        setFormData({ ...formData, dietary_restrictions: e.target.value })
-                      }
-                      className="input"
-                      placeholder="e.g., No onion-garlic"
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px' }}>
-                  {[
-                    { key: 'needs_accommodation', label: 'Needs Accommodation' },
-                    { key: 'needs_pickup', label: 'Needs Pickup' },
-                    { key: 'is_vip', label: 'VIP Guest' },
-                  ].map(({ key, label }) => (
-                    <label
-                      key={key}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        fontSize: 13,
-                        color: 'var(--ink-mid)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <Checkbox
-                        checked={formData[key as keyof GuestFormData] as boolean}
-                        onChange={(e) => setFormData({ ...formData, [key]: e.target.checked })}
-                      />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-
                 <div>
-                  <label className="label">Events attending</label>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <label className="label">Events attending</label>
+                    {(allEvents as any[]).length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            events:
+                              formData.events.length === (allEvents as any[]).length
+                                ? []
+                                : (allEvents as any[]).map((e: any) => e.id),
+                          })
+                        }
+                        style={{
+                          fontSize: 11,
+                          color: 'var(--ink-dim)',
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 0,
+                        }}
+                      >
+                        {formData.events.length === (allEvents as any[]).length
+                          ? 'Clear all'
+                          : 'Select all'}
+                      </button>
+                    )}
+                  </div>
                   {(allEvents as any[]).length === 0 ? (
                     <p style={{ fontSize: 12, color: 'var(--ink-dim)', fontStyle: 'italic' }}>
                       No events yet — create events first to link guests to them.
@@ -1428,16 +1461,97 @@ export default function Guests() {
                   )}
                 </div>
 
-                <div>
-                  <label className="label">Notes</label>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className="input"
-                    rows={3}
-                    placeholder="Any special notes..."
-                  />
-                </div>
+                {/* Meal, dietary, flags & notes — second-visit data */}
+                {!showGuestExtras ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowGuestExtras(true)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: 12,
+                      color: 'var(--ink-dim)',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      alignSelf: 'flex-start',
+                    }}
+                  >
+                    <HiOutlineChevronRight style={{ width: 14, height: 14 }} />
+                    Meal preference, travel & notes
+                  </button>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="label">Meal Preference</label>
+                        <select
+                          value={formData.meal_preference}
+                          onChange={(e) =>
+                            setFormData({ ...formData, meal_preference: e.target.value })
+                          }
+                          className="input"
+                        >
+                          <option value="vegetarian">Vegetarian</option>
+                          <option value="jain">Jain</option>
+                          <option value="vegan">Vegan</option>
+                          <option value="non_vegetarian">Non-Vegetarian</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label">Dietary Restrictions</label>
+                        <input
+                          type="text"
+                          value={formData.dietary_restrictions}
+                          onChange={(e) =>
+                            setFormData({ ...formData, dietary_restrictions: e.target.value })
+                          }
+                          className="input"
+                          placeholder="e.g., No onion-garlic"
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px' }}>
+                      {[
+                        { key: 'needs_accommodation', label: 'Needs Accommodation' },
+                        { key: 'needs_pickup', label: 'Needs Pickup' },
+                        { key: 'is_vip', label: 'VIP Guest' },
+                      ].map(({ key, label }) => (
+                        <label
+                          key={key}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            fontSize: 13,
+                            color: 'var(--ink-mid)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Checkbox
+                            checked={formData[key as keyof GuestFormData] as boolean}
+                            onChange={(e) => setFormData({ ...formData, [key]: e.target.checked })}
+                          />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+
+                    <div>
+                      <label className="label">Notes</label>
+                      <textarea
+                        value={formData.notes}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        className="input"
+                        rows={3}
+                        placeholder="Any special notes..."
+                      />
+                    </div>
+                  </>
+                )}
               </form>
 
               <div
@@ -1446,14 +1560,10 @@ export default function Guests() {
                   gap: 10,
                   padding: '16px 24px',
                   borderTop: '1px solid var(--line-soft)',
+                  justifyContent: 'flex-end',
                 }}
               >
-                <button
-                  type="button"
-                  onClick={attemptCloseGuestModal}
-                  className="btn-outline"
-                  style={{ flex: 1 }}
-                >
+                <button type="button" onClick={attemptCloseGuestModal} className="btn-outline">
                   Cancel
                 </button>
                 <button
@@ -1461,7 +1571,7 @@ export default function Guests() {
                   form="edit-guest-form"
                   disabled={updateMutation.isPending}
                   className="btn-primary"
-                  style={{ flex: 1, opacity: updateMutation.isPending ? 0.5 : 1 }}
+                  style={{ opacity: updateMutation.isPending ? 0.5 : 1 }}
                 >
                   {updateMutation.isPending ? 'Saving…' : 'Update Guest'}
                 </button>
@@ -1629,7 +1739,7 @@ export default function Guests() {
         open={composerOpen}
         onClose={() => setComposerOpen(false)}
         guests={pageData?.guests ?? []}
-        initialGuestIds={[...selected]}
+        initialGuestIds={selectedWithPhone}
       />
     </div>
   );

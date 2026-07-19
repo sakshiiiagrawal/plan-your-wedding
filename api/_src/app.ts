@@ -84,6 +84,8 @@ const PUBLIC_PATHS: string[] = [
   '/api/v1/auth/reset-password',
   '/api/v1/auth/verify-email',
   '/api/v1/setup-status',
+  // Token-gated inside the handler (unguessable invite token)
+  '/api/v1/members/invite-preview',
   // Guarded by CRON_SECRET inside the handler, not a user token
   '/api/v1/cron/daily-digest',
 ];

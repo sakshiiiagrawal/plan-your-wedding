@@ -297,6 +297,25 @@ export async function findPendingInvite(
   return data ?? null;
 }
 
+/**
+ * Public preview for the invite landing page: lets it prefill (and lock) the
+ * invited email and greet with the wedding's title before any account exists.
+ * Token-gated only — a valid unguessable token IS the authorization.
+ */
+export async function getInvitePreview(
+  token: string,
+): Promise<{ invited_email: string; wedding_title: string; role: string }> {
+  const { data } = await supabase
+    .from('wedding_members')
+    .select('wedding_id, invited_email, role')
+    .eq('token_hash', hashToken(token))
+    .eq('status', 'pending')
+    .maybeSingle();
+  if (!data) throw new NotFoundError('This invite is invalid or has already been used');
+  const wedding = await findMemberWedding(data.wedding_id);
+  return { invited_email: data.invited_email, wedding_title: wedding.title, role: data.role };
+}
+
 export async function acceptInvite(
   userId: string,
   token: string,

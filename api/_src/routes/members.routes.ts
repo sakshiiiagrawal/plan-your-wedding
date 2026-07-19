@@ -16,6 +16,8 @@ const manage = requirePermission('members:manage');
 router.get('/', membersController.list);
 router.post('/invite', manage, inviteLimiter, validateBody(inviteMemberSchema), membersController.invite);
 router.post('/accept', validateBody(acceptInviteSchema), membersController.accept);
+// Public preview (allow-listed in app.ts) — the unguessable token is the auth
+router.get('/invite-preview', inviteLimiter, membersController.invitePreview);
 // Self-scope: invites addressed to the logged-in user's email (no permission gate)
 router.get('/pending', membersController.listPending);
 router.post('/pending/:id/accept', membersController.acceptPending);

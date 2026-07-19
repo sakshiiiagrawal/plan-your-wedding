@@ -38,7 +38,7 @@ export default function ConversationList({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search conversations…"
-            className="w-full rounded-lg border border-line-soft bg-surface-raised py-1.5 pl-8 pr-3 text-[13px]"
+            className="input pl-8"
           />
         </div>
       </div>

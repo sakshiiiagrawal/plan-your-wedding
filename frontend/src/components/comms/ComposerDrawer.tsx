@@ -197,17 +197,17 @@ export default function ComposerDrawer({
               </div>
             ))}
           </div>
-          <div className="flex gap-2">
+          <div className="flex justify-end gap-2">
             <button
               onClick={() => {
                 setSelected(new Set(result.failed.map((f) => f.guest_id)));
                 setResult(null);
               }}
-              className="btn-secondary flex-1 px-4 py-2 text-sm"
+              className="btn-secondary px-4 py-2 text-sm"
             >
               Retry failed ({result.failed.length})
             </button>
-            <button onClick={onClose} className="btn-primary flex-1 px-4 py-2 text-sm">
+            <button onClick={onClose} className="btn-primary px-4 py-2 text-sm">
               Done
             </button>
           </div>
@@ -241,7 +241,7 @@ export default function ComposerDrawer({
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search guests…"
-                    className="w-full rounded-lg border border-line-strong bg-surface-panel py-2 pl-8 pr-3 text-sm"
+                    className="input pl-8"
                   />
                 </div>
                 <div className="max-h-52 space-y-1 overflow-y-auto">
@@ -325,11 +325,7 @@ export default function ComposerDrawer({
               </div>
 
               {tpl?.needsEvent && (
-                <select
-                  value={eventId}
-                  onChange={(e) => setEventId(e.target.value)}
-                  className="w-full rounded-lg border border-line-strong bg-surface-panel px-3 py-2 text-sm text-ink-high"
-                >
+                <select value={eventId} onChange={(e) => setEventId(e.target.value)} className="input">
                   <option value="">Which event is this about?</option>
                   {(events.data ?? []).map((ev: { id: string; name: string; event_date?: string }) => (
                     <option key={ev.id} value={ev.id}>
@@ -365,14 +361,14 @@ export default function ComposerDrawer({
                 value={pollQuestion}
                 onChange={(e) => setPollQuestion(e.target.value)}
                 placeholder="e.g. Which song should open the Sangeet?"
-                className="w-full rounded-lg border border-line-strong bg-surface-panel px-3 py-2 text-sm"
+                className="input"
               />
               <textarea
                 value={pollOptions}
                 onChange={(e) => setPollOptions(e.target.value)}
                 placeholder={'One option per line (2–10)\nKala Chashma\nGallan Goodiyan\nLondon Thumakda'}
                 rows={4}
-                className="w-full rounded-lg border border-line-strong bg-surface-panel px-3 py-2 text-sm"
+                className="input"
               />
               <p className="text-[12px] text-ink-low">
                 {reach.isLoading

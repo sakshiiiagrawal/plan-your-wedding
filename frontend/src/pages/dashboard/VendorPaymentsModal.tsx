@@ -183,9 +183,10 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
                 gap: 10,
                 padding: '16px 24px',
                 borderTop: '1px solid var(--line-soft)',
+                justifyContent: 'flex-end',
               }}
             >
-              <button type="button" onClick={onClose} className="btn-outline" style={{ flex: 1 }}>
+              <button type="button" onClick={onClose} className="btn-outline">
                 Close
               </button>
             </div>

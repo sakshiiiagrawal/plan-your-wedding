@@ -126,6 +126,8 @@ function PermissionPicker({
 
 const DEFAULT_INVITE_SECTIONS = WEDDING_SECTIONS.filter((s) => s !== 'budget');
 
+type InvitePreset = 'partner' | 'planner' | 'family' | 'custom';
+
 function MembersPanel() {
   const { user } = useAuth();
   const isActorAdmin = user?.role === 'admin';
@@ -143,11 +145,41 @@ function MembersPanel() {
   const updateMember = useUpdateMember();
   const removeMember = useRemoveMember();
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<MemberRole>('viewer');
+  // Initial role/sections mirror the default preset chip so submitting
+  // untouched sends exactly what the chip promises.
+  const [role, setRole] = useState<MemberRole>(isActorAdmin ? 'admin' : 'editor');
   const [sections, setSections] = useState<string[]>(
-    DEFAULT_INVITE_SECTIONS as unknown as string[],
+    (isActorAdmin ? WEDDING_SECTIONS : DEFAULT_INVITE_SECTIONS) as unknown as string[],
   );
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [preset, setPreset] = useState<InvitePreset>(isActorAdmin ? 'partner' : 'planner');
+
+  const applyPreset = (next: InvitePreset) => {
+    setPreset(next);
+    if (next === 'partner') {
+      setRole('admin');
+      setSections(WEDDING_SECTIONS as unknown as string[]);
+      setPermissions([]);
+    } else if (next === 'planner') {
+      setRole('editor');
+      setSections((WEDDING_SECTIONS as readonly string[]).filter((s) => s !== 'budget'));
+      setPermissions([]);
+    } else if (next === 'family') {
+      setRole('editor');
+      setSections(['guests', 'events']);
+      setPermissions([]);
+    }
+    // 'custom' keeps whatever is currently selected and reveals the pickers.
+  };
+
+  const presetHint =
+    preset === 'partner'
+      ? 'Admin — manages everything, including members.'
+      : preset === 'planner'
+        ? 'Editor — everything except budget & money.'
+        : preset === 'family'
+          ? 'Editor — guests and events only.'
+          : null;
   const [memberToRemove, setMemberToRemove] = useState<{ id: string; email: string } | null>(null);
 
   const normalizeSections = (list: string[]): string[] | null =>
@@ -174,8 +206,11 @@ function MembersPanel() {
         toast.success('Invite sent');
       }
       setEmail('');
-      setSections(DEFAULT_INVITE_SECTIONS as unknown as string[]);
-      setPermissions([]);
+      // Keep the chosen preset's access for the next invite; just clear email.
+      if (preset === 'custom') {
+        setSections(DEFAULT_INVITE_SECTIONS as unknown as string[]);
+        setPermissions([]);
+      }
     } catch (error) {
       const err = error as { response?: { data?: { error?: string } } };
       toast.error(err?.response?.data?.error || 'Failed to send invite');
@@ -210,12 +245,61 @@ function MembersPanel() {
   return (
     <Card title="Members & collaborators">
       <p style={{ color: 'var(--ink-low)', fontSize: 13, marginBottom: 16 }}>
-        Invite your partner as an <b>admin</b> so you both manage the same wedding. Invite a wedding
-        planner or family as <b>editor</b> (can make changes) or <b>viewer</b> (read-only) —
-        optionally limited to just the sections they need.
+        Pick who you&apos;re inviting — the right access comes preset. Use Custom for
+        section-by-section control.
       </p>
 
       <form onSubmit={handleInvite} className="mb-5 space-y-3">
+        {/* One-tap archetypes replace the role dropdown + 7-section grid for
+            the common cases. */}
+        <div className="flex gap-2 flex-wrap">
+          {(
+            [
+              ...(isActorAdmin
+                ? [
+                    {
+                      id: 'partner' as const,
+                      label: 'Partner',
+                      hint: 'Admin — manages everything, including members.',
+                    },
+                  ]
+                : []),
+              {
+                id: 'planner' as const,
+                label: 'Wedding planner',
+                hint: 'Editor — everything except budget & money.',
+              },
+              {
+                id: 'family' as const,
+                label: 'Family helper',
+                hint: 'Editor — guests and events only.',
+              },
+              { id: 'custom' as const, label: 'Custom', hint: null },
+            ] as { id: InvitePreset; label: string; hint: string | null }[]
+          ).map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => applyPreset(p.id)}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 100,
+                fontSize: 12,
+                fontWeight: preset === p.id ? 600 : 400,
+                border: `1px solid ${preset === p.id ? 'var(--gold)' : 'var(--line)'}`,
+                background: preset === p.id ? 'var(--gold-glow)' : 'transparent',
+                color: preset === p.id ? 'var(--gold-deep)' : 'var(--ink-mid)',
+                cursor: 'pointer',
+              }}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {presetHint && (
+          <p style={{ fontSize: 12, color: 'var(--ink-low)', margin: 0 }}>{presetHint}</p>
+        )}
+
         <div className="flex gap-2 flex-wrap">
           <input
             className="input flex-1"
@@ -225,21 +309,23 @@ function MembersPanel() {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <select
-            className="input"
-            style={{ width: 120 }}
-            value={role}
-            onChange={(e) => setRole(e.target.value as MemberRole)}
-          >
-            <option value="viewer">Viewer</option>
-            <option value="editor">Editor</option>
-            {isActorAdmin && <option value="admin">Admin</option>}
-          </select>
+          {preset === 'custom' && (
+            <select
+              className="input"
+              style={{ width: 120 }}
+              value={role}
+              onChange={(e) => setRole(e.target.value as MemberRole)}
+            >
+              <option value="viewer">Viewer</option>
+              <option value="editor">Editor</option>
+              {isActorAdmin && <option value="admin">Admin</option>}
+            </select>
+          )}
           <button type="submit" disabled={inviteMember.isPending} className="btn-primary">
             {inviteMember.isPending ? 'Sending...' : 'Invite'}
           </button>
         </div>
-        {role !== 'admin' && (
+        {preset === 'custom' && role !== 'admin' && (
           <div className="space-y-3">
             <div>
               <p style={{ fontSize: 12, color: 'var(--ink-mid)', marginBottom: 4 }}>
@@ -308,7 +394,7 @@ function MembersPanel() {
                     )}
                     <select
                       className="input"
-                      style={{ width: 110, padding: '4px 8px' }}
+                      style={{ width: 110 }}
                       value={m.role}
                       onChange={(e) => updateMember.mutate({ id: m.id, role: e.target.value })}
                     >
@@ -542,7 +628,9 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-6">
+    // Forms read best in a constrained column — full-bleed inputs on a wide
+    // monitor look bloated and slow scanning.
+    <div className="space-y-6" style={{ maxWidth: 720 }}>
       <SectionHeader
         eyebrow="Account"
         title="Settings"
@@ -551,18 +639,20 @@ export default function Settings() {
 
       <Card title="Profile">
         <form onSubmit={handleSaveProfile} className="space-y-4">
-          <div>
-            <label className="label">Name</label>
-            <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Email</label>
-            <input
-              className="input"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label">Name</label>
+              <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Email</label>
+              <input
+                className="input"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
           </div>
           <button type="submit" disabled={updateProfile.isPending} className="btn-primary">
             {updateProfile.isPending ? 'Saving...' : 'Save changes'}
@@ -587,22 +677,33 @@ export default function Settings() {
       {canManageWedding && (
         <Card title="Wedding">
           <form onSubmit={handleSaveWedding} className="space-y-4">
-            <div>
-              <label className="label">Wedding name</label>
-              <input
-                className="input"
-                value={weddingTitle}
-                onChange={(e) => setWeddingTitle(e.target.value)}
-                placeholder="Shown in your workspace switcher"
-              />
-            </div>
-            <div>
-              <label className="label">Wedding URL</label>
-              <input className="input" value={newSlug} onChange={(e) => setNewSlug(e.target.value)} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="label">Wedding name</label>
+                <input
+                  className="input"
+                  value={weddingTitle}
+                  onChange={(e) => setWeddingTitle(e.target.value)}
+                  placeholder="Shown in your workspace switcher"
+                />
+              </div>
+              <div>
+                <label className="label">Wedding URL</label>
+                <input
+                  className="input"
+                  value={newSlug}
+                  onChange={(e) => setNewSlug(e.target.value)}
+                />
+              </div>
             </div>
             <div>
               <label className="label">Currency</label>
-              <select className="input" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+              <select
+                className="input"
+                style={{ maxWidth: 280 }}
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+              >
                 {CURRENCY_OPTIONS.map((c) => (
                   <option key={c.code} value={c.code}>
                     {c.label}
@@ -659,6 +760,7 @@ export default function Settings() {
             <label className="label">Payment heads-up</label>
             <select
               className="input"
+              style={{ maxWidth: 280 }}
               value={paymentLeadDays}
               onChange={(e) => setPaymentLeadDays(Number(e.target.value))}
             >
@@ -678,22 +780,24 @@ export default function Settings() {
 
       <Card title="Change password">
         <form onSubmit={handleChangePassword} className="space-y-4">
-          <div>
-            <label className="label">Current password</label>
-            <PasswordInput
-              value={oldPassword}
-              onChange={(e) => setOldPassword(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="label">New password</label>
-            <PasswordInput
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              minLength={8}
-              required
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label">Current password</label>
+              <PasswordInput
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="label">New password</label>
+              <PasswordInput
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                minLength={8}
+                required
+              />
+            </div>
           </div>
           <button type="submit" disabled={changePassword.isPending} className="btn-primary">
             {changePassword.isPending ? 'Updating...' : 'Change password'}

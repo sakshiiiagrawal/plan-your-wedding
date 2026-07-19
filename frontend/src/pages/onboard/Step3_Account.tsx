@@ -41,16 +41,17 @@ interface Step3Data {
   name: string;
   email: string;
   password: string;
-  confirmPassword: string;
 }
 
 interface Step3Props {
   data: Step3Data;
   onNext: (values: Step3Data) => void;
   onBack: () => void;
-  /** collaborator signup submits from this step, so it needs a busy state */
+  /** Signup submits from this step, so it needs a busy state. */
   submitting?: boolean;
   nextLabel?: string;
+  /** Couple flow: offer "I'm {bride} / I'm {groom}" chips to prefill the name. */
+  coupleNames?: { bride: string; groom: string };
 }
 
 export default function Step3_Account({
@@ -59,18 +60,25 @@ export default function Step3_Account({
   onBack,
   submitting = false,
   nextLabel = 'Next →',
+  coupleNames,
 }: Step3Props) {
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<Step3Data>({
     defaultValues: data,
   });
   const password = watch('password', '');
+  const nameValue = watch('name', data.name);
 
   const onSubmit = (values: Step3Data) => onNext(values);
+
+  const chips = [coupleNames?.bride, coupleNames?.groom].filter(
+    (n): n is string => Boolean(n && n.trim()),
+  );
 
   return (
     <motion.div
@@ -84,6 +92,24 @@ export default function Step3_Account({
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div>
           <label className="label">Your Name *</label>
+          {chips.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {chips.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setValue('name', n, { shouldValidate: true })}
+                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                    nameValue === n
+                      ? 'border-maroon-700 bg-maroon-50 text-maroon-800 font-medium'
+                      : 'border-gray-200 text-gray-600 hover:border-maroon-300'
+                  }`}
+                >
+                  I&apos;m {n.trim().split(/\s+/)[0]}
+                </button>
+              ))}
+            </div>
+          )}
           <input
             {...register('name', { required: 'Name is required' })}
             className="input"
@@ -121,25 +147,15 @@ export default function Step3_Account({
           )}
         </div>
 
-        <div>
-          <label className="label">Confirm Password *</label>
-          <PasswordInput
-            {...register('confirmPassword', {
-              required: 'Please confirm your password',
-              validate: (v) => v === password || 'Passwords do not match',
-            })}
-            placeholder="••••••••"
-          />
-          {errors.confirmPassword && (
-            <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>
-          )}
-        </div>
-
         <div className="flex gap-3 pt-2">
           <button type="button" onClick={onBack} className="btn-secondary flex-1 py-3">
             ← Back
           </button>
-          <button type="submit" disabled={submitting} className="btn-primary flex-1 py-3 disabled:opacity-50">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="btn-primary flex-1 py-3 disabled:opacity-50"
+          >
             {submitting ? 'Creating...' : nextLabel}
           </button>
         </div>

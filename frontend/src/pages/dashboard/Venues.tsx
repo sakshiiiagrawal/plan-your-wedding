@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  HiOutlineLocationMarker,
   HiOutlinePhone,
   HiOutlineCurrencyRupee,
   HiOutlineX,
@@ -13,7 +12,6 @@ import {
   HiOutlineChevronUp,
   HiOutlineMap,
   HiOutlineTrash,
-  HiOutlineInformationCircle,
   HiOutlineDotsVertical,
 } from 'react-icons/hi';
 import {
@@ -44,7 +42,6 @@ import {
 } from '../../hooks/useApi';
 import toast from 'react-hot-toast';
 import Portal from '../../components/Portal';
-import CategoryCombobox from '../../components/CategoryCombobox';
 import DatePicker from '../../components/ui/DatePicker';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import PaymentTimelinePanel from '../../components/finance/PaymentTimelinePanel';
@@ -125,6 +122,24 @@ interface VenueFormData {
   photo_url: string | null;
   default_check_in_date: string;
   default_check_out_date: string;
+}
+
+// Google place types → our venue_type options. Only used to *suggest* a type
+// on address pick; the user can always change it.
+const VENUE_TYPE_FROM_PLACE: [RegExp, string][] = [
+  [/resort/, 'resort'],
+  [/banquet/, 'banquet'],
+  [/wedding|marriage/, 'wedding_hall'],
+  [/lodging|hotel|guest_house|inn\b/, 'hotel'],
+  [/park|garden|campground|farm|beach/, 'outdoor'],
+];
+
+function inferVenueType(placeTypes: string[] | null): string | null {
+  if (!placeTypes) return null;
+  for (const [pattern, venueType] of VENUE_TYPE_FROM_PLACE) {
+    if (placeTypes.some((t) => pattern.test(t))) return venueType;
+  }
+  return null;
 }
 
 const createDefaultForm = (): VenueFormData => ({
@@ -533,6 +548,10 @@ export default function Venues() {
   const [formData, setFormData] = useState<VenueFormData>(createDefaultForm);
   const [editingVenue, setEditingVenue] = useState<VenueWithFinance | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [roomGroupDelete, setRoomGroupDelete] = useState<{
+    ids: string[];
+    label: string;
+  } | null>(null);
   const [roomCategories, setRoomCategories] = useState<RoomCategoryEntry[]>([]);
   const [activeTab, setActiveTab] = useState<number>(0);
   const [installments, setInstallments] = useState<InstallmentFormRow[]>([]);
@@ -623,12 +642,35 @@ export default function Venues() {
     ? !!editingVenue.expense_id
     : Number(formData.total_cost || 0) > 0;
 
+  // Set by the "Save & add another" button just before submit.
+  const keepOpenRef = useRef(false);
+
+  // An empty Rooms tab opens with one ready-to-save category (Standard ×10)
+  // instead of a bare "+ Add Category" click. Seeded once per modal session so
+  // deliberately clearing it isn't fought.
+  const roomsSeededRef = useRef(false);
+  useEffect(() => {
+    if (activeTab !== 1 || roomsSeededRef.current) return;
+    if (roomCategories.length > 0 || (existingRooms as unknown[]).length > 0) return;
+    roomsSeededRef.current = true;
+    setRoomCategories([
+      {
+        ...DEFAULT_CATEGORY,
+        count: 10,
+        check_in_date: formData.default_check_in_date,
+        check_out_date: formData.default_check_out_date,
+      },
+    ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
   const resetForm = () => {
     setFormData(createDefaultForm());
     setEditingVenue(null);
     setRoomCategories([]);
     setActiveTab(0);
     setInstallments([]);
+    roomsSeededRef.current = false;
   };
   const closeVenueModal = () => {
     setShowVenueModal(false);
@@ -763,7 +805,13 @@ export default function Venues() {
         );
       }
 
-      closeVenueModal();
+      if (!editingVenue && keepOpenRef.current) {
+        // Save & add another: fresh form, modal stays open.
+        keepOpenRef.current = false;
+        resetForm();
+      } else {
+        closeVenueModal();
+      }
     } catch (err: any) {
       toast.error(
         err?.response?.data?.message || err?.response?.data?.error || 'Failed to save venue',
@@ -1491,40 +1539,10 @@ export default function Venues() {
       {/* ── Venue Modal ── */}
       {showVenueModal && (
         <Portal>
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 50,
-              padding: 16,
-            }}
-            onClick={attemptCloseVenueModal}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                background: 'var(--bg-panel)',
-                borderRadius: 'var(--radius-lg)',
-                width: '100%',
-                maxWidth: 900,
-                height: 'min(88vh, 760px)',
-                display: 'flex',
-                flexDirection: 'column',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
-              }}
-            >
-              {/* Header */}
-              <div
-                style={{
-                  padding: '14px 24px 16px',
-                  borderBottom: '1px solid var(--line-soft)',
-                  flexShrink: 0,
-                }}
-              >
+          <div className="sheet-overlay" onClick={attemptCloseVenueModal}>
+            <div onClick={(e) => e.stopPropagation()} className="sheet-panel">
+              {/* Header — identity only; the money story lives on the Payments tab */}
+              <div className="sheet-header">
                 <div
                   style={{
                     display: 'flex',
@@ -1536,99 +1554,39 @@ export default function Venues() {
                   <div className="uppercase-eyebrow">
                     Locations · {editingVenue ? 'Edit venue' : 'Add venue'}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {!canRecordPayment && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '5px 12px',
-                          background: 'rgba(217,119,6,0.07)',
-                          border: '1px solid rgba(217,119,6,0.2)',
-                          borderRadius: 100,
-                        }}
-                      >
-                        <HiOutlineInformationCircle
-                          style={{ width: 13, height: 13, color: 'var(--warn)', flexShrink: 0 }}
-                        />
-                        <span style={{ fontSize: 11, color: 'var(--warn)', whiteSpace: 'nowrap' }}>
-                          Set a committed amount to record payments
-                        </span>
-                      </div>
-                    )}
-                    {canRecordPayment && editingVenue && (
-                      <>
-                        <span style={{ fontSize: 12, color: 'var(--ok)', whiteSpace: 'nowrap' }}>
-                          Paid: <strong>{formatCurrency(paymentPaid)}</strong>
-                        </span>
-                        {paymentOutstanding > 0 && (
-                          <span
-                            style={{ fontSize: 12, color: 'var(--warn)', whiteSpace: 'nowrap' }}
-                          >
-                            Outstanding: <strong>{formatCurrency(paymentOutstanding)}</strong>
-                          </span>
-                        )}
-                      </>
-                    )}
-                    <button
-                      onClick={attemptCloseVenueModal}
-                      style={{
-                        padding: '6px 8px',
-                        borderRadius: 6,
-                        color: 'var(--ink-dim)',
-                        background: 'transparent',
-                        cursor: 'pointer',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <HiOutlineX style={{ width: 16, height: 16 }} />
-                    </button>
-                  </div>
+                  <button
+                    onClick={attemptCloseVenueModal}
+                    aria-label="Close"
+                    style={{
+                      padding: 8,
+                      margin: -8,
+                      borderRadius: 6,
+                      color: 'var(--ink-dim)',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <HiOutlineX style={{ width: 16, height: 16 }} />
+                  </button>
                 </div>
 
-                <div
-                  className={`grid grid-cols-1 gap-3 md:items-end ${
-                    canSeeMoney ? 'md:grid-cols-[1.4fr_1fr]' : ''
-                  }`}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <label className="label">Venue Name *</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="input"
-                      placeholder="Venue name"
-                      required
-                      form="venue-form"
-                    />
-                  </div>
-                  {canSeeMoney && (
-                    <div style={{ minWidth: 0 }}>
-                      <label className="label">Committed Amount</label>
-                      <input
-                        type="number"
-                        value={formData.total_cost}
-                        onChange={(e) => setFormData({ ...formData, total_cost: e.target.value })}
-                        className="input"
-                        placeholder="0"
-                        form="venue-form"
-                      />
-                    </div>
-                  )}
+                <div style={{ minWidth: 0 }}>
+                  <label className="label">Venue Name *</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="input"
+                    placeholder="Auto-fills when you pick an address below"
+                    required
+                    form="venue-form"
+                  />
                 </div>
               </div>
 
               {/* Tab nav */}
-              <div
-                style={{
-                  display: 'flex',
-                  borderBottom: '1px solid var(--line-soft)',
-                  padding: '0 24px',
-                  flexShrink: 0,
-                }}
-              >
+              <div className="sheet-tabs">
                 {visibleTabs.map((tab) => (
                   <button
                     key={tab.id}
@@ -1655,11 +1613,11 @@ export default function Venues() {
                       <span
                         style={{
                           fontSize: 9,
-                          background: 'rgba(22,163,74,0.1)',
-                          color: '#16a34a',
+                          background: 'var(--bg-raised)',
+                          color: 'var(--ink-low)',
                           padding: '1px 6px',
                           borderRadius: 100,
-                          border: '1px solid rgba(22,163,74,0.25)',
+                          border: '1px solid var(--line-soft)',
                           fontWeight: 600,
                         }}
                       >
@@ -1683,10 +1641,10 @@ export default function Venues() {
                   {/* ── TAB 0: DETAILS ── */}
                   {activeTab === 0 && (
                     <div
-                      className={`grid grid-cols-1 gap-6 content-start ${
+                      className={`sheet-body grid grid-cols-1 gap-6 content-start ${
                         canSeeMoney ? 'md:grid-cols-[1fr_300px]' : ''
                       }`}
-                      style={{ height: '100%', overflowY: 'auto', padding: 24 }}
+                      style={{ height: '100%', overflowY: 'auto' }}
                     >
                       {/* Left: Basic venue info */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -1705,14 +1663,13 @@ export default function Venues() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
-                            <label className="label">Type *</label>
+                            <label className="label">Type</label>
                             <select
                               value={formData.venue_type}
                               onChange={(e) =>
                                 setFormData({ ...formData, venue_type: e.target.value })
                               }
                               className="input"
-                              required
                             >
                               <option value="wedding_hall">Wedding Hall</option>
                               <option value="banquet">Banquet</option>
@@ -1767,7 +1724,7 @@ export default function Venues() {
                         </div>
 
                         <div>
-                          <label className="label">Address *</label>
+                          <label className="label">Address</label>
                           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                             {formData.photo_url && (
                               <img
@@ -1790,31 +1747,47 @@ export default function Venues() {
                               <AddressAutocomplete
                                 value={formData.address}
                                 onChange={(sel) =>
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    address: sel.address,
-                                    place_id: sel.place_id,
-                                    latitude: sel.latitude,
-                                    longitude: sel.longitude,
-                                    city: sel.city ?? prev.city,
-                                    photo_url: sel.photo_url,
-                                  }))
+                                  setFormData((prev) => {
+                                    // Picking a place fills everything it can:
+                                    // name (if not typed yet), city, photo, and
+                                    // a suggested type for new venues.
+                                    const inferredType =
+                                      !editingVenue && sel.place_types
+                                        ? inferVenueType(sel.place_types)
+                                        : null;
+                                    return {
+                                      ...prev,
+                                      address: sel.address,
+                                      place_id: sel.place_id,
+                                      latitude: sel.latitude,
+                                      longitude: sel.longitude,
+                                      city: sel.city ?? prev.city,
+                                      photo_url: sel.photo_url,
+                                      name: prev.name.trim() === '' ? (sel.name ?? '') : prev.name,
+                                      venue_type:
+                                        inferredType && prev.venue_type === 'wedding_hall'
+                                          ? inferredType
+                                          : prev.venue_type,
+                                      has_accommodation:
+                                        prev.has_accommodation ||
+                                        inferredType === 'hotel' ||
+                                        inferredType === 'resort',
+                                    };
+                                  })
                                 }
                                 placeholder="Search venue address…"
-                                required
                               />
                             </div>
                           </div>
                         </div>
                         <div>
-                          <label className="label">City *</label>
+                          <label className="label">City</label>
                           <input
                             type="text"
                             value={formData.city}
                             onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                             className="input"
-                            placeholder="City name"
-                            required
+                            placeholder="Auto-filled from the address"
                           />
                         </div>
 
@@ -1892,6 +1865,20 @@ export default function Venues() {
                           </p>
 
                           <div>
+                            <label className="label">Committed Amount</label>
+                            <input
+                              type="number"
+                              value={formData.total_cost}
+                              onChange={(e) =>
+                                setFormData({ ...formData, total_cost: e.target.value })
+                              }
+                              className="input no-spinner"
+                              placeholder="0"
+                              form="venue-form"
+                            />
+                          </div>
+
+                          <div>
                             <label className="label">Obligation Date</label>
                             <DatePicker
                               value={formData.expense_date}
@@ -1961,109 +1948,27 @@ export default function Venues() {
                             />
                           )}
 
-                          {/* Payment summary — only when editing */}
+                          {/* The full money story (paid, outstanding, timeline)
+                              lives on the Payments tab — link, don't repeat. */}
                           {editingVenue && (
-                            <div
+                            <button
+                              type="button"
+                              onClick={() => setActiveTab(2)}
                               style={{
-                                marginTop: 4,
-                                padding: 14,
-                                background: 'var(--bg-raised)',
-                                borderRadius: 10,
-                                border: '1px solid var(--line-soft)',
                                 display: 'flex',
-                                flexDirection: 'column',
-                                gap: 10,
+                                alignItems: 'center',
+                                gap: 4,
+                                fontSize: 12,
+                                color: 'var(--gold-deep)',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                fontWeight: 500,
+                                padding: 0,
                               }}
                             >
-                              <p
-                                style={{
-                                  margin: 0,
-                                  fontSize: 10,
-                                  fontWeight: 600,
-                                  color: 'var(--ink-dim)',
-                                  letterSpacing: '0.08em',
-                                  textTransform: 'uppercase',
-                                }}
-                              >
-                                Payment Summary
-                              </p>
-                              <div
-                                style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}
-                              >
-                                <div>
-                                  <div
-                                    style={{
-                                      fontSize: 10,
-                                      color: 'var(--ink-dim)',
-                                      marginBottom: 2,
-                                    }}
-                                  >
-                                    Committed
-                                  </div>
-                                  <div
-                                    style={{
-                                      fontSize: 13,
-                                      fontWeight: 600,
-                                      color: 'var(--ink-mid)',
-                                    }}
-                                  >
-                                    {formatCurrency(paymentCommitted)}
-                                  </div>
-                                </div>
-                                <div>
-                                  <div
-                                    style={{
-                                      fontSize: 10,
-                                      color: 'var(--ink-dim)',
-                                      marginBottom: 2,
-                                    }}
-                                  >
-                                    Paid
-                                  </div>
-                                  <div style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>
-                                    {formatCurrency(paymentPaid)}
-                                  </div>
-                                </div>
-                                <div style={{ gridColumn: '1 / -1' }}>
-                                  <div
-                                    style={{
-                                      fontSize: 10,
-                                      color: 'var(--ink-dim)',
-                                      marginBottom: 2,
-                                    }}
-                                  >
-                                    Outstanding
-                                  </div>
-                                  <div
-                                    style={{
-                                      fontSize: 13,
-                                      fontWeight: 600,
-                                      color: paymentOutstanding > 0 ? '#ea580c' : 'var(--ink-dim)',
-                                    }}
-                                  >
-                                    {formatCurrency(paymentOutstanding)}
-                                  </div>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setActiveTab(2)}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 4,
-                                  fontSize: 12,
-                                  color: 'var(--gold-deep)',
-                                  background: 'transparent',
-                                  cursor: 'pointer',
-                                  fontWeight: 500,
-                                  padding: 0,
-                                }}
-                              >
-                                <HiOutlineCurrencyRupee style={{ width: 13, height: 13 }} /> Manage
-                                payments →
-                              </button>
-                            </div>
+                              <HiOutlineCurrencyRupee style={{ width: 13, height: 13 }} /> Manage
+                              payments →
+                            </button>
                           )}
                         </div>
                       )}
@@ -2072,7 +1977,7 @@ export default function Venues() {
 
                   {/* ── TAB 1: ROOMS ── */}
                   {activeTab === 1 && (
-                    <div style={{ height: '100%', overflowY: 'auto', padding: 24 }}>
+                    <div className="sheet-body" style={{ height: '100%', overflowY: 'auto' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         <div
                           style={{
@@ -2163,18 +2068,6 @@ export default function Venues() {
                                     year: 'numeric',
                                   })
                                 : 'No date';
-                            const handleDeleteGroup = async (ids: string[]) => {
-                              try {
-                                await Promise.all(
-                                  ids.map((id) => deleteRoomMutation.mutateAsync(id)),
-                                );
-                                toast.success('Rooms deleted.');
-                              } catch (err: any) {
-                                toast.error(
-                                  err?.response?.data?.error || 'Failed to delete rooms.',
-                                );
-                              }
-                            };
                             return (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                 <p style={{ fontSize: 11, color: 'var(--ink-low)', margin: 0 }}>
@@ -2230,7 +2123,12 @@ export default function Venues() {
                                           {!g.hasGuests && (
                                             <button
                                               type="button"
-                                              onClick={() => handleDeleteGroup(g.ids)}
+                                              onClick={() =>
+                                                setRoomGroupDelete({
+                                                  ids: g.ids,
+                                                  label: `${g.type} × ${g.count}`,
+                                                })
+                                              }
                                               disabled={deleteRoomMutation.isPending}
                                               title="Delete these rooms"
                                               style={{
@@ -2239,7 +2137,8 @@ export default function Venues() {
                                                 color: 'var(--err)',
                                                 background: 'transparent',
                                                 cursor: 'pointer',
-                                                padding: 0,
+                                                padding: 4,
+                                                margin: -4,
                                                 opacity: deleteRoomMutation.isPending ? 0.5 : 1,
                                               }}
                                             >
@@ -2388,20 +2287,34 @@ export default function Venues() {
                                     placeholder="0"
                                     min={1}
                                   />
-                                  <input
-                                    type="number"
-                                    value={cat.capacity}
-                                    onChange={(e) =>
-                                      setRoomCategories((prev) =>
-                                        prev.map((c, i) =>
-                                          i === idx ? { ...c, capacity: e.target.value } : c,
-                                        ),
-                                      )
-                                    }
-                                    className="input text-sm py-1.5"
-                                    placeholder="2"
-                                    min={1}
-                                  />
+                                  {cat.is_custom ? (
+                                    <input
+                                      type="number"
+                                      value={cat.capacity}
+                                      onChange={(e) =>
+                                        setRoomCategories((prev) =>
+                                          prev.map((c, i) =>
+                                            i === idx ? { ...c, capacity: e.target.value } : c,
+                                          ),
+                                        )
+                                      }
+                                      className="input text-sm py-1.5"
+                                      placeholder="2"
+                                      min={1}
+                                    />
+                                  ) : (
+                                    /* Presets know their occupancy — nothing to ask. */
+                                    <span
+                                      style={{
+                                        fontSize: 12,
+                                        color: 'var(--ink-low)',
+                                        textAlign: 'center',
+                                      }}
+                                      title="Sleeps"
+                                    >
+                                      {cat.capacity || 2}
+                                    </span>
+                                  )}
                                   <input
                                     type="number"
                                     value={cat.rate_per_night}
@@ -2489,10 +2402,10 @@ export default function Venues() {
                   {/* ── TAB 2: PAYMENTS ── */}
                   {activeTab === 2 && (
                     <div
+                      className="sheet-body"
                       style={{
                         height: '100%',
                         overflowY: 'auto',
-                        padding: 24,
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 14,
@@ -2563,42 +2476,47 @@ export default function Venues() {
                   )}
                 </div>
 
-                {/* Unified footer */}
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 10,
-                    padding: '14px 24px',
-                    borderTop: '1px solid var(--line-soft)',
-                    flexShrink: 0,
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={attemptCloseVenueModal}
-                    className="btn-outline"
-                    style={{ flex: 1 }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={createMutation.isPending || updateMutation.isPending}
-                    className="btn-primary"
-                    style={{
-                      flex: 1,
-                      opacity: createMutation.isPending || updateMutation.isPending ? 0.5 : 1,
-                    }}
-                  >
-                    {createMutation.isPending || updateMutation.isPending
-                      ? 'Saving…'
-                      : editingVenue
-                        ? 'Update venue'
-                        : installments.some((row) => Number(row.amount || 0) !== 0)
-                          ? 'Add venue & record payments'
-                          : 'Add venue'}
-                  </button>
-                </div>
+                {/* Footer is honest per tab: the Payments tab commits every
+                    action instantly, so it gets no footer at all — the form's
+                    own button is the only action, and ✕/backdrop close. */}
+                {!(editingVenue && activeTab === 2) && (
+                  <div className="sheet-footer">
+                    <button type="button" onClick={attemptCloseVenueModal} className="btn-outline">
+                      Cancel
+                    </button>
+                    {!editingVenue && (
+                      <button
+                        type="submit"
+                        onClick={() => {
+                          keepOpenRef.current = true;
+                        }}
+                        disabled={createMutation.isPending || updateMutation.isPending}
+                        className="btn-outline max-md:hidden"
+                      >
+                        Save & add another
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      onClick={() => {
+                        keepOpenRef.current = false;
+                      }}
+                      disabled={createMutation.isPending || updateMutation.isPending}
+                      className="btn-primary"
+                      style={{
+                        opacity: createMutation.isPending || updateMutation.isPending ? 0.5 : 1,
+                      }}
+                    >
+                      {createMutation.isPending || updateMutation.isPending
+                        ? 'Saving…'
+                        : editingVenue
+                          ? 'Update venue'
+                          : installments.some((row) => Number(row.amount || 0) !== 0)
+                            ? 'Add venue & record payments'
+                            : 'Add venue'}
+                    </button>
+                  </div>
+                )}
               </form>
             </div>
           </div>
@@ -2613,6 +2531,30 @@ export default function Venues() {
         isPending={deleteMutation.isPending}
         onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}
         onCancel={() => setDeleteConfirm(null)}
+      />
+
+      <ConfirmDialog
+        open={roomGroupDelete !== null}
+        title="Delete rooms?"
+        message={
+          roomGroupDelete
+            ? `Delete ${roomGroupDelete.label} from this venue? This can't be undone.`
+            : ''
+        }
+        confirmLabel="Delete"
+        isPending={deleteRoomMutation.isPending}
+        onConfirm={async () => {
+          if (!roomGroupDelete) return;
+          try {
+            await Promise.all(roomGroupDelete.ids.map((id) => deleteRoomMutation.mutateAsync(id)));
+            toast.success('Rooms deleted.');
+          } catch (err: any) {
+            toast.error(err?.response?.data?.error || 'Failed to delete rooms.');
+          } finally {
+            setRoomGroupDelete(null);
+          }
+        }}
+        onCancel={() => setRoomGroupDelete(null)}
       />
     </div>
   );

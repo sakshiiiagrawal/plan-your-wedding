@@ -6,6 +6,7 @@ import {
   useEvents,
   useVenues,
   useCreateEvent,
+  useCreateVenue,
   useUpdateEvent,
   useDeleteEvent,
 } from '../../hooks/useApi';
@@ -358,10 +359,18 @@ export default function Events() {
   const [isOtherType, setIsOtherType] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  // Inline "new venue" mini-form inside the venue select (null = not open).
+  const [venueDraft, setVenueDraft] = useState<string | null>(null);
+  // Set by the "Save & add another" button just before submit.
+  const keepOpenRef = useRef(false);
+  // Styling/description fields live behind this disclosure — they're website
+  // garnish, not scheduling data.
+  const [showExtras, setShowExtras] = useState(false);
 
   const { data: events = [], isLoading } = useEvents();
   const { data: venues = [] } = useVenues();
   const createMutation = useCreateEvent();
+  const createVenueMutation = useCreateVenue();
   const updateMutation = useUpdateEvent();
   const deleteMutation = useDeleteEvent();
   const isEventFormDirty =
@@ -385,6 +394,8 @@ export default function Events() {
     setFormData(DEFAULT_FORM);
     setEditingEvent(null);
     setIsOtherType(false);
+    setVenueDraft(null);
+    setShowExtras(false);
   };
 
   const handleEdit = (event: any) => {
@@ -392,12 +403,38 @@ export default function Events() {
     const isCustom = event.event_type && !KNOWN_TYPE_VALUES.has(event.event_type);
     setIsOtherType(isCustom);
     setFormData(getEventFormState(event));
+    // Open the extras section when the event already uses any of it.
+    setShowExtras(
+      Boolean(event.theme || event.description || event.dress_code || event.estimated_guests),
+    );
     setShowEventModal(true);
   };
 
   const handleTypeSelect = (value: string, other: boolean) => {
     setIsOtherType(other);
-    setFormData((prev) => ({ ...prev, event_type: other ? '' : value }));
+    setFormData((prev) => ({
+      ...prev,
+      event_type: other ? '' : value,
+      // The type usually *is* the name — prefill it, but never clobber a name
+      // the user typed themselves (blank or still equal to the old type label).
+      name:
+        !other && (prev.name === '' || prev.name === getTypeLabel(prev.event_type))
+          ? getTypeLabel(value)
+          : prev.name,
+    }));
+  };
+
+  const handleCreateVenueInline = async () => {
+    const name = (venueDraft ?? '').trim();
+    if (!name) return;
+    try {
+      const created = await createVenueMutation.mutateAsync({ name });
+      setFormData((prev) => ({ ...prev, venue_id: created.id }));
+      setVenueDraft(null);
+      toast.success(`Venue "${name}" added — you can fill in its details later.`);
+    } catch {
+      toast.error('Failed to add the venue');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -418,8 +455,14 @@ export default function Events() {
         await createMutation.mutateAsync(submitData);
         toast.success('Event created successfully!');
       }
-      setShowEventModal(false);
-      resetForm();
+      if (!editingEvent && keepOpenRef.current) {
+        // Save & add another: fresh form, modal stays open.
+        keepOpenRef.current = false;
+        resetForm();
+      } else {
+        setShowEventModal(false);
+        resetForm();
+      }
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.message || error?.response?.data?.error || 'Failed to save event';
@@ -1242,20 +1285,63 @@ export default function Events() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Venue</label>
-                    <select
-                      value={formData.venue_id || ''}
-                      onChange={(e) =>
-                        setFormData({ ...formData, venue_id: e.target.value || null })
-                      }
-                      className="input"
-                    >
-                      <option value="">Select Venue</option>
-                      {venues.map((venue) => (
-                        <option key={venue.id} value={venue.id}>
-                          {venue.name}
-                        </option>
-                      ))}
-                    </select>
+                    {venueDraft === null ? (
+                      <select
+                        value={formData.venue_id || ''}
+                        onChange={(e) => {
+                          if (e.target.value === '__new__') {
+                            setVenueDraft('');
+                          } else {
+                            setFormData({ ...formData, venue_id: e.target.value || null });
+                          }
+                        }}
+                        className="input"
+                      >
+                        <option value="">Select Venue</option>
+                        {venues.map((venue) => (
+                          <option key={venue.id} value={venue.id}>
+                            {venue.name}
+                          </option>
+                        ))}
+                        <option value="__new__">+ Add new venue…</option>
+                      </select>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <input
+                          type="text"
+                          value={venueDraft}
+                          onChange={(e) => setVenueDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              void handleCreateVenueInline();
+                            }
+                            if (e.key === 'Escape') setVenueDraft(null);
+                          }}
+                          className="input"
+                          placeholder="Venue name"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void handleCreateVenueInline()}
+                          disabled={createVenueMutation.isPending || !venueDraft.trim()}
+                          className="btn-primary"
+                          style={{ padding: '0 14px', whiteSpace: 'nowrap' }}
+                        >
+                          {createVenueMutation.isPending ? '…' : 'Add'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setVenueDraft(null)}
+                          className="btn-outline"
+                          style={{ padding: '0 10px' }}
+                          aria-label="Cancel new venue"
+                        >
+                          <HiOutlineX style={{ width: 14, height: 14 }} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="label">Start Time *</label>
@@ -1277,86 +1363,125 @@ export default function Events() {
                       placeholder="End time"
                     />
                   </div>
-                  <div>
-                    <label className="label">Estimated Guests</label>
-                    <input
-                      type="number"
-                      value={formData.estimated_guests || ''}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          estimated_guests: Math.max(0, parseInt(e.target.value, 10) || 0),
-                        })
-                      }
-                      className="input"
-                      placeholder="0"
-                      min={0}
-                    />
-                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="label">Theme</label>
-                    <input
-                      type="text"
-                      value={formData.theme}
-                      onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
-                      className="input"
-                      placeholder="e.g., Royal, Floral, Boho"
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Theme Color</label>
-                    <input
-                      type="color"
-                      value={formData.color_palette.primary}
-                      onChange={(e) =>
-                        setFormData({ ...formData, color_palette: { primary: e.target.value } })
-                      }
-                      className="input"
-                      style={{ height: 40 }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="label">Description</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="input"
-                    rows={3}
-                    placeholder="Event description, rituals, schedule details…"
-                  />
-                </div>
-
-                <div>
-                  <label className="label">Dress Code</label>
-                  <input
-                    type="text"
-                    value={formData.dress_code}
-                    onChange={(e) => setFormData({ ...formData, dress_code: e.target.value })}
-                    className="input"
-                    placeholder="e.g., Traditional Indian, White & Gold, Pastel"
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+                {/* Styling & description — website garnish, not scheduling data */}
+                {!showExtras ? (
                   <button
                     type="button"
-                    onClick={attemptCloseEventModal}
-                    className="btn-outline"
-                    style={{ flex: 1 }}
+                    onClick={() => setShowExtras(true)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: 12,
+                      color: 'var(--ink-dim)',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      alignSelf: 'flex-start',
+                    }}
                   >
+                    <HiOutlineChevronRight style={{ width: 14, height: 14 }} />
+                    Theme, dress code & description
+                  </button>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="label">Estimated Guests</label>
+                        <input
+                          type="number"
+                          value={formData.estimated_guests || ''}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              estimated_guests: Math.max(0, parseInt(e.target.value, 10) || 0),
+                            })
+                          }
+                          className="input"
+                          placeholder="0"
+                          min={0}
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Theme</label>
+                        <input
+                          type="text"
+                          value={formData.theme}
+                          onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
+                          className="input"
+                          placeholder="e.g., Royal, Floral, Boho"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="label">Dress Code</label>
+                        <input
+                          type="text"
+                          value={formData.dress_code}
+                          onChange={(e) =>
+                            setFormData({ ...formData, dress_code: e.target.value })
+                          }
+                          className="input"
+                          placeholder="e.g., Traditional Indian, White & Gold, Pastel"
+                        />
+                      </div>
+                      <div>
+                        <label className="label">Theme Color</label>
+                        <input
+                          type="color"
+                          value={formData.color_palette.primary}
+                          onChange={(e) =>
+                            setFormData({ ...formData, color_palette: { primary: e.target.value } })
+                          }
+                          className="input"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="label">Description</label>
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="input"
+                        rows={3}
+                        placeholder="Event description, rituals, schedule details…"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div
+                  style={{ display: 'flex', gap: 10, paddingTop: 4, justifyContent: 'flex-end' }}
+                >
+                  <button type="button" onClick={attemptCloseEventModal} className="btn-outline">
                     Cancel
                   </button>
+                  {!editingEvent && (
+                    <button
+                      type="submit"
+                      onClick={() => {
+                        keepOpenRef.current = true;
+                      }}
+                      disabled={createMutation.isPending || updateMutation.isPending}
+                      className="btn-outline"
+                    >
+                      Save & add another
+                    </button>
+                  )}
                   <button
                     type="submit"
+                    onClick={() => {
+                      keepOpenRef.current = false;
+                    }}
                     disabled={createMutation.isPending || updateMutation.isPending}
                     className="btn-primary"
                     style={{
-                      flex: 1,
                       opacity: createMutation.isPending || updateMutation.isPending ? 0.5 : 1,
                     }}
                   >

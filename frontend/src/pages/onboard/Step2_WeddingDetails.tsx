@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
@@ -20,6 +21,19 @@ function useSlugAvailability(slug: string) {
   });
 }
 
+/** "Khushi Sharma" + "Arjun Verma" → "khushi-and-arjun" */
+function deriveSlug(brideName: string, groomName: string): string {
+  const first = (name: string) =>
+    name
+      .trim()
+      .split(/\s+/)[0]!.toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+  const bride = first(brideName);
+  const groom = first(groomName);
+  if (bride && groom) return `${bride}-and-${groom}`;
+  return bride || groom || '';
+}
+
 interface Step2Data {
   brideName: string;
   groomName: string;
@@ -31,19 +45,42 @@ interface Step2Props {
   data: Step2Data;
   onNext: (values: Step2Data) => void;
   onBack: () => void;
+  /** Final-step mode (createOnly): submit directly from here. */
+  nextLabel?: string;
+  submitting?: boolean;
 }
 
-export default function Step2_WeddingDetails({ data, onNext, onBack }: Step2Props) {
+export default function Step2_WeddingDetails({
+  data,
+  onNext,
+  onBack,
+  nextLabel = 'Next',
+  submitting = false,
+}: Step2Props) {
   const {
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors },
   } = useForm<Step2Data>({
     defaultValues: data,
   });
 
+  const brideName = useWatch({ control, name: 'brideName', defaultValue: data.brideName || '' });
+  const groomName = useWatch({ control, name: 'groomName', defaultValue: data.groomName || '' });
   const slugValue = useWatch({ control, name: 'slug', defaultValue: data.slug || '' });
+
+  // The URL is derived from the couple's names — nobody should have to invent
+  // one. Editing the field by hand stops the auto-derivation.
+  const [slugTouched, setSlugTouched] = useState(
+    Boolean(data.slug) && data.slug !== deriveSlug(data.brideName, data.groomName),
+  );
+  useEffect(() => {
+    if (slugTouched) return;
+    setValue('slug', deriveSlug(brideName, groomName), { shouldValidate: Boolean(brideName || groomName) });
+  }, [brideName, groomName, slugTouched, setValue]);
+
   const slugReserved = RESERVED.has(slugValue);
   const slugValid =
     slugValue && slugValue.length >= 3 && /^[a-z0-9-]+$/.test(slugValue) && !slugReserved;
@@ -110,7 +147,10 @@ export default function Step2_WeddingDetails({ data, onNext, onBack }: Step2Prop
         </div>
 
         <div>
-          <label className="label">Your Wedding URL *</label>
+          <label className="label">
+            Your Wedding URL{' '}
+            <span className="text-gray-400 font-normal">(auto-generated — edit if you like)</span>
+          </label>
           <input
             {...register('slug', {
               required: 'URL slug is required',
@@ -120,6 +160,7 @@ export default function Step2_WeddingDetails({ data, onNext, onBack }: Step2Prop
                 value: /^[a-z0-9-]+$/,
                 message: 'Only lowercase letters, numbers, and hyphens allowed',
               },
+              onChange: () => setSlugTouched(true),
             })}
             className="input"
             placeholder="e.g. khushi-and-arjun"
@@ -150,10 +191,10 @@ export default function Step2_WeddingDetails({ data, onNext, onBack }: Step2Prop
           </button>
           <button
             type="submit"
-            disabled={slugTaken || slugReserved || slugChecking}
+            disabled={slugTaken || slugReserved || slugChecking || submitting}
             className="btn-primary flex-1 py-3 disabled:opacity-50"
           >
-            Next
+            {submitting ? 'Creating...' : nextLabel}
           </button>
         </div>
       </form>

@@ -29,6 +29,10 @@ export interface PlaceDetails {
   city: string | null;
   formatted_address: string | null;
   photo_url: string | null;
+  /** Google displayName — lets the venue form derive its name from the pick. */
+  name: string | null;
+  /** Raw Google place types (e.g. "lodging") for venue-type inference. */
+  place_types: string[] | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,6 +86,8 @@ interface GooglePlaceDetailsResponse {
   location?: { latitude?: number; longitude?: number };
   addressComponents?: { longText?: string; types?: string[] }[];
   photos?: { name?: string }[];
+  displayName?: { text?: string };
+  types?: string[];
 }
 
 async function fetchGooglePhotoUrl(photoName: string, apiKey: string): Promise<string | null> {
@@ -121,7 +127,7 @@ export async function getGooglePlaceDetails(
   const res = await fetch(url, {
     headers: {
       'X-Goog-Api-Key': apiKey,
-      'X-Goog-FieldMask': 'formattedAddress,location,addressComponents,photos',
+      'X-Goog-FieldMask': 'displayName,types,formattedAddress,location,addressComponents,photos',
     },
   });
   if (!res.ok) throw new Error(`Google Places details error: ${res.status}`);
@@ -136,6 +142,8 @@ export async function getGooglePlaceDetails(
     city: pickGoogleCity(data.addressComponents),
     formatted_address: data.formattedAddress ?? null,
     photo_url,
+    name: data.displayName?.text ?? null,
+    place_types: data.types ?? null,
   };
 }
 

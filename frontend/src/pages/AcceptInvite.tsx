@@ -1,13 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import PasswordInput from '../components/ui/PasswordInput';
+import api from '../api/axios';
 import {
   useAcceptInvite,
   useSetActiveWedding,
   type AcceptedInviteWedding,
 } from '../hooks/useApi';
+
+interface InvitePreview {
+  invited_email: string;
+  wedding_title: string;
+  role: string;
+}
 
 /**
  * Landing page for invite emails. Three cases:
@@ -35,6 +43,22 @@ export default function AcceptInvite() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // The invite already knows the email it was sent to — don't make the
+  // invitee retype it. "Use a different email" unlocks the field.
+  const [emailUnlocked, setEmailUnlocked] = useState(false);
+
+  const { data: preview, isError: previewInvalid } = useQuery<InvitePreview>({
+    queryKey: ['invite-preview', token],
+    queryFn: () =>
+      api.get(`/members/invite-preview?token=${encodeURIComponent(token)}`).then((r) => r.data),
+    enabled: Boolean(token) && !loading && !isAuthenticated,
+    retry: false,
+    staleTime: Infinity,
+  });
+  const emailLocked = Boolean(preview) && !emailUnlocked;
+  useEffect(() => {
+    if (preview && !emailUnlocked) setEmail(preview.invited_email);
+  }, [preview, emailUnlocked]);
 
   const goToDashboard = (slug: string | null | undefined) => {
     navigate(slug ? `/${slug}/dashboard` : '/hub', { replace: true });
@@ -133,10 +157,31 @@ export default function AcceptInvite() {
           </div>
         )}
 
-        {token && !loading && !isAuthenticated && status === 'pending' && (
+        {token && !loading && !isAuthenticated && status === 'pending' && previewInvalid && (
+          <div className="text-center space-y-3">
+            <p className="text-red-600">This invite is invalid or has already been used.</p>
+            <p className="text-sm text-gray-500">
+              Ask the couple to send a fresh invite from their dashboard settings.
+            </p>
+            <p className="text-sm text-gray-600">
+              Already accepted it?{' '}
+              <Link to={loginHref} className="text-maroon-700 font-medium hover:underline">
+                Log in
+              </Link>
+            </p>
+          </div>
+        )}
+
+        {token && !loading && !isAuthenticated && status === 'pending' && !previewInvalid && (
           <>
             <h1 className="text-2xl font-display font-bold text-maroon-800 text-center mb-1">
-              You&apos;re invited!
+              {preview ? (
+                <>
+                  Join <span className="whitespace-nowrap">{preview.wedding_title}</span>
+                </>
+              ) : (
+                "You're invited!"
+              )}
             </h1>
             <p className="text-sm text-gray-500 text-center mb-6">
               Create an account to join this wedding — you won&apos;t need to set up a wedding of
@@ -163,11 +208,26 @@ export default function AcceptInvite() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="The address the invite was sent to"
                   required
+                  readOnly={emailLocked}
+                  style={emailLocked ? { background: '#f9fafb', color: '#6b7280' } : undefined}
                 />
-                <p className="text-xs text-gray-400 mt-1">
-                  Use the address the invite was sent to — a different one works too, but
-                  you&apos;ll need to verify it before future invites appear automatically.
-                </p>
+                {emailLocked ? (
+                  <p className="text-xs text-gray-400 mt-1">
+                    The invite was sent to this address.{' '}
+                    <button
+                      type="button"
+                      onClick={() => setEmailUnlocked(true)}
+                      className="text-maroon-700 hover:underline"
+                    >
+                      Use a different email
+                    </button>
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Use the address the invite was sent to — a different one works too, but
+                    you&apos;ll need to verify it before future invites appear automatically.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="label">Password</label>

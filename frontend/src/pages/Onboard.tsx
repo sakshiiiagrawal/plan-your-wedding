@@ -8,7 +8,6 @@ import AuthShell from '../components/ui/AuthShell';
 
 import Step1_Welcome from './onboard/Step1_Welcome';
 import Step2_WeddingDetails from './onboard/Step2_WeddingDetails';
-import Step4_Review from './onboard/Step4_Review';
 import OnboardSuccess from './onboard/OnboardSuccess';
 import Step3_Account from './onboard/Step3_Account';
 
@@ -20,19 +19,19 @@ interface FormData {
   name: string;
   email: string;
   password: string;
-  confirmPassword: string;
 }
 
 /**
  * Two shapes of the same wizard:
  *  - default (/onboard): the signup funnel. Couples get account + wedding in
- *    one pass (register, then POST /weddings — split API, single flow);
- *    partners/helpers get an account-only signup and land on /hub.
+ *    one pass (register, then POST /weddings — split API, single flow); the
+ *    account step is the last one and launches directly — no review detour.
+ *    Partners/helpers get an account-only signup and land on /hub.
  *  - createOnly (/weddings/new): a logged-in user adding a(nother) wedding —
- *    just the wedding-details and review steps, no account screens.
+ *    just the wedding-details step, which submits directly.
  */
 export default function Onboard({ createOnly = false }: { createOnly?: boolean }) {
-  const { user, register, isAuthenticated, slug, loading } = useAuth();
+  const { register, isAuthenticated, slug, loading } = useAuth();
   const createWedding = useCreateWedding();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -83,28 +82,30 @@ export default function Onboard({ createOnly = false }: { createOnly?: boolean }
     name: '',
     email: '',
     password: '',
-    confirmPassword: '',
   });
 
   const mergeData = (updates: Partial<FormData>) =>
     setFormData((prev) => ({ ...prev, ...updates }));
 
-  const handleSubmit = async () => {
+  // `overrides` carries the just-submitted step's values — state updates from
+  // mergeData in the same tick aren't visible here yet.
+  const handleSubmit = async (overrides: Partial<FormData> = {}) => {
+    const values = { ...formData, ...overrides };
     setSubmitting(true);
     try {
       if (!createOnly && !isAuthenticated && !accountCreated) {
         await register({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
+          name: values.name,
+          email: values.email,
+          password: values.password,
         });
         setAccountCreated(true);
       }
       const wedding = await createWedding.mutateAsync({
-        slug: formData.slug,
-        brideName: formData.brideName,
-        groomName: formData.groomName,
-        ...(formData.weddingDate ? { weddingDate: formData.weddingDate } : {}),
+        slug: values.slug,
+        brideName: values.brideName,
+        groomName: values.groomName,
+        ...(values.weddingDate ? { weddingDate: values.weddingDate } : {}),
       });
       setSuccessSlug(wedding.slug);
     } catch (error) {
@@ -138,10 +139,10 @@ export default function Onboard({ createOnly = false }: { createOnly?: boolean }
     }
   };
 
-  // createOnly: details → review. Couple: welcome → details → account → review.
-  const STEPS = createOnly ? 2 : mode === 'collaborator' || mode === 'partner' ? 2 : 4;
+  // createOnly: details (submits). Collaborator/partner: welcome → account.
+  // Couple: welcome → details → account (submits).
+  const STEPS = createOnly ? 1 : mode === 'collaborator' || mode === 'partner' ? 2 : 3;
   const detailsStep = createOnly ? 1 : 2;
-  const reviewStep = createOnly ? 2 : 4;
 
   if (createOnly && (loading || !isAuthenticated)) return null;
 
@@ -150,7 +151,7 @@ export default function Onboard({ createOnly = false }: { createOnly?: boolean }
       title={createOnly ? 'Plan a new wedding' : 'Start planning'}
       cardClassName="bg-white rounded-2xl shadow-[0_28px_70px_-28px_rgba(64,48,32,0.4)] ring-1 ring-[#eadfce] p-5 sm:p-8"
     >
-      {!successSlug && (
+      {!successSlug && STEPS > 1 && (
         <div className="flex justify-center gap-2 mb-8">
           {Array.from({ length: STEPS }, (_, i) => (
             <div
@@ -199,7 +200,6 @@ export default function Onboard({ createOnly = false }: { createOnly?: boolean }
               name: formData.name,
               email: formData.email,
               password: formData.password,
-              confirmPassword: formData.confirmPassword,
             }}
             submitting={submitting}
             nextLabel="Create account →"
@@ -218,9 +218,12 @@ export default function Onboard({ createOnly = false }: { createOnly?: boolean }
               weddingDate: formData.weddingDate,
               slug: formData.slug,
             }}
+            nextLabel={createOnly ? 'Create wedding' : 'Next'}
+            submitting={createOnly && submitting}
             onNext={(v) => {
               mergeData(v);
-              setStep(detailsStep + 1);
+              if (createOnly) void handleSubmit(v);
+              else setStep(3);
             }}
             onBack={createOnly ? () => navigate('/hub?manage=1') : () => setStep(1)}
           />
@@ -231,25 +234,15 @@ export default function Onboard({ createOnly = false }: { createOnly?: boolean }
               name: formData.name,
               email: formData.email,
               password: formData.password,
-              confirmPassword: formData.confirmPassword,
             }}
+            coupleNames={{ bride: formData.brideName, groom: formData.groomName }}
+            submitting={submitting}
+            nextLabel="Launch My Wedding Planner"
             onNext={(v) => {
               mergeData(v);
-              setStep(4);
+              void handleSubmit(v);
             }}
             onBack={() => setStep(2)}
-          />
-        ) : step === reviewStep ? (
-          <Step4_Review
-            key="step4"
-            data={
-              createOnly
-                ? { ...formData, name: user?.name ?? '', email: user?.email ?? '' }
-                : formData
-            }
-            onSubmit={handleSubmit}
-            onBack={() => setStep(reviewStep - 1)}
-            loading={submitting}
           />
         ) : null}
       </AnimatePresence>

@@ -64,6 +64,7 @@ function BudgetCell({
             if (e.key === 'Escape') setEditing(false);
           }}
           autoFocus
+          className="no-spinner"
           style={{
             width: 90,
             fontSize: 12,

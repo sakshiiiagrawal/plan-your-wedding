@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HiOutlineTrash } from 'react-icons/hi';
+import { HiOutlineChevronDown, HiOutlineChevronUp, HiOutlineTrash } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import CategoryCombobox from '../CategoryCombobox';
 import DatePicker from '../ui/DatePicker';
@@ -25,6 +25,19 @@ const round2 = (value: number) => Number(value.toFixed(2));
 
 const formatPaymentAmount = (amount: number, direction: 'outflow' | 'inflow') =>
   `${direction === 'inflow' ? '-' : ''}${formatCurrency(amount)}`;
+
+const formatDateLabel = (date: string) =>
+  parseLocalDate(date).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
+const SIDE_LABELS: Record<string, string> = {
+  bride: 'Bride',
+  groom: 'Groom',
+  shared: 'Shared',
+};
 
 type PanelItem = Pick<ExpenseItemRow, 'id' | 'description' | 'amount'>;
 
@@ -123,6 +136,9 @@ export default function PaymentTimelinePanel({
   );
   const [deleteTarget, setDeleteTarget] = useState<PaymentRow | null>(null);
   const [markPaidTarget, setMarkPaidTarget] = useState<PaymentRow | null>(null);
+  // Method, side, split, and notes stay tucked away — the defaults inherit
+  // from the obligation, so most payments only need an amount and a date.
+  const [showMore, setShowMore] = useState(false);
 
   const enteredAmount = Number(formData.amount || 0);
   const paymentDirection = enteredAmount < 0 ? 'inflow' : 'outflow';
@@ -173,8 +189,20 @@ export default function PaymentTimelinePanel({
   const itemLabel = (itemId: string) =>
     items?.find((entry) => entry.id === itemId)?.description ?? 'Item';
 
+  // Switching to schedule clears an auto-filled "today" — scheduling for
+  // today is almost never the intent, so the date becomes an explicit choice.
   const setMode = (mode: PaymentMode) =>
-    setFormData((prev) => ({ ...prev, mode, modeTouched: true }));
+    setFormData((prev) => ({
+      ...prev,
+      mode,
+      modeTouched: true,
+      payment_date:
+        mode === 'schedule' && prev.payment_date === todayLocal()
+          ? ''
+          : mode === 'record' && prev.payment_date === ''
+            ? todayLocal()
+            : prev.payment_date,
+    }));
 
   const updateDate = (payment_date: string) =>
     setFormData((prev) => ({
@@ -198,6 +226,7 @@ export default function PaymentTimelinePanel({
       reverses_payment_id: payment.id,
       notes: `Reversal of ${formatCurrency(payment.amount)} payment`,
     }));
+    setShowMore(true);
     if (typeof document !== 'undefined') {
       document.getElementById('add-payment-heading')?.scrollIntoView({ behavior: 'smooth' });
     }
@@ -211,6 +240,13 @@ export default function PaymentTimelinePanel({
 
     if (!enteredAmount) {
       toast.error('Enter a valid amount.');
+      return;
+    }
+
+    if (!formData.payment_date) {
+      toast.error(
+        isScheduled ? 'Pick a due date for this scheduled payment.' : 'Pick the payment date.',
+      );
       return;
     }
 
@@ -323,18 +359,47 @@ export default function PaymentTimelinePanel({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', fontSize: 12 }}>
-        <span style={{ color: 'var(--ink-low)' }}>
-          Allocated:{' '}
-          <strong style={{ color: 'var(--ink-mid)' }}>{formatCurrency(committed)}</strong>
-        </span>
-        <span style={{ color: 'var(--ok)' }}>
-          Paid: <strong>{formatCurrency(paid)}</strong>
-        </span>
-        <span style={{ color: 'var(--warn)' }}>
-          Outstanding: <strong>{formatCurrency(outstanding)}</strong>
-        </span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {/* The one place the money story is told */}
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '10px 28px',
+          padding: '10px 16px',
+          background: 'var(--bg-raised)',
+          border: '1px solid var(--line-soft)',
+          borderRadius: 10,
+        }}
+      >
+        {(
+          [
+            { label: 'Committed', value: committed, color: 'var(--ink-mid)' },
+            { label: 'Paid', value: paid, color: 'var(--ok)' },
+            {
+              label: 'Outstanding',
+              value: outstanding,
+              color: outstanding > 0 ? 'var(--warn)' : 'var(--ink-dim)',
+            },
+          ] as const
+        ).map((stat) => (
+          <div key={stat.label} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: 'var(--ink-dim)',
+              }}
+            >
+              {stat.label}
+            </span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: stat.color }}>
+              {formatCurrency(stat.value)}
+            </span>
+          </div>
+        ))}
       </div>
 
       {/* Payment timeline */}
@@ -380,115 +445,206 @@ export default function PaymentTimelinePanel({
         )}
       </div>
 
-      {/* Add payment form */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <h3 className="form-section-title" style={{ margin: 0 }} id="add-payment-heading">
-          Add Payment
-        </h3>
-
-        <ModeToggle mode={formData.mode} onChange={setMode} />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="label">Amount</label>
-            <input
-              type="number"
-              step="0.01"
-              value={formData.amount}
-              onChange={(e) => setFormData((p) => ({ ...p, amount: e.target.value }))}
-              className="input"
-              placeholder="Enter amount"
-            />
-          </div>
-          <div>
-            <label className="label">{isScheduled ? 'Due Date' : 'Paid On'}</label>
-            <DatePicker
-              value={formData.payment_date}
-              onChange={updateDate}
-              placeholder={isScheduled ? 'Due date' : 'Paid on'}
-            />
-          </div>
+      {/* Add payment form — one working row; the mode toggle sits with the
+          heading and everything else hides behind More options. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+          }}
+        >
+          <h3 className="form-section-title" style={{ margin: 0 }} id="add-payment-heading">
+            Add Payment
+          </h3>
+          {canRecordPayment && <ModeToggle mode={formData.mode} onChange={setMode} />}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="label">Payment Method</label>
-            <select
-              value={formData.payment_method}
-              onChange={(e) => setFormData((p) => ({ ...p, payment_method: e.target.value }))}
-              className="input"
-              disabled={isScheduled}
-            >
-              {Object.entries(PAYMENT_METHOD_LABELS).map(([v, l]) => (
-                <option key={v} value={v}>
-                  {l}
-                </option>
-              ))}
-            </select>
+        {!canRecordPayment ? (
+          <div
+            style={{
+              border: '1.5px dashed var(--line)',
+              borderRadius: 10,
+              padding: '16px 20px',
+              fontSize: 13,
+              color: 'var(--ink-low)',
+              textAlign: 'center',
+            }}
+          >
+            {disabledReason ?? 'Add the obligation amount first before recording payments.'}
           </div>
-          {canSeeSplits && (
-            <div>
-              <label className="label">Paid By Side</label>
-              <select
-                value={formData.paid_by_side}
-                onChange={(e) =>
-                  setFormData((p) => ({
-                    ...p,
-                    paid_by_side: e.target.value as 'bride' | 'groom' | 'shared',
-                  }))
-                }
-                className="input"
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 md:items-end">
+              <div>
+                <label className="label">Amount</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.amount}
+                  onChange={(e) => setFormData((p) => ({ ...p, amount: e.target.value }))}
+                  className="input no-spinner"
+                  placeholder="Enter amount"
+                />
+              </div>
+              <div>
+                <label className="label">{isScheduled ? 'Due Date' : 'Paid On'}</label>
+                <DatePicker
+                  value={formData.payment_date}
+                  onChange={updateDate}
+                  placeholder={isScheduled ? 'Pick a due date' : 'Paid on'}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isCreating}
+                className="btn-primary w-full md:w-auto"
+                style={{ opacity: isCreating ? 0.5 : 1 }}
               >
-                <option value="bride">Bride</option>
-                <option value="groom">Groom</option>
-                <option value="shared">Shared</option>
-              </select>
+                {isCreating
+                  ? 'Saving…'
+                  : isScheduled
+                    ? 'Schedule payment'
+                    : isReversal
+                      ? 'Record reversal'
+                      : 'Record payment'}
+              </button>
             </div>
-          )}
-        </div>
 
-        {hasItemPicker && !isScheduled && (
-          <div>
-            <label className="label">Apply to</label>
-            <select
-              value={formData.apply_to_item_id ?? ''}
-              onChange={(e) =>
-                setFormData((p) => ({ ...p, apply_to_item_id: e.target.value || null }))
-              }
-              className="input"
+            {/* Everything below inherits sensible defaults — reveal on demand */}
+            <button
+              type="button"
+              onClick={() => setShowMore((v) => !v)}
+              aria-expanded={showMore}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                alignSelf: 'flex-start',
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--ink-low)',
+                background: 'transparent',
+                cursor: 'pointer',
+                padding: 0,
+              }}
             >
-              <option value="">Split automatically</option>
-              {items?.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.description} · remaining {formatCurrency(itemRemaining(item.id))}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+              {showMore ? (
+                <HiOutlineChevronUp style={{ width: 13, height: 13 }} />
+              ) : (
+                <HiOutlineChevronDown style={{ width: 13, height: 13 }} />
+              )}
+              {showMore ? 'Hide options' : 'More options'}
+              {!showMore && (
+                <span style={{ color: 'var(--ink-dim)', fontWeight: 400 }}>
+                  ·{' '}
+                  {[
+                    !isScheduled ? PAYMENT_METHOD_LABELS[formData.payment_method] : null,
+                    canSeeSplits ? SIDE_LABELS[formData.paid_by_side] : null,
+                    canSeeSplits && formData.paid_by_side === 'shared'
+                      ? `Bride ${formData.paid_bride_share_percentage}%`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              )}
+            </button>
 
-        {canSeeSplits && formData.paid_by_side === 'shared' && (
-          <SplitShare
-            total={paymentMagnitude}
-            bridePercentage={formData.paid_bride_share_percentage}
-            onChange={(pct) => setFormData((p) => ({ ...p, paid_bride_share_percentage: pct }))}
-          />
-        )}
+            {showMore && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {!isScheduled && (
+                    <div>
+                      <label className="label">Payment Method</label>
+                      <select
+                        value={formData.payment_method}
+                        onChange={(e) =>
+                          setFormData((p) => ({ ...p, payment_method: e.target.value }))
+                        }
+                        className="input"
+                      >
+                        {Object.entries(PAYMENT_METHOD_LABELS).map(([v, l]) => (
+                          <option key={v} value={v}>
+                            {l}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {canSeeSplits && (
+                    <div>
+                      <label className="label">Paid By Side</label>
+                      <select
+                        value={formData.paid_by_side}
+                        onChange={(e) =>
+                          setFormData((p) => ({
+                            ...p,
+                            paid_by_side: e.target.value as 'bride' | 'groom' | 'shared',
+                          }))
+                        }
+                        className="input"
+                      >
+                        <option value="bride">Bride</option>
+                        <option value="groom">Groom</option>
+                        <option value="shared">Shared</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
 
-        <div>
-          <label className="label">Notes</label>
-          <textarea
-            value={formData.notes}
-            onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
-            className="input"
-            style={{ minHeight: 72 }}
-            placeholder={
-              isScheduled ? 'Optional reminder note' : 'Optional reference, cheque number, or note'
-            }
-          />
-        </div>
+                {hasItemPicker && !isScheduled && (
+                  <div>
+                    <label className="label">Apply to</label>
+                    <select
+                      value={formData.apply_to_item_id ?? ''}
+                      onChange={(e) =>
+                        setFormData((p) => ({ ...p, apply_to_item_id: e.target.value || null }))
+                      }
+                      className="input"
+                    >
+                      <option value="">Split automatically</option>
+                      {items?.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.description} · remaining {formatCurrency(itemRemaining(item.id))}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-        {!isScheduled && formData.payment_date > todayLocal() && (
+                {canSeeSplits && formData.paid_by_side === 'shared' && (
+                  <SplitShare
+                    total={paymentMagnitude}
+                    bridePercentage={formData.paid_bride_share_percentage}
+                    onChange={(pct) =>
+                      setFormData((p) => ({ ...p, paid_bride_share_percentage: pct }))
+                    }
+                  />
+                )}
+
+                <div>
+                  <label className="label">Notes</label>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
+                    className="input"
+                    style={{ minHeight: 72 }}
+                    placeholder={
+                      isScheduled
+                        ? 'Optional reminder note'
+                        : 'Optional reference, cheque number, or note'
+                    }
+                  />
+                </div>
+              </>
+            )}
+
+            {!isScheduled && formData.payment_date > todayLocal() && (
           <div style={{ fontSize: 12, color: 'var(--ink-low)' }}>
             Recording a future-dated payment (post-dated instrument).
           </div>
@@ -598,21 +754,8 @@ export default function PaymentTimelinePanel({
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isCreating}
-          className="btn-primary"
-          style={{ opacity: isCreating ? 0.5 : 1 }}
-        >
-          {isCreating
-            ? 'Saving…'
-            : isScheduled
-              ? 'Save Scheduled Payment'
-              : isReversal
-                ? 'Record Reversal'
-                : 'Record Payment'}
-        </button>
+          </>
+        )}
       </div>
 
       <ConfirmDialog
@@ -667,11 +810,20 @@ function PaymentTimelineItem({
   const isScheduled = payment.status === 'scheduled';
   const isInflow = payment.direction === 'inflow';
   const isPostedOutflow = payment.status === 'posted' && !isInflow;
+  const isOverdue = isScheduled && !!payment.due_date && payment.due_date < todayLocal();
   const amtColor = isInflow
     ? '#0369a1'
     : payment.status === 'posted'
       ? 'var(--ok)'
       : 'var(--gold-deep)';
+  // One status chip in plain words — "outflow"/"posted" is ledger jargon.
+  const statusChip = isInflow
+    ? { text: 'Reversal', color: '#0369a1', bg: 'rgba(3,105,161,0.08)' }
+    : isOverdue
+      ? { text: 'Overdue', color: 'var(--warn)', bg: 'rgba(217,119,6,0.08)' }
+      : isScheduled
+        ? { text: 'Scheduled', color: 'var(--gold-deep)', bg: 'var(--gold-glow)' }
+        : { text: 'Paid', color: 'var(--ok)', bg: 'rgba(22,163,74,0.08)' };
 
   return (
     <div
@@ -693,26 +845,14 @@ function PaymentTimelineItem({
           <span
             style={{
               fontSize: 10,
+              fontWeight: 500,
               padding: '2px 7px',
               borderRadius: 100,
-              background: 'var(--bg-raised)',
-              color: 'var(--ink-low)',
-              textTransform: 'capitalize',
+              background: statusChip.bg,
+              color: statusChip.color,
             }}
           >
-            {payment.status.replaceAll('_', ' ')}
-          </span>
-          <span
-            style={{
-              fontSize: 10,
-              padding: '2px 7px',
-              borderRadius: 100,
-              background: 'var(--bg-raised)',
-              color: 'var(--ink-low)',
-              textTransform: 'capitalize',
-            }}
-          >
-            {payment.direction}
+            {statusChip.text}
           </span>
           {payment.paid_by_side && (
             <span
@@ -729,16 +869,17 @@ function PaymentTimelineItem({
             </span>
           )}
         </div>
-        {payment.paid_by_side === 'shared' && payment.paid_bride_share_percentage != null && (
-          <div style={{ fontSize: 11, color: 'var(--ink-low)', lineHeight: 1.35 }}>
-            Bride {payment.paid_bride_share_percentage}% · Groom{' '}
-            {100 - payment.paid_bride_share_percentage}%
-          </div>
-        )}
-        <div className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>
-          {parseLocalDate(dateLabel).toLocaleDateString('en-IN')}
+        {/* One meta line: when · how · who */}
+        <div style={{ fontSize: 11, color: 'var(--ink-dim)' }}>
+          {payment.status === 'posted' ? 'Paid ' : 'Due '}
+          {formatDateLabel(dateLabel)}
           {payment.payment_method &&
             ` · ${PAYMENT_METHOD_LABELS[payment.payment_method] ?? payment.payment_method}`}
+          {payment.paid_by_side === 'shared' &&
+            payment.paid_bride_share_percentage != null &&
+            ` · Bride ${payment.paid_bride_share_percentage}% / Groom ${
+              100 - payment.paid_bride_share_percentage
+            }%`}
         </div>
 
         {allocationChips.length > 0 && (
@@ -760,13 +901,20 @@ function PaymentTimelineItem({
           </div>
         )}
 
-        <PaymentNotesEditor paymentId={payment.id} notes={payment.notes} />
-
-        <div style={{ marginTop: 4 }}>
+        {/* One action bar: note · receipt · state changes */}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: '4px 14px',
+            marginTop: 4,
+          }}
+        >
+          <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+            <PaymentNotesEditor paymentId={payment.id} notes={payment.notes} />
+          </div>
           <PaymentAttachments paymentId={payment.id} />
-        </div>
-
-        <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
           {isScheduled && onMarkPaid && (
             <button
               type="button"
@@ -786,15 +934,16 @@ function PaymentTimelineItem({
             <button
               type="button"
               onClick={() => onReverse(payment)}
+              title="Records an offsetting reversal entry"
               style={{
                 fontSize: 12,
                 fontWeight: 500,
-                color: '#0369a1',
+                color: 'var(--ink-low)',
                 background: 'transparent',
                 cursor: 'pointer',
               }}
             >
-              Reverse
+              Undo payment
             </button>
           )}
         </div>

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api/axios';
 import { setActiveCurrency } from '../utils/currency';
+import { resetUser } from '../services/analytics/mixpanel.service';
 
 export interface AuthUser {
   id: string;
@@ -157,6 +158,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
     setSlug(null);
     setActiveCurrency(null);
+    resetUser();
   };
 
   const patchViewPref = (key: string, value: unknown) => {

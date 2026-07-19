@@ -404,17 +404,24 @@ a:focus-visible,
   cursor: pointer;
 }
 /* ── Inputs ──────────────────────────────────────────────────────────────── */
+/* One control height (36px) across text inputs, selects, and picker triggers
+   so mixed rows line up. Density comes from padding + line-height, not
+   min-height alone — textareas opt back out below. */
 @utility input {
   width: 100%;
-  padding: 9px 12px;
+  padding: 7px 11px;
+  min-height: 36px;
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   color: var(--ink-high);
   font-size: 13px;
+  line-height: 1.45;
   font-family: var(--font-sans);
   outline: none;
-  transition: border-color 150ms;
+  transition:
+    border-color 150ms,
+    box-shadow 150ms;
 }
 .input:focus {
   border-color: var(--gold);
@@ -424,23 +431,60 @@ a:focus-visible,
   color: var(--ink-dim);
 }
 
-/* Neumorphic search input — adapted from uiverse.io/Praashoo7 (MIT) */
+/* Selects: strip the OS chrome so they match text inputs, draw our own
+   chevron. Keep background-color from .input; only layer the arrow image. */
+select.input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236b6259' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 14px 14px;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+textarea.input {
+  min-height: 70px;
+  line-height: 1.5;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  resize: vertical;
+}
+
+/* Color pickers: a compact swatch, not a full-width bar */
+.input[type='color'] {
+  width: 64px;
+  min-width: 64px;
+  height: 36px;
+  padding: 4px 5px;
+  cursor: pointer;
+}
+.input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.input[type='color']::-webkit-color-swatch {
+  border: none;
+  border-radius: 4px;
+}
+.input[type='color']::-moz-color-swatch {
+  border: none;
+  border-radius: 4px;
+}
+
+/* Quiet search-field variant: sits on panel background with a soft inset —
+   calmer than the old neumorphic treatment, same box as every other input. */
 .input-neu {
-  border-color: transparent;
-  background: var(--bg-raised);
-  border-radius: 12px;
-  box-shadow:
-    inset 2px 4px 8px rgba(62, 44, 24, 0.13),
-    inset -2px -2px 6px rgba(255, 255, 255, 0.7);
-  transition: all 250ms ease-in-out;
+  border-color: var(--line-soft);
+  background: var(--bg-panel);
+  box-shadow: inset 0 1px 3px rgba(62, 44, 24, 0.08);
 }
 .input-neu:focus {
-  border-color: transparent;
+  border-color: var(--gold);
   background: var(--bg-panel);
-  transform: scale(1.02);
   box-shadow:
-    4px 4px 14px rgba(62, 44, 24, 0.1),
-    -4px -4px 14px rgba(255, 255, 255, 0.9),
+    inset 0 1px 2px rgba(62, 44, 24, 0.05),
     0 0 0 3px var(--gold-glow);
 }
 
@@ -935,25 +979,99 @@ a:focus-visible,
   border-radius: 10px;
   cursor: pointer;
 }
-@media (max-width: 1023px) {
-  .studio {
-    height: auto;
-    min-height: 100%;
-  }
-  .studio-body {
-    flex-direction: column;
-  }
-  .studio-canvas {
-    flex: none;
-    height: 72vh;
-  }
-  .studio-panel {
-    width: 100%;
-    border-left: none;
-    border-top: 1px solid var(--line-soft);
-    overflow-x: hidden;
-    overflow-y: visible;
-  }
+/* ── Mobile Site Studio (<1024px) ─────────────────────────────────────────
+   Photo-editor shell: compact top bar, full-bleed live preview, bottom tool
+   dock. Tool trays slide up over the preview's lower edge so the page stays
+   visible while templates / palettes / effects are swiped through. */
+.mstudio {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+.mstudio-topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+}
+.mstudio-canvas {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--bg-highest);
+  background-image: radial-gradient(rgba(62, 44, 24, 0.07) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+.mstudio-tray {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--line-soft);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -12px 32px -12px rgba(0, 0, 0, 0.28);
+}
+.mstudio-tray-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 10px 4px 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.mstudio-grabber {
+  width: 34px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  opacity: 0.55;
+}
+.mstudio-tray-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.mstudio-dock {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-evenly;
+  gap: 4px;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line-soft);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+}
+.mstudio-dock-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 64px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ink-dim);
+  transition: all 150ms;
+}
+.mstudio-dock-btn[aria-pressed='true'] {
+  color: var(--gold-deep);
+  background: var(--gold-glow);
 }
 
 /* Print: hide dashboard chrome, print a clean list. The dashboard shell pins
@@ -1032,5 +1150,116 @@ a:focus-visible,
   /* iOS Safari zooms the page when a focused input's font-size is <16px */
   .input {
     font-size: 16px;
+  }
+}
+
+/* ── Modal sheets ─────────────────────────────────────────────────────────
+   One container for large dialogs: a centered card on desktop, an
+   edge-to-edge full-height sheet on phones (100dvh tracks the browser
+   chrome; the footer keeps clear of the home indicator). Panels size via
+   --sheet-max-w / --sheet-h so each modal can tune its desktop footprint. */
+
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 16px;
+}
+.sheet-panel {
+  background: var(--bg-panel);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: var(--sheet-max-w, 900px);
+  height: var(--sheet-h, min(88dvh, 760px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+}
+.sheet-header {
+  padding: 14px 24px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  flex-shrink: 0;
+}
+.sheet-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+.sheet-body {
+  padding: 24px;
+}
+.sheet-footer {
+  display: flex;
+  gap: 10px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--line-soft);
+  flex-shrink: 0;
+  justify-content: flex-end;
+  background: var(--bg-panel);
+}
+@media (max-width: 767px) {
+  .sheet-overlay {
+    padding: 0;
+    align-items: stretch;
+  }
+  .sheet-panel {
+    max-width: none;
+    height: 100dvh;
+    border-radius: 0;
+  }
+  .sheet-header {
+    padding: 12px 16px 14px;
+  }
+  .sheet-tabs {
+    padding: 0 16px;
+  }
+  .sheet-body {
+    padding: 16px;
+  }
+  .sheet-footer {
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+  /* Footer actions share the row edge-to-edge on phones */
+  .sheet-footer > * {
+    flex: 1;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .sheet-panel {
+      animation: sheet-up 260ms cubic-bezier(0.32, 0.72, 0.28, 1);
+    }
+  }
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0.6;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* Split-share numeric fields: inline-styled elsewhere, so font sizes live
+   here to pick up the 16px no-zoom floor on phones. */
+.split-num-main {
+  font-size: 15px;
+}
+@media (max-width: 767px) {
+  .split-num-main {
+    font-size: 16px;
+  }
+}
+
+/* Sliders need a taller hit area on touch screens */
+@media (pointer: coarse) {
+  input[type='range'] {
+    height: 32px;
   }
 }

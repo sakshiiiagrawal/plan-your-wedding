@@ -561,6 +561,9 @@ export default function Vendors() {
     setShowVendorModal(true);
   };
 
+  // Set by the "Save & add another" button just before submit.
+  const keepOpenRef = useRef(false);
+
   const openPaymentsTab = (vendor: VendorWithFinance) => {
     handleEdit(vendor);
     setTimeout(() => setActiveTab(1), 50);
@@ -635,7 +638,13 @@ export default function Vendors() {
         }
       }
 
-      closeVendorModal();
+      if (!editingVendor && keepOpenRef.current) {
+        // Save & add another: fresh form, modal stays open.
+        keepOpenRef.current = false;
+        resetForm();
+      } else {
+        closeVendorModal();
+      }
     } catch (error: unknown) {
       const apiError = error as ApiError;
       const message =
@@ -1675,7 +1684,7 @@ export default function Vendors() {
               setPerPage(Number(event.target.value));
               setPage(1);
             }}
-            style={{ width: 80, height: 34, padding: '6px 8px' }}
+            style={{ width: 80 }}
           >
             {[12, 24, 48].map((size) => (
               <option key={size} value={size}>
@@ -1796,9 +1805,25 @@ export default function Vendors() {
               <button type="button" onClick={attemptCloseVendorModal} className="btn-outline">
                 Cancel
               </button>
+              {!editingVendor && (
+                <button
+                  type="submit"
+                  form="vendor-form"
+                  onClick={() => {
+                    keepOpenRef.current = true;
+                  }}
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="btn-outline"
+                >
+                  Save & add another
+                </button>
+              )}
               <button
                 type="submit"
                 form="vendor-form"
+                onClick={() => {
+                  keepOpenRef.current = false;
+                }}
                 disabled={createMutation.isPending || updateMutation.isPending}
                 className="btn-primary"
                 style={{ minWidth: 170 }}
@@ -2077,7 +2102,7 @@ export default function Vendors() {
                           onChange={(e) =>
                             setFormData((prev) => ({ ...prev, total_cost: e.target.value }))
                           }
-                          className="input"
+                          className="input no-spinner"
                           placeholder="0"
                         />
                       </div>

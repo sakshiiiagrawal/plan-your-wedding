@@ -114,7 +114,7 @@ export default function SplitShare({
           <input
             type="number"
             inputMode="decimal"
-            className="no-spinner"
+            className="no-spinner split-num-main"
             min={0}
             max={effectiveMode === 'percent' ? 100 : total || undefined}
             step={effectiveMode === 'percent' ? 0.5 : 1}
@@ -129,7 +129,6 @@ export default function SplitShare({
               background: 'transparent',
               outline: 'none',
               color,
-              fontSize: 15,
               fontWeight: 500,
               padding: 0,
               fontFamily: 'var(--font-sans)',
@@ -149,35 +148,48 @@ export default function SplitShare({
         >
           {showSecondaryInput ? (
             <>
-              {secondaryPrefix && <span>{secondaryPrefix}</span>}
-              <input
-                type="number"
-                inputMode="decimal"
-                className="no-spinner"
-                min={0}
-                max={secondaryMetric === 'percent' ? 100 : total || undefined}
-                step={secondaryMetric === 'percent' ? 0.5 : 1}
-                value={secondaryValue}
-                disabled={disabled}
-                onChange={(e) => updateFromMetric(side, e.target.value, secondaryMetric)}
-                onFocus={(e) => e.currentTarget.select()}
-                aria-label={`${isBride ? 'Bride' : 'Groom'} ${
-                  secondaryMetric === 'amount' ? 'amount' : 'percentage'
-                }`}
-                style={{
-                  width: secondaryMetric === 'amount' ? 72 : 44,
-                  minWidth: 0,
-                  border: 'none',
-                  background: 'transparent',
-                  outline: 'none',
-                  color: 'var(--ink-dim)',
-                  fontSize: 10,
-                  height: '100%',
-                  padding: 0,
-                  fontFamily: 'var(--font-sans)',
-                }}
-              />
-              {secondarySuffix && <span>{secondarySuffix}</span>}
+              {/* Desktop: the secondary metric is directly editable. Phones get
+                  a read-only echo — a 10px input would trigger iOS focus zoom
+                  and is far below a usable touch target. */}
+              <span
+                className="max-md:hidden"
+                style={{ display: 'flex', alignItems: 'center', gap: 3, height: '100%' }}
+              >
+                {secondaryPrefix && <span>{secondaryPrefix}</span>}
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  className="no-spinner"
+                  min={0}
+                  max={secondaryMetric === 'percent' ? 100 : total || undefined}
+                  step={secondaryMetric === 'percent' ? 0.5 : 1}
+                  value={secondaryValue}
+                  disabled={disabled}
+                  onChange={(e) => updateFromMetric(side, e.target.value, secondaryMetric)}
+                  onFocus={(e) => e.currentTarget.select()}
+                  aria-label={`${isBride ? 'Bride' : 'Groom'} ${
+                    secondaryMetric === 'amount' ? 'amount' : 'percentage'
+                  }`}
+                  style={{
+                    width: secondaryMetric === 'amount' ? 72 : 44,
+                    minWidth: 0,
+                    border: 'none',
+                    background: 'transparent',
+                    outline: 'none',
+                    color: 'var(--ink-dim)',
+                    fontSize: 10,
+                    height: '100%',
+                    padding: 0,
+                    fontFamily: 'var(--font-sans)',
+                  }}
+                />
+                {secondarySuffix && <span>{secondarySuffix}</span>}
+              </span>
+              <span className="md:hidden">
+                {secondaryMetric === 'amount'
+                  ? `≈ ${formatCurrency(amt)}`
+                  : `${formatPct(pct)}%`}
+              </span>
             </>
           ) : disabled ? (
             hasTotal ? (
@@ -186,7 +198,7 @@ export default function SplitShare({
               ''
             )
           ) : (
-            `Set the total to split by ${currencySymbol()}`
+            `Enter the total to see ${currencySymbol()} amounts`
           )}
         </div>
       </div>

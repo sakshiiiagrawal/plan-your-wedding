@@ -1095,13 +1095,10 @@ export default function Tasks() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
-                  <button
-                    type="button"
-                    onClick={attemptCloseTaskModal}
-                    className="btn-outline"
-                    style={{ flex: 1 }}
-                  >
+                <div
+                  style={{ display: 'flex', gap: 10, paddingTop: 4, justifyContent: 'flex-end' }}
+                >
+                  <button type="button" onClick={attemptCloseTaskModal} className="btn-outline">
                     Cancel
                   </button>
                   <button
@@ -1109,7 +1106,6 @@ export default function Tasks() {
                     disabled={createMutation.isPending || updateMutation.isPending}
                     className="btn-primary"
                     style={{
-                      flex: 1,
                       opacity: createMutation.isPending || updateMutation.isPending ? 0.5 : 1,
                     }}
                   >

@@ -9,6 +9,10 @@ export interface PlaceSelection {
   longitude: number | null;
   city: string | null;
   photo_url: string | null;
+  /** Place name (Google displayName / suggestion label) — null while typing free-form. */
+  name: string | null;
+  /** Raw Google place types, when known — lets callers infer a venue type. */
+  place_types: string[] | null;
 }
 
 interface GeocodeSuggestion {
@@ -27,6 +31,8 @@ interface PlaceDetailsResponse {
   longitude: number | null;
   city: string | null;
   photo_url: string | null;
+  name: string | null;
+  place_types: string[] | null;
 }
 
 interface Props {
@@ -181,7 +187,16 @@ export default function AddressAutocomplete({
       // Google Places (New): the autocomplete suggestion has no coordinates
       // or photo yet — resolve both with a single follow-up Details call.
       if (!s.place_id) {
-        onChange({ address, place_id: null, latitude: null, longitude: null, city: s.city, photo_url: null });
+        onChange({
+          address,
+          place_id: null,
+          latitude: null,
+          longitude: null,
+          city: s.city,
+          photo_url: null,
+          name: s.label || null,
+          place_types: null,
+        });
         return;
       }
       const session = sessionTokenRef.current ?? '';
@@ -198,6 +213,8 @@ export default function AddressAutocomplete({
             longitude: data.longitude,
             city: data.city ?? s.city,
             photo_url: data.photo_url,
+            name: data.name ?? s.label ?? null,
+            place_types: data.place_types,
           });
         })
         .catch((err) => {
@@ -209,6 +226,8 @@ export default function AddressAutocomplete({
             longitude: null,
             city: s.city,
             photo_url: null,
+            name: s.label || null,
+            place_types: null,
           });
         })
         .finally(() => {
@@ -225,6 +244,8 @@ export default function AddressAutocomplete({
       longitude: s.longitude,
       city: s.city,
       photo_url: null,
+      name: s.label || null,
+      place_types: null,
     });
   };
 
@@ -271,6 +292,8 @@ export default function AddressAutocomplete({
         longitude: coords.lng,
         city: null,
         photo_url: null,
+        name: null,
+        place_types: null,
       });
       return;
     }
@@ -282,6 +305,8 @@ export default function AddressAutocomplete({
       longitude: null,
       city: null,
       photo_url: null,
+      name: null,
+      place_types: null,
     });
   };
 

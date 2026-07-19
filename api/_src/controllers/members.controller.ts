@@ -32,6 +32,20 @@ export const accept = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
+// Public (token-gated): powers the invite landing page's greeting + email prefill.
+export const invitePreview = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const token = typeof req.query.token === 'string' ? req.query.token : '';
+    res.json(await membersService.getInvitePreview(token));
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const listPending = async (
   req: Request,
   res: Response,

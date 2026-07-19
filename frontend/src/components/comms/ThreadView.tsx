@@ -118,7 +118,8 @@ export default function ThreadView({
               }}
               rows={1}
               placeholder="Type a reply…"
-              className="flex-1 resize-none rounded-lg border border-line-strong bg-surface-panel px-3 py-2 text-[13px]"
+              className="input flex-1 resize-none"
+              style={{ minHeight: 36 }}
             />
             <button
               onClick={handleSend}

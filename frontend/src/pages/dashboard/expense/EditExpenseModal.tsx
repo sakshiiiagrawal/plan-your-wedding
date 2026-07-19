@@ -48,14 +48,16 @@ interface FormData {
   items: ExpenseItemForm[];
 }
 
-const createItem = (): ExpenseItemForm => ({
+// New items inherit the previous item's side/split so multi-item entry
+// doesn't re-ask a question already answered.
+const createItem = (prev?: ExpenseItemForm): ExpenseItemForm => ({
   local_id: Math.random().toString(36).slice(2),
   description: '',
   amount: '',
   planned_amount: '',
   category_id: null,
-  side: 'shared',
-  bride_share_percentage: 50,
+  side: prev?.side ?? 'shared',
+  bride_share_percentage: prev?.bride_share_percentage ?? 50,
 });
 
 function getExpenseFormState(expense: ExpenseRow | null): FormData | null {
@@ -91,10 +93,35 @@ export default function EditExpenseModal({
   const [formData, setFormData] = useState<FormData | null>(null);
   const [showCustomCategoryModal, setShowCustomCategoryModal] = useState(false);
   const [customCategoryParentId, setCustomCategoryParentId] = useState<string | null>(null);
+  // Items whose planned estimate genuinely differs from the amount (or was
+  // revealed by hand). Hidden planned fields track the amount on save.
+  const [plannedOpen, setPlannedOpen] = useState<Set<string>>(new Set());
+  // True when the single item's description is just the expense title — then
+  // we don't show a second field asking for the same words.
+  const [soloDescSynced, setSoloDescSynced] = useState(false);
 
   useEffect(() => {
     if (!expense) return;
-    setFormData(getExpenseFormState(expense));
+    const state = getExpenseFormState(expense);
+    setFormData(state);
+    if (state) {
+      setPlannedOpen(
+        new Set(
+          state.items
+            .filter(
+              (item) =>
+                item.planned_amount !== '' &&
+                Number(item.planned_amount) !== Number(item.amount),
+            )
+            .map((item) => item.local_id),
+        ),
+      );
+      setSoloDescSynced(
+        state.items.length === 1 &&
+          (state.items[0]!.description === '' ||
+            state.items[0]!.description === state.description),
+      );
+    }
   }, [expense]);
 
   const { data: payments = [] } = useExpensePaymentsForExpense(expense?.id);
@@ -127,15 +154,19 @@ export default function EditExpenseModal({
     () => formData?.items.reduce((sum, item) => sum + Number(item.amount || 0), 0) ?? 0,
     [formData],
   );
-  // Blank planned falls back to the item's amount (mirrors the server default).
+  // Hidden or blank planned falls back to the item's amount (mirrors what the
+  // submit payload sends).
   const totalPlanned = useMemo(
     () =>
       formData?.items.reduce(
         (sum, item) =>
-          sum + (item.planned_amount === '' ? Number(item.amount || 0) : Number(item.planned_amount)),
+          sum +
+          (!plannedOpen.has(item.local_id) || item.planned_amount === ''
+            ? Number(item.amount || 0)
+            : Number(item.planned_amount)),
         0,
       ) ?? 0,
-    [formData],
+    [formData, plannedOpen],
   );
   const isDirty = JSON.stringify(formData) !== JSON.stringify(getExpenseFormState(expense));
   const { attemptClose, dialog: unsavedDialog } = useUnsavedChangesPrompt({
@@ -150,6 +181,8 @@ export default function EditExpenseModal({
 
   if (!expense || !formData) return null;
   const detail = liveExpense ?? expense;
+  const singleItem = formData.items.length === 1;
+  const hideSoloDescription = singleItem && soloDescSynced;
 
   const updateItem = (id: string, patch: Partial<ExpenseItemForm>) => {
     setFormData((prev) =>
@@ -176,6 +209,41 @@ export default function EditExpenseModal({
     );
   };
 
+  // Amount = the allocated amount. The separate planned estimate stays hidden
+  // until asked for — most items don't track one.
+  const renderAmountField = (item: ExpenseItemForm) => (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+        <label className="label">Amount *</label>
+        {!plannedOpen.has(item.local_id) && (
+          <button
+            type="button"
+            onClick={() => setPlannedOpen((prev) => new Set(prev).add(item.local_id))}
+            style={{
+              fontSize: 11,
+              color: 'var(--ink-dim)',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            + planned estimate
+          </button>
+        )}
+      </div>
+      <input
+        type="number"
+        min="0"
+        step="0.01"
+        value={item.amount}
+        onChange={(event) => updateItem(item.local_id, { amount: event.target.value })}
+        className="input no-spinner"
+        required
+      />
+    </div>
+  );
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     await onSubmit(expense.id, {
@@ -185,12 +253,20 @@ export default function EditExpenseModal({
       items: formData.items.map((item, index) => ({
         ...(item.id ? { id: item.id } : {}),
         category_id: item.category_id,
-        description: item.description,
+        // A hidden solo description follows the title; otherwise keep what the
+        // user typed (falling back to the title for safety).
+        description:
+          singleItem && soloDescSynced
+            ? formData.description
+            : item.description || formData.description,
         amount: Number(item.amount || 0),
-        // B1: blank planned is an explicit reset-to-allocated (the field is
-        // pre-filled, so clearing it is intentional).
-        planned_amount:
-          item.planned_amount === '' ? Number(item.amount || 0) : Number(item.planned_amount),
+        // A hidden planned field means "no separate estimate" — it tracks the
+        // amount. When visible, blank is an explicit reset-to-allocated (B1).
+        planned_amount: !plannedOpen.has(item.local_id)
+          ? Number(item.amount || 0)
+          : item.planned_amount === ''
+            ? Number(item.amount || 0)
+            : Number(item.planned_amount),
         display_order: index + 1,
         ...(canSeeSplits
           ? {
@@ -227,7 +303,8 @@ export default function EditExpenseModal({
         }
         footerLeft={
           <span>
-            Planned {formatCurrency(totalPlanned)} · Allocated{' '}
+            {totalPlanned !== totalCommitted && <>Planned {formatCurrency(totalPlanned)} · </>}
+            Total{' '}
             <strong style={{ color: 'var(--gold-deep)' }}>{formatCurrency(totalCommitted)}</strong>
           </span>
         }
@@ -283,9 +360,22 @@ export default function EditExpenseModal({
             action={
               <SectionAction
                 onClick={() =>
-                  setFormData((prev) =>
-                    prev ? { ...prev, items: [...prev.items, createItem()] } : prev,
-                  )
+                  setFormData((prev) => {
+                    if (!prev) return prev;
+                    return {
+                      ...prev,
+                      items: [
+                        // Going from one item to several: a hidden solo
+                        // description was the title, so materialize it.
+                        ...prev.items.map((item, i) =>
+                          i === 0 && prev.items.length === 1 && hideSoloDescription
+                            ? { ...item, description: prev.description }
+                            : item,
+                        ),
+                        createItem(prev.items[prev.items.length - 1]),
+                      ],
+                    };
+                  })
                 }
               >
                 <HiOutlinePlus className="w-4 h-4" />
@@ -305,42 +395,46 @@ export default function EditExpenseModal({
                   gap: 14,
                 }}
               >
-                <div className="flex items-center justify-between">
-                  <h4 style={{ margin: 0, fontWeight: 600, color: 'var(--ink-high)', fontSize: 13 }}>
-                    Item {index + 1}
-                  </h4>
-                  <button
-                    type="button"
-                    onClick={() => removeItem(item.local_id)}
-                    disabled={
-                      formData.items.length === 1 ||
-                      (!!item.id && (paidByItem.get(item.id) ?? 0) > 0)
-                    }
-                    title={
-                      item.id && (paidByItem.get(item.id) ?? 0) > 0
-                        ? `${formatCurrency(paidByItem.get(item.id) ?? 0)} paid against this item — reverse those payments first`
-                        : undefined
-                    }
-                    aria-label={`Remove item ${index + 1}`}
-                    className="p-2 rounded-lg text-red-500 hover:bg-red-50 disabled:opacity-40"
-                  >
-                    <HiOutlineTrash className="w-4 h-4" />
-                  </button>
-                </div>
+                {!singleItem && (
+                  <div className="flex items-center justify-between">
+                    <h4
+                      style={{ margin: 0, fontWeight: 600, color: 'var(--ink-high)', fontSize: 13 }}
+                    >
+                      Item {index + 1}
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => removeItem(item.local_id)}
+                      disabled={!!item.id && (paidByItem.get(item.id) ?? 0) > 0}
+                      title={
+                        item.id && (paidByItem.get(item.id) ?? 0) > 0
+                          ? `${formatCurrency(paidByItem.get(item.id) ?? 0)} paid against this item — reverse those payments first`
+                          : undefined
+                      }
+                      aria-label={`Remove item ${index + 1}`}
+                      className="p-2 rounded-lg text-red-500 hover:bg-red-50 disabled:opacity-40"
+                    >
+                      <HiOutlineTrash className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
 
                 <div className="grid sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="label">Item Description *</label>
-                    <input
-                      type="text"
-                      value={item.description}
-                      onChange={(event) =>
-                        updateItem(item.local_id, { description: event.target.value })
-                      }
-                      className="input"
-                      required
-                    />
-                  </div>
+                  {/* One item whose description is the title = don't ask twice. */}
+                  {!hideSoloDescription && (
+                    <div>
+                      <label className="label">Item Description *</label>
+                      <input
+                        type="text"
+                        value={item.description}
+                        onChange={(event) =>
+                          updateItem(item.local_id, { description: event.target.value })
+                        }
+                        className="input"
+                        required
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="label">Category *</label>
                     <CategoryCombobox
@@ -356,36 +450,31 @@ export default function EditExpenseModal({
                       required
                     />
                   </div>
+                  {hideSoloDescription && renderAmountField(item)}
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="label">Planned (estimate)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={item.planned_amount}
-                      onChange={(event) =>
-                        updateItem(item.local_id, { planned_amount: event.target.value })
-                      }
-                      className="input"
-                      placeholder="Blank resets to allocated"
-                    />
+                {!hideSoloDescription && (
+                  <div className="grid sm:grid-cols-2 gap-3">{renderAmountField(item)}</div>
+                )}
+
+                {plannedOpen.has(item.local_id) && (
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="label">Planned (estimate)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.planned_amount}
+                        onChange={(event) =>
+                          updateItem(item.local_id, { planned_amount: event.target.value })
+                        }
+                        className="input no-spinner"
+                        placeholder="Blank resets to amount"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="label">Allocated *</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={item.amount}
-                      onChange={(event) => updateItem(item.local_id, { amount: event.target.value })}
-                      className="input"
-                      required
-                    />
-                  </div>
-                </div>
+                )}
 
                 {canSeeSplits && (
                   <div>
@@ -419,10 +508,10 @@ export default function EditExpenseModal({
               }}
             >
               <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
-                Planned {formatCurrency(totalPlanned)}
+                {totalPlanned !== totalCommitted ? `Planned ${formatCurrency(totalPlanned)}` : ''}
               </span>
               <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
-                Allocated{' '}
+                Total{' '}
                 <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--gold-deep)' }}>
                   {formatCurrency(totalCommitted)}
                 </span>
