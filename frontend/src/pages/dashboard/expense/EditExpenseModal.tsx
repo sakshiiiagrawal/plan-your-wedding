@@ -536,6 +536,7 @@ export default function EditExpenseModal({
         <div style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 20 }}>
           <PaymentTimelinePanel
             payments={payments}
+            planned={detail.summary?.planned_amount ?? 0}
             committed={detail.summary?.committed_amount ?? totalCommitted}
             paid={detail.summary?.paid_amount ?? 0}
             outstanding={detail.summary?.outstanding_amount ?? totalCommitted}

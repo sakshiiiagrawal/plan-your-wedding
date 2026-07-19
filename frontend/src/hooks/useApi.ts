@@ -278,6 +278,7 @@ export interface DashboardStats {
   tasks: { pending: number; completed: number };
   expense: {
     total: number;
+    planned: number;
     committed: number;
     paid: number;
     outstanding: number;
@@ -299,6 +300,7 @@ export interface ExpenseOutstandingItem {
   id: string;
   name: string;
   type: 'manual' | 'vendor' | 'venue';
+  planned: number;
   totalCost: number;
   paid: number;
   outstanding: number;
@@ -314,6 +316,13 @@ export interface ExpenseAlerts {
   upcomingTotal: number;
   overBudgetCategories: Array<{ id: string; name: string; overBy: number }>;
   nearBudgetCategories: Array<{ id: string; name: string; percentage: number }>;
+  overPlanCategories: Array<{
+    id: string;
+    name: string;
+    planned: number;
+    committed: number;
+    overBy: number;
+  }>;
 }
 
 export const useDashboardStats = () =>
@@ -1169,9 +1178,21 @@ export const useVendorsBySide = () =>
     queryFn: () => api.get('/expense/vendors/by-side').then((res) => res.data),
   });
 
+export interface SideFigures {
+  planned: number;
+  committed: number;
+  paid: number;
+  outstanding: number;
+  total: number;
+}
+
 export interface SideSummary {
-  bride: { total: number };
-  groom: { total: number };
+  // Both sides already include their cut of shared items, split by each bill's
+  // bride_share_percentage — same semantics as the client-side side totals.
+  bride: SideFigures;
+  groom: SideFigures;
+  /** Always zeroes: the rollup view folds shared items into bride/groom. */
+  shared: SideFigures;
 }
 
 export const useSideSummary = () =>

@@ -597,6 +597,7 @@ export async function getVendorExpenseSummary(ownerId: string) {
     category:
       (vendor as { expense_categories?: { name?: string } }).expense_categories?.name ?? null,
     expense_id: vendor.expense_id,
+    plannedAmount: vendor.finance_summary?.planned_amount ?? 0,
     totalCost: vendor.finance_summary?.committed_amount ?? 0,
     paidAmount: vendor.finance_summary?.paid_amount ?? 0,
     outstandingAmount: vendor.finance_summary?.outstanding_amount ?? 0,
@@ -605,17 +606,23 @@ export async function getVendorExpenseSummary(ownerId: string) {
 
 export async function getVendorsBySide(ownerId: string) {
   const vendors = await loadVendorsWithFinance(ownerId);
-  const grouped = {
-    bride: { vendors: [] as typeof vendors, totalCost: 0 },
-    groom: { vendors: [] as typeof vendors, totalCost: 0 },
-    shared: { vendors: [] as typeof vendors, totalCost: 0 },
-  };
+  const emptySide = () => ({
+    vendors: [] as Awaited<ReturnType<typeof loadVendorsWithFinance>>,
+    planned: 0,
+    totalCost: 0,
+    paid: 0,
+    outstanding: 0,
+  });
+  const grouped = { bride: emptySide(), groom: emptySide(), shared: emptySide() };
 
   for (const vendor of vendors) {
     const firstItem = vendor.finance?.items[0];
     const side = firstItem?.side ?? 'shared';
     grouped[side].vendors.push(vendor);
+    grouped[side].planned += vendor.finance_summary?.planned_amount ?? 0;
     grouped[side].totalCost += vendor.finance_summary?.committed_amount ?? 0;
+    grouped[side].paid += vendor.finance_summary?.paid_amount ?? 0;
+    grouped[side].outstanding += vendor.finance_summary?.outstanding_amount ?? 0;
   }
 
   return grouped;

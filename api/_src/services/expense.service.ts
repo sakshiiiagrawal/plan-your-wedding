@@ -367,6 +367,7 @@ export async function getOutstanding(ownerId: string) {
       id: expense.id,
       name: expense.description,
       type: expense.source_type,
+      planned: expense.summary.planned_amount,
       totalCost: expense.summary.committed_amount,
       paid: expense.summary.paid_amount,
       outstanding: expense.summary.outstanding_amount,
@@ -429,6 +430,21 @@ export async function getAlerts(ownerId: string, todayOverride?: string) {
       percentage: Math.round((category.spent / category.allocated) * 100),
     }));
 
+  // Allocated has outgrown the pencilled-in plan. Only categories with a real
+  // plan qualify (planned 0 means "no plan recorded", not "plan of zero").
+  const overPlanCategories = categories
+    .map((category) => ({
+      id: category.id,
+      name: category.name,
+      planned: spending.get(category.id)?.planned_amount ?? 0,
+      committed: spending.get(category.id)?.committed_amount ?? 0,
+    }))
+    .filter((category) => category.planned > 0 && category.committed > category.planned)
+    .map((category) => ({
+      ...category,
+      overBy: category.committed - category.planned,
+    }));
+
   const overdue = scheduled.filter(
     (payment) => payment.due_date != null && payment.due_date < today,
   );
@@ -446,6 +462,7 @@ export async function getAlerts(ownerId: string, todayOverride?: string) {
     upcomingTotal: upcoming.reduce((sum, payment) => sum + payment.amount, 0),
     overBudgetCategories,
     nearBudgetCategories,
+    overPlanCategories,
   };
 }
 

@@ -348,7 +348,7 @@ export default function ExpensePaymentsTab({
       </div>
 
       {outstanding && outstanding.items.filter((item) => item.outstanding > 0).length > 0 && (
-        <div className="card overflow-hidden p-0">
+        <div id="outstanding-balances" className="card overflow-hidden p-0">
           <div className="p-4 bg-orange-50 border-b border-orange-100">
             <h3 className="font-semibold text-orange-800">Outstanding Balances</h3>
           </div>
@@ -358,6 +358,7 @@ export default function ExpensePaymentsTab({
                 <tr>
                   <th className="text-left p-4">Expense</th>
                   <th className="text-left p-4">Type</th>
+                  <th className="text-right p-4 hidden sm:table-cell">Planned</th>
                   <th className="text-right p-4">Allocated</th>
                   <th className="text-right p-4">Paid</th>
                   <th className="text-right p-4">Outstanding</th>
@@ -372,6 +373,9 @@ export default function ExpensePaymentsTab({
                     <tr key={item.id} className="table-row">
                       <td className="p-4 font-medium">{item.name}</td>
                       <td className="p-4 text-ink-low capitalize">{item.type}</td>
+                      <td className="p-4 text-right text-ink-low hidden sm:table-cell">
+                        {item.planned > 0 ? formatCurrency(item.planned) : '—'}
+                      </td>
                       <td className="p-4 text-right text-ink-mid">
                         {formatCurrency(item.totalCost)}
                       </td>
@@ -393,9 +397,12 @@ export default function ExpensePaymentsTab({
               </tbody>
               <tfoot className="bg-surface-highest font-bold">
                 <tr>
+                  {/* Planned is sm-only, so the label spans 4 and this filler
+                      absorbs the extra column above the sm breakpoint. */}
                   <td colSpan={4} className="p-4">
                     Total Outstanding
                   </td>
+                  <td className="p-4 hidden sm:table-cell" />
                   <td className="p-4 text-right text-orange-700">
                     {formatCurrency(outstanding.totalOutstanding)}
                   </td>

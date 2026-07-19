@@ -317,18 +317,27 @@ export default function ExpenseOverviewTab({
             style={{
               display: 'grid',
               gridTemplateColumns: visibleHasBudgets
-                ? '1fr 100px 100px 100px 70px 140px'
-                : '1fr 110px 130px 180px',
+                ? '1fr 95px 95px 95px 95px 95px 60px 140px'
+                : '1fr 100px 100px 100px 100px 180px',
               gap: 8,
               padding: '8px 20px',
               background: 'var(--bg-raised)',
               borderBottom: '1px solid var(--line-soft)',
-              minWidth: visibleHasBudgets ? 680 : 560,
+              minWidth: visibleHasBudgets ? 860 : 700,
             }}
           >
             {(visibleHasBudgets
-              ? ['Category', 'Budget', 'Planned', 'Allocated', 'Used', 'Spend bar']
-              : ['Category', 'Planned', 'Allocated', 'Spend bar']
+              ? [
+                  'Category',
+                  'Budget',
+                  'Planned',
+                  'Allocated',
+                  'Paid',
+                  'Outstanding',
+                  'Used',
+                  'Spend bar',
+                ]
+              : ['Category', 'Planned', 'Allocated', 'Paid', 'Outstanding', 'Spend bar']
             ).map((h) => (
               <span
                 key={h}
@@ -372,11 +381,11 @@ export default function ExpenseOverviewTab({
                     style={{
                       display: 'grid',
                       gridTemplateColumns: visibleHasBudgets
-                        ? '1fr 100px 100px 100px 70px 140px'
-                        : '1fr 110px 130px 180px',
+                        ? '1fr 95px 95px 95px 95px 95px 60px 140px'
+                        : '1fr 100px 100px 100px 100px 180px',
                       gap: 8,
                       padding: '11px 20px',
-                      minWidth: visibleHasBudgets ? 680 : 560,
+                      minWidth: visibleHasBudgets ? 860 : 700,
                       borderBottom: i < sorted.length - 1 ? '1px solid var(--line-soft)' : 'none',
                       alignItems: 'center',
                       background: isOver ? 'rgba(220,38,38,0.02)' : 'transparent',
@@ -485,6 +494,30 @@ export default function ExpenseOverviewTab({
                       }}
                     >
                       {cat.committed > 0 ? formatCurrency(cat.committed) : '—'}
+                    </span>
+
+                    {/* Paid */}
+                    <span
+                      className="mono"
+                      style={{
+                        fontSize: 12,
+                        color: cat.paid > 0 ? 'var(--ok)' : 'var(--ink-dim)',
+                        textAlign: 'right',
+                      }}
+                    >
+                      {cat.paid > 0 ? formatCurrency(cat.paid) : '—'}
+                    </span>
+
+                    {/* Outstanding */}
+                    <span
+                      className="mono"
+                      style={{
+                        fontSize: 12,
+                        color: cat.outstanding > 0 ? 'var(--warn)' : 'var(--ink-dim)',
+                        textAlign: 'right',
+                      }}
+                    >
+                      {cat.outstanding > 0 ? formatCurrency(cat.outstanding) : '—'}
                     </span>
 
                     {/* % used — only when budgets exist */}

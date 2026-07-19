@@ -192,7 +192,7 @@ function VendorsListView({
   return (
     <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
       <table
-        style={{ width: '100%', borderCollapse: 'collapse', minWidth: canSeeMoney ? 760 : 520 }}
+        style={{ width: '100%', borderCollapse: 'collapse', minWidth: canSeeMoney ? 860 : 520 }}
       >
         <thead>
           <tr>
@@ -201,9 +201,10 @@ function VendorsListView({
             <th style={th}>Status</th>
             {canSeeMoney && (
               <>
+                <th style={{ ...th, textAlign: 'right' }}>Planned</th>
                 <th style={{ ...th, textAlign: 'right' }}>Allocated</th>
                 <th style={{ ...th, textAlign: 'right' }}>Paid</th>
-                <th style={{ ...th, textAlign: 'right' }}>Due</th>
+                <th style={{ ...th, textAlign: 'right' }}>Outstanding</th>
               </>
             )}
             <th style={th}>Contact</th>
@@ -212,6 +213,7 @@ function VendorsListView({
         </thead>
         <tbody>
           {vendors.map((vendor) => {
+            const planned = vendor.finance_summary?.planned_amount ?? 0;
             const committed = vendor.finance_summary?.committed_amount ?? 0;
             const paid = vendor.finance_summary?.paid_amount ?? 0;
             const outstanding = vendor.finance_summary?.outstanding_amount ?? 0;
@@ -271,6 +273,11 @@ function VendorsListView({
                 </td>
                 {canSeeMoney && (
                   <>
+                    <td
+                      style={{ ...numTd, color: planned > 0 ? 'var(--ink-mid)' : 'var(--ink-dim)' }}
+                    >
+                      {planned > 0 ? formatCurrency(planned) : '—'}
+                    </td>
                     <td style={numTd}>
                       {committed > 0 ? (
                         formatCurrency(committed)
@@ -1150,6 +1157,7 @@ export default function Vendors() {
             const plannedPayments =
               vendor.finance?.payments?.filter((payment) => payment.status === 'scheduled') ?? [];
             const events = getVendorEvents(vendor);
+            const planned = vendor.finance_summary?.planned_amount ?? 0;
             const committed = vendor.finance_summary?.committed_amount ?? 0;
             const paid = vendor.finance_summary?.paid_amount ?? 0;
             const outstanding = vendor.finance_summary?.outstanding_amount ?? 0;
@@ -1310,13 +1318,27 @@ export default function Vendors() {
                     <div
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gap: 6,
+                        gridTemplateColumns: 'repeat(2, 1fr)',
+                        gap: '8px 6px',
                         padding: '7px 10px',
                         background: 'var(--bg-raised)',
                         borderRadius: 8,
                       }}
                     >
+                      <div>
+                        <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
+                          Planned
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: planned > 0 ? 'var(--ink-mid)' : 'var(--ink-dim)',
+                            fontWeight: planned > 0 ? 500 : 400,
+                          }}
+                        >
+                          {planned > 0 ? formatCurrency(planned) : '—'}
+                        </div>
+                      </div>
                       <div>
                         <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
                           Allocated
@@ -1345,7 +1367,7 @@ export default function Vendors() {
                       </div>
                       <div>
                         <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
-                          Due
+                          Outstanding
                         </div>
                         <div
                           style={{

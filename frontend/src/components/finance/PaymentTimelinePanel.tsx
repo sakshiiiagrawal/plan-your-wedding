@@ -92,6 +92,8 @@ interface ApiError {
 
 export interface PaymentTimelinePanelProps {
   payments: PaymentRow[];
+  /** Pencilled-in figure. Omitted or 0 hides the stat rather than showing ₹0. */
+  planned?: number | undefined;
   committed: number;
   paid: number;
   outstanding: number;
@@ -115,6 +117,7 @@ export interface PaymentTimelinePanelProps {
 
 export default function PaymentTimelinePanel({
   payments,
+  planned,
   committed,
   paid,
   outstanding,
@@ -372,17 +375,18 @@ export default function PaymentTimelinePanel({
           borderRadius: 10,
         }}
       >
-        {(
-          [
-            { label: 'Allocated', value: committed, color: 'var(--ink-mid)' },
-            { label: 'Paid', value: paid, color: 'var(--ok)' },
-            {
-              label: 'Outstanding',
-              value: outstanding,
-              color: outstanding > 0 ? 'var(--warn)' : 'var(--ink-dim)',
-            },
-          ] as const
-        ).map((stat) => (
+        {[
+          ...(planned && planned > 0
+            ? [{ label: 'Planned', value: planned, color: 'var(--ink-low)' }]
+            : []),
+          { label: 'Allocated', value: committed, color: 'var(--ink-mid)' },
+          { label: 'Paid', value: paid, color: 'var(--ok)' },
+          {
+            label: 'Outstanding',
+            value: outstanding,
+            color: outstanding > 0 ? 'var(--warn)' : 'var(--ink-dim)',
+          },
+        ].map((stat) => (
           <div key={stat.label} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <span
               style={{

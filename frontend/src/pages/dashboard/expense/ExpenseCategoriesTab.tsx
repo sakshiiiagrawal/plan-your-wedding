@@ -7,6 +7,7 @@ import { currencySymbol } from '../../../utils/currency';
 interface CategoryAnalysisItem {
   id?: string;
   name: string;
+  planned: number;
   committed: number;
   paid: number;
   outstanding: number;
@@ -18,6 +19,7 @@ interface CategoryBudgetRow {
   id: string;
   name: string;
   parent_category_id: string | null;
+  planned: number;
   committed: number;
   allocated: number;
 }
@@ -163,7 +165,7 @@ function BudgetRow({
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 120px 150px',
+        gridTemplateColumns: '1fr 100px 100px 150px',
         gap: 8,
         alignItems: 'center',
         padding: '8px 0',
@@ -182,6 +184,16 @@ function BudgetRow({
         }}
       >
         {row.name}
+      </span>
+      <span
+        className="mono"
+        style={{
+          fontSize: 12,
+          textAlign: 'right',
+          color: row.planned > 0 ? 'var(--ink-mid)' : 'var(--ink-dim)',
+        }}
+      >
+        {row.planned > 0 ? formatCurrency(row.planned) : '—'}
       </span>
       <span
         className="mono"
@@ -372,9 +384,15 @@ export default function ExpenseCategoriesTab({
                     </div>
 
                     <div
-                      className="grid grid-cols-2 md:grid-cols-4 gap-1"
+                      className="grid grid-cols-2 md:grid-cols-5 gap-1"
                       style={{ fontSize: 11, color: 'var(--ink-dim)' }}
                     >
+                      <span>
+                        Planned:{' '}
+                        <strong style={{ color: 'var(--ink-mid)' }}>
+                          {category.planned > 0 ? formatCurrency(category.planned) : '—'}
+                        </strong>
+                      </span>
                       <span>
                         Paid:{' '}
                         <strong style={{ color: 'var(--ok)' }}>
@@ -390,7 +408,10 @@ export default function ExpenseCategoriesTab({
                       <span>
                         {category.count} line item{category.count !== 1 ? 's' : ''}
                       </span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span
+                        className="col-span-2 md:col-span-1"
+                        style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}
+                      >
                         Budget: <BudgetCell category={category} formatCurrency={formatCurrency} />
                       </span>
                     </div>
@@ -456,17 +477,17 @@ export default function ExpenseCategoriesTab({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <div style={{ minWidth: 420 }}>
+              <div style={{ minWidth: 500 }}>
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 120px 150px',
+                    gridTemplateColumns: '1fr 100px 100px 150px',
                     gap: 8,
                     padding: '6px 0',
                     borderBottom: '1px solid var(--line-soft)',
                   }}
                 >
-                  {['Category', 'Allocated', 'Budget'].map((heading) => (
+                  {['Category', 'Planned', 'Allocated', 'Budget'].map((heading) => (
                     <span
                       key={heading}
                       className="uppercase-eyebrow"

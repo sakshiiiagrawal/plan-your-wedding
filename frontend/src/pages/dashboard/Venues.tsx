@@ -955,6 +955,7 @@ export default function Venues() {
                   0,
                 );
                 const hasEvents = v.events && v.events.length > 0;
+                const planned = v.finance_summary?.planned_amount ?? 0;
                 const committed = v.finance_summary?.committed_amount ?? 0;
                 const paid = v.finance_summary?.paid_amount ?? 0;
                 const outstanding = v.finance_summary?.outstanding_amount ?? 0;
@@ -1215,9 +1216,9 @@ export default function Venues() {
                             style={{
                               display: 'grid',
                               gridTemplateColumns: canSeeMoney
-                                ? 'repeat(3, minmax(0, 1fr))'
+                                ? 'repeat(2, minmax(0, 1fr))'
                                 : '1fr',
-                              gap: 6,
+                              gap: '8px 6px',
                               padding: '7px 10px',
                               background: 'var(--bg-raised)',
                               borderRadius: 8,
@@ -1316,6 +1317,23 @@ export default function Venues() {
                                     className="uppercase-eyebrow"
                                     style={{ marginBottom: 2, fontSize: 9 }}
                                   >
+                                    Planned
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: 12,
+                                      color: planned > 0 ? 'var(--ink-mid)' : 'var(--ink-dim)',
+                                      fontWeight: planned > 0 ? 500 : 400,
+                                    }}
+                                  >
+                                    {planned > 0 ? formatCurrency(planned) : '—'}
+                                  </div>
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                  <div
+                                    className="uppercase-eyebrow"
+                                    style={{ marginBottom: 2, fontSize: 9 }}
+                                  >
                                     Allocated
                                   </div>
                                   <div
@@ -1356,7 +1374,7 @@ export default function Venues() {
                                     className="uppercase-eyebrow"
                                     style={{ marginBottom: 2, fontSize: 9 }}
                                   >
-                                    Due
+                                    Outstanding
                                   </div>
                                   <div
                                     style={{

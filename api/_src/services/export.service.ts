@@ -3,6 +3,7 @@ import * as guestsService from './guests.service';
 import * as expenseService from './expense.service';
 import * as vendorsService from './vendors.service';
 import * as venuesService from './venues.service';
+import { findCategoriesByOwner } from '../repositories/expense.repository';
 
 // ponytail: flat json_to_sheet dump — good enough for a printable/handoff list,
 // no bespoke column mapping per module.
@@ -36,14 +37,53 @@ export async function exportGuests(ownerId: string): Promise<Buffer> {
 }
 
 export async function exportBudget(ownerId: string): Promise<Buffer> {
-  const expenses = await expenseService.listExpenses(ownerId, {});
-  return toBuffer(expenses as unknown as Record<string, unknown>[], 'Budget');
+  const [expenses, categories] = await Promise.all([
+    expenseService.listExpenses(ownerId, {}),
+    findCategoriesByOwner(ownerId),
+  ]);
+  const categoryNameById = new Map(categories.map((category) => [category.id, category.name]));
+
+  // One row per expense with the four figures as real columns — the nested
+  // summary/items would otherwise land in the sheet as JSON blobs.
+  const rows = expenses.map((expense) => {
+    const sides = new Set(expense.items.map((item) => item.side ?? 'shared'));
+    return {
+      description: expense.description,
+      date: expense.expense_date,
+      status: expense.status,
+      source: expense.source_type,
+      categories:
+        Array.from(
+          new Set(
+            expense.items.map((item) => categoryNameById.get(item.category_id) ?? 'Uncategorized'),
+          ),
+        ).join(', ') || 'Uncategorized',
+      side: sides.size === 1 ? [...sides][0] : 'mixed',
+      planned: expense.summary.planned_amount,
+      allocated: expense.summary.committed_amount,
+      paid: expense.summary.paid_amount,
+      outstanding: expense.summary.outstanding_amount,
+    };
+  });
+  return toBuffer(rows as unknown as Record<string, unknown>[], 'Budget');
 }
 
 export async function exportVendors(ownerId: string): Promise<Buffer> {
   const result = await vendorsService.listVendors(ownerId, {});
-  const rows = Array.isArray(result) ? result : result.items;
-  return toBuffer(rows as unknown as Record<string, unknown>[], 'Vendors');
+  const vendors = Array.isArray(result) ? result : result.items;
+  // Same idea: lift the finance summary into columns, drop the nested objects.
+  const rows = vendors.map(
+    ({ finance, finance_summary, expense_categories, ...vendor }) =>
+      ({
+        ...vendor,
+        category: (expense_categories as { name?: string } | null)?.name ?? '',
+        planned: finance_summary?.planned_amount ?? 0,
+        allocated: finance_summary?.committed_amount ?? 0,
+        paid: finance_summary?.paid_amount ?? 0,
+        outstanding: finance_summary?.outstanding_amount ?? 0,
+      }) as Record<string, unknown>,
+  );
+  return toBuffer(rows, 'Vendors');
 }
 
 export async function exportAllocations(ownerId: string): Promise<Buffer> {

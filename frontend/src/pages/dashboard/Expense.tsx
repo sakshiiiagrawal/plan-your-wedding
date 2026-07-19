@@ -39,6 +39,7 @@ interface ExpenseOverviewCategory {
   id: string;
   name: string;
   parent_category_id?: string | null;
+  planned?: number | string;
   committed?: number | string;
   spent?: number | string;
   paid?: number | string;
@@ -189,6 +190,7 @@ export default function Expense() {
       .map((category: ExpenseOverviewCategory) => ({
         id: category.id,
         name: category.name,
+        planned: Number(category.planned ?? 0),
         committed: Number(category.committed ?? category.spent ?? 0),
         paid: Number(category.paid ?? 0),
         outstanding: Number(category.outstanding ?? 0),
@@ -214,6 +216,7 @@ export default function Expense() {
         id: category.id,
         name: category.name,
         parent_category_id: category.parent_category_id ?? null,
+        planned: Number(category.planned ?? 0),
         committed: Number(category.committed ?? category.spent ?? 0),
         allocated: Number(category.allocated_amount ?? 0),
       })),
@@ -356,6 +359,14 @@ export default function Expense() {
     );
   };
 
+  const goToOutstandingBalances = () => {
+    setActiveTab('payments');
+    setTimeout(
+      () => document.getElementById('outstanding-balances')?.scrollIntoView({ behavior: 'smooth' }),
+      50,
+    );
+  };
+
   // Routes to the right payment surface: manual expenses use the edit modal,
   // vendor/venue-sourced ones use the read-through payments modal.
   const openPaymentsFor = (expenseId: string) => {
@@ -372,6 +383,7 @@ export default function Expense() {
       type: expense.source_type,
       expense_id: expense.id,
       finance_summary: {
+        planned_amount: expense.summary.planned_amount,
         committed_amount: expense.summary.committed_amount,
         paid_amount: expense.summary.paid_amount,
         outstanding_amount: expense.summary.outstanding_amount,
@@ -481,6 +493,18 @@ export default function Expense() {
                 </span>
               </div>
             ))}
+            {alerts.overPlanCategories?.map((category) => (
+              <div
+                key={category.id}
+                className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-700"
+              >
+                <span className="font-bold">⚠</span>
+                <span>
+                  {category.name} allocations exceed the {formatCurrency(category.planned)} plan by{' '}
+                  {formatCurrency(category.overBy)}
+                </span>
+              </div>
+            ))}
           </div>
         )}
 
@@ -546,7 +570,21 @@ export default function Expense() {
           <div className="stat-value text-green-700">{formatCurrency(paid)}</div>
           <div className="stat-label">Paid</div>
         </div>
-        <div className="stat-card">
+        <div
+          className="stat-card"
+          role={outstandingTotal > 0 ? 'button' : undefined}
+          tabIndex={outstandingTotal > 0 ? 0 : undefined}
+          style={outstandingTotal > 0 ? { cursor: 'pointer' } : undefined}
+          title={outstandingTotal > 0 ? 'See outstanding balances' : undefined}
+          onClick={outstandingTotal > 0 ? goToOutstandingBalances : undefined}
+          onKeyDown={
+            outstandingTotal > 0
+              ? (event) => {
+                  if (event.key === 'Enter' || event.key === ' ') goToOutstandingBalances();
+                }
+              : undefined
+          }
+        >
           <div className="stat-value text-orange-700">{formatCurrency(outstandingTotal)}</div>
           <div className="stat-label">Outstanding</div>
           {/* Without a budget, "remaining" is just −allocated — noise, not signal. */}

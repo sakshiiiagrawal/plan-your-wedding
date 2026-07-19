@@ -1,4 +1,5 @@
 import { HiOutlineUser } from 'react-icons/hi';
+import { useSideSummary, type SideFigures } from '../../../hooks/useApi';
 
 interface SideItem {
   id: string;
@@ -48,6 +49,8 @@ interface SideCardProps {
   sharedCount: number;
   directTotal: number;
   sharedTotal: number;
+  /** Server-side rollup (planned/paid/outstanding); absent while loading. */
+  figures?: SideFigures | undefined;
   formatCurrency: (amount: number) => string;
 }
 
@@ -60,6 +63,7 @@ function SideCard({
   sharedCount,
   directTotal,
   sharedTotal,
+  figures,
   formatCurrency,
 }: SideCardProps) {
   const theme = SIDE_THEME[side];
@@ -93,6 +97,28 @@ function SideCard({
       <div className="text-3xl font-bold mb-4" style={{ color: theme.deep }}>
         {formatCurrency(total)}
       </div>
+      {figures && (
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-ink-dim">Planned</div>
+            <div className="mt-0.5 text-sm font-semibold text-ink-mid">
+              {formatCurrency(figures.planned)}
+            </div>
+          </div>
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-ink-dim">Paid</div>
+            <div className="mt-0.5 text-sm font-semibold" style={{ color: 'var(--ok)' }}>
+              {formatCurrency(figures.paid)}
+            </div>
+          </div>
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-ink-dim">Outstanding</div>
+            <div className="mt-0.5 text-sm font-semibold" style={{ color: 'var(--warn)' }}>
+              {formatCurrency(figures.outstanding)}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-line-soft bg-surface-raised px-4 py-3">
           <div className="text-[11px] uppercase tracking-[0.18em] text-ink-dim">Direct</div>
@@ -328,6 +354,9 @@ export default function ExpenseSideWiseTab({
   sideWiseExpenses,
   formatCurrency,
 }: ExpenseSideWiseTabProps) {
+  // Server rollup carries the figures the client items can't reconstruct
+  // (paid/outstanding per side, with shared splits applied).
+  const { data: sideSummary } = useSideSummary();
   return (
     <div className="space-y-6">
       <SideSummaryCard
@@ -348,6 +377,7 @@ export default function ExpenseSideWiseTab({
           sharedCount={sideWiseExpenses.bride.sharedCount}
           directTotal={sideWiseExpenses.bride.directTotal}
           sharedTotal={sideWiseExpenses.bride.sharedTotal}
+          figures={sideSummary?.bride}
           formatCurrency={formatCurrency}
         />
         <SideCard
@@ -359,6 +389,7 @@ export default function ExpenseSideWiseTab({
           sharedCount={sideWiseExpenses.groom.sharedCount}
           directTotal={sideWiseExpenses.groom.directTotal}
           sharedTotal={sideWiseExpenses.groom.sharedTotal}
+          figures={sideSummary?.groom}
           formatCurrency={formatCurrency}
         />
       </div>

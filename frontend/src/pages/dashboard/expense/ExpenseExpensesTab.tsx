@@ -209,6 +209,19 @@ export default function ExpenseExpensesTab({
                         )}
                       </div>
                       <div className="text-xs text-ink-low">{row.item_count} line items</div>
+                      {/* The Planned/Paid/Outstanding columns are hidden below md —
+                          keep the full money story readable on phones. */}
+                      <div className="text-xs md:hidden mt-1 space-x-2">
+                        {row.planned > 0 && (
+                          <span className="text-ink-mid">
+                            Planned {formatCurrency(row.planned)}
+                          </span>
+                        )}
+                        <span className="text-green-700">Paid {formatCurrency(row.paid)}</span>
+                        <span className="text-orange-700">
+                          Outstanding {formatCurrency(row.outstanding)}
+                        </span>
+                      </div>
                     </td>
                     <td className="p-4 text-ink-mid hidden sm:table-cell">
                       {row.category_summary}
@@ -308,7 +321,18 @@ export default function ExpenseExpensesTab({
               </tbody>
               <tfoot className="bg-surface-highest font-bold">
                 <tr>
-                  <td className="p-4 min-w-[140px]">Total</td>
+                  <td className="p-4 min-w-[140px]">
+                    Total
+                    <div className="text-xs font-normal md:hidden mt-1 space-x-2">
+                      {plannedTotal > 0 && (
+                        <span className="text-ink-mid">Planned {formatCurrency(plannedTotal)}</span>
+                      )}
+                      <span className="text-green-700">Paid {formatCurrency(paidTotal)}</span>
+                      <span className="text-orange-700">
+                        Outstanding {formatCurrency(outstandingTotal)}
+                      </span>
+                    </div>
+                  </td>
                   <td className="p-4 hidden sm:table-cell" />
                   <td className="p-4" />
                   <td className="p-4 text-right text-ink-mid hidden md:table-cell">
