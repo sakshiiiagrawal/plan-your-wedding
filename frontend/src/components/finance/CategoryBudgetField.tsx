@@ -107,7 +107,7 @@ export default function CategoryBudgetField({ categoryId, categoryName }: Catego
       <p style={{ fontSize: 11, color: 'var(--ink-dim)', marginTop: 4 }}>
         Overall budget for {category.name}
         {currentBudget > 0 ? ` (currently ${formatCurrency(currentBudget)})` : ''} — shared by every
-        expense in this category. Saves separately from this form.
+        expense in this category.
       </p>
     </div>
   );
