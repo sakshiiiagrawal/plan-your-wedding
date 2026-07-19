@@ -96,7 +96,7 @@ export default {
         display: ['Playfair Display', 'serif'],
         'serif-display': ['Cormorant Garamond', 'serif'],
         body: ['Poppins', 'sans-serif'],
-        script: ['Great Vibes', 'cursive'],
+        script: ['Dancing Script', 'cursive'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       backgroundImage: {

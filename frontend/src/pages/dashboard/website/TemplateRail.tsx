@@ -10,7 +10,7 @@ function TemplateThumb({ templateId }: { templateId: string }) {
   const p = getPalette(template.defaultPaletteId);
 
   const names = (
-    <div style={{ fontFamily: "'Great Vibes', cursive", fontSize: 13, color: p.onHero, lineHeight: 1.1 }}>
+    <div style={{ fontFamily: "'Dancing Script', cursive", fontSize: 13, color: p.onHero, lineHeight: 1.1 }}>
       A &amp; S
     </div>
   );
@@ -57,7 +57,7 @@ function TemplateThumb({ templateId }: { templateId: string }) {
             paddingBottom: 3,
           }}
         >
-          <span style={{ fontFamily: "'Great Vibes', cursive", fontSize: 10, color: p.onHero }}>A&amp;S</span>
+          <span style={{ fontFamily: "'Dancing Script', cursive", fontSize: 10, color: p.onHero }}>A&amp;S</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'center' }}>{bar('50%', p.accent)}</div>
       </div>
@@ -94,7 +94,7 @@ function TemplateThumb({ templateId }: { templateId: string }) {
             <div key={i} style={{ width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderTop: `6px solid ${c}` }} />
           ))}
         </div>
-        {names && <div style={{ fontFamily: "'Great Vibes', cursive", fontSize: 12, color: p.primary }}>A &amp; S</div>}
+        {names && <div style={{ fontFamily: "'Dancing Script', cursive", fontSize: 12, color: p.primary }}>A &amp; S</div>}
         <div style={{ display: 'flex', justifyContent: 'center', gap: 3, marginTop: 4 }}>
           {[p.accent, p.primary, p.accent].map((c, i) => (
             <div key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: c }} />
@@ -161,7 +161,7 @@ function TemplateThumb({ templateId }: { templateId: string }) {
       <div style={{ padding: '8px 10px' }}>
         <div style={{ height: 5, borderRadius: 3, background: p.accent }} />
         <div style={{ margin: '0 4px', padding: '6px 2px', background: `color-mix(in srgb, ${p.bg} 70%, #fff)`, textAlign: 'center' }}>
-          <span style={{ fontFamily: "'Great Vibes', cursive", fontSize: 11, color: p.primary }}>A &amp; S</span>
+          <span style={{ fontFamily: "'Dancing Script', cursive", fontSize: 11, color: p.primary }}>A &amp; S</span>
         </div>
         <div style={{ height: 5, borderRadius: 3, background: p.accent }} />
       </div>
@@ -204,7 +204,7 @@ function TemplateThumb({ templateId }: { templateId: string }) {
     card: (
       <div style={{ padding: 7 }}>
         <div style={{ border: `1px solid ${p.line}`, borderRadius: 5, padding: '7px 4px', textAlign: 'center', background: p.surface }}>
-          <div style={{ fontFamily: "'Great Vibes', cursive", fontSize: 11, color: p.primary }}>A &amp; S</div>
+          <div style={{ fontFamily: "'Dancing Script', cursive", fontSize: 11, color: p.primary }}>A &amp; S</div>
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: 3 }}>{bar('45%', p.accent)}</div>
         </div>
       </div>
