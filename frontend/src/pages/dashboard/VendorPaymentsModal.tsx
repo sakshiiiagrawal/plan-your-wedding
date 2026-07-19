@@ -107,7 +107,7 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
                 </h2>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', fontSize: 12 }}>
                   <span style={{ color: 'var(--ink-low)' }}>
-                    Committed:{' '}
+                    Allocated:{' '}
                     <strong style={{ color: 'var(--ink-mid)' }}>{formatCurrency(committed)}</strong>
                   </span>
                   <span style={{ color: 'var(--ok)' }}>

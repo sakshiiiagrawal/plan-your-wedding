@@ -113,7 +113,14 @@ export default function Dashboard() {
   const totalGuests = guestSummary?.total ?? stats?.guests?.total ?? 0;
 
   const budgetPaid = stats?.expense?.paid ?? 0;
-  const budgetTotal = expenseOverview.reduce((s: number, c: any) => s + (c.allocated ?? 0), 0);
+  // Wedding-level budget when set; otherwise fall back to the sum of category
+  // budgets (the API field is allocated_amount, not allocated).
+  const categoryBudgetTotal = expenseOverview.reduce(
+    (s: number, c: any) => s + Number(c.allocated_amount ?? 0),
+    0,
+  );
+  const weddingBudget = Number(stats?.expense?.total ?? 0);
+  const budgetTotal = weddingBudget > 0 ? weddingBudget : categoryBudgetTotal;
   const tasksCompleted = stats?.tasks?.completed ?? 0;
   const tasksPending = stats?.tasks?.pending ?? 0;
   const tasksTotal = tasksCompleted + tasksPending;

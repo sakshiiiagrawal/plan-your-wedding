@@ -40,6 +40,7 @@ import InstallmentsEditor, {
   type InstallmentFormRow,
 } from '../../components/finance/InstallmentsEditor';
 import PaymentTimelinePanel from '../../components/finance/PaymentTimelinePanel';
+import CategoryBudgetField from '../../components/finance/CategoryBudgetField';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import { useAuth } from '../../contexts/AuthContext';
@@ -200,7 +201,7 @@ function VendorsListView({
             <th style={th}>Status</th>
             {canSeeMoney && (
               <>
-                <th style={{ ...th, textAlign: 'right' }}>Committed</th>
+                <th style={{ ...th, textAlign: 'right' }}>Allocated</th>
                 <th style={{ ...th, textAlign: 'right' }}>Paid</th>
                 <th style={{ ...th, textAlign: 'right' }}>Due</th>
               </>
@@ -1318,7 +1319,7 @@ export default function Vendors() {
                     >
                       <div>
                         <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
-                          Committed
+                          Allocated
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--ink-high)', fontWeight: 500 }}>
                           {committed > 0 ? (
@@ -1796,7 +1797,7 @@ export default function Vendors() {
                 }}
               >
                 <HiOutlineInformationCircle style={{ width: 14, height: 14, flexShrink: 0 }} />
-                Set a committed amount to record payments
+                Set an allocated amount to record payments
               </span>
             ) : undefined
           }
@@ -2093,7 +2094,7 @@ export default function Vendors() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                     <FormSection title="Financial details">
                       <div>
-                        <label className="label">Committed Amount</label>
+                        <label className="label">Allocated Amount</label>
                         <input
                           type="number"
                           min="0"
@@ -2105,7 +2106,11 @@ export default function Vendors() {
                           className="input no-spinner"
                           placeholder="0"
                         />
+                        <p style={{ fontSize: 11, color: 'var(--ink-dim)', marginTop: 4 }}>
+                          Total agreed with this vendor.
+                        </p>
                       </div>
+                      <CategoryBudgetField categoryId={formData.category_id} />
                       <div>
                         <label className="label">Obligation Date</label>
                         <DatePicker
@@ -2159,7 +2164,7 @@ export default function Vendors() {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                           <div>
                             <div style={{ fontSize: 10, color: 'var(--ink-dim)', marginBottom: 2 }}>
-                              Committed
+                              Allocated
                             </div>
                             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-mid)' }}>
                               {formatCurrency(paymentCommitted)}

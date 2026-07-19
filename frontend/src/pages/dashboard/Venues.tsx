@@ -45,6 +45,7 @@ import Portal from '../../components/Portal';
 import DatePicker from '../../components/ui/DatePicker';
 import DateRangePicker from '../../components/ui/DateRangePicker';
 import PaymentTimelinePanel from '../../components/finance/PaymentTimelinePanel';
+import CategoryBudgetField from '../../components/finance/CategoryBudgetField';
 import InstallmentsEditor, {
   installmentToPaymentPayload,
   type InstallmentFormRow,
@@ -133,6 +134,25 @@ const VENUE_TYPE_FROM_PLACE: [RegExp, string][] = [
   [/lodging|hotel|guest_house|inn\b/, 'hotel'],
   [/park|garden|campground|farm|beach/, 'outdoor'],
 ];
+
+// Mirror of the server's mapVenueTypeToCategoryName (finance.service.ts) —
+// venue expenses land in these expense categories, so the budget field in the
+// venue form must resolve to the same one.
+function venueCategoryName(venueType: string): string {
+  switch (venueType) {
+    case 'wedding_hall':
+    case 'banquet':
+      return 'Wedding Hall / Banquet';
+    case 'outdoor':
+      return 'Outdoor Garden / Lawn';
+    case 'resort':
+      return 'Farmhouse / Resort';
+    case 'hotel':
+      return 'Hotel Ballroom';
+    default:
+      return 'Wedding Hall / Banquet';
+  }
+}
 
 function inferVenueType(placeTypes: string[] | null): string | null {
   if (!placeTypes) return null;
@@ -1296,7 +1316,7 @@ export default function Venues() {
                                     className="uppercase-eyebrow"
                                     style={{ marginBottom: 2, fontSize: 9 }}
                                   >
-                                    Committed
+                                    Allocated
                                   </div>
                                   <div
                                     style={{
@@ -1920,7 +1940,7 @@ export default function Venues() {
                           </p>
 
                           <div>
-                            <label className="label">Committed Amount</label>
+                            <label className="label">Allocated Amount</label>
                             <input
                               type="number"
                               value={formData.total_cost}
@@ -1931,7 +1951,14 @@ export default function Venues() {
                               placeholder="0"
                               form="venue-form"
                             />
+                            <p style={{ fontSize: 11, color: 'var(--ink-dim)', marginTop: 4 }}>
+                              Total agreed with this venue.
+                            </p>
                           </div>
+
+                          <CategoryBudgetField
+                            categoryName={venueCategoryName(formData.venue_type)}
+                          />
 
                           <div>
                             <label className="label">Obligation Date</label>
@@ -2498,7 +2525,7 @@ export default function Venues() {
                               currentVenueFinance?.items?.[0]?.bride_share_percentage ?? 50,
                           }}
                           canSeeSplits={canSeeSplits}
-                          canRecordPayment={!!editingVenue.expense_id}
+                          canRecordPayment={canRecordPayment}
                           disabledReason="Link an obligation to this venue before recording payments."
                         />
                       ) : (

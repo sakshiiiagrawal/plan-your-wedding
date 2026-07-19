@@ -1120,6 +1120,19 @@ export const useUpdateExpenseCategory = () => {
   });
 };
 
+// Wedding-level budget (expense_summaries.total_expense).
+export const useUpdateTotalBudget = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (total_expense: number) =>
+      api.put('/expense/total', { total_expense }).then((res) => res.data),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['expense'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+};
+
 export const useExpenseCategories = () =>
   useQuery<any[]>({
     queryKey: ['expense', 'categories'],

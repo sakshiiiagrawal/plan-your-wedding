@@ -374,7 +374,7 @@ export default function PaymentTimelinePanel({
       >
         {(
           [
-            { label: 'Committed', value: committed, color: 'var(--ink-mid)' },
+            { label: 'Allocated', value: committed, color: 'var(--ink-mid)' },
             { label: 'Paid', value: paid, color: 'var(--ok)' },
             {
               label: 'Outstanding',

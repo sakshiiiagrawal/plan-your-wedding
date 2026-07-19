@@ -8,6 +8,7 @@ import {
   useBudgetPageData,
   useUpdateExpense,
   useExportBudget,
+  useUpdateTotalBudget,
 } from '../../hooks/useApi';
 import ExpenseOverviewTab from './expense/ExpenseOverviewTab';
 import ExpenseExpensesTab, { type ExpenseListRow } from './expense/ExpenseExpensesTab';
@@ -37,6 +38,7 @@ interface ApiError {
 interface ExpenseOverviewCategory {
   id: string;
   name: string;
+  parent_category_id?: string | null;
   committed?: number | string;
   spent?: number | string;
   paid?: number | string;
@@ -111,6 +113,8 @@ export default function Expense() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [editingBudget, setEditingBudget] = useState(false);
+  const [budgetDraft, setBudgetDraft] = useState('');
   const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [closeConfirm, setCloseConfirm] = useState<string | null>(null);
@@ -126,6 +130,7 @@ export default function Expense() {
   const outstanding = pageData?.outstanding;
   const alerts = pageData?.alerts;
   const exportBudget = useExportBudget();
+  const updateTotalBudget = useUpdateTotalBudget();
   const createExpenseMutation = useCreateExpense();
   const updateExpenseMutation = useUpdateExpense();
   const deleteExpenseMutation = useDeleteExpense();
@@ -200,6 +205,20 @@ export default function Expense() {
           right.committed - left.committed,
       );
   }, [expenseOverview, expenses]);
+
+  // Every category — including ones with no spend and no budget yet — so
+  // budgets can be set anywhere, not just on the top active categories.
+  const categoryBudgetRows = useMemo(
+    () =>
+      (expenseOverview ?? []).map((category: ExpenseOverviewCategory) => ({
+        id: category.id,
+        name: category.name,
+        parent_category_id: category.parent_category_id ?? null,
+        committed: Number(category.committed ?? category.spent ?? 0),
+        allocated: Number(category.allocated_amount ?? 0),
+      })),
+    [expenseOverview],
+  );
 
   const sideWiseExpenses = useMemo(() => {
     const initial = {
@@ -311,6 +330,21 @@ export default function Expense() {
         apiError.response?.data?.error ||
         'Failed to delete expense.';
       toast.error(message);
+    }
+  };
+
+  const handleBudgetSave = async () => {
+    const value = parseFloat(budgetDraft);
+    if (isNaN(value) || value < 0) {
+      toast.error('Enter a valid amount');
+      return;
+    }
+    try {
+      await updateTotalBudget.mutateAsync(value);
+      toast.success('Wedding budget updated.');
+      setEditingBudget(false);
+    } catch {
+      toast.error('Failed to update budget.');
     }
   };
 
@@ -452,17 +486,50 @@ export default function Expense() {
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="stat-card">
-          {totalBudget > 0 ? (
-            <div className="stat-value" style={{ color: 'var(--gold-deep)' }}>
-              {formatCurrency(totalBudget)}
+          {editingBudget ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input
+                type="number"
+                min="0"
+                step="10000"
+                value={budgetDraft}
+                onChange={(e) => setBudgetDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleBudgetSave();
+                  if (e.key === 'Escape') setEditingBudget(false);
+                }}
+                autoFocus
+                placeholder="Total budget"
+                className="input no-spinner"
+                style={{ width: '100%', maxWidth: 150 }}
+              />
+              <button
+                onClick={() => void handleBudgetSave()}
+                disabled={updateTotalBudget.isPending}
+                className="btn-primary"
+                style={{ padding: '6px 10px' }}
+                aria-label="Save budget"
+              >
+                ✓
+              </button>
             </div>
           ) : (
             <button
-              onClick={() => setActiveTab('categories')}
+              onClick={() => {
+                setBudgetDraft(totalBudget > 0 ? String(totalBudget) : '');
+                setEditingBudget(true);
+              }}
               className="stat-value"
-              style={{ color: 'var(--gold-deep)', background: 'transparent', cursor: 'pointer' }}
+              style={{
+                color: 'var(--gold-deep)',
+                background: 'transparent',
+                cursor: 'pointer',
+                padding: 0,
+                textAlign: 'left',
+              }}
+              title="Edit wedding budget"
             >
-              Set budget →
+              {totalBudget > 0 ? formatCurrency(totalBudget) : 'Set budget →'}
             </button>
           )}
           <div className="stat-label">Budget</div>
@@ -482,14 +549,17 @@ export default function Expense() {
         <div className="stat-card">
           <div className="stat-value text-orange-700">{formatCurrency(outstandingTotal)}</div>
           <div className="stat-label">Outstanding</div>
-          <div
-            className="text-xs mt-1"
-            style={{ color: remainingBudget < 0 ? 'var(--err)' : 'var(--ink-dim)' }}
-          >
-            {remainingBudget < 0
-              ? `over budget by ${formatCurrency(Math.abs(remainingBudget))}`
-              : `${formatCurrency(remainingBudget)} budget remaining`}
-          </div>
+          {/* Without a budget, "remaining" is just −allocated — noise, not signal. */}
+          {totalBudget > 0 && (
+            <div
+              className="text-xs mt-1"
+              style={{ color: remainingBudget < 0 ? 'var(--err)' : 'var(--ink-dim)' }}
+            >
+              {remainingBudget < 0
+                ? `over budget by ${formatCurrency(Math.abs(remainingBudget))}`
+                : `${formatCurrency(remainingBudget)} budget remaining`}
+            </div>
+          )}
         </div>
       </div>
 
@@ -545,6 +615,7 @@ export default function Expense() {
         {activeTab === 'categories' && (
           <ExpenseCategoriesTab
             categoryAnalysis={categoryAnalysis}
+            budgetRows={categoryBudgetRows}
             loading={isLoading}
             formatCurrency={formatCurrency}
           />

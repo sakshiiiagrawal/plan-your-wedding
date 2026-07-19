@@ -176,7 +176,7 @@ export default function CustomCategoryModal({
             </div>
 
             <div>
-              <label className="label">Allocated Budget (optional)</label>
+              <label className="label">Category Budget (optional)</label>
               <div style={{ position: 'relative' }}>
                 <span
                   style={{

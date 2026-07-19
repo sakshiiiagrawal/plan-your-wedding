@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { HiOutlinePencil, HiOutlineCheck, HiOutlineX } from 'react-icons/hi';
 import { useUpdateExpenseCategory } from '../../../hooks/useApi';
 import toast from 'react-hot-toast';
@@ -14,8 +14,18 @@ interface CategoryAnalysisItem {
   allocated: number;
 }
 
+interface CategoryBudgetRow {
+  id: string;
+  name: string;
+  parent_category_id: string | null;
+  committed: number;
+  allocated: number;
+}
+
 interface ExpenseCategoriesTabProps {
   categoryAnalysis: CategoryAnalysisItem[];
+  /** Every category (parents + children), whether or not it has any activity. */
+  budgetRows: CategoryBudgetRow[];
   loading: boolean;
   formatCurrency: (amount: number) => string;
 }
@@ -26,7 +36,7 @@ function BudgetCell({
   category,
   formatCurrency,
 }: {
-  category: CategoryAnalysisItem;
+  category: { id?: string; allocated: number };
   formatCurrency: (n: number) => string;
 }) {
   const [editing, setEditing] = useState(false);
@@ -140,14 +150,76 @@ function BudgetCell({
   );
 }
 
+function BudgetRow({
+  row,
+  isChild,
+  formatCurrency,
+}: {
+  row: CategoryBudgetRow;
+  isChild: boolean;
+  formatCurrency: (n: number) => string;
+}) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 120px 150px',
+        gap: 8,
+        alignItems: 'center',
+        padding: '8px 0',
+        paddingLeft: isChild ? 18 : 0,
+        borderBottom: '1px solid var(--line-soft)',
+      }}
+    >
+      <span
+        style={{
+          fontSize: 13,
+          fontWeight: isChild ? 400 : 600,
+          color: isChild ? 'var(--ink-mid)' : 'var(--ink-high)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {row.name}
+      </span>
+      <span
+        className="mono"
+        style={{
+          fontSize: 12,
+          textAlign: 'right',
+          color: row.committed > 0 ? 'var(--gold-deep)' : 'var(--ink-dim)',
+        }}
+      >
+        {row.committed > 0 ? formatCurrency(row.committed) : '—'}
+      </span>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <BudgetCell category={row} formatCurrency={formatCurrency} />
+      </div>
+    </div>
+  );
+}
+
 export default function ExpenseCategoriesTab({
   categoryAnalysis,
+  budgetRows,
   loading,
   formatCurrency,
 }: ExpenseCategoriesTabProps) {
   const grandTotal = categoryAnalysis.reduce((sum, c) => sum + c.committed, 0);
   const top = categoryAnalysis.slice(0, TOP_N);
   const othersTotal = categoryAnalysis.slice(TOP_N).reduce((sum, c) => sum + c.committed, 0);
+
+  // Parent-grouped view of every category so any budget can be set here.
+  const budgetGroups = useMemo(() => {
+    const parents = budgetRows.filter((row) => !row.parent_category_id);
+    const children = budgetRows.filter((row) => row.parent_category_id);
+    return parents.map((parent) => ({
+      parent,
+      children: children.filter((child) => child.parent_category_id === parent.id),
+    }));
+  }, [budgetRows]);
+  const totalBudget = budgetRows.reduce((sum, row) => sum + row.allocated, 0);
 
   if (loading) {
     return (
@@ -343,6 +415,88 @@ export default function ExpenseCategoriesTab({
                   </span>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+
+        {/* Every category is budgetable here, active or not. */}
+        <div className="card">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 4,
+            }}
+          >
+            <h3 className="section-title">Category Budgets</h3>
+            <span style={{ fontSize: 12, color: 'var(--ink-low)' }}>
+              Total budget:{' '}
+              <strong style={{ color: 'var(--ink-mid)' }}>
+                {totalBudget > 0 ? formatCurrency(totalBudget) : 'Not set'}
+              </strong>
+            </span>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--ink-dim)', margin: '0 0 12px' }}>
+            Set a budget for any category — it powers the over-budget alerts and the Overview
+            tracker.
+          </p>
+
+          {budgetGroups.length === 0 ? (
+            <div
+              style={{
+                padding: '24px 0',
+                textAlign: 'center',
+                fontSize: 13,
+                color: 'var(--ink-dim)',
+                fontStyle: 'italic',
+              }}
+            >
+              No categories yet.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <div style={{ minWidth: 420 }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 120px 150px',
+                    gap: 8,
+                    padding: '6px 0',
+                    borderBottom: '1px solid var(--line-soft)',
+                  }}
+                >
+                  {['Category', 'Allocated', 'Budget'].map((heading) => (
+                    <span
+                      key={heading}
+                      className="uppercase-eyebrow"
+                      style={{
+                        fontSize: 9,
+                        textAlign: heading === 'Category' ? 'left' : 'right',
+                      }}
+                    >
+                      {heading}
+                    </span>
+                  ))}
+                </div>
+                {budgetGroups.map(({ parent, children }) => (
+                  <div key={parent.id}>
+                    <BudgetRow
+                      row={parent}
+                      isChild={false}
+                      formatCurrency={formatCurrency}
+                    />
+                    {children.map((child) => (
+                      <BudgetRow
+                        key={child.id}
+                        row={child}
+                        isChild
+                        formatCurrency={formatCurrency}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
