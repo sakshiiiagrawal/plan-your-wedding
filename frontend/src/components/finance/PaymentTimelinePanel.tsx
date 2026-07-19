@@ -557,8 +557,9 @@ export default function PaymentTimelinePanel({
 
             {showMore && (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {!isScheduled && (
+                {(() => {
+                  const showSplit = canSeeSplits && formData.paid_by_side === 'shared';
+                  const paymentMethodField = !isScheduled && (
                     <div>
                       <label className="label">Payment Method</label>
                       <select
@@ -575,8 +576,8 @@ export default function PaymentTimelinePanel({
                         ))}
                       </select>
                     </div>
-                  )}
-                  {canSeeSplits && (
+                  );
+                  const paidBySideField = canSeeSplits && (
                     <div>
                       <label className="label">Paid By Side</label>
                       <select
@@ -594,8 +595,47 @@ export default function PaymentTimelinePanel({
                         <option value="shared">Shared</option>
                       </select>
                     </div>
-                  )}
-                </div>
+                  );
+                  const notesField = (
+                    <div className="flex flex-col">
+                      <label className="label">Notes</label>
+                      <textarea
+                        value={formData.notes}
+                        onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
+                        className="input"
+                        style={{ minHeight: 72, flex: 1, resize: 'vertical' }}
+                        placeholder={
+                          isScheduled
+                            ? 'Optional reminder note'
+                            : 'Optional reference, cheque number, or note'
+                        }
+                      />
+                    </div>
+                  );
+
+                  // Left column groups the compact selects with the split they
+                  // control; notes take the wider right column.
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] gap-3 md:items-stretch">
+                      <div className="flex flex-col gap-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          {paymentMethodField}
+                          {paidBySideField}
+                        </div>
+                        {showSplit && (
+                          <SplitShare
+                            total={paymentMagnitude}
+                            bridePercentage={formData.paid_bride_share_percentage}
+                            onChange={(pct) =>
+                              setFormData((p) => ({ ...p, paid_bride_share_percentage: pct }))
+                            }
+                          />
+                        )}
+                      </div>
+                      {notesField}
+                    </div>
+                  );
+                })()}
 
                 {hasItemPicker && !isScheduled && (
                   <div>
@@ -617,30 +657,6 @@ export default function PaymentTimelinePanel({
                   </div>
                 )}
 
-                {canSeeSplits && formData.paid_by_side === 'shared' && (
-                  <SplitShare
-                    total={paymentMagnitude}
-                    bridePercentage={formData.paid_bride_share_percentage}
-                    onChange={(pct) =>
-                      setFormData((p) => ({ ...p, paid_bride_share_percentage: pct }))
-                    }
-                  />
-                )}
-
-                <div>
-                  <label className="label">Notes</label>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
-                    className="input"
-                    style={{ minHeight: 72 }}
-                    placeholder={
-                      isScheduled
-                        ? 'Optional reminder note'
-                        : 'Optional reference, cheque number, or note'
-                    }
-                  />
-                </div>
               </>
             )}
 

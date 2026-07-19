@@ -547,6 +547,7 @@ export default function Venues() {
   const [showVenueModal, setShowVenueModal] = useState(false);
   const [formData, setFormData] = useState<VenueFormData>(createDefaultForm);
   const [editingVenue, setEditingVenue] = useState<VenueWithFinance | null>(null);
+  const [renamingVenue, setRenamingVenue] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [roomGroupDelete, setRoomGroupDelete] = useState<{
     ids: string[];
@@ -670,6 +671,7 @@ export default function Venues() {
     setRoomCategories([]);
     setActiveTab(0);
     setInstallments([]);
+    setRenamingVenue(false);
     roomsSeededRef.current = false;
   };
   const closeVenueModal = () => {
@@ -751,6 +753,15 @@ export default function Venues() {
     e.preventDefault();
     if (createMutation.isPending || updateMutation.isPending) return;
 
+    // Name is optional in the UI — fall back to the address so the title
+    // (rendered everywhere as venue.name) and the backend's required name are
+    // always satisfied.
+    const resolvedName = formData.name.trim() || (formData.address.split(',')[0] ?? '').trim();
+    if (!resolvedName) {
+      toast.error('Add a venue address or a display name.');
+      return;
+    }
+
     // D7: installments need an obligation, which only exists with a total cost.
     if (!editingVenue) {
       const hasInstallments = installments.some((row) => Number(row.amount || 0) !== 0);
@@ -765,6 +776,7 @@ export default function Venues() {
     const { side: _side, bride_share_percentage: _bsp, ...restFormData } = formData;
     const payload = {
       ...restFormData,
+      name: resolvedName,
       capacity: formData.capacity === '' ? null : Number(formData.capacity),
       ...(canSeeMoney
         ? { total_cost: formData.total_cost === '' ? 0 : Number(formData.total_cost) }
@@ -1572,16 +1584,116 @@ export default function Venues() {
                 </div>
 
                 <div style={{ minWidth: 0 }}>
-                  <label className="label">Venue Name *</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="input"
-                    placeholder="Auto-fills when you pick an address below"
-                    required
-                    form="venue-form"
-                  />
+                  <label className="label">Venue address *</label>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    {formData.photo_url && (
+                      <img
+                        src={formData.photo_url}
+                        alt=""
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 8,
+                          objectFit: 'cover',
+                          flexShrink: 0,
+                          border: '1px solid var(--line)',
+                        }}
+                      />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <AddressAutocomplete
+                        value={formData.address}
+                        onChange={(sel) =>
+                          setFormData((prev) => {
+                            const inferredType =
+                              !editingVenue && sel.place_types
+                                ? inferVenueType(sel.place_types)
+                                : null;
+                            return {
+                              ...prev,
+                              address: sel.address,
+                              place_id: sel.place_id,
+                              latitude: sel.latitude,
+                              longitude: sel.longitude,
+                              city: sel.city ?? prev.city,
+                              photo_url: sel.photo_url,
+                              name: prev.name.trim() === '' ? (sel.name ?? '') : prev.name,
+                              venue_type:
+                                inferredType && prev.venue_type === 'wedding_hall'
+                                  ? inferredType
+                                  : prev.venue_type,
+                              has_accommodation:
+                                prev.has_accommodation ||
+                                inferredType === 'hotel' ||
+                                inferredType === 'resort',
+                            };
+                          })
+                        }
+                        placeholder="Search venue address…"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Name is optional: derived from the address, revealed only if
+                      the couple wants a label different from the place name. */}
+                  <div style={{ marginTop: 6 }}>
+                    {renamingVenue ? (
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        onBlur={() => setRenamingVenue(false)}
+                        className="input"
+                        placeholder="Display name (defaults to the address)"
+                        autoFocus
+                        style={{ fontSize: 13 }}
+                      />
+                    ) : formData.name.trim() ? (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontSize: 12,
+                          color: 'var(--ink-dim)',
+                        }}
+                      >
+                        Shown as{' '}
+                        <span style={{ color: 'var(--ink-high)', fontWeight: 500 }}>
+                          {formData.name.trim()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setRenamingVenue(true)}
+                          style={{
+                            background: 'transparent',
+                            color: 'var(--gold-deep)',
+                            cursor: 'pointer',
+                            fontWeight: 500,
+                          }}
+                        >
+                          Rename
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setRenamingVenue(true)}
+                        style={{
+                          background: 'transparent',
+                          color: 'var(--gold-deep)',
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          fontWeight: 500,
+                        }}
+                      >
+                        + Add a display name
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1723,63 +1835,6 @@ export default function Venues() {
                           </div>
                         </div>
 
-                        <div>
-                          <label className="label">Address</label>
-                          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                            {formData.photo_url && (
-                              <img
-                                src={formData.photo_url}
-                                alt=""
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                }}
-                                style={{
-                                  width: 40,
-                                  height: 40,
-                                  borderRadius: 8,
-                                  objectFit: 'cover',
-                                  flexShrink: 0,
-                                  border: '1px solid var(--line)',
-                                }}
-                              />
-                            )}
-                            <div style={{ flex: 1 }}>
-                              <AddressAutocomplete
-                                value={formData.address}
-                                onChange={(sel) =>
-                                  setFormData((prev) => {
-                                    // Picking a place fills everything it can:
-                                    // name (if not typed yet), city, photo, and
-                                    // a suggested type for new venues.
-                                    const inferredType =
-                                      !editingVenue && sel.place_types
-                                        ? inferVenueType(sel.place_types)
-                                        : null;
-                                    return {
-                                      ...prev,
-                                      address: sel.address,
-                                      place_id: sel.place_id,
-                                      latitude: sel.latitude,
-                                      longitude: sel.longitude,
-                                      city: sel.city ?? prev.city,
-                                      photo_url: sel.photo_url,
-                                      name: prev.name.trim() === '' ? (sel.name ?? '') : prev.name,
-                                      venue_type:
-                                        inferredType && prev.venue_type === 'wedding_hall'
-                                          ? inferredType
-                                          : prev.venue_type,
-                                      has_accommodation:
-                                        prev.has_accommodation ||
-                                        inferredType === 'hotel' ||
-                                        inferredType === 'resort',
-                                    };
-                                  })
-                                }
-                                placeholder="Search venue address…"
-                              />
-                            </div>
-                          </div>
-                        </div>
                         <div>
                           <label className="label">City</label>
                           <input

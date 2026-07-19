@@ -65,10 +65,11 @@ function toNullableNumber(value: unknown): number | null {
 function toDateString(value: unknown): string | null {
   if (value == null) return null;
   if (value instanceof Date) {
-    // Pad to YYYY-MM-DD in UTC so node-pg's locally-parsed midnight Date round-trips cleanly.
-    const y = value.getUTCFullYear();
-    const m = String(value.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(value.getUTCDate()).padStart(2, '0');
+    // node-pg parses DATE columns at *local* midnight, so read local fields —
+    // UTC getters land on the previous day for any timezone east of UTC.
+    const y = value.getFullYear();
+    const m = String(value.getMonth() + 1).padStart(2, '0');
+    const d = String(value.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
   }
   const str = String(value);

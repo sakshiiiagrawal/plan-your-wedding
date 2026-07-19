@@ -117,6 +117,13 @@ export const serveWithOgTags = async (
     const image: string | undefined = gallery.images?.[0]?.url;
     const pageUrl = `https://${host}/${slug}${pageSlug ? `/${pageSlug}` : ''}`;
 
+    // The static shell (index.html) ships fallback og/twitter/description/title
+    // tags for the root site. Strip them so this page's specific tags aren't
+    // shadowed — scrapers key off the first og:title they find.
+    const cleaned = shell
+      .replace(/\s*<meta\s+(?:property|name)="(?:og:[^"]+|twitter:[^"]+|description)"[^>]*>/gi, '')
+      .replace(/\s*<title>[^<]*<\/title>/i, '');
+
     const tags = [
       `<meta property="og:type" content="website" />`,
       `<meta property="og:title" content="${escapeHtml(title)}" />`,
@@ -129,7 +136,7 @@ export const serveWithOgTags = async (
       .filter(Boolean)
       .join('\n    ');
 
-    sendShell(res, shell.replace('</head>', `    ${tags}\n  </head>`));
+    sendShell(res, cleaned.replace('</head>', `    ${tags}\n  </head>`));
   } catch {
     next();
   }
