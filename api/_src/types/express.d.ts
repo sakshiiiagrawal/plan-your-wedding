@@ -18,6 +18,8 @@ export interface AuthenticatedUser {
   permissions: string[];
   /** Reminder settings (users.reminder_prefs). Always the logged-in user's own, never the wedding owner's. */
   reminderPrefs: { email_digest?: boolean; payment_lead_days?: number } | null;
+  /** Last-used view/tab per page (users.view_prefs), e.g. { 'tasks.viewMode': 'kanban' }. */
+  viewPrefs: Record<string, unknown>;
 }
 
 declare global {

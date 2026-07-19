@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useViewPreference } from '../../hooks/useViewPreference';
 import {
   HiOutlineDeviceMobile,
   HiOutlineDesktopComputer,
@@ -64,22 +65,21 @@ export default function Website() {
   const createPage = useCreatePage();
   const deletePage = useDeletePage();
 
-  const [tab, setTab] = useState<Tab>('design');
-  const [device, setDevice] = useState<Device>(() => {
+  const [tab, setTab] = useViewPreference<Tab>('siteStudio.tab', 'design');
+  // Falls back to the pre-migration standalone key so an existing device
+  // choice survives the switch to the shared preferences hook.
+  const legacyDevice = (() => {
     try {
       const saved = localStorage.getItem('siteStudioDevice');
-      return saved === 'mobile' || saved === 'desktop' ? saved : 'desktop';
+      return saved === 'mobile' || saved === 'desktop' ? saved : undefined;
     } catch {
-      return 'desktop';
+      return undefined;
     }
-  });
-  useEffect(() => {
-    try {
-      localStorage.setItem('siteStudioDevice', device);
-    } catch {
-      // ignore storage failures (private mode, quota)
-    }
-  }, [device]);
+  })();
+  const [device, setDevice] = useViewPreference<Device>(
+    'siteStudio.device',
+    legacyDevice ?? 'desktop',
+  );
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const [showAddPage, setShowAddPage] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PublicPageRecord | null>(null);

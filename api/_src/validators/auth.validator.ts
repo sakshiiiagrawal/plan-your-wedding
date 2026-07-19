@@ -58,6 +58,13 @@ export const updateProfileSchema = z.object({
     .optional(),
 });
 
+// One key at a time — the service merges it into the existing view_prefs
+// blob so unrelated pages' saved views never get clobbered by a stale client.
+export const updateViewPrefSchema = z.object({
+  key: z.string().min(1).max(100),
+  value: z.any(),
+});
+
 export const changePasswordSchema = z.object({
   oldPassword: z.string().min(1),
   newPassword: z.string().min(8),

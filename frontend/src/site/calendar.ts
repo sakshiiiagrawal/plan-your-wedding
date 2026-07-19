@@ -83,9 +83,9 @@ export function calendarUrl(event: PublicEvent, coupleNames: string): string {
   const ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Plan Your Wedding//Public Site//EN',
+    'PRODID:-//shaadi.diy//Public Site//EN',
     'BEGIN:VEVENT',
-    `UID:${event.id}@plan-your-wedding`,
+    `UID:${event.id}@shaadi.diy`,
     `SUMMARY:${icsEscape(`${event.name} — ${coupleNames}`)}`,
     `DTSTART:${start}`,
     `DTEND:${end}`,

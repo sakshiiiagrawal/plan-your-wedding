@@ -17,6 +17,7 @@ import {
   FiUsers,
 } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
+import BrandLogo from '../components/ui/BrandLogo';
 
 /* ── Loop driver: advances a step counter while the infographic is on
       screen; parks on `restStep` when the user prefers reduced motion. ──── */
@@ -484,8 +485,8 @@ export default function Marketing() {
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-40 border-b border-[#e7dccb] bg-[#fbf7ef]/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
-          <a href="/" className="font-serif-display text-xl font-semibold text-[#201a17]">
-            Plan<span className="text-[#9b7a3e]">Your</span>Wedding
+          <a href="/">
+            <BrandLogo />
           </a>
           <div className="hidden items-center gap-8 text-sm text-[#6f655b] md:flex">
             <a href="#platform" className="transition-colors hover:text-[#201a17]">
@@ -643,7 +644,7 @@ export default function Marketing() {
             </div>
             <div className="space-y-6 text-base leading-8 text-ink-low">
               <p>
-                PlanYourWedding replaces scattered spreadsheets, family WhatsApp threads and vendor
+                shaadi.diy replaces scattered spreadsheets, family WhatsApp threads and vendor
                 notes with records that stay connected. Couples, parents, siblings and planners can
                 check the same guest counts, rooms, budgets, vendors and events.
               </p>
@@ -869,9 +870,10 @@ export default function Marketing() {
       {/* ── Footer ── */}
       <footer className="border-t border-[#e7dccb] bg-[#fbf7ef]">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 text-sm text-[#6f655b] sm:flex-row">
-          <span className="font-serif-display font-semibold text-[#201a17]">
-            Plan<span className="text-[#9b7a3e]">Your</span>Wedding
-          </span>
+          <BrandLogo
+            markSize={24}
+            textClassName="font-serif-display text-base font-semibold text-[#201a17]"
+          />
           <span>Free, open source wedding planning software for families and planners.</span>
         </div>
       </footer>

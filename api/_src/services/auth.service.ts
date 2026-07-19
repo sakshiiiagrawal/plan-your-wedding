@@ -399,6 +399,33 @@ export async function updateProfile(
   return user as UserRow;
 }
 
+// One key merged at a time (not a full replace) — two tabs saving different
+// pages' view state in quick succession must not stomp on each other.
+export async function updateViewPref(
+  ownerId: string,
+  key: string,
+  value: unknown,
+): Promise<Record<string, unknown>> {
+  const { data: current, error: fetchError } = await supabase
+    .from('users')
+    .select('view_prefs')
+    .eq('id', ownerId)
+    .single();
+  if (fetchError || !current) throw new UnauthorizedError('User not found');
+
+  const merged = { ...((current.view_prefs as Record<string, unknown>) ?? {}), [key]: value };
+
+  const { data, error } = await supabase
+    .from('users')
+    .update({ view_prefs: merged })
+    .eq('id', ownerId)
+    .select('view_prefs')
+    .single();
+  if (error) throw error;
+
+  return (data.view_prefs as Record<string, unknown>) ?? {};
+}
+
 export async function changePassword(
   userId: string,
   oldPassword: string,

@@ -8,6 +8,7 @@ import {
   resetPasswordSchema,
   verifyEmailSchema,
   updateProfileSchema,
+  updateViewPrefSchema,
   changePasswordSchema,
   setActiveWeddingSchema,
 } from '../validators/auth.validator';
@@ -34,6 +35,11 @@ router.post(
 router.post('/verify-email', validateBody(verifyEmailSchema), authController.verifyEmail);
 router.post('/resend-verification', resendVerificationLimiter, authController.resendVerification);
 router.patch('/me', validateBody(updateProfileSchema), authController.updateProfile);
+router.patch(
+  '/me/view-prefs',
+  validateBody(updateViewPrefSchema),
+  authController.updateViewPref,
+);
 router.post(
   '/change-password',
   validateBody(changePasswordSchema),

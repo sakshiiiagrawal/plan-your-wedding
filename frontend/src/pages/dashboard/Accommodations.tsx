@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { useViewPreference } from '../../hooks/useViewPreference';
 import {
   HiOutlineOfficeBuilding,
   HiOutlinePlus,
@@ -289,7 +290,10 @@ export default function Accommodations() {
     check_in_date: '',
     check_out_date: '',
   });
-  const [panelView, setPanelView] = useState<'rooms' | 'schedule'>('rooms');
+  const [panelView, setPanelView] = useViewPreference<'rooms' | 'schedule'>(
+    'accommodations.panelView',
+    'rooms',
+  );
   const [scheduleDate, setScheduleDate] = useState<string>(() =>
     new Date().toISOString().slice(0, 10),
   );

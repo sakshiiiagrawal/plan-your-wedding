@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
+import { useViewPreference } from '../../hooks/useViewPreference';
 import {
   DndContext,
   DragOverlay,
@@ -407,7 +408,7 @@ function DroppableColumn({
 // ── Main component ───────────────────────────────────────────────────────────
 
 export default function Tasks() {
-  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+  const [viewMode, setViewMode] = useViewPreference<'list' | 'kanban'>('tasks.viewMode', 'list');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);

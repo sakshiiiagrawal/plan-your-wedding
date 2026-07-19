@@ -138,6 +138,21 @@ export const updateProfile = async (
   }
 };
 
+export const updateViewPref = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { id } = getAuthUser(req);
+    const { key, value } = req.body as { key: string; value: unknown };
+    const view_prefs = await authService.updateViewPref(id, key, value);
+    res.json({ view_prefs });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const changePassword = async (
   req: Request,
   res: Response,

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useViewPreference } from '../../hooks/useViewPreference';
 import {
   HiOutlineCurrencyRupee,
   HiOutlineDownload,
@@ -345,7 +346,7 @@ export default function Vendors() {
   const [logisticsFilters, setLogisticsFilters] = useState<VendorLogisticsFilter[]>([]);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(12);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useViewPreference<'grid' | 'list'>('vendors.viewMode', 'grid');
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [formData, setFormData] = useState<VendorFormData>(createDefaultForm);

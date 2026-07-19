@@ -23,6 +23,8 @@ export interface AuthUser {
   permissions?: string[] | null;
   /** Reminder settings (own account, not the active wedding's owner) */
   reminderPrefs?: { email_digest?: boolean; payment_lead_days?: number } | null;
+  /** Last-used view/tab per page, e.g. { 'tasks.viewMode': 'kanban' } — own account, shared across weddings. */
+  viewPrefs?: Record<string, unknown> | null;
 }
 
 interface RegisterData {
@@ -45,6 +47,8 @@ interface AuthContextValue {
   /** Re-fetch /auth/me (e.g. after accepting an invite switches the active wedding). */
   refresh: () => Promise<AuthUser | null>;
   isAuthenticated: boolean;
+  /** Merge one key into the cached user's viewPrefs so other mounts/tabs of the same page see it without a refetch. */
+  patchViewPref: (key: string, value: unknown) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -155,6 +159,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setActiveCurrency(null);
   };
 
+  const patchViewPref = (key: string, value: unknown) => {
+    setUser((prev) => (prev ? { ...prev, viewPrefs: { ...prev.viewPrefs, [key]: value } } : prev));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -166,6 +174,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         logout,
         refresh: checkAuth,
         isAuthenticated: !!user,
+        patchViewPref,
       }}
     >
       {children}

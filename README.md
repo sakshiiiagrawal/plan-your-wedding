@@ -1,4 +1,4 @@
-# Plan your wedding
+# shaadi.diy
 
 [![CI](https://github.com/sakshiiiagrawal/plan-your-wedding/actions/workflows/ci.yml/badge.svg)](https://github.com/sakshiiiagrawal/plan-your-wedding/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)

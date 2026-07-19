@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { HiOutlinePlus, HiOutlineDownload } from 'react-icons/hi';
 import { SectionHeader } from '../../components/ui';
+import { useViewPreference } from '../../hooks/useViewPreference';
 import {
   useCreateExpense,
   useDeleteExpense,
@@ -101,9 +102,14 @@ export default function Expense() {
     [canSeeSplits],
   );
 
-  const [activeTab, setActiveTab] = useState(
-    () => new URLSearchParams(window.location.search).get('tab') ?? 'overview',
-  );
+  const [activeTab, setActiveTab] = useViewPreference<string>('expense.activeTab', 'overview');
+  // An explicit ?tab= (e.g. a shared link) overrides — and becomes — the
+  // saved preference; it only applies once, on the page's first mount.
+  useEffect(() => {
+    const urlTab = new URLSearchParams(window.location.search).get('tab');
+    if (urlTab) setActiveTab(urlTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);

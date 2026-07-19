@@ -5,7 +5,7 @@
  */
 
 const BRAND = {
-  name: 'Plan Your Wedding',
+  name: 'shaadi.diy',
   primary: '#6b1f2a', // deep burgundy (matches frontend --primary)
   gold: '#b08d3e',
   bg: '#faf6ef',

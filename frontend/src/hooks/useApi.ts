@@ -1645,6 +1645,14 @@ export const useUpdateProfile = () =>
         .then((res) => res.data),
   });
 
+export const useUpdateViewPref = () =>
+  useMutation({
+    mutationFn: (payload: { key: string; value: unknown }) =>
+      api
+        .patch<{ view_prefs: Record<string, unknown> }>('/auth/me/view-prefs', payload)
+        .then((res) => res.data),
+  });
+
 export const useChangePassword = () =>
   useMutation({
     mutationFn: (payload: { oldPassword: string; newPassword: string }) =>

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useViewPreference } from '../../hooks/useViewPreference';
 import {
   useEvents,
   useVenues,
@@ -345,7 +346,10 @@ function getEventFormState(event?: any): EventFormData {
 
 export default function Events() {
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<'timeline' | 'cards'>('cards');
+  const [viewMode, setViewMode] = useViewPreference<'timeline' | 'cards'>(
+    'events.viewMode',
+    'cards',
+  );
   const isMobile = useIsMobile();
   const [detailEvent, setDetailEvent] = useState<any>(null);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
