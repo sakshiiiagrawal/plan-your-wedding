@@ -9,6 +9,11 @@ const envSchema = z
     SUPABASE_SERVICE_KEY: z.string().min(1),
     DATABASE_URL: z.string().min(1),
     FRONTEND_URL: z.string().url().optional(),
+    // '1' once *.shaadi.diy has wildcard DNS *and* a wildcard certificate.
+    // Until then weddings stay path-scoped: generating {slug}.shaadi.diy links
+    // before the cert exists points every QR code and shared link at a host
+    // that fails the TLS handshake.
+    TENANT_DOMAINS_ENABLED: z.string().optional(),
     // Guards /api/v1/cron/* — Vercel Cron sends it as a bearer token. Unset
     // means the cron endpoints always 401 (safe default, digest just won't run).
     CRON_SECRET: z.string().optional(),

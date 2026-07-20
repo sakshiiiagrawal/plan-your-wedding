@@ -24,10 +24,25 @@ export function rootDomain(): string {
     .toLowerCase();
 }
 
+/**
+ * Whether weddings are addressed by host yet. Host-scoping only works once
+ * `*.{root}` has both wildcard DNS *and* a wildcard certificate — a subdomain
+ * link generated before the cert exists fails the TLS handshake outright, so
+ * every QR code and WhatsApp link would point at a dead host. Off = the
+ * pre-existing path-scoped URLs, which always work.
+ */
+export function tenantDomainsEnabled(): boolean {
+  return env.TENANT_DOMAINS_ENABLED === '1';
+}
+
 /** The absolute URL of a wedding's public page (or any path under it). */
 export function publicSiteUrl(slug: string, path = ''): string {
   const apex = apexOrigin();
-  return `${apex.protocol}//${slug}.${rootDomain()}${apex.port ? `:${apex.port}` : ''}${path}`;
+  const port = apex.port ? `:${apex.port}` : '';
+  if (!tenantDomainsEnabled()) {
+    return `${apex.protocol}//${apex.hostname}${port}/${slug}${path}`;
+  }
+  return `${apex.protocol}//${slug}.${rootDomain()}${port}${path}`;
 }
 
 function bareHost(host: string | undefined): string {
@@ -37,6 +52,7 @@ function bareHost(host: string | undefined): string {
 /** The wedding named by the request's Host header, or null when the request
  *  came to the apex or to a host without wildcard DNS (preview deployments). */
 export function tenantSlugFromHost(host: string | undefined): string | null {
+  if (!tenantDomainsEnabled()) return null;
   const name = bareHost(host);
   const root = rootDomain();
   if (!name.endsWith(`.${root}`)) return null;

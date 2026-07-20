@@ -10,7 +10,7 @@ import {
   weddingPath,
 } from '../utils/tenant';
 import { useAuth } from '../contexts/AuthContext';
-import { PageHeaderProvider, useTopbarHeader } from '../contexts/PageHeaderContext';
+import { PageHeaderProvider, PageHeaderSlot } from '../contexts/PageHeaderContext';
 import {
   useHeroContent,
   useWeddings,
@@ -766,7 +766,8 @@ function DashboardLayoutInner() {
   const currentCrumb = CRUMB_MAP[subPath] ?? subPath.replace('/', '');
   // Pages opted into usePageHeader() replace this crumb with their real title
   // (+ inline nav/action) directly in the topbar; others fall back to the crumb.
-  const pageHeader = useTopbarHeader();
+  // Read through <PageHeaderSlot> at the leaf, never here — this component
+  // renders the page, so subscribing at this level re-renders the registrant.
 
   // Section-restricted members (planners granted only some sections) see a
   // trimmed nav; the API enforces the same list, this just keeps UI honest.
@@ -1027,47 +1028,51 @@ function DashboardLayoutInner() {
             >
               <HiOutlineMenu style={{ width: 20, height: 20 }} />
             </button>
-            {pageHeader ? (
-              <>
-                <h1
-                  className="display"
-                  style={{
-                    fontSize: 18,
-                    fontWeight: 600,
-                    letterSpacing: '-0.01em',
-                    lineHeight: 1.1,
-                    margin: 0,
-                    color: 'var(--ink-high)',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                  }}
-                >
-                  {pageHeader.title}
-                </h1>
-                {pageHeader.nav && (
-                  <nav
-                    className="hidden sm:flex overflow-x-auto"
-                    style={{ gap: 2, minWidth: 0 }}
+            <PageHeaderSlot>
+              {(pageHeader) =>
+                pageHeader ? (
+                  <>
+                    <h1
+                      className="display"
+                      style={{
+                        fontSize: 18,
+                        fontWeight: 600,
+                        letterSpacing: '-0.01em',
+                        lineHeight: 1.1,
+                        margin: 0,
+                        color: 'var(--ink-high)',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {pageHeader.title}
+                    </h1>
+                    {pageHeader.nav && (
+                      <nav
+                        className="hidden sm:flex overflow-x-auto"
+                        style={{ gap: 2, minWidth: 0 }}
+                      >
+                        {pageHeader.nav}
+                      </nav>
+                    )}
+                  </>
+                ) : (
+                  <div
+                    className="mono hidden sm:flex"
+                    style={{ alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-low)' }}
                   >
-                    {pageHeader.nav}
-                  </nav>
-                )}
-              </>
-            ) : (
-              <div
-                className="mono hidden sm:flex"
-                style={{ alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-low)' }}
-              >
-                <span>dashboard</span>
-                <HiOutlineChevronRight style={{ width: 12, height: 12 }} />
-                <span style={{ color: 'var(--ink-mid)' }}>{currentCrumb}</span>
-              </div>
-            )}
+                    <span>dashboard</span>
+                    <HiOutlineChevronRight style={{ width: 12, height: 12 }} />
+                    <span style={{ color: 'var(--ink-mid)' }}>{currentCrumb}</span>
+                  </div>
+                )
+              }
+            </PageHeaderSlot>
           </div>
 
           {/* Right actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            {pageHeader?.action}
+            <PageHeaderSlot>{(pageHeader) => pageHeader?.action}</PageHeaderSlot>
             <RemindersBell basePath={basePath} />
             {/* Print — only where the page is a printable document (see
                 PRINTABLE_PATHS); Overview/Gallery/Settings/Site Studio would

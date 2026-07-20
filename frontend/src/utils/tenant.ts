@@ -22,7 +22,15 @@ const RESERVED = new Set<string>(RESERVED_WEDDING_SLUGS);
  *  can't cross subdomains and every hop would land on a logged-out screen.
  *  Plain `localhost` therefore stays path-scoped — which also makes it the
  *  way to exercise the preview-deployment fallback locally. */
-const WILDCARD_ROOTS = ['shaadi.diy', 'localtest.me'];
+const WILDCARD_ROOTS = [
+  // Production host-scoping is gated: `*.shaadi.diy` needs wildcard DNS *and*
+  // a wildcard certificate. Generating subdomain links before the cert exists
+  // points every QR code and shared link at a host that fails the TLS
+  // handshake. Set VITE_TENANT_DOMAINS=1 once `vercel certs ls` shows the
+  // wildcard — must be flipped together with the API's TENANT_DOMAINS_ENABLED.
+  ...(import.meta.env.VITE_TENANT_DOMAINS === '1' ? ['shaadi.diy'] : []),
+  'localtest.me',
+];
 
 function currentHostname(): string {
   return typeof window === 'undefined' ? '' : window.location.hostname;
@@ -98,6 +106,13 @@ export function goToWedding(
   else window.location.assign(href);
 }
 
+/** The host actually serving marketing/account pages for a root. `shaadi.diy`
+ *  308s to `www`, so link straight at `www`: leaving a wedding is already a
+ *  cross-origin document load, and a redirect would make it two. */
+const CANONICAL_APEX_HOST: Record<string, string> = {
+  'shaadi.diy': 'www.shaadi.diy',
+};
+
 /**
  * An account or marketing destination (`/hub`, `/onboard`, `/forgot-password`)
  * — these live on the apex host only, so from a wedding subdomain they need an
@@ -106,7 +121,8 @@ export function goToWedding(
 export function apexHref(path: string): string {
   const root = getRootDomain();
   if (!root || !TENANT_SLUG) return path;
-  return `${window.location.protocol}//${root}${portSuffix()}${path}`;
+  const host = CANONICAL_APEX_HOST[root] ?? root;
+  return `${window.location.protocol}//${host}${portSuffix()}${path}`;
 }
 
 /** A path within the *current* wedding, for links rendered inside its own

@@ -14,8 +14,41 @@ const app = express();
 // req.ip is the client IP (express-rate-limit throws without this)
 app.set('trust proxy', 1);
 
-// Security middleware
-app.use(helmet());
+// Security middleware. The SPA shell for public wedding pages is served from
+// this app (og.controller), so its CSP governs the whole front-end — helmet's
+// default `default-src 'self'` silently blocked Google Fonts and the Mixpanel
+// ingest endpoints. Every host the app legitimately talks to is listed here.
+const isDev = env.NODE_ENV === 'development';
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+        connectSrc: [
+          "'self'",
+          'https://api-js.mixpanel.com',
+          'https://api.mixpanel.com',
+          // Vite dev server HMR socket + the API on a different local port
+          ...(isDev ? ['ws:', 'http://localhost:*'] : []),
+        ],
+        // Site Studio previews this app's own /__preview route in an iframe
+        frameSrc: ["'self'"],
+        frameAncestors: ["'self'"],
+        workerSrc: ["'self'", 'blob:'],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        // Would rewrite http://localhost to https:// and break local dev
+        upgradeInsecureRequests: isDev ? null : [],
+      },
+    },
+  }),
+);
 
 // CORS configuration. Frontend and API deploy as one Vercel project, so a
 // preview deployment's browser origin is the deployment's own URL — Vercel

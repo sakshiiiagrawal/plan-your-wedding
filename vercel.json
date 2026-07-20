@@ -4,20 +4,17 @@
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "installCommand": "npm install && cd api && npm install",
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/index" },
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/index" },
     {
-      "source": "/",
-      "has": [{ "type": "host", "value": "(?!www\\.)(?<sub>[a-z0-9-]+)\\.shaadi\\.diy" }],
-      "destination": "/api/index"
+      "src": "/",
+      "has": [{ "type": "host", "value": "(?<sub>[a-z0-9-]+)\\.shaadi\\.diy" }],
+      "missing": [{ "type": "host", "value": "www\\.shaadi\\.diy" }],
+      "dest": "/api/index"
     },
-    {
-      "source": "/:pageSlug",
-      "has": [{ "type": "host", "value": "(?!www\\.)(?<sub>[a-z0-9-]+)\\.shaadi\\.diy" }],
-      "destination": "/api/index"
-    },
-    { "source": "/:slug", "destination": "/api/index" },
-    { "source": "/:slug/:pageSlug", "destination": "/api/index" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "handle": "filesystem" },
+    { "src": "/([^/]+)", "dest": "/api/index" },
+    { "src": "/([^/]+)/([^/]+)", "dest": "/api/index" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

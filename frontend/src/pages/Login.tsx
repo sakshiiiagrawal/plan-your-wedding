@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useWeddingSlug } from '../hooks/useWeddingSlug';
 import { apexHref, goToWedding } from '../utils/tenant';
 import { useAuth } from '../contexts/AuthContext';
 import { useHeroContent } from '../hooks/useApi';
 import PasswordInput from '../components/ui/PasswordInput';
 import AuthShell from '../components/ui/AuthShell';
+import ApexLink from '../components/ui/ApexLink';
 import toast from 'react-hot-toast';
 
 export default function Login() {
@@ -92,16 +93,16 @@ export default function Login() {
       </form>
 
       <p className="mt-4 text-center text-sm">
-        <Link to={apexHref('/forgot-password')} className="text-maroon-700 hover:underline">
+        <ApexLink to="/forgot-password" className="text-maroon-700 hover:underline">
           Forgot password?
-        </Link>
+        </ApexLink>
       </p>
 
       <p className="mt-3 text-center text-sm text-gray-600">
         New here?{' '}
-        <Link to={apexHref('/onboard')} className="text-maroon-700 font-medium hover:underline">
+        <ApexLink to="/onboard" className="text-maroon-700 font-medium hover:underline">
           Start planning your wedding
-        </Link>
+        </ApexLink>
       </p>
     </AuthShell>
   );

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import toast from 'react-hot-toast';
 import { useExpensePayments, useSideSummary, useUpdateTotalBudget } from '../../../hooks/useApi';
 import { parseLocalDate } from '../../../utils/date';
@@ -525,29 +525,30 @@ export default function ExpenseOverviewTab({
                   zIndex: 2,
                 }}
               >
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={66}
-                      dataKey="value"
-                      startAngle={90}
-                      endAngle={-270}
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={index} fill={entry.color ?? ''} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value: any) => formatCurrency(value)}
-                      allowEscapeViewBox={{ x: true, y: true }}
-                      wrapperStyle={{ zIndex: 20, pointerEvents: 'none' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                {/* Fixed size, not ResponsiveContainer: the box is a hard
+                    150×170, and the container measured -1×-1 before its
+                    ResizeObserver settled, which recharts warns about. */}
+                <PieChart width={150} height={170}>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={66}
+                    dataKey="value"
+                    startAngle={90}
+                    endAngle={-270}
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={index} fill={entry.color ?? ''} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: any) => formatCurrency(value)}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    wrapperStyle={{ zIndex: 20, pointerEvents: 'none' }}
+                  />
+                </PieChart>
               </div>
               <div
                 style={{
@@ -655,7 +656,8 @@ export default function ExpenseOverviewTab({
                 <span style={{ color: 'var(--bride)' }}>●</span> Bride {bridePct.toFixed(0)}%
               </span>
               <span>
-                Groom {(100 - bridePct).toFixed(0)}% <span style={{ color: 'var(--groom)' }}>●</span>
+                Groom {(100 - bridePct).toFixed(0)}%{' '}
+                <span style={{ color: 'var(--groom)' }}>●</span>
               </span>
             </div>
 
@@ -668,7 +670,10 @@ export default function ExpenseOverviewTab({
                     <div className="uppercase-eyebrow" style={{ fontSize: 9.5, marginBottom: 2 }}>
                       {theme.label}
                     </div>
-                    <div className="mono" style={{ fontSize: 15, fontWeight: 700, color: theme.deep }}>
+                    <div
+                      className="mono"
+                      style={{ fontSize: 15, fontWeight: 700, color: theme.deep }}
+                    >
                       {formatCurrency(figures.total)}
                     </div>
                     <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
@@ -676,7 +681,10 @@ export default function ExpenseOverviewTab({
                         <div className="uppercase-eyebrow" style={{ fontSize: 9 }}>
                           Paid
                         </div>
-                        <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: 'var(--ok)' }}>
+                        <div
+                          className="mono"
+                          style={{ fontSize: 12, fontWeight: 600, color: 'var(--ok)' }}
+                        >
                           {formatCurrency(figures.paid)}
                         </div>
                       </div>

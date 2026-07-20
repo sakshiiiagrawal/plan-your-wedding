@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { RESERVED_WEDDING_SLUGS } from '../../../shared/src';
 import * as contentRepo from '../repositories/website-content.repository';
 import * as pagesRepo from '../repositories/pages.repository';
-import { isApexHost, publicSiteUrl, tenantSlugFromHost } from '../utils/urls';
+import { isApexHost, publicSiteUrl, tenantDomainsEnabled, tenantSlugFromHost } from '../utils/urls';
 
 /**
  * WhatsApp / social link previews for the public pages.
@@ -74,16 +74,31 @@ export const serveWithOgTags = async (
   // captured as ':slug' is really the page slug.
   const slug = tenant ?? req.params.slug;
   const pageSlug = tenant ? (req.params.slug ?? '') : (req.params.pageSlug ?? '');
-  if (!slug) return next();
+  if (!slug) {
+    // '/' on a non-tenant host. Nothing downstream serves it — the auth
+    // middleware would 404 the marketing page — so hand back the plain shell.
+    const shell = await getShell(host);
+    return shell ? sendShell(res, shell) : next();
+  }
 
   // Old shared links and printed QR codes still point at /{slug}. Send them to
   // the wedding's own host permanently — humans and scrapers both follow it.
-  if (!tenant && isApexHost(host) && !RESERVED_SEGMENTS.has(slug)) {
+  // Only once the wildcard cert exists: redirecting to a host that can't
+  // complete a TLS handshake takes every public page down.
+  if (tenantDomainsEnabled() && !tenant && isApexHost(host) && !RESERVED_SEGMENTS.has(slug)) {
     const rest = pageSlug ? `/${pageSlug}` : '';
-    const query = req.originalUrl.includes('?')
-      ? req.originalUrl.slice(req.originalUrl.indexOf('?'))
-      : '';
-    res.redirect(308, publicSiteUrl(slug, `${rest}${query}`));
+    // Keep the visitor's own query (?print=1, utm_*), but drop the route params
+    // Vercel's rewrite appends to the destination URL — those are plumbing, and
+    // echoing them back would put ?slug=… on every redirected link.
+    const forwarded = new URLSearchParams();
+    for (const [key, value] of Object.entries(req.query)) {
+      if (key === 'slug' || key === 'pageSlug') continue;
+      for (const v of Array.isArray(value) ? value : [value]) {
+        if (typeof v === 'string') forwarded.append(key, v);
+      }
+    }
+    const query = forwarded.toString();
+    res.redirect(308, publicSiteUrl(slug, `${rest}${query ? `?${query}` : ''}`));
     return;
   }
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import ApexLink from './ApexLink';
 import BrandLogo from './BrandLogo';
 
 interface AuthShellProps {
@@ -16,9 +16,9 @@ export default function AuthShell({ title, subtitle, children, cardClassName }: 
     <div className="min-h-screen bg-[#fbf7ef]">
       <nav className="border-b border-[#e7dccb] bg-[#fbf7ef]/90 backdrop-blur-xl">
         <div className="mx-auto max-w-6xl px-6 py-3.5">
-          <Link to="/">
+          <ApexLink to="/">
             <BrandLogo />
-          </Link>
+          </ApexLink>
         </div>
       </nav>
 
