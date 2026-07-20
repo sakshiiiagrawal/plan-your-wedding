@@ -115,7 +115,6 @@ export default function Dashboard() {
   const totalGuests = guestSummary?.total ?? stats?.guests?.total ?? 0;
 
   const budgetPaid = stats?.expense?.paid ?? 0;
-  const budgetPlanned = stats?.expense?.planned ?? 0;
   const budgetAllocated = stats?.expense?.committed ?? 0;
   const budgetOutstanding = stats?.expense?.outstanding ?? 0;
   // Wedding-level budget when set; otherwise fall back to the sum of category
@@ -131,10 +130,8 @@ export default function Dashboard() {
   const tasksTotal = tasksCompleted + tasksPending;
 
   // The ring only carries Paid; the hint restores the rest of the money story.
-  // Planned is dropped when nothing is pencilled in, so it never reads as ₹0.
   const budgetHint =
     [
-      budgetPlanned > 0 ? `${fmtLakh(budgetPlanned)} planned` : null,
       budgetAllocated > 0 ? `${fmtLakh(budgetAllocated)} allocated` : null,
       budgetOutstanding > 0 ? `${fmtLakh(budgetOutstanding)} outstanding` : null,
     ]
@@ -662,7 +659,7 @@ export default function Dashboard() {
             style={{
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center',
+              alignItems: 'flex-start',
               marginBottom: 18,
             }}
           >

@@ -754,7 +754,11 @@ export default function Events() {
             <div style={{ padding: 0 }}>
               <div
                 className="print-expand"
-                style={{ overflowY: 'auto', overflowX: 'hidden', maxHeight: viewportH }}
+                style={
+                  isMobile
+                    ? { overflowX: 'hidden' }
+                    : { overflowY: 'auto', overflowX: 'hidden', maxHeight: viewportH }
+                }
               >
                 <div
                   style={{
@@ -771,7 +775,16 @@ export default function Events() {
                     style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
                   >
                     <defs>
-                      <linearGradient id="tl-line" x1="0" x2="0" y1="0" y2="1">
+                      {/* userSpaceOnUse: straight mobile connectors have a zero-width
+                          bbox, and objectBoundingBox gradients don't paint on those. */}
+                      <linearGradient
+                        id="tl-line"
+                        gradientUnits="userSpaceOnUse"
+                        x1="0"
+                        x2="0"
+                        y1="0"
+                        y2={contentH}
+                      >
                         <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.55" />
                         <stop offset="100%" stopColor="var(--gold)" stopOpacity="0.3" />
                       </linearGradient>

@@ -280,7 +280,6 @@ export interface DashboardStats {
   tasks: { pending: number; completed: number };
   expense: {
     total: number;
-    planned: number;
     committed: number;
     paid: number;
     outstanding: number;
@@ -302,7 +301,6 @@ export interface ExpenseOutstandingItem {
   id: string;
   name: string;
   type: 'manual' | 'vendor' | 'venue';
-  planned: number;
   totalCost: number;
   paid: number;
   outstanding: number;
@@ -318,13 +316,6 @@ export interface ExpenseAlerts {
   upcomingTotal: number;
   overBudgetCategories: Array<{ id: string; name: string; overBy: number }>;
   nearBudgetCategories: Array<{ id: string; name: string; percentage: number }>;
-  overPlanCategories: Array<{
-    id: string;
-    name: string;
-    planned: number;
-    committed: number;
-    overBy: number;
-  }>;
 }
 
 export const useDashboardStats = () =>
@@ -1060,7 +1051,6 @@ export interface ExpenseSummary {
   totalExpense: number;
   brideContribution: number;
   groomContribution: number;
-  totalPlanned: number;
   totalCommitted: number;
   totalSpent: number;
   totalPaid: number;
@@ -1187,7 +1177,6 @@ export const useVendorsBySide = () =>
   });
 
 export interface SideFigures {
-  planned: number;
   committed: number;
   paid: number;
   outstanding: number;

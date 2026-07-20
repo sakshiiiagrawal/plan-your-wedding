@@ -20,7 +20,6 @@ const SIDE_THEME = {
 
 interface OverviewSummary {
   totalBudget: number;
-  planned: number;
   committed: number;
   paid: number;
   outstanding: number;
@@ -96,7 +95,7 @@ export default function ExpenseOverviewTab({
   onReviewPayments,
   onReviewOutstanding,
 }: ExpenseOverviewTabProps) {
-  const { totalBudget, planned, committed, paid, outstanding, remainingBudget } = summary;
+  const { totalBudget, committed, paid, outstanding, remainingBudget } = summary;
   const updateTotalBudget = useUpdateTotalBudget();
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetDraft, setBudgetDraft] = useState('');
@@ -157,35 +156,17 @@ export default function ExpenseOverviewTab({
       bg: 'rgba(220,38,38,0.06)',
       onClick: () => onNavigate('budget'),
     });
-  for (const category of alerts?.overPlanCategories ?? [])
-    alertRows.push({
-      key: `op-${category.id}`,
-      text: `${category.name} allocations exceed plan by ${formatCurrency(category.overBy)}`,
-      color: 'var(--warn)',
-      bg: 'rgba(217,119,6,0.07)',
-      onClick: () => onNavigate('budget'),
-    });
 
-  const cats = (expenseOverview ?? []).map((c) => ({
-    id: c.id as string,
-    name: c.name as string,
-    parent: (c.parent_category_id ?? null) as string | null,
-    budget: parseFloat(c.allocated_amount || 0),
-    committed: parseFloat(c.committed || c.spent || 0),
-  }));
-
-  // Parent-level rollups: a category counts as unbudgeted only when money is
-  // allocated to it (or its children) and no budget exists anywhere in the group.
-  const parentGroups = cats
-    .filter((c) => !c.parent)
-    .map((parent) => {
-      const kids = cats.filter((c) => c.parent === parent.id);
-      return {
-        name: parent.name,
-        budget: parent.budget + kids.reduce((s, k) => s + k.budget, 0),
-        committed: parent.committed + kids.reduce((s, k) => s + k.committed, 0),
-      };
-    });
+  // `budget` and `committed` already arrive rolled up (own + children) from
+  // getExpenseOverview, so parents are read straight through — rolling up
+  // again here would double-count every child.
+  const parentGroups = (expenseOverview ?? [])
+    .filter((c) => !c.parent_category_id)
+    .map((c) => ({
+      name: c.name as string,
+      budget: parseFloat(c.budget || 0),
+      committed: parseFloat(c.committed || 0),
+    }));
   const unbudgeted = parentGroups.filter((g) => g.committed > 0 && g.budget === 0);
   if (unbudgeted.length > 0)
     alertRows.push({
@@ -199,7 +180,10 @@ export default function ExpenseOverviewTab({
       onClick: () => onNavigate('budget'),
     });
 
-  const pieData = cats
+  // Top-level categories only — their Allocated already includes every
+  // sub-category, so charting children too would count the same money twice
+  // and the slices would no longer sum to the Allocated stat above.
+  const pieData = parentGroups
     .filter((c) => c.committed > 0)
     .sort((a, b) => b.committed - a.committed)
     .map((category, index) => ({
@@ -291,11 +275,6 @@ export default function ExpenseOverviewTab({
           </div>
 
           <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
-            <MiniStat
-              label="Planned"
-              value={formatCurrency(planned)}
-              color="var(--ink-mid)"
-            />
             <MiniStat
               label="Allocated"
               value={formatCurrency(committed)}

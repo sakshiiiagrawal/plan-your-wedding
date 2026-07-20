@@ -263,6 +263,8 @@ export function SegmentedControl<T extends string>({
 }) {
   return (
     <div
+      // scrollbar-hide covers WebKit too; inline styles can't reach ::-webkit-scrollbar
+      className="scrollbar-hide"
       style={{
         display: 'flex',
         gap: 2,
@@ -270,6 +272,10 @@ export function SegmentedControl<T extends string>({
         padding: 3,
         borderRadius: 10,
         border: '1px solid var(--line-soft)',
+        // ponytail: scroll rather than overflow the viewport on narrow screens
+        maxWidth: '100%',
+        minWidth: 0,
+        overflowX: 'auto',
       }}
     >
       {options.map((opt) => (
@@ -277,6 +283,7 @@ export function SegmentedControl<T extends string>({
           key={opt.value}
           onClick={() => onChange(opt.value)}
           style={{
+            flex: '0 0 auto',
             padding: '6px 12px',
             borderRadius: 7,
             fontSize: 12,

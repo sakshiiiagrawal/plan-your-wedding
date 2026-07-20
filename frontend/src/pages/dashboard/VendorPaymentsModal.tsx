@@ -18,7 +18,6 @@ interface SourcePaymentModalProps {
     type: 'vendor' | 'venue';
     expense_id: string | null;
     finance_summary?: {
-      planned_amount?: number;
       committed_amount: number;
       paid_amount: number;
       outstanding_amount: number;
@@ -51,7 +50,6 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
   const deletePayment = useDeleteSourcePayment(source.type);
   const updatePayment = useUpdateExpensePayment();
 
-  const planned = source.finance_summary?.planned_amount ?? 0;
   const committed = source.finance_summary?.committed_amount ?? 0;
   const paid = source.finance_summary?.paid_amount ?? 0;
   const outstanding = source.finance_summary?.outstanding_amount ?? 0;
@@ -108,12 +106,6 @@ export default function VendorPaymentsModal({ source, onClose }: SourcePaymentMo
                   {source.name}
                 </h2>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', fontSize: 12 }}>
-                  {planned > 0 && (
-                    <span style={{ color: 'var(--ink-low)' }}>
-                      Planned:{' '}
-                      <strong style={{ color: 'var(--ink-mid)' }}>{formatCurrency(planned)}</strong>
-                    </span>
-                  )}
                   <span style={{ color: 'var(--ink-low)' }}>
                     Allocated:{' '}
                     <strong style={{ color: 'var(--ink-mid)' }}>{formatCurrency(committed)}</strong>

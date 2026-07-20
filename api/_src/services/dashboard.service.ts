@@ -34,7 +34,6 @@ export async function getStats(ownerId: string, includeExpense: boolean) {
       ? {
           expense: {
             total: totalExpense,
-            planned: finance.planned,
             committed: finance.committed,
             paid: finance.paid,
             outstanding: finance.outstanding,

@@ -248,7 +248,7 @@ export default function ExpensePaymentsTab({
                     {formatCurrency(scheduledOutflowTotal)}
                   </span>
                 }
-                sub="Planned payments, next due first — already counted in Outstanding."
+                sub="Scheduled payments, next due first — already counted in Outstanding."
               />
               <div className="divide-y divide-line-soft">
                 {scheduledPayments.map((payment) => {

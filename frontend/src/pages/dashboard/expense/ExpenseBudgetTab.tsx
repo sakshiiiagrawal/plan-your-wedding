@@ -10,15 +10,18 @@ import toast from 'react-hot-toast';
 import { useUpdateExpenseCategory } from '../../../hooks/useApi';
 import { currencySymbol } from '../../../utils/currency';
 
-const GRID = '1fr 130px 95px 95px 95px 95px 48px 110px';
-const MIN_WIDTH = 880;
+// Category | Budget | Allocated | Paid | Outstanding | Used | bar
+const GRID = '1fr 130px 95px 95px 95px 48px 110px';
+const MIN_WIDTH = 785;
 
 interface CategoryRow {
   id: string;
   name: string;
   parent: string | null;
+  /** group figure (own + children) as computed server-side — what we display */
   budget: number;
-  planned: number;
+  /** the category's own allocated_amount — what the budget editor writes */
+  ownBudget: number;
   committed: number;
   paid: number;
   outstanding: number;
@@ -27,8 +30,6 @@ interface CategoryRow {
 interface ParentGroup {
   row: CategoryRow;
   kids: CategoryRow[];
-  /** own + children, per money field */
-  roll: Pick<CategoryRow, 'budget' | 'planned' | 'committed' | 'paid' | 'outstanding'>;
 }
 
 function BudgetCell({
@@ -203,10 +204,7 @@ function CategoryTableRow({
   maxCommitted,
   formatCurrency,
 }: {
-  cat: Pick<
-    CategoryRow,
-    'id' | 'name' | 'budget' | 'planned' | 'committed' | 'paid' | 'outstanding'
-  >;
+  cat: Pick<CategoryRow, 'id' | 'name' | 'budget' | 'committed' | 'paid' | 'outstanding'>;
   isChild: boolean;
   hasKids: boolean;
   expanded: boolean;
@@ -303,22 +301,6 @@ function CategoryTableRow({
             OVER
           </span>
         )}
-        {cat.committed === 0 && cat.planned > 0 && (
-          <span
-            style={{
-              fontSize: 9,
-              padding: '1px 6px',
-              borderRadius: 100,
-              background: 'var(--bg-raised)',
-              color: 'var(--ink-dim)',
-              fontWeight: 600,
-              flexShrink: 0,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            planned only
-          </span>
-        )}
       </div>
 
       <BudgetCell
@@ -328,7 +310,6 @@ function CategoryTableRow({
         title={budgetTitle}
         formatCurrency={formatCurrency}
       />
-      <MoneyCell value={cat.planned} color="var(--ink-mid)" formatCurrency={formatCurrency} />
       <MoneyCell
         value={cat.committed}
         color="var(--gold-deep)"
@@ -384,7 +365,7 @@ export default function ExpenseBudgetTab({
   expenseOverview: any[] | undefined;
   formatCurrency: (amount: number) => string;
 }) {
-  const [sortBy, setSortBy] = useState<'committed' | 'planned' | 'budget' | 'name'>('committed');
+  const [sortBy, setSortBy] = useState<'committed' | 'budget' | 'name'>('committed');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const cats = useMemo<CategoryRow[]>(
@@ -393,57 +374,50 @@ export default function ExpenseBudgetTab({
         id: c.id,
         name: c.name,
         parent: c.parent_category_id ?? null,
-        budget: parseFloat(c.allocated_amount || 0),
-        planned: parseFloat(c.planned || 0),
-        committed: parseFloat(c.committed || c.spent || 0),
+        budget: parseFloat(c.budget || 0),
+        ownBudget: parseFloat(c.allocated_amount || 0),
+        committed: parseFloat(c.committed || 0),
         paid: parseFloat(c.paid || 0),
         outstanding: parseFloat(c.outstanding || 0),
       })),
     [expenseOverview],
   );
 
-  // Parents carry only their direct numbers from the API — roll children up
-  // client-side so a collapsed parent still tells the whole story.
+  // Every money figure already arrives rolled up (own + children) from
+  // getExpenseOverview, so parent rows are displayed as-is — the client must
+  // NOT sum children again or each one is counted twice.
   const groups = useMemo<ParentGroup[]>(() => {
+    const byId = new Set(cats.map((c) => c.id));
     const kidsByParent = new Map<string, CategoryRow[]>();
     for (const c of cats) {
-      if (!c.parent) continue;
+      if (!c.parent || !byId.has(c.parent)) continue;
       const list = kidsByParent.get(c.parent) ?? [];
       list.push(c);
       kidsByParent.set(c.parent, list);
     }
+    // A category whose parent isn't in this list stands in as its own group —
+    // otherwise it renders nowhere and silently drops out of the totals.
     return cats
-      .filter((c) => !c.parent)
-      .map((row) => {
-        const kids = kidsByParent.get(row.id) ?? [];
-        const roll = { ...row };
-        for (const k of kids) {
-          roll.budget += k.budget;
-          roll.planned += k.planned;
-          roll.committed += k.committed;
-          roll.paid += k.paid;
-          roll.outstanding += k.outstanding;
-        }
-        return { row, kids, roll };
-      });
+      .filter((c) => !c.parent || !byId.has(c.parent))
+      .map((row) => ({ row, kids: kidsByParent.get(row.id) ?? [] }));
   }, [cats]);
 
   const sortedGroups = [...groups].sort((a, b) => {
     if (sortBy === 'name') return a.row.name.localeCompare(b.row.name);
-    return b.roll[sortBy] - a.roll[sortBy];
+    return b.row[sortBy] - a.row[sortBy];
   });
 
-  const totals = cats.reduce(
-    (acc, c) => ({
-      budget: acc.budget + c.budget,
-      planned: acc.planned + c.planned,
-      committed: acc.committed + c.committed,
-      paid: acc.paid + c.paid,
-      outstanding: acc.outstanding + c.outstanding,
+  // Sum parents only — their figures already include their children's.
+  const totals = groups.reduce(
+    (acc, { row }) => ({
+      budget: acc.budget + row.budget,
+      committed: acc.committed + row.committed,
+      paid: acc.paid + row.paid,
+      outstanding: acc.outstanding + row.outstanding,
     }),
-    { budget: 0, planned: 0, committed: 0, paid: 0, outstanding: 0 },
+    { budget: 0, committed: 0, paid: 0, outstanding: 0 },
   );
-  const maxCommitted = Math.max(...groups.map((g) => g.roll.committed), 1);
+  const maxCommitted = Math.max(...groups.map((g) => g.row.committed), 1);
 
   const toggle = (id: string) =>
     setExpandedIds((prev) => {
@@ -479,7 +453,6 @@ export default function ExpenseBudgetTab({
           style={{ width: 'auto' }}
         >
           <option value="committed">Allocated</option>
-          <option value="planned">Planned</option>
           <option value="budget">Budget</option>
           <option value="name">Name</option>
         </select>
@@ -511,7 +484,7 @@ export default function ExpenseBudgetTab({
               minWidth: MIN_WIDTH,
             }}
           >
-            {['Category', 'Budget', 'Planned', 'Allocated', 'Paid', 'Outstanding', 'Used', ''].map(
+            {['Category', 'Budget', 'Allocated', 'Paid', 'Outstanding', 'Used', ''].map(
               (h) => (
                 <span
                   key={h || 'bar'}
@@ -524,21 +497,21 @@ export default function ExpenseBudgetTab({
             )}
           </div>
 
-          {sortedGroups.map(({ row, kids, roll }) => {
+          {sortedGroups.map(({ row, kids }) => {
             const expanded = expandedIds.has(row.id);
-            const kidBudgets = roll.budget - row.budget;
+            const kidBudgets = row.budget - row.ownBudget;
             return (
               <div key={row.id}>
                 <CategoryTableRow
-                  cat={{ ...roll, id: row.id, name: row.name }}
+                  cat={row}
                   isChild={false}
                   hasKids={kids.length > 0}
                   expanded={expanded}
                   onToggle={kids.length > 0 ? () => toggle(row.id) : undefined}
-                  ownBudget={row.budget}
+                  ownBudget={row.ownBudget}
                   budgetTitle={
                     kids.length > 0 && kidBudgets > 0
-                      ? `Own ${formatCurrency(row.budget)} + sub-categories ${formatCurrency(kidBudgets)}`
+                      ? `Own ${formatCurrency(row.ownBudget)} + sub-categories ${formatCurrency(kidBudgets)}`
                       : undefined
                   }
                   maxCommitted={maxCommitted}
@@ -552,7 +525,7 @@ export default function ExpenseBudgetTab({
                       isChild
                       hasKids={false}
                       expanded={false}
-                      ownBudget={kid.budget}
+                      ownBudget={kid.ownBudget}
                       maxCommitted={maxCommitted}
                       formatCurrency={formatCurrency}
                     />
@@ -581,12 +554,6 @@ export default function ExpenseBudgetTab({
             >
               {totals.budget > 0 ? formatCurrency(totals.budget) : '—'}
             </span>
-            <MoneyCell
-              value={totals.planned}
-              color="var(--ink-mid)"
-              bold
-              formatCurrency={formatCurrency}
-            />
             <MoneyCell
               value={totals.committed}
               color="var(--gold-deep)"

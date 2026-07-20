@@ -142,7 +142,7 @@ function daysUntil(dateStr: string) {
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function plannedBadge(dateStr: string): { label: string; style: React.CSSProperties } {
+function scheduledBadge(dateStr: string): { label: string; style: React.CSSProperties } {
   const days = daysUntil(dateStr);
   if (days < 0) {
     return {
@@ -216,7 +216,6 @@ function VendorsListView({
             <th style={th}>Status</th>
             {canSeeMoney && (
               <>
-                <th style={{ ...th, textAlign: 'right' }}>Planned</th>
                 <th style={{ ...th, textAlign: 'right' }}>Allocated</th>
                 <th style={{ ...th, textAlign: 'right' }}>Paid</th>
                 <th style={{ ...th, textAlign: 'right' }}>Outstanding</th>
@@ -228,7 +227,6 @@ function VendorsListView({
         </thead>
         <tbody>
           {vendors.map((vendor) => {
-            const planned = vendor.finance_summary?.planned_amount ?? 0;
             const committed = vendor.finance_summary?.committed_amount ?? 0;
             const paid = vendor.finance_summary?.paid_amount ?? 0;
             const outstanding = vendor.finance_summary?.outstanding_amount ?? 0;
@@ -288,11 +286,6 @@ function VendorsListView({
                 </td>
                 {canSeeMoney && (
                   <>
-                    <td
-                      style={{ ...numTd, color: planned > 0 ? 'var(--ink-mid)' : 'var(--ink-dim)' }}
-                    >
-                      {planned > 0 ? formatCurrency(planned) : '—'}
-                    </td>
                     <td style={numTd}>
                       {committed > 0 ? (
                         formatCurrency(committed)
@@ -1021,10 +1014,9 @@ export default function Vendors() {
           }}
         >
           {vendors.map((vendor, vendorIndex) => {
-            const plannedPayments =
+            const scheduledPayments =
               vendor.finance?.payments?.filter((payment) => payment.status === 'scheduled') ?? [];
             const events = getVendorEvents(vendor);
-            const planned = vendor.finance_summary?.planned_amount ?? 0;
             const committed = vendor.finance_summary?.committed_amount ?? 0;
             const paid = vendor.finance_summary?.paid_amount ?? 0;
             const outstanding = vendor.finance_summary?.outstanding_amount ?? 0;
@@ -1185,27 +1177,15 @@ export default function Vendors() {
                     <div
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(2, 1fr)',
+                        // 3 stats since Planned was dropped — a 2-col grid left
+                        // Outstanding orphaned on its own row.
+                        gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
                         gap: '8px 6px',
                         padding: '7px 10px',
                         background: 'var(--bg-raised)',
                         borderRadius: 8,
                       }}
                     >
-                      <div>
-                        <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
-                          Planned
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: planned > 0 ? 'var(--ink-mid)' : 'var(--ink-dim)',
-                            fontWeight: planned > 0 ? 500 : 400,
-                          }}
-                        >
-                          {planned > 0 ? formatCurrency(planned) : '—'}
-                        </div>
-                      </div>
                       <div>
                         <div className="uppercase-eyebrow" style={{ marginBottom: 2, fontSize: 9 }}>
                           Allocated
@@ -1281,7 +1261,7 @@ export default function Vendors() {
                     </div>
                   )}
 
-                  {(plannedPayments.length > 0 ||
+                  {(scheduledPayments.length > 0 ||
                     vendor.contact_person ||
                     vendor.phone ||
                     vendor.email) && (
@@ -1346,9 +1326,9 @@ export default function Vendors() {
                           </span>
                         </div>
                       )}
-                      {plannedPayments.slice(0, 2).map((payment) => {
+                      {scheduledPayments.slice(0, 2).map((payment) => {
                         const dueDate = payment.due_date ?? payment.created_at;
-                        const badge = plannedBadge(dueDate);
+                        const badge = scheduledBadge(dueDate);
                         return (
                           <div
                             key={payment.id}
@@ -1943,7 +1923,7 @@ export default function Vendors() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                     <FormSection title="Financial details">
                       <div>
-                        <label className="label">Allocated Amount</label>
+                        <label className="label">Allocated to this vendor</label>
                         <input
                           type="number"
                           min="0"

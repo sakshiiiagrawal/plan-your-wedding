@@ -951,11 +951,10 @@ export default function Venues() {
                   0,
                 );
                 const hasEvents = v.events && v.events.length > 0;
-                const planned = v.finance_summary?.planned_amount ?? 0;
                 const committed = v.finance_summary?.committed_amount ?? 0;
                 const paid = v.finance_summary?.paid_amount ?? 0;
                 const outstanding = v.finance_summary?.outstanding_amount ?? 0;
-                const plannedPayments =
+                const scheduledPayments =
                   v.finance?.payments?.filter((p) => p.status === 'scheduled') ?? [];
 
                 return (
@@ -1211,8 +1210,10 @@ export default function Venues() {
                           <div
                             style={{
                               display: 'grid',
+                              // 3 money stats since Planned was dropped — a 2-col
+                              // grid left Outstanding orphaned on its own row.
                               gridTemplateColumns: canSeeMoney
-                                ? 'repeat(2, minmax(0, 1fr))'
+                                ? 'repeat(3, minmax(0, 1fr))'
                                 : '1fr',
                               gap: '8px 6px',
                               padding: '7px 10px',
@@ -1313,23 +1314,6 @@ export default function Venues() {
                                     className="uppercase-eyebrow"
                                     style={{ marginBottom: 2, fontSize: 9 }}
                                   >
-                                    Planned
-                                  </div>
-                                  <div
-                                    style={{
-                                      fontSize: 12,
-                                      color: planned > 0 ? 'var(--ink-mid)' : 'var(--ink-dim)',
-                                      fontWeight: planned > 0 ? 500 : 400,
-                                    }}
-                                  >
-                                    {planned > 0 ? formatCurrency(planned) : '—'}
-                                  </div>
-                                </div>
-                                <div style={{ minWidth: 0 }}>
-                                  <div
-                                    className="uppercase-eyebrow"
-                                    style={{ marginBottom: 2, fontSize: 9 }}
-                                  >
                                     Allocated
                                   </div>
                                   <div
@@ -1386,7 +1370,7 @@ export default function Venues() {
                             )}
                           </div>
 
-                          {(plannedPayments.length > 0 || hasContact) && (
+                          {(scheduledPayments.length > 0 || hasContact) && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                               {hasContact && (
                                 <div
@@ -1440,7 +1424,7 @@ export default function Venues() {
                                   </span>
                                 </div>
                               )}
-                              {plannedPayments.slice(0, 2).map((payment) => (
+                              {scheduledPayments.slice(0, 2).map((payment) => (
                                 <div
                                   key={payment.id}
                                   style={{
@@ -1954,7 +1938,7 @@ export default function Venues() {
                           </p>
 
                           <div>
-                            <label className="label">Allocated Amount</label>
+                            <label className="label">Allocated to this venue</label>
                             <input
                               type="number"
                               value={formData.total_cost}

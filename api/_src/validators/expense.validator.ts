@@ -33,7 +33,6 @@ export const financeItemSchema = z.object({
   amount: z.coerce.number().nonnegative(),
   // Optional: absent preserves the stored plan on update and defaults to
   // `amount` on insert (see syncExpenseItems).
-  planned_amount: z.coerce.number().nonnegative().optional(),
   // Optional: a money-tier editor's request body has this deep-stripped by
   // applyFinanceTier. finance.service.ts fills it from the existing row
   // (updates) or defaults to 'shared' (new items).

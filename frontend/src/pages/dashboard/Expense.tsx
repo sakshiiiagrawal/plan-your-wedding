@@ -147,7 +147,6 @@ export default function Expense() {
         description: expense.description,
         source_type: expense.source_type,
         category_summary: categorySummary || 'Uncategorized',
-        planned: expense.summary.planned_amount,
         committed: expense.summary.committed_amount,
         paid: expense.summary.paid_amount,
         outstanding: expense.summary.outstanding_amount,
@@ -226,7 +225,6 @@ export default function Expense() {
       type: expense.source_type,
       expense_id: expense.id,
       finance_summary: {
-        planned_amount: expense.summary.planned_amount,
         committed_amount: expense.summary.committed_amount,
         paid_amount: expense.summary.paid_amount,
         outstanding_amount: expense.summary.outstanding_amount,
@@ -339,7 +337,6 @@ export default function Expense() {
   }
 
   const totalBudget = expenseSummary?.totalExpense || 0;
-  const planned = expenseSummary?.totalPlanned || 0;
   const committed = expenseSummary?.totalCommitted || 0;
   const paid = expenseSummary?.totalPaid || 0;
   const outstandingTotal = expenseSummary?.totalOutstanding ?? outstanding?.totalOutstanding ?? 0;
@@ -353,7 +350,6 @@ export default function Expense() {
           formatCurrency={formatCurrency}
           summary={{
             totalBudget,
-            planned,
             committed,
             paid,
             outstanding: outstandingTotal,

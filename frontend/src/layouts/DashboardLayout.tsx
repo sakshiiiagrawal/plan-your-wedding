@@ -44,6 +44,7 @@ import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useModalDismiss } from '../hooks/useModalDismiss';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { formatDate } from '../utils/date';
 import { formatCurrency } from '../utils/currency';
 
@@ -172,8 +173,11 @@ function ReminderRow({
 
 function RemindersBell({ basePath }: { basePath: string }) {
   const [open, setOpen] = useState(false);
+  const [panelTop, setPanelTop] = useState(0);
+  const anchorRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { data: feed, refetch } = useReminders();
+  const isMobile = useIsMobile();
   useModalDismiss(open, () => setOpen(false));
 
   // ponytail: seen state is per-device localStorage keyed by wedding — move it
@@ -232,10 +236,15 @@ function RemindersBell({ basePath }: { basePath: string }) {
   };
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative' }} ref={anchorRef}>
       <button
         onClick={() => {
-          if (!open) refetch();
+          if (!open) {
+            refetch();
+            // Measured, not hardcoded: the topbar grows taller on pages that
+            // opt into usePageHeader, and a fixed offset would sit under it.
+            setPanelTop((anchorRef.current?.getBoundingClientRect().bottom ?? 0) + 8);
+          }
           setOpen(!open);
         }}
         title="Reminders"
@@ -282,10 +291,11 @@ function RemindersBell({ basePath }: { basePath: string }) {
           <div style={{ position: 'fixed', inset: 0, zIndex: 30 }} onClick={() => setOpen(false)} />
           <div
             style={{
-              position: 'absolute',
-              right: 0,
-              top: 'calc(100% + 8px)',
-              width: 320,
+              // On phones the bell sits mid-topbar, so a 320px right-anchored
+              // panel runs off the left edge — pin it to the viewport instead.
+              ...(isMobile
+                ? { position: 'fixed', left: 12, right: 12, top: panelTop }
+                : { position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 320 }),
               zIndex: 31,
               background: 'var(--bg-panel)',
               border: '1px solid var(--line-soft)',
@@ -294,7 +304,7 @@ function RemindersBell({ basePath }: { basePath: string }) {
               overflow: 'hidden',
             }}
           >
-            <div style={{ maxHeight: 380, overflowY: 'auto', padding: '8px 0' }}>
+            <div style={{ maxHeight: 'min(380px, 60vh)', overflowY: 'auto', padding: '8px 0' }}>
               {total === 0 ? (
                 <div
                   style={{

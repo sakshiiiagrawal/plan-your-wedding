@@ -13,7 +13,6 @@ export interface ExpenseListRow {
   description: string;
   source_type: 'manual' | 'vendor' | 'venue';
   category_summary: string;
-  planned: number;
   committed: number;
   paid: number;
   outstanding: number;
@@ -90,7 +89,6 @@ export default function ExpenseExpensesTab({
 
   // Page-scoped sums — server-side pagination means we only have the
   // current page's rows client-side, not the whole filtered set.
-  const plannedTotal = rows.reduce((sum, row) => sum + row.planned, 0);
   const committedTotal = rows.reduce((sum, row) => sum + row.committed, 0);
   const paidTotal = rows.reduce((sum, row) => sum + row.paid, 0);
   const outstandingTotal = rows.reduce((sum, row) => sum + row.outstanding, 0);
@@ -166,7 +164,6 @@ export default function ExpenseExpensesTab({
                   <th className="text-left p-4 min-w-[140px]">Description</th>
                   <th className="text-left p-4 hidden sm:table-cell">Categories</th>
                   <th className="text-left p-4">Source</th>
-                  <th className="text-right p-4 hidden md:table-cell">Planned</th>
                   <th className="text-right p-4">Allocated</th>
                   <th className="text-right p-4 hidden md:table-cell">Paid</th>
                   <th className="text-right p-4 hidden md:table-cell">Outstanding</th>
@@ -192,14 +189,9 @@ export default function ExpenseExpensesTab({
                         )}
                       </div>
                       <div className="text-xs text-ink-low">{row.item_count} line items</div>
-                      {/* The Planned/Paid/Outstanding columns are hidden below md —
+                      {/* The Paid/Outstanding columns are hidden below md —
                           keep the full money story readable on phones. */}
                       <div className="text-xs md:hidden mt-1 space-x-2">
-                        {row.planned > 0 && (
-                          <span className="text-ink-mid">
-                            Planned {formatCurrency(row.planned)}
-                          </span>
-                        )}
                         <span className="text-green-700">Paid {formatCurrency(row.paid)}</span>
                         <span className="text-orange-700">
                           Outstanding {formatCurrency(row.outstanding)}
@@ -213,9 +205,6 @@ export default function ExpenseExpensesTab({
                       <span className="badge text-xs bg-surface-highest text-ink-mid capitalize">
                         {row.source_type}
                       </span>
-                    </td>
-                    <td className="p-4 text-right text-ink-mid hidden md:table-cell">
-                      {formatCurrency(row.planned)}
                     </td>
                     <td
                       className="p-4 text-right font-medium"
@@ -307,9 +296,6 @@ export default function ExpenseExpensesTab({
                   <td className="p-4 min-w-[140px]">
                     Page total
                     <div className="text-xs font-normal md:hidden mt-1 space-x-2">
-                      {plannedTotal > 0 && (
-                        <span className="text-ink-mid">Planned {formatCurrency(plannedTotal)}</span>
-                      )}
                       <span className="text-green-700">Paid {formatCurrency(paidTotal)}</span>
                       <span className="text-orange-700">
                         Outstanding {formatCurrency(outstandingTotal)}
@@ -318,9 +304,6 @@ export default function ExpenseExpensesTab({
                   </td>
                   <td className="p-4 hidden sm:table-cell" />
                   <td className="p-4" />
-                  <td className="p-4 text-right text-ink-mid hidden md:table-cell">
-                    {formatCurrency(plannedTotal)}
-                  </td>
                   <td className="p-4 text-right" style={{ color: 'var(--gold-deep)' }}>
                     {formatCurrency(committedTotal)}
                   </td>

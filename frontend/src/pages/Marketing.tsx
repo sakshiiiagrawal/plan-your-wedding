@@ -281,11 +281,11 @@ function RoomsInfographic() {
 
 /* ══ Infographic 3 — Payment reminders & expense chart ═══════════════════ */
 const EXPENSE_BARS = [
-  { label: 'Venue', planned: 92, spent: 80 },
-  { label: 'Catering', planned: 100, spent: 46 },
-  { label: 'Décor', planned: 64, spent: 52 },
-  { label: 'Photo', planned: 55, spent: 30 },
-  { label: 'Music', planned: 38, spent: 34 },
+  { label: 'Venue', budget: 92, spent: 80 },
+  { label: 'Catering', budget: 100, spent: 46 },
+  { label: 'Décor', budget: 64, spent: 52 },
+  { label: 'Photo', budget: 55, spent: 30 },
+  { label: 'Music', budget: 38, spent: 34 },
 ] as const;
 
 function PaymentsInfographic() {
@@ -296,7 +296,7 @@ function PaymentsInfographic() {
     <div ref={ref} className="relative mx-auto w-full max-w-md">
       <div className="rounded-2xl border border-line bg-surface-panel p-5 shadow-[0_28px_70px_-28px_rgba(64,48,32,0.4)]">
         <div className="mb-5 flex items-baseline justify-between">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-ink-low">Budget · spent vs planned</p>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-ink-low">Budget · spent vs budgeted</p>
           <p className="font-serif-display text-lg text-ink-high">
             ₹{paid ? '9.1' : '8.6'}L <span className="text-xs text-ink-dim">of ₹12L</span>
           </p>
@@ -309,7 +309,7 @@ function PaymentsInfographic() {
                 <div className="relative flex h-28 w-full items-end rounded-md bg-surface-raised">
                   <motion.div
                     initial={{ height: 0 }}
-                    whileInView={{ height: `${b.planned}%` }}
+                    whileInView={{ height: `${b.budget}%` }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.8, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
                     className="absolute bottom-0 w-full rounded-md border border-gold-300/60 bg-gold-100/50"
@@ -381,7 +381,7 @@ const FEED = [
   { icon: FiHome, tint: '#7e6227', title: 'Stay assigned', body: 'Kapoor family · Grand Lotus · Nov 25-27' },
   { icon: FiBell, tint: '#a85f00', title: 'Vendor payment due', body: 'Photographer balance · due in 5 days' },
   { icon: FiCheckSquare, tint: '#256f44', title: 'Timeline complete', body: 'Final menu tasting · owner marked done' },
-  { icon: FiPieChart, tint: '#74232f', title: 'Budget movement', body: 'Decor at ₹1.2L of ₹1.5L planned' },
+  { icon: FiPieChart, tint: '#74232f', title: 'Budget movement', body: 'Decor at ₹1.2L of ₹1.5L budgeted' },
 ] as const;
 
 function ActivityStack() {
@@ -444,7 +444,7 @@ const MORE_FEATURES = [
   {
     icon: FiCreditCard,
     title: 'Budget and payments',
-    body: 'Track planned, allocated, paid and pending amounts by category so money discussions start from current numbers.',
+    body: 'Track budget, allocated, paid and pending amounts by category so money discussions start from current numbers.',
   },
   {
     icon: FiUsers,
@@ -740,11 +740,11 @@ export default function Marketing() {
               Budget and payments
             </p>
             <h2 className="font-serif-display text-4xl font-semibold leading-tight tracking-[-0.02em] text-ink-high sm:text-5xl">
-              Track what is planned, paid and still due.
+              Track what is budgeted, paid and still due.
             </h2>
             <p className="mt-5 text-base leading-8 text-ink-low">
               Vendor advances, balance payments and category budgets should not live in memory.
-              Record commitments once, track due dates and compare planned amounts with actual
+              Record commitments once, track due dates and compare category budgets with actual
               spending.
             </p>
             <ul className="mt-7 space-y-3 text-[15px] text-ink-mid">

@@ -7,6 +7,8 @@ interface ExpenseCategoryRow {
   id: string;
   name: string;
   allocated_amount?: number | string | null;
+  /** own + sub-categories, derived server-side by groupBudgetMap */
+  budget?: number | string | null;
 }
 
 interface CategoryBudgetFieldProps {
@@ -32,6 +34,10 @@ export default function CategoryBudgetField({ categoryId, categoryName }: Catego
       ? categories.find((row) => row.name === categoryName)
       : undefined;
   const currentBudget = Number(category?.allocated_amount ?? 0);
+  // Read the server's group figure rather than re-summing sub-categories here:
+  // one rollup rule (groupBudgetMap) feeds every screen, so this field and the
+  // Expenses page can't drift apart.
+  const groupBudget = Number(category?.budget ?? currentBudget);
 
   const [draft, setDraft] = useState('');
   // Re-seed the input whenever the resolved category (or its saved budget) changes.
@@ -60,8 +66,9 @@ export default function CategoryBudgetField({ categoryId, categoryName }: Catego
   return (
     <div>
       <label className="label">Category Budget</label>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <div style={{ position: 'relative', flex: 1 }}>
+      {/* wrap so the Save button drops below the input on narrow screens instead of crushing it */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: '1 1 160px' }}>
           <span
             style={{
               position: 'absolute',
@@ -105,9 +112,10 @@ export default function CategoryBudgetField({ categoryId, categoryName }: Catego
         )}
       </div>
       <p style={{ fontSize: 11, color: 'var(--ink-dim)', marginTop: 4 }}>
-        Overall budget for {category.name}
-        {currentBudget > 0 ? ` (currently ${formatCurrency(currentBudget)})` : ''} — shared by every
-        expense in this category.
+        Shared by every {category.name} expense — not just this one.
+        {groupBudget > currentBudget && (
+          <> With sub-categories, {category.name} totals {formatCurrency(groupBudget)}.</>
+        )}
       </p>
     </div>
   );

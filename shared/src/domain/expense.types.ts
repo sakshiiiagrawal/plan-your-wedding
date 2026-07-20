@@ -56,7 +56,6 @@ export interface ExpenseItemRow {
   event_id: string | null;
   description: string;
   amount: number;
-  planned_amount: number;
   side: FinanceItemSide;
   bride_share_percentage: number | null;
   display_order: number;
@@ -70,8 +69,6 @@ export interface ExpenseItemInput {
   event_id?: string | null;
   description: string;
   amount: number;
-  /** Optional: absent preserves the existing value on update, defaults to `amount` on insert. */
-  planned_amount?: number;
   /** Optional: absent when a money-tier editor's request had this stripped. */
   side?: FinanceItemSide | undefined;
   bride_share_percentage?: number | null;
@@ -148,12 +145,10 @@ export interface FinanceActivityRow {
 }
 
 export interface ExpenseBalanceSummary {
-  /** User-entered estimate (sum of item planned_amount). */
-  planned_amount: number;
   committed_amount: number;
   paid_amount: number;
   outstanding_amount: number;
-  /** Sum of future ('scheduled') payments — NOT the planned estimate. */
+  /** Sum of future ('scheduled') payments. */
   scheduled_amount: number;
 }
 

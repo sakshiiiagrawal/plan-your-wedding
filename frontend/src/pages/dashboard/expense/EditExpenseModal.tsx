@@ -35,7 +35,6 @@ interface ExpenseItemForm {
   local_id: string;
   description: string;
   amount: string;
-  planned_amount: string;
   category_id: string | null;
   side: 'bride' | 'groom' | 'shared';
   bride_share_percentage: number;
@@ -54,7 +53,6 @@ const createItem = (prev?: ExpenseItemForm): ExpenseItemForm => ({
   local_id: Math.random().toString(36).slice(2),
   description: '',
   amount: '',
-  planned_amount: '',
   category_id: null,
   side: prev?.side ?? 'shared',
   bride_share_percentage: prev?.bride_share_percentage ?? 50,
@@ -73,7 +71,6 @@ function getExpenseFormState(expense: ExpenseRow | null): FormData | null {
             local_id: item.id,
             description: item.description,
             amount: String(item.amount),
-            planned_amount: String(item.planned_amount ?? ''),
             category_id: item.category_id,
             side: item.side,
             bride_share_percentage: item.bride_share_percentage ?? 50,
@@ -93,9 +90,6 @@ export default function EditExpenseModal({
   const [formData, setFormData] = useState<FormData | null>(null);
   const [showCustomCategoryModal, setShowCustomCategoryModal] = useState(false);
   const [customCategoryParentId, setCustomCategoryParentId] = useState<string | null>(null);
-  // Items whose planned estimate genuinely differs from the amount (or was
-  // revealed by hand). Hidden planned fields track the amount on save.
-  const [plannedOpen, setPlannedOpen] = useState<Set<string>>(new Set());
   // True when the single item's description is just the expense title — then
   // we don't show a second field asking for the same words.
   const [soloDescSynced, setSoloDescSynced] = useState(false);
@@ -105,17 +99,6 @@ export default function EditExpenseModal({
     const state = getExpenseFormState(expense);
     setFormData(state);
     if (state) {
-      setPlannedOpen(
-        new Set(
-          state.items
-            .filter(
-              (item) =>
-                item.planned_amount !== '' &&
-                Number(item.planned_amount) !== Number(item.amount),
-            )
-            .map((item) => item.local_id),
-        ),
-      );
       setSoloDescSynced(
         state.items.length === 1 &&
           (state.items[0]!.description === '' ||
@@ -153,20 +136,6 @@ export default function EditExpenseModal({
   const totalCommitted = useMemo(
     () => formData?.items.reduce((sum, item) => sum + Number(item.amount || 0), 0) ?? 0,
     [formData],
-  );
-  // Hidden or blank planned falls back to the item's amount (mirrors what the
-  // submit payload sends).
-  const totalPlanned = useMemo(
-    () =>
-      formData?.items.reduce(
-        (sum, item) =>
-          sum +
-          (!plannedOpen.has(item.local_id) || item.planned_amount === ''
-            ? Number(item.amount || 0)
-            : Number(item.planned_amount)),
-        0,
-      ) ?? 0,
-    [formData, plannedOpen],
   );
   const isDirty = JSON.stringify(formData) !== JSON.stringify(getExpenseFormState(expense));
   const { attemptClose, dialog: unsavedDialog } = useUnsavedChangesPrompt({
@@ -209,29 +178,11 @@ export default function EditExpenseModal({
     );
   };
 
-  // Amount = the allocated amount. The separate planned estimate stays hidden
-  // until asked for — most items don't track one.
+  // Amount is what this line item allocates — the single figure the whole app
+  // rolls up as "Allocated".
   const renderAmountField = (item: ExpenseItemForm) => (
     <div>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <label className="label">Amount *</label>
-        {!plannedOpen.has(item.local_id) && (
-          <button
-            type="button"
-            onClick={() => setPlannedOpen((prev) => new Set(prev).add(item.local_id))}
-            style={{
-              fontSize: 11,
-              color: 'var(--ink-dim)',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-            }}
-          >
-            + planned estimate
-          </button>
-        )}
-      </div>
+      <label className="label">Amount *</label>
       <input
         type="number"
         min="0"
@@ -260,13 +211,6 @@ export default function EditExpenseModal({
             ? formData.description
             : item.description || formData.description,
         amount: Number(item.amount || 0),
-        // A hidden planned field means "no separate estimate" — it tracks the
-        // amount. When visible, blank is an explicit reset-to-allocated (B1).
-        planned_amount: !plannedOpen.has(item.local_id)
-          ? Number(item.amount || 0)
-          : item.planned_amount === ''
-            ? Number(item.amount || 0)
-            : Number(item.planned_amount),
         display_order: index + 1,
         ...(canSeeSplits
           ? {
@@ -303,7 +247,6 @@ export default function EditExpenseModal({
         }
         footerLeft={
           <span>
-            {totalPlanned !== totalCommitted && <>Planned {formatCurrency(totalPlanned)} · </>}
             Total{' '}
             <strong style={{ color: 'var(--gold-deep)' }}>{formatCurrency(totalCommitted)}</strong>
           </span>
@@ -457,25 +400,6 @@ export default function EditExpenseModal({
                   <div className="grid sm:grid-cols-2 gap-3">{renderAmountField(item)}</div>
                 )}
 
-                {plannedOpen.has(item.local_id) && (
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="label">Planned (estimate)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.planned_amount}
-                        onChange={(event) =>
-                          updateItem(item.local_id, { planned_amount: event.target.value })
-                        }
-                        className="input no-spinner"
-                        placeholder="Blank resets to amount"
-                      />
-                    </div>
-                  </div>
-                )}
-
                 {canSeeSplits && (
                   <div>
                     <label className="label">Liability Side</label>
@@ -508,9 +432,6 @@ export default function EditExpenseModal({
               }}
             >
               <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
-                {totalPlanned !== totalCommitted ? `Planned ${formatCurrency(totalPlanned)}` : ''}
-              </span>
-              <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
                 Total{' '}
                 <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--gold-deep)' }}>
                   {formatCurrency(totalCommitted)}
@@ -536,7 +457,6 @@ export default function EditExpenseModal({
         <div style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 20 }}>
           <PaymentTimelinePanel
             payments={payments}
-            planned={detail.summary?.planned_amount ?? 0}
             committed={detail.summary?.committed_amount ?? totalCommitted}
             paid={detail.summary?.paid_amount ?? 0}
             outstanding={detail.summary?.outstanding_amount ?? totalCommitted}

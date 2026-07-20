@@ -34,30 +34,24 @@ function flattenExpenseItems(expenses: ExpenseWithDetails[]) {
 }
 
 function buildSideTotals(items: ExpenseItemRow[]) {
-  const bride = { total: 0, planned: 0, items: [] as ExpenseItemRow[] };
-  const groom = { total: 0, planned: 0, items: [] as ExpenseItemRow[] };
-  const shared = { total: 0, planned: 0, items: [] as ExpenseItemRow[] };
+  const bride = { total: 0, items: [] as ExpenseItemRow[] };
+  const groom = { total: 0, items: [] as ExpenseItemRow[] };
+  const shared = { total: 0, items: [] as ExpenseItemRow[] };
 
   for (const item of items) {
     const amount = toFloat(item.amount);
-    const planned = toFloat(item.planned_amount);
     if (item.side === 'bride') {
       bride.total += amount;
-      bride.planned += planned;
       bride.items.push(item);
     } else if (item.side === 'groom') {
       groom.total += amount;
-      groom.planned += planned;
       groom.items.push(item);
     } else {
       shared.total += amount;
-      shared.planned += planned;
       shared.items.push(item);
       const bridePct = toFloat(item.bride_share_percentage ?? 50) / 100;
       bride.total += amount * bridePct;
       groom.total += amount * (1 - bridePct);
-      bride.planned += planned * bridePct;
-      groom.planned += planned * (1 - bridePct);
     }
   }
 
@@ -78,7 +72,6 @@ export async function getExpenseSummary(ownerId: string) {
     totalExpense: toFloat(summary?.total_expense),
     brideContribution: toFloat(summary?.bride_side_contribution),
     groomContribution: toFloat(summary?.groom_side_contribution),
-    totalPlanned: totals.planned,
     totalCommitted: totals.committed,
     totalPaid: totals.paid,
     totalOutstanding: totals.outstanding,
@@ -103,6 +96,33 @@ export async function updateTotalExpense(
 // Overview
 // ---------------------------------------------------------------------------
 
+/**
+ * A parent category's Allocated is always the sum of its children's, so its
+ * Budget has to be summed the same way or every parent row compares a
+ * group-wide Allocated against a single category's Budget — the mismatch
+ * behind "the numbers don't match" between the Expenses page and the
+ * vendor/venue forms.
+ *
+ * `allocated_amount` stays the category's own raw budget (it is what the
+ * budget editors write back); `budget` is the derived group figure and is
+ * what every surface must display and compare against.
+ */
+function groupBudgetMap(
+  categories: { id: string; parent_category_id?: string | null; allocated_amount: unknown }[],
+): Map<string, number> {
+  const group = new Map<string, number>();
+  for (const cat of categories) group.set(cat.id, toFloat(cat.allocated_amount));
+  for (const cat of categories) {
+    const parentId = cat.parent_category_id;
+    // `has` rather than `?? 0`: a child pointing at a parent outside this
+    // owner's set would otherwise mint a phantom entry under an id no caller
+    // ever looks up.
+    if (!parentId || !group.has(parentId)) continue;
+    group.set(parentId, group.get(parentId)! + toFloat(cat.allocated_amount));
+  }
+  return group;
+}
+
 export async function getExpenseOverview(ownerId: string) {
   const [categories, rollups] = await Promise.all([
     repo.findCategoriesByOwner(ownerId),
@@ -110,22 +130,36 @@ export async function getExpenseOverview(ownerId: string) {
   ]);
 
   const spending = new Map(rollups.map((rollup) => [rollup.category_id, rollup]));
+  const groupBudget = groupBudgetMap(categories);
+  // Parents hold no line items of their own, so their Allocated/Paid/etc. are
+  // the sum of their children's — mirrored from getCategoryTree so both
+  // endpoints report the same numbers for the same category.
+  const childrenOf = new Map<string, string[]>();
+  for (const cat of categories) {
+    if (!cat.parent_category_id) continue;
+    const siblings = childrenOf.get(cat.parent_category_id) ?? [];
+    siblings.push(cat.id);
+    childrenOf.set(cat.parent_category_id, siblings);
+  }
 
   return categories.map((cat) => {
-    const rollup = spending.get(cat.id);
-    const committed = rollup?.committed_amount ?? 0;
+    const kids = childrenOf.get(cat.id) ?? [];
+    const sumOf = (pick: (r: (typeof rollups)[number]) => number) =>
+      [cat.id, ...kids].reduce((total, id) => {
+        const rollup = spending.get(id);
+        return total + (rollup ? pick(rollup) : 0);
+      }, 0);
+
+    const committed = sumOf((r) => r.committed_amount);
+    const budget = groupBudget.get(cat.id) ?? toFloat(cat.allocated_amount);
     return {
       ...cat,
-      planned: rollup?.planned_amount ?? 0,
+      budget,
       committed,
-      paid: rollup?.paid_amount ?? 0,
-      outstanding: rollup?.outstanding_amount ?? 0,
-      spent: committed,
-      remaining: toFloat(cat.allocated_amount) - committed,
-      percentage:
-        toFloat(cat.allocated_amount) > 0
-          ? Math.round((committed / toFloat(cat.allocated_amount)) * 100)
-          : 0,
+      paid: sumOf((r) => r.paid_amount),
+      outstanding: sumOf((r) => r.outstanding_amount),
+      remaining: budget - committed,
+      percentage: budget > 0 ? Math.round((committed / budget) * 100) : 0,
     };
   });
 }
@@ -143,14 +177,13 @@ export async function getBySide(ownerId: string) {
 export async function getSideSummary(ownerId: string) {
   const rollups = await finance.getSideLiabilityRollups(ownerId);
   const summary = {
-    bride: { planned: 0, committed: 0, paid: 0, outstanding: 0, total: 0 },
-    groom: { planned: 0, committed: 0, paid: 0, outstanding: 0, total: 0 },
-    shared: { planned: 0, committed: 0, paid: 0, outstanding: 0, total: 0 },
+    bride: { committed: 0, paid: 0, outstanding: 0, total: 0 },
+    groom: { committed: 0, paid: 0, outstanding: 0, total: 0 },
+    shared: { committed: 0, paid: 0, outstanding: 0, total: 0 },
   };
 
   for (const row of rollups) {
     summary[row.side] = {
-      planned: row.planned_amount,
       committed: row.committed_amount,
       paid: row.paid_amount,
       outstanding: row.outstanding_amount,
@@ -166,7 +199,15 @@ export async function getSideSummary(ownerId: string) {
 // ---------------------------------------------------------------------------
 
 export async function listCategories(ownerId: string) {
-  return repo.findCategoriesByOwner(ownerId);
+  const categories = await repo.findCategoriesByOwner(ownerId);
+  // Carries the same derived group figure as the overview/tree/alerts
+  // endpoints so the vendor/venue budget field doesn't have to re-derive it
+  // and drift. `allocated_amount` stays the category's own raw budget.
+  const groupBudget = groupBudgetMap(categories);
+  return categories.map((category) => ({
+    ...category,
+    budget: groupBudget.get(category.id) ?? toFloat(category.allocated_amount),
+  }));
 }
 
 export async function createCategory(
@@ -196,6 +237,13 @@ export async function createCustomCategory(
   if (body.parent_category_id) {
     const parent = await repo.findCategoryByIdAndOwner(body.parent_category_id, ownerId);
     if (!parent) return { error: 'Parent category not found' } as const;
+    // Every rollup here (groupBudgetMap, getExpenseOverview's childrenOf, and
+    // getCategoryTree's parent/child split) sums exactly one level. A
+    // grandchild would render nowhere and its money would reach its parent but
+    // not the top-level group, so refuse the third level at the door.
+    if (parent.parent_category_id) {
+      return { error: 'Categories can only be nested one level deep' } as const;
+    }
   }
 
   const displayOrder = await repo.findMaxDisplayOrder(ownerId, body.parent_category_id ?? null);
@@ -219,6 +267,7 @@ export async function getCategoryTree(ownerId: string) {
   ]);
 
   const spending = new Map(rollups.map((rollup) => [rollup.category_id, rollup]));
+  const groupBudget = groupBudgetMap(allCategories);
   const parents = allCategories.filter((category) => !category.parent_category_id);
   const children = allCategories.filter((category) => category.parent_category_id);
 
@@ -227,35 +276,36 @@ export async function getCategoryTree(ownerId: string) {
     const childRows = parentChildren.map((child) => {
       const rollup = spending.get(child.id);
       const committed = rollup?.committed_amount ?? 0;
+      const budget = toFloat(child.allocated_amount);
       return {
         ...child,
-        planned: rollup?.planned_amount ?? 0,
+        budget,
         committed,
         paid: rollup?.paid_amount ?? 0,
         outstanding: rollup?.outstanding_amount ?? 0,
-        spent: committed,
-        remaining: toFloat(child.allocated_amount) - committed,
-        percentage:
-          toFloat(child.allocated_amount) > 0
-            ? Math.round((committed / toFloat(child.allocated_amount)) * 100)
-            : 0,
+          remaining: budget - committed,
+        percentage: budget > 0 ? Math.round((committed / budget) * 100) : 0,
       };
     });
 
-    const parentCommitted = childRows.reduce((sum, child) => sum + child.committed, 0);
+    // A parent can carry line items of its own as well as children's, so both
+    // sides of every comparison include the parent's own rollup.
+    const parentOwn = spending.get(parent.id);
+    const parentCommitted =
+      (parentOwn?.committed_amount ?? 0) +
+      childRows.reduce((sum, child) => sum + child.committed, 0);
+    const parentBudget = groupBudget.get(parent.id) ?? toFloat(parent.allocated_amount);
 
     return {
       ...parent,
-      planned: childRows.reduce((sum, child) => sum + child.planned, 0),
+      budget: parentBudget,
       committed: parentCommitted,
-      paid: childRows.reduce((sum, child) => sum + child.paid, 0),
-      outstanding: childRows.reduce((sum, child) => sum + child.outstanding, 0),
-      spent: parentCommitted,
-      remaining: toFloat(parent.allocated_amount) - parentCommitted,
-      percentage:
-        toFloat(parent.allocated_amount) > 0
-          ? Math.round((parentCommitted / toFloat(parent.allocated_amount)) * 100)
-          : 0,
+      paid: (parentOwn?.paid_amount ?? 0) + childRows.reduce((sum, child) => sum + child.paid, 0),
+      outstanding:
+        (parentOwn?.outstanding_amount ?? 0) +
+        childRows.reduce((sum, child) => sum + child.outstanding, 0),
+      remaining: parentBudget - parentCommitted,
+      percentage: parentBudget > 0 ? Math.round((parentCommitted / parentBudget) * 100) : 0,
       children: childRows.length > 0 ? childRows : undefined,
     };
   });
@@ -397,7 +447,6 @@ export async function getExpensesByCategory(ownerId: string) {
   return rollups.map((rollup) => ({
     id: rollup.category_id,
     name: categoryMap.get(rollup.category_id) ?? 'Uncategorized',
-    planned: rollup.planned_amount,
     committed: rollup.committed_amount,
     paid: rollup.paid_amount,
     outstanding: rollup.outstanding_amount,
@@ -410,7 +459,6 @@ export async function getExpensesByVendor(ownerId: string) {
   return expenses.map((expense) => ({
     id: expense.id,
     name: expense.description,
-    planned: expense.summary.planned_amount,
     committed: expense.summary.committed_amount,
     paid: expense.summary.paid_amount,
     outstanding: expense.summary.outstanding_amount,
@@ -485,7 +533,6 @@ export async function getOutstanding(ownerId: string, options: OutstandingListOp
       id: expense.id,
       name: expense.description,
       type: expense.source_type,
-      planned: expense.summary.planned_amount,
       totalCost: expense.summary.committed_amount,
       paid: expense.summary.paid_amount,
       outstanding: expense.summary.outstanding_amount,
@@ -526,15 +573,15 @@ export async function getAlerts(ownerId: string, todayOverride?: string) {
 
   // Budgets are often set on a parent category while actual expenses are
   // logged against its children (e.g. "Catering" budget, "Catering > Food"
-  // items). Roll each parent's own allocated/planned/committed up with its
-  // children's before comparing, mirroring the client-side rollup in
-  // ExpenseBudgetTab so the two views agree on what's "over budget".
+  // items). Roll each parent's own budget/committed up with its children's
+  // before comparing, using the same groupBudgetMap the overview and tree
+  // endpoints use so every view agrees on what's "over budget".
+  const groupBudget = groupBudgetMap(categories);
   const rolled = new Map(
     categories.map((category) => [
       category.id,
       {
-        allocated: toFloat(category.allocated_amount),
-        planned: spending.get(category.id)?.planned_amount ?? 0,
+        allocated: groupBudget.get(category.id) ?? toFloat(category.allocated_amount),
         committed: spending.get(category.id)?.committed_amount ?? 0,
       },
     ]),
@@ -544,8 +591,6 @@ export async function getAlerts(ownerId: string, todayOverride?: string) {
     const parent = rolled.get(category.parent_category_id);
     const own = rolled.get(category.id);
     if (!parent || !own) continue;
-    parent.allocated += own.allocated;
-    parent.planned += own.planned;
     parent.committed += own.committed;
   }
 
@@ -586,24 +631,6 @@ export async function getAlerts(ownerId: string, todayOverride?: string) {
       percentage: Math.round((category.spent / category.allocated) * 100),
     }));
 
-  // Allocated has outgrown the pencilled-in plan. Only categories with a real
-  // plan qualify (planned 0 means "no plan recorded", not "plan of zero").
-  const overPlanCategories = categories
-    .map((category) => {
-      const totals = rolled.get(category.id)!;
-      return {
-        id: category.id,
-        name: category.name,
-        planned: totals.planned,
-        committed: totals.committed,
-      };
-    })
-    .filter((category) => category.planned > 0 && category.committed > category.planned)
-    .map((category) => ({
-      ...category,
-      overBy: category.committed - category.planned,
-    }));
-
   const overdue = scheduled.filter(
     (payment) => payment.due_date != null && payment.due_date < today,
   );
@@ -621,7 +648,6 @@ export async function getAlerts(ownerId: string, todayOverride?: string) {
     upcomingTotal: upcoming.reduce((sum, payment) => sum + payment.amount, 0),
     overBudgetCategories,
     nearBudgetCategories,
-    overPlanCategories,
   };
 }
 

@@ -329,9 +329,7 @@ function MembersPanel() {
         {preset === 'custom' && role !== 'admin' && (
           <div className="space-y-3">
             <div>
-              <p style={{ fontSize: 12, color: 'var(--ink-mid)', marginBottom: 4 }}>
-                Sections this person can access
-              </p>
+              <label className="label">Sections this person can access</label>
               <SectionPicker
                 value={sections}
                 onChange={setSections}
@@ -339,9 +337,7 @@ function MembersPanel() {
               />
             </div>
             <div>
-              <p style={{ fontSize: 12, color: 'var(--ink-mid)', marginBottom: 4 }}>
-                Extra permissions
-              </p>
+              <label className="label">Extra permissions</label>
               <PermissionPicker
                 value={permissions}
                 onChange={setPermissions}
@@ -395,7 +391,7 @@ function MembersPanel() {
                     )}
                     <select
                       className="input"
-                      style={{ width: 110 }}
+                      style={{ width: 120 }}
                       value={m.role}
                       onChange={(e) => updateMember.mutate({ id: m.id, role: e.target.value })}
                     >
@@ -443,9 +439,9 @@ function MembersPanel() {
                       disabledSections={disabledSections}
                     />
                   )}
-                  <p style={{ fontSize: 12, color: 'var(--ink-mid)', margin: '10px 0 4px' }}>
+                  <label className="label" style={{ marginTop: 10 }}>
                     Extra permissions
-                  </p>
+                  </label>
                   <PermissionPicker
                     value={m.permissions}
                     onChange={(next) => updateMember.mutate({ id: m.id, permissions: next })}
@@ -481,15 +477,11 @@ function MembersPanel() {
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        background: 'var(--bg-panel)',
-        border: '1px solid var(--line-soft)',
-        borderRadius: 12,
-        padding: 24,
-      }}
-    >
-      <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--ink-high)', marginBottom: 16 }}>
+    <div className="card">
+      <h2
+        className="display"
+        style={{ fontSize: 22, color: 'var(--ink-high)', margin: '0 0 16px', lineHeight: 1.2 }}
+      >
         {title}
       </h2>
       {children}
@@ -748,10 +740,10 @@ export default function Settings() {
               style={{ marginTop: 3 }}
             />
             <span>
-              <span style={{ display: 'block', fontSize: 14, color: 'var(--ink-high)' }}>
+              <span style={{ display: 'block', fontSize: 13, color: 'var(--ink-high)' }}>
                 Daily email digest
               </span>
-              <span style={{ display: 'block', fontSize: 12, color: 'var(--ink-dim)' }}>
+              <span style={{ display: 'block', fontSize: 12, color: 'var(--ink-low)' }}>
                 One morning email with anything overdue, due, or coming up.
               </span>
             </span>
@@ -813,7 +805,8 @@ export default function Settings() {
               {!showDeleteWedding ? (
                 <button
                   onClick={() => setShowDeleteWedding(true)}
-                  className="btn-outline text-red-600"
+                  className="btn-outline"
+                  style={{ color: 'var(--err)' }}
                 >
                   Delete this wedding
                 </button>
@@ -821,8 +814,8 @@ export default function Settings() {
                 <div className="space-y-3">
                   <p style={{ color: 'var(--err)', fontSize: 13 }}>
                     This permanently deletes <b>{activeWedding?.title ?? 'this wedding'}</b> — its
-                    guests, budget, website, and members. Your account and any other weddings you own
-                    are untouched. This cannot be undone.
+                    guests, budget, website, and members. Your account and any other weddings you
+                    own are untouched. This cannot be undone.
                   </p>
                   <div className="flex gap-3">
                     <button onClick={() => setShowDeleteWedding(false)} className="btn-outline">
@@ -847,16 +840,17 @@ export default function Settings() {
             {!showDeleteConfirm ? (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="btn-outline text-red-600"
+                className="btn-outline"
+                style={{ color: 'var(--err)' }}
               >
                 Delete account
               </button>
             ) : (
               <div className="space-y-3">
                 <p style={{ color: 'var(--err)', fontSize: 13 }}>
-                  This permanently deletes your account and every wedding you own (collaborators lose
-                  access to them). Weddings you only collaborate on are not deleted — you just leave
-                  them. This cannot be undone.
+                  This permanently deletes your account and every wedding you own (collaborators
+                  lose access to them). Weddings you only collaborate on are not deleted — you just
+                  leave them. This cannot be undone.
                 </p>
                 <div className="flex gap-3">
                   <button onClick={() => setShowDeleteConfirm(false)} className="btn-outline">

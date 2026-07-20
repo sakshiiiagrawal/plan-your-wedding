@@ -28,7 +28,6 @@ interface ExpenseItemForm {
   id: string;
   description: string;
   amount: string;
-  planned_amount: string;
   category_id: string | null;
   side: 'bride' | 'groom' | 'shared';
   bride_share_percentage: number;
@@ -48,7 +47,6 @@ const createItem = (prev?: ExpenseItemForm): ExpenseItemForm => ({
   id: Math.random().toString(36).slice(2),
   description: '',
   amount: '',
-  planned_amount: '',
   category_id: null,
   side: prev?.side ?? 'shared',
   bride_share_percentage: prev?.bride_share_percentage ?? 50,
@@ -76,23 +74,10 @@ export default function AddExpenseModal({
   const [formData, setFormData] = useState<FormData>(initialFormRef.current);
   const [showCustomCategoryModal, setShowCustomCategoryModal] = useState(false);
   const [customCategoryParentId, setCustomCategoryParentId] = useState<string | null>(null);
-  // Items whose "planned estimate" field was revealed. Kept out of formData so
-  // just opening the field doesn't mark the form dirty.
-  const [plannedOpen, setPlannedOpen] = useState<Set<string>>(new Set());
   const singleItem = formData.items.length === 1;
 
   const totalCommitted = useMemo(
     () => formData.items.reduce((sum, item) => sum + Number(item.amount || 0), 0),
-    [formData.items],
-  );
-  // Blank planned falls back to the item's amount (mirrors the server default).
-  const totalPlanned = useMemo(
-    () =>
-      formData.items.reduce(
-        (sum, item) =>
-          sum + (item.planned_amount === '' ? Number(item.amount || 0) : Number(item.planned_amount)),
-        0,
-      ),
     [formData.items],
   );
   const paymentExceedsTotal = installmentsExceedTotal(formData.installments, totalCommitted);
@@ -126,29 +111,11 @@ export default function AddExpenseModal({
     }));
   };
 
-  // Amount = the allocated amount. The separate planned estimate stays hidden
-  // until asked for — most entries don't track one.
+  // Amount is what this line item allocates — the single figure the whole app
+  // rolls up as "Allocated".
   const renderAmountField = (item: ExpenseItemForm) => (
     <div>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <label className="label">Amount *</label>
-        {!(plannedOpen.has(item.id) || item.planned_amount !== '') && (
-          <button
-            type="button"
-            onClick={() => setPlannedOpen((prev) => new Set(prev).add(item.id))}
-            style={{
-              fontSize: 11,
-              color: 'var(--ink-dim)',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-            }}
-          >
-            + planned estimate
-          </button>
-        )}
-      </div>
+      <label className="label">Amount *</label>
       <input
         type="number"
         min="0"
@@ -175,8 +142,6 @@ export default function AddExpenseModal({
         // the expense title is the description.
         description: item.description || formData.description,
         amount: Number(item.amount || 0),
-        // Blank means "no separate estimate" — the server defaults it to amount.
-        ...(item.planned_amount !== '' ? { planned_amount: Number(item.planned_amount) } : {}),
         display_order: index + 1,
         ...(canSeeSplits
           ? {
@@ -213,7 +178,6 @@ export default function AddExpenseModal({
             </span>
           ) : (
             <span>
-              {totalPlanned !== totalCommitted && <>Planned {formatCurrency(totalPlanned)} · </>}
               Total{' '}
               <strong style={{ color: 'var(--gold-deep)' }}>{formatCurrency(totalCommitted)}</strong>
             </span>
@@ -362,26 +326,6 @@ export default function AddExpenseModal({
                   <div className="grid sm:grid-cols-2 gap-3">{renderAmountField(item)}</div>
                 )}
 
-                {(plannedOpen.has(item.id) || item.planned_amount !== '') && (
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="label">Planned (estimate)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.planned_amount}
-                        onChange={(event) =>
-                          updateItem(item.id, { planned_amount: event.target.value })
-                        }
-                        className="input no-spinner"
-                        placeholder="Defaults to amount"
-                        autoFocus={plannedOpen.has(item.id) && item.planned_amount === ''}
-                      />
-                    </div>
-                  </div>
-                )}
-
                 {canSeeSplits && (
                   <div>
                     <label className="label">Liability Side</label>
@@ -413,9 +357,6 @@ export default function AddExpenseModal({
                 border: '1px solid var(--line-soft)',
               }}
             >
-              <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
-                {totalPlanned !== totalCommitted ? `Planned ${formatCurrency(totalPlanned)}` : ''}
-              </span>
               <span style={{ fontSize: 13, color: 'var(--ink-low)' }}>
                 Total{' '}
                 <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--gold-deep)' }}>

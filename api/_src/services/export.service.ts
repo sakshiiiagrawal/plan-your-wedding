@@ -59,7 +59,6 @@ export async function exportBudget(ownerId: string): Promise<Buffer> {
           ),
         ).join(', ') || 'Uncategorized',
       side: sides.size === 1 ? [...sides][0] : 'mixed',
-      planned: expense.summary.planned_amount,
       allocated: expense.summary.committed_amount,
       paid: expense.summary.paid_amount,
       outstanding: expense.summary.outstanding_amount,
@@ -77,7 +76,6 @@ export async function exportVendors(ownerId: string): Promise<Buffer> {
       ({
         ...vendor,
         category: (expense_categories as { name?: string } | null)?.name ?? '',
-        planned: finance_summary?.planned_amount ?? 0,
         allocated: finance_summary?.committed_amount ?? 0,
         paid: finance_summary?.paid_amount ?? 0,
         outstanding: finance_summary?.outstanding_amount ?? 0,
