@@ -41,6 +41,8 @@ future.setDate(future.getDate() + 142);
 
 const data: SiteData = {
   slug: 'qa-preview',
+  homePath: '/qa-preview',
+  pagePath: (pageSlug: string) => (pageSlug ? `/qa-preview/${pageSlug}` : '/qa-preview'),
   brideName: 'Aisha',
   groomName: 'Rohan',
   weddingDate: future,

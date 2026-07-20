@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { goToWedding } from '../utils/tenant';
 import { AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -48,7 +49,8 @@ export default function Onboard({ createOnly = false }: { createOnly?: boolean }
   useEffect(() => {
     if (createOnly || loading || !isAuthenticated || successSlug || submitting) return;
     if (step !== 1 || accountCreated) return;
-    navigate(slug ? `/${slug}/dashboard` : '/hub', { replace: true });
+    if (slug) goToWedding(slug, '/dashboard', navigate, { replace: true });
+    else navigate('/hub', { replace: true });
   }, [
     createOnly,
     loading,

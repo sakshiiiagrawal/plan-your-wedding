@@ -1,13 +1,13 @@
-import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../api/axios';
+import { useWeddingSlug } from '../hooks/useWeddingSlug';
 
 interface SlugGuardProps {
   children: React.ReactNode;
 }
 
 export default function SlugGuard({ children }: SlugGuardProps) {
-  const { slug } = useParams<{ slug: string }>();
+  const slug = useWeddingSlug();
   const { data } = useQuery<{ exists: boolean }>({
     queryKey: ['wedding', slug],
     queryFn: () => api.get(`/weddings/${slug}`).then((r) => r.data),

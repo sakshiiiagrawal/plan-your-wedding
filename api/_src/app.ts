@@ -39,12 +39,17 @@ const allowedOrigins: string[] = [
     .map((host) => `https://${host}`),
 ];
 
+// Every wedding is its own origin now (ayush-sakshi.shaadi.diy), so the
+// allow-list can't be enumerated — match the wildcard domain by shape.
+const TENANT_ORIGIN = /^https:\/\/[a-z0-9-]+\.shaadi\.diy$/;
+
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
       if (env.NODE_ENV === 'development') return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (TENANT_ORIGIN.test(origin)) return callback(null, true);
       return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
@@ -72,7 +77,10 @@ app.get('/health', (_req, res) => {
 
 // Public wedding pages rewritten here by Vercel get the SPA shell with
 // per-wedding OpenGraph tags injected (WhatsApp/social link previews).
-// Falls through to the normal chain for anything that isn't a wedding page.
+// On a wedding subdomain the home page is '/'; on the apex and on preview
+// deployments the slug is still the first path segment. Falls through to the
+// normal chain for anything that isn't a wedding page.
+app.get('/', serveWithOgTags);
 app.get('/:slug', serveWithOgTags);
 app.get('/:slug/:pageSlug', serveWithOgTags);
 

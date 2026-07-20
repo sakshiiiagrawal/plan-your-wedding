@@ -600,7 +600,7 @@ export default function Botanical({ data }: TemplateProps) {
         {anyEnabled && (
         <nav className="absolute top-0 left-0 right-0 z-20">
           <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-center gap-7">
-            <a href={`/${data.slug}`} className="font-script text-xl" style={{ color: p.onHero }}>
+            <a href={data.homePath} className="font-script text-xl" style={{ color: p.onHero }}>
               {data.brideName[0]} &amp; {data.groomName[0]}
             </a>
             {enabled
@@ -623,7 +623,7 @@ export default function Botanical({ data }: TemplateProps) {
               ))}
             {invitePage && (
               <Link
-                to={`/${data.slug}/${invitePage.pageSlug}`}
+                to={data.pagePath(invitePage.pageSlug)}
                 className="hidden sm:block text-sm hover:opacity-60"
                 style={{ color: p.onHero }}
               >
@@ -632,7 +632,7 @@ export default function Botanical({ data }: TemplateProps) {
             )}
             {data.authed && (
               <Link
-                to={`/${data.slug}/dashboard`}
+                to={data.pagePath('dashboard')}
                 className="text-sm hover:opacity-60"
                 style={{ color: p.onHero }}
               >

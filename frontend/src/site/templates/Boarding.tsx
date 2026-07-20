@@ -264,10 +264,10 @@ export default function Boarding({ data }: TemplateProps) {
           <p className="font-mono uppercase" style={{ fontSize: 10, letterSpacing: '0.25em', color: p.inkSoft }}><E k="final.note" /></p>
           <div className="mt-10 flex flex-col items-center gap-3">
             {websitePage && (
-              <Link to={`/${data.slug}`} className="text-xs uppercase hover:opacity-60 underline underline-offset-4" style={{ color: p.accent, letterSpacing: '0.2em' }}><E k="final.website" /></Link>
+              <Link to={data.homePath} className="text-xs uppercase hover:opacity-60 underline underline-offset-4" style={{ color: p.accent, letterSpacing: '0.2em' }}><E k="final.website" /></Link>
             )}
             {data.authed && (
-              <Link to={`/${data.slug}/dashboard`} className="text-xs uppercase hover:opacity-60" style={{ color: p.inkSoft, letterSpacing: '0.2em' }}>Dashboard</Link>
+              <Link to={data.pagePath('dashboard')} className="text-xs uppercase hover:opacity-60" style={{ color: p.inkSoft, letterSpacing: '0.2em' }}>Dashboard</Link>
             )}
           </div>
         </motion.div>

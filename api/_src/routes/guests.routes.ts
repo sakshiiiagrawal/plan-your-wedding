@@ -16,7 +16,6 @@ import * as exportController from '../controllers/export.controller';
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-router.get('/', guestsController.getAll);
 router.get('/page-data', guestsController.getPageData);
 router.get('/summary', guestsController.getSummary);
 router.get('/groups', guestsController.getGroups);

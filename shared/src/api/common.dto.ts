@@ -17,17 +17,15 @@ export interface ApiResponse<T> {
 }
 
 /**
- * Paginated list envelope for collection endpoints.
+ * Paginated list result shape used by every list endpoint that supports
+ * page/per_page — matches what vendors.service.ts already returns.
  */
-export interface PaginatedResponse<T> {
-  success: true;
-  data: T[];
-  pagination: {
-    page: number;
-    pageSize: number;
-    total: number;
-    totalPages: number;
-  };
+export interface Paginated<T> {
+  items: T[];
+  page: number;
+  per_page: number;
+  total_items: number;
+  total_pages: number;
 }
 
 /**

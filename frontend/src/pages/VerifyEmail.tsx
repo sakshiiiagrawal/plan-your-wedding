@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { weddingHref } from '../utils/tenant';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useResendVerification, useVerifyEmail } from '../hooks/useApi';
@@ -33,7 +34,11 @@ export default function VerifyEmail() {
 
   // Where "continue" leads depends on the session: dashboard for couples,
   // invites for collaborator accounts, login for logged-out visitors.
-  const nextHref = isAuthenticated ? (slug ? `/${slug}/dashboard` : '/hub') : '/login';
+  const nextHref = isAuthenticated
+    ? slug
+      ? weddingHref(slug, '/dashboard')
+      : '/hub'
+    : '/login';
   const nextLabel = isAuthenticated
     ? slug
       ? 'Go to dashboard'

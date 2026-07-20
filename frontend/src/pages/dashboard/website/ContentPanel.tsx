@@ -9,6 +9,7 @@ import { QR_DESIGNS } from '../../../site/qrDesigns';
 import type { Palette, PartId, SectionSetting, TemplateDefinition } from '../../../site/types';
 import PanelSection from './PanelSection';
 import { MovableSectionRow, SectionRow } from './SectionRow';
+import { weddingPath } from '../../../utils/tenant';
 
 /** The merged Content tab: one ordered accordion of everything on the page —
  *  real sections (toggle/reorder/edit) plus Soundtrack and QR pseudo-rows.
@@ -173,7 +174,7 @@ export default function ContentPanel({
         return (
           <p style={proseStyle}>
             Event details come from their own page —{' '}
-            <Link to={`/${slug}/dashboard/events`} style={dashLink}>
+            <Link to={weddingPath(slug ?? '', '/dashboard/events')} style={dashLink}>
               manage events
             </Link>
             . Only events marked public appear here.
@@ -183,7 +184,7 @@ export default function ContentPanel({
         return (
           <p style={proseStyle}>
             Photos come from{' '}
-            <Link to={`/${slug}/dashboard/gallery`} style={dashLink}>
+            <Link to={weddingPath(slug ?? '', '/dashboard/gallery')} style={dashLink}>
               Gallery
             </Link>
             , and order matters: templates fill their photo slots (hero backdrop, countdown

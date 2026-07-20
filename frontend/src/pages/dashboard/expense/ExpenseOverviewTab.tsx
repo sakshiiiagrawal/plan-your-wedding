@@ -1,634 +1,707 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import toast from 'react-hot-toast';
+import { useExpensePayments, useSideSummary, useUpdateTotalBudget } from '../../../hooks/useApi';
+import { parseLocalDate } from '../../../utils/date';
+import { financeTier } from '@wedding-planner/shared';
+import { useAuth } from '../../../contexts/AuthContext';
 
 // Theme-cohesive categorical palette (rosewood → bronze → pine → plum → terracotta
 // → berry → indigo). CVD-validated: worst adjacent pair ΔE 19.8, all ≥3:1 on panel.
 const COLORS = ['#97404e', '#b08d3e', '#2e7d43', '#8a4489', '#bf5b2d', '#c2185b', '#5a55a8'];
 
+// Same rosewood/bronze identity the old Sides tab used — CVD-validated pair
+// drawn from the app's own palette tokens.
+const SIDE_THEME = {
+  bride: { label: 'Bride', deep: 'var(--bride-deep)', fill: 'var(--bride)' },
+  groom: { label: 'Groom', deep: 'var(--groom-deep)', fill: 'var(--groom)' },
+} as const;
+
+interface OverviewSummary {
+  totalBudget: number;
+  planned: number;
+  committed: number;
+  paid: number;
+  outstanding: number;
+  remainingBudget: number;
+}
+
 interface ExpenseOverviewTabProps {
   expenseOverview: any[] | undefined;
   formatCurrency: (amount: number) => string;
+  summary: OverviewSummary;
+  alerts: any;
+  onNavigate: (tab: string) => void;
+  /** Jump to the scheduled-payments table on the Payments view. */
+  onReviewPayments: () => void;
+  /** Jump to the outstanding-balances table on the Payments view. */
+  onReviewOutstanding: () => void;
+}
+
+function MiniStat({
+  label,
+  value,
+  color,
+  onClick,
+  title,
+}: {
+  label: string;
+  value: string;
+  color: string;
+  onClick?: (() => void) | undefined;
+  title?: string | undefined;
+}) {
+  const body = (
+    <>
+      <div className="uppercase-eyebrow" style={{ fontSize: 9.5, marginBottom: 2 }}>
+        {label}
+      </div>
+      <div className="mono" style={{ fontSize: 15, fontWeight: 700, color }}>
+        {value}
+      </div>
+    </>
+  );
+  return onClick ? (
+    <button
+      onClick={onClick}
+      title={title}
+      style={{ background: 'transparent', cursor: 'pointer', textAlign: 'left', padding: 0 }}
+    >
+      {body}
+    </button>
+  ) : (
+    <div>{body}</div>
+  );
+}
+
+function dueBadge(dueDate: string, formatDate: (d: Date) => string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = parseLocalDate(dueDate);
+  const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0)
+    return { text: `Overdue · ${formatDate(due)}`, color: 'var(--err)' };
+  if (diffDays === 0) return { text: 'Due today', color: 'var(--warn)' };
+  if (diffDays <= 7) return { text: `Due in ${diffDays}d`, color: 'var(--warn)' };
+  return { text: formatDate(due), color: 'var(--ink-dim)' };
 }
 
 export default function ExpenseOverviewTab({
   expenseOverview,
   formatCurrency,
+  summary,
+  alerts,
+  onNavigate,
+  onReviewPayments,
+  onReviewOutstanding,
 }: ExpenseOverviewTabProps) {
-  const [sortBy, setSortBy] = useState<'committed' | 'planned' | 'allocated' | 'name'>('committed');
+  const { totalBudget, planned, committed, paid, outstanding, remainingBudget } = summary;
+  const updateTotalBudget = useUpdateTotalBudget();
+  const [editingBudget, setEditingBudget] = useState(false);
+  const [budgetDraft, setBudgetDraft] = useState('');
+  const { data: paymentsResponse } = useExpensePayments();
+  // No page/per_page passed above, so this is always the plain-array branch.
+  const payments = Array.isArray(paymentsResponse) ? paymentsResponse : [];
+  const { user } = useAuth();
+  const canSeeSplits = financeTier(user) === 'full';
+  const { data: sideSummary } = useSideSummary(canSeeSplits);
 
-  // Naming: `allocated` = category budget (allocated_amount), `committed` =
-  // amount allocated to expenses. In the UI these read "Budget" / "Allocated".
-  const categoryData =
-    expenseOverview?.map((category) => ({
-      name: category.name,
-      allocated: parseFloat(category.allocated_amount || 0),
-      planned: parseFloat(category.planned || 0),
-      committed: parseFloat(category.committed || category.spent || 0),
-      paid: parseFloat(category.paid || 0),
-      outstanding: parseFloat(category.outstanding || 0),
-    })) || [];
+  const handleBudgetSave = async () => {
+    const value = parseFloat(budgetDraft);
+    if (isNaN(value) || value < 0) {
+      toast.error('Enter a valid amount');
+      return;
+    }
+    try {
+      await updateTotalBudget.mutateAsync(value);
+      toast.success('Wedding budget updated.');
+      setEditingBudget(false);
+    } catch {
+      toast.error('Failed to update budget.');
+    }
+  };
 
-  // Pie stays committed-based; the tracker table also surfaces budget/planned-
-  // only categories so the card totals reconcile (B3).
-  const categoriesWithSpend = categoryData.filter((c) => c.committed > 0);
-  const categoriesForTable = categoryData.filter(
-    (c) => c.committed > 0 || c.allocated > 0 || c.planned > 0,
-  );
-  const sorted = [...categoriesForTable].sort((a, b) => {
-    if (sortBy === 'name') return a.name.localeCompare(b.name);
-    return b[sortBy] - a[sortBy];
-  });
-  const totalCommitted = categoryData.reduce((s, c) => s + c.committed, 0);
-  const totalPlanned = categoryData.reduce((s, c) => s + c.planned, 0);
-  const totalAllocated = categoryData.reduce((s, c) => s + c.allocated, 0);
-  const visibleTotalAllocated = categoriesForTable.reduce(
-    (sum, category) => sum + category.allocated,
-    0,
-  );
-  const visibleTotalPlanned = categoriesForTable.reduce(
-    (sum, category) => sum + category.planned,
-    0,
-  );
-  const visibleTotalCommitted = categoriesForTable.reduce(
-    (sum, category) => sum + category.committed,
-    0,
-  );
-  const visibleHasBudgets = visibleTotalAllocated > 0;
-  const maxCommitted = Math.max(...categoriesForTable.map((c) => c.committed), 1);
+  const nextPayments = payments
+    .filter((payment) => payment.status === 'scheduled' && payment.direction === 'outflow')
+    .sort(
+      (a, b) =>
+        parseLocalDate(a.due_date ?? a.created_at).getTime() -
+        parseLocalDate(b.due_date ?? b.created_at).getTime(),
+    )
+    .slice(0, 4);
 
-  const pieData = categoriesWithSpend.map((category, index) => ({
-    name: category.name,
-    value: category.committed,
-    color: COLORS[index % COLORS.length],
+  const alertRows: { key: string; text: string; color: string; bg: string; onClick: () => void }[] =
+    [];
+  if (alerts?.overdueCount > 0)
+    alertRows.push({
+      key: 'overdue',
+      text: `${alerts.overdueCount} overdue payment${alerts.overdueCount !== 1 ? 's' : ''} · ${formatCurrency(alerts.overdueTotal)}`,
+      color: 'var(--err)',
+      bg: 'rgba(220,38,38,0.06)',
+      onClick: onReviewPayments,
+    });
+  if (alerts?.upcomingCount > 0)
+    alertRows.push({
+      key: 'upcoming',
+      text: `${alerts.upcomingCount} payment${alerts.upcomingCount !== 1 ? 's' : ''} due in 7 days · ${formatCurrency(alerts.upcomingTotal)}`,
+      color: 'var(--warn)',
+      bg: 'rgba(217,119,6,0.07)',
+      onClick: onReviewPayments,
+    });
+  for (const category of alerts?.overBudgetCategories ?? [])
+    alertRows.push({
+      key: `ob-${category.id}`,
+      text: `${category.name} over budget by ${formatCurrency(category.overBy)}`,
+      color: 'var(--err)',
+      bg: 'rgba(220,38,38,0.06)',
+      onClick: () => onNavigate('budget'),
+    });
+  for (const category of alerts?.overPlanCategories ?? [])
+    alertRows.push({
+      key: `op-${category.id}`,
+      text: `${category.name} allocations exceed plan by ${formatCurrency(category.overBy)}`,
+      color: 'var(--warn)',
+      bg: 'rgba(217,119,6,0.07)',
+      onClick: () => onNavigate('budget'),
+    });
+
+  const cats = (expenseOverview ?? []).map((c) => ({
+    id: c.id as string,
+    name: c.name as string,
+    parent: (c.parent_category_id ?? null) as string | null,
+    budget: parseFloat(c.allocated_amount || 0),
+    committed: parseFloat(c.committed || c.spent || 0),
   }));
 
+  // Parent-level rollups: a category counts as unbudgeted only when money is
+  // allocated to it (or its children) and no budget exists anywhere in the group.
+  const parentGroups = cats
+    .filter((c) => !c.parent)
+    .map((parent) => {
+      const kids = cats.filter((c) => c.parent === parent.id);
+      return {
+        name: parent.name,
+        budget: parent.budget + kids.reduce((s, k) => s + k.budget, 0),
+        committed: parent.committed + kids.reduce((s, k) => s + k.committed, 0),
+      };
+    });
+  const unbudgeted = parentGroups.filter((g) => g.committed > 0 && g.budget === 0);
+  if (unbudgeted.length > 0)
+    alertRows.push({
+      key: 'unbudgeted',
+      text:
+        unbudgeted.length === 1
+          ? `No budget set for ${unbudgeted[0]?.name} — ${formatCurrency(unbudgeted[0]?.committed ?? 0)} already allocated`
+          : `No budget set for ${unbudgeted.length} spending categories`,
+      color: 'var(--info)',
+      bg: 'var(--info-soft)',
+      onClick: () => onNavigate('budget'),
+    });
+
+  const pieData = cats
+    .filter((c) => c.committed > 0)
+    .sort((a, b) => b.committed - a.committed)
+    .map((category, index) => ({
+      name: category.name,
+      value: category.committed,
+      color: COLORS[index % COLORS.length],
+    }));
+
+  const denom = Math.max(totalBudget, committed, 1);
+  const formatDate = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+  const showSplit = canSeeSplits && !!sideSummary;
+  const brideTotal = sideSummary?.bride.total ?? 0;
+  const groomTotal = sideSummary?.groom.total ?? 0;
+  const splitGrandTotal = brideTotal + groomTotal;
+  const bridePct = splitGrandTotal > 0 ? (brideTotal / splitGrandTotal) * 100 : 50;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* ── Top row: Pie + totals ── */}
-      <div
-        className="grid grid-cols-1 md:grid-cols-2 gap-4"
-        style={{ position: 'relative', zIndex: 0 }}
-      >
-        {/* Pie */}
-        <div className="card" style={{ overflow: 'visible', position: 'relative', zIndex: 2 }}>
-          <h3 className="section-title" style={{ marginBottom: 16 }}>
-            Allocated by Category
-          </h3>
-          <div style={{ display: 'flex', gap: 16 }}>
-            {pieData.length === 0 ? (
-              <p
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* ── Budget hero ── */}
+      <div className="card" style={{ padding: '16px 20px' }}>
+        <div className="flex flex-wrap items-start justify-between gap-x-10 gap-y-4">
+          <div style={{ minWidth: 200 }}>
+            <div className="uppercase-eyebrow" style={{ marginBottom: 4 }}>
+              Wedding budget
+            </div>
+            {editingBudget ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="number"
+                  min="0"
+                  step="10000"
+                  value={budgetDraft}
+                  onChange={(e) => setBudgetDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void handleBudgetSave();
+                    if (e.key === 'Escape') setEditingBudget(false);
+                  }}
+                  autoFocus
+                  placeholder="Total budget"
+                  className="input no-spinner"
+                  style={{ width: 160, fontSize: 16 }}
+                />
+                <button
+                  onClick={() => void handleBudgetSave()}
+                  disabled={updateTotalBudget.isPending}
+                  className="btn-primary"
+                  style={{ padding: '6px 12px' }}
+                  aria-label="Save budget"
+                >
+                  ✓
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setBudgetDraft(totalBudget > 0 ? String(totalBudget) : '');
+                  setEditingBudget(true);
+                }}
+                className="display"
                 style={{
-                  fontSize: 13,
-                  color: 'var(--ink-dim)',
-                  padding: '24px 0',
-                  textAlign: 'center',
-                  width: '100%',
+                  fontSize: 26,
+                  lineHeight: 1.15,
+                  color: 'var(--gold-deep)',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  padding: 0,
+                  textAlign: 'left',
+                }}
+                title="Edit wedding budget"
+              >
+                {totalBudget > 0 ? formatCurrency(totalBudget) : 'Set budget →'}
+              </button>
+            )}
+            {/* Without a budget, "remaining" is just −allocated — noise, not signal. */}
+            {totalBudget > 0 && (
+              <div
+                style={{
+                  fontSize: 12,
+                  marginTop: 2,
+                  color: remainingBudget < 0 ? 'var(--err)' : 'var(--ink-low)',
                 }}
               >
-                No allocated expenses yet.
-              </p>
-            ) : (
-              <>
-                <div
-                  style={{
-                    width: 160,
-                    height: 200,
-                    flexShrink: 0,
-                    overflow: 'visible',
-                    position: 'relative',
-                    zIndex: 2,
-                  }}
-                >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={44}
-                        outerRadius={72}
-                        dataKey="value"
-                        startAngle={90}
-                        endAngle={-270}
-                      >
-                        {pieData.map((entry, index) => (
-                          <Cell key={index} fill={entry.color ?? ''} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value: any) => formatCurrency(value)}
-                        allowEscapeViewBox={{ x: true, y: true }}
-                        wrapperStyle={{ zIndex: 20, pointerEvents: 'none' }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    maxHeight: 200,
-                    overflowY: 'auto',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 6,
-                  }}
-                >
-                  {pieData.map((entry, i) => (
-                    <div
-                      key={i}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}
-                    >
-                      <span
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          background: entry.color,
-                          flexShrink: 0,
-                        }}
-                      />
-                      <span
-                        style={{
-                          flex: 1,
-                          fontSize: 12,
-                          color: 'var(--ink-mid)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {entry.name}
-                      </span>
-                      <span
-                        className="mono"
-                        style={{
-                          fontSize: 12,
-                          color: 'var(--gold-deep)',
-                          fontWeight: 600,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {formatCurrency(entry.value)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </>
+                {remainingBudget < 0
+                  ? `over budget by ${formatCurrency(Math.abs(remainingBudget))}`
+                  : `${formatCurrency(remainingBudget)} remaining`}
+              </div>
             )}
+          </div>
+
+          <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
+            <MiniStat
+              label="Planned"
+              value={formatCurrency(planned)}
+              color="var(--ink-mid)"
+            />
+            <MiniStat
+              label="Allocated"
+              value={formatCurrency(committed)}
+              color="var(--gold-deep)"
+            />
+            <MiniStat label="Paid" value={formatCurrency(paid)} color="var(--ok)" />
+            <MiniStat
+              label="Outstanding"
+              value={formatCurrency(outstanding)}
+              color={outstanding > 0 ? 'var(--warn)' : 'var(--ink-dim)'}
+              onClick={outstanding > 0 ? onReviewOutstanding : undefined}
+              title={outstanding > 0 ? 'See outstanding balances' : undefined}
+            />
           </div>
         </div>
 
-        {/* Totals */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <h3 className="section-title">Budget Summary</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[
-              { label: 'Category budgets', value: totalAllocated, color: 'var(--ink-mid)' },
-              { label: 'Total Planned', value: totalPlanned, color: 'var(--ink-mid)' },
-              { label: 'Total Allocated', value: totalCommitted, color: 'var(--gold-deep)' },
-              {
-                label: 'Total Paid',
-                value: categoryData.reduce((s, c) => s + c.paid, 0),
-                color: 'var(--ok)',
-              },
-              {
-                label: 'Total Outstanding',
-                value: categoryData.reduce((s, c) => s + c.outstanding, 0),
-                color: 'var(--warn)',
-              },
-            ].map(({ label, value, color }) => (
+        {(totalBudget > 0 || committed > 0) && (
+          <div style={{ marginTop: 16 }}>
+            <div
+              style={{
+                height: 8,
+                borderRadius: 4,
+                background: 'var(--bg-raised)',
+                overflow: 'hidden',
+                display: 'flex',
+              }}
+            >
+              <div style={{ width: `${(paid / denom) * 100}%`, background: 'var(--ok)' }} />
               <div
-                key={label}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '8px 12px',
-                  background: 'var(--bg-raised)',
-                  borderRadius: 8,
+                  width: `${(Math.max(0, committed - paid) / denom) * 100}%`,
+                  background: 'var(--warn)',
                 }}
-              >
-                <span style={{ fontSize: 12, color: 'var(--ink-low)' }}>{label}</span>
-                <span className="mono" style={{ fontSize: 14, fontWeight: 700, color }}>
-                  {formatCurrency(value)}
-                </span>
-              </div>
-            ))}
+              />
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 8,
+                marginTop: 5,
+                fontSize: 11,
+                color: 'var(--ink-dim)',
+              }}
+            >
+              <span>
+                <span style={{ color: 'var(--ok)' }}>●</span> Paid ·{' '}
+                <span style={{ color: 'var(--warn)' }}>●</span> Outstanding
+              </span>
+              {totalBudget > 0 && (
+                <span>{((committed / totalBudget) * 100).toFixed(0)}% of budget allocated</span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div
+        className={`grid grid-cols-1 gap-4 items-start ${showSplit ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}
+      >
+        {/* ── Needs attention ── */}
+        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 12,
+            }}
+          >
+            <h3 className="section-title">Needs Attention</h3>
+            <button
+              onClick={() => onNavigate('payments')}
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--gold-deep)',
+                background: 'transparent',
+                cursor: 'pointer',
+              }}
+            >
+              All payments →
+            </button>
           </div>
 
-          {/* Overall progress bar */}
-          {totalAllocated > 0 && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 11, color: 'var(--ink-dim)' }}>Category budgets used</span>
-                <span
+          {alertRows.length === 0 && nextPayments.length === 0 ? (
+            <div
+              style={{
+                padding: '10px 12px',
+                borderRadius: 8,
+                background: 'var(--bg-raised)',
+                fontSize: 12.5,
+                color: 'var(--ink-low)',
+              }}
+            >
+              <span style={{ color: 'var(--ok)' }}>✓</span> All clear — budgets set, nothing due,
+              every category on track.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {alertRows.map((alert) => (
+                <button
+                  key={alert.key}
+                  onClick={alert.onClick}
                   style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: totalCommitted > totalAllocated ? 'var(--err)' : 'var(--ink-mid)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    background: alert.bg,
+                    fontSize: 12.5,
+                    fontWeight: 500,
+                    color: alert.color,
+                    cursor: 'pointer',
+                    textAlign: 'left',
                   }}
                 >
-                  {((totalCommitted / totalAllocated) * 100).toFixed(0)}%
-                </span>
+                  <span>⚠ {alert.text}</span>
+                  <span>→</span>
+                </button>
+              ))}
+
+              {nextPayments.length > 0 && (
+                <>
+                  <div className="uppercase-eyebrow" style={{ fontSize: 9.5, margin: '10px 0 2px' }}>
+                    Next payments
+                  </div>
+                  {nextPayments.map((payment) => {
+                    const badge = dueBadge(payment.due_date ?? payment.created_at, formatDate);
+                    return (
+                      <button
+                        key={payment.id}
+                        onClick={onReviewPayments}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '7px 12px',
+                          borderRadius: 8,
+                          background: 'var(--bg-raised)',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <span
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            fontSize: 13,
+                            color: 'var(--ink-high)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {payment.expense.description}
+                        </span>
+                        <span style={{ fontSize: 11, color: badge.color, flexShrink: 0 }}>
+                          {badge.text}
+                        </span>
+                        <span
+                          className="mono"
+                          style={{
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            color: 'var(--ink-mid)',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {formatCurrency(payment.amount)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Allocation pie ── */}
+        <div className="card" style={{ overflow: 'visible' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 12,
+            }}
+          >
+            <h3 className="section-title">Allocated by Category</h3>
+            <button
+              onClick={() => onNavigate('budget')}
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--gold-deep)',
+                background: 'transparent',
+                cursor: 'pointer',
+              }}
+            >
+              Manage budgets →
+            </button>
+          </div>
+          {pieData.length === 0 ? (
+            <p
+              style={{
+                fontSize: 13,
+                color: 'var(--ink-dim)',
+                padding: '24px 0',
+                textAlign: 'center',
+              }}
+            >
+              No allocated expenses yet.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', gap: 16 }}>
+              <div
+                style={{
+                  width: 150,
+                  height: 170,
+                  flexShrink: 0,
+                  overflow: 'visible',
+                  position: 'relative',
+                  zIndex: 2,
+                }}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={66}
+                      dataKey="value"
+                      startAngle={90}
+                      endAngle={-270}
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color ?? ''} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: any) => formatCurrency(value)}
+                      allowEscapeViewBox={{ x: true, y: true }}
+                      wrapperStyle={{ zIndex: 20, pointerEvents: 'none' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
               <div
                 style={{
-                  height: 8,
-                  background: 'var(--bg-raised)',
-                  borderRadius: 4,
-                  overflow: 'hidden',
+                  flex: 1,
+                  minWidth: 0,
+                  maxHeight: 170,
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
                 }}
               >
-                <div
-                  style={{
-                    height: '100%',
-                    borderRadius: 4,
-                    width: `${Math.min(100, (totalCommitted / totalAllocated) * 100)}%`,
-                    background:
-                      totalCommitted > totalAllocated
-                        ? 'var(--err)'
-                        : totalCommitted / totalAllocated >= 0.8
-                          ? 'var(--warn)'
-                          : 'var(--gold)',
-                    transition: 'width 600ms',
-                  }}
-                />
+                {pieData.map((entry, i) => (
+                  <div
+                    key={i}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}
+                  >
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: entry.color,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span
+                      style={{
+                        flex: 1,
+                        fontSize: 12,
+                        color: 'var(--ink-mid)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {entry.name}
+                    </span>
+                    <span
+                      className="mono"
+                      style={{
+                        fontSize: 12,
+                        color: 'var(--gold-deep)',
+                        fontWeight: 600,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {formatCurrency(entry.value)}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
         </div>
-      </div>
 
-      {/* ── Category budget tracker ── */}
-      <div
-        className="card"
-        style={{ padding: 0, overflow: 'hidden', position: 'relative', zIndex: 1 }}
-      >
-        {/* Header */}
-        <div
-          className="flex-wrap"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-            padding: '14px 20px',
-            borderBottom: '1px solid var(--line-soft)',
-          }}
-        >
-          <h3 className="section-title">Budget vs Planned vs Allocated</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 11, color: 'var(--ink-dim)' }}>Sort:</span>
-            {(
-              [
-                ['committed', 'Allocated'],
-                ['planned', 'Planned'],
-                ['allocated', 'Budget'],
-                ['name', 'Name'],
-              ] as const
-            ).map(([val, lbl]) => (
-              <button
-                key={val}
-                onClick={() => setSortBy(val)}
-                style={{
-                  fontSize: 11,
-                  padding: '3px 8px',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  background: sortBy === val ? 'var(--gold-glow)' : 'transparent',
-                  color: sortBy === val ? 'var(--gold-deep)' : 'var(--ink-dim)',
-                  border:
-                    sortBy === val ? '1px solid rgba(176,141,62,0.3)' : '1px solid transparent',
-                  fontWeight: sortBy === val ? 600 : 400,
-                }}
-              >
-                {lbl}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Grid-as-table keeps its column widths; narrow screens pan sideways */}
-        <div className="overflow-x-auto">
-          {/* Column headers */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: visibleHasBudgets
-                ? '1fr 95px 95px 95px 95px 95px 60px 140px'
-                : '1fr 100px 100px 100px 100px 180px',
-              gap: 8,
-              padding: '8px 20px',
-              background: 'var(--bg-raised)',
-              borderBottom: '1px solid var(--line-soft)',
-              minWidth: visibleHasBudgets ? 860 : 700,
-            }}
-          >
-            {(visibleHasBudgets
-              ? [
-                  'Category',
-                  'Budget',
-                  'Planned',
-                  'Allocated',
-                  'Paid',
-                  'Outstanding',
-                  'Used',
-                  'Spend bar',
-                ]
-              : ['Category', 'Planned', 'Allocated', 'Paid', 'Outstanding', 'Spend bar']
-            ).map((h) => (
-              <span
-                key={h}
-                className="uppercase-eyebrow"
-                style={{ fontSize: 9, textAlign: h !== 'Category' ? 'right' : 'left' }}
-              >
-                {h}
-              </span>
-            ))}
-          </div>
-
-          {/* Rows */}
-          {sorted.length === 0 ? (
+        {/* ── Bride/groom split ── */}
+        {showSplit && (
+          <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
             <div
               style={{
-                padding: '32px 20px',
-                textAlign: 'center',
-                fontSize: 13,
-                color: 'var(--ink-dim)',
-                fontStyle: 'italic',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 12,
               }}
             >
-              No categories with allocated expenses yet.
+              <h3 className="section-title">Bride &amp; Groom Split</h3>
+              <button
+                onClick={() => onNavigate('expenses')}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: 'var(--gold-deep)',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                }}
+              >
+                Filter by side →
+              </button>
             </div>
-          ) : (
-            <div>
-              {sorted.map((cat, i) => {
-                const catHasBudget = cat.allocated > 0;
-                const pct = catHasBudget ? (cat.committed / cat.allocated) * 100 : null;
-                const isOver = pct != null && pct > 100;
-                const isNear = pct != null && pct >= 80 && !isOver;
-                const barColor = isOver ? 'var(--err)' : isNear ? 'var(--warn)' : 'var(--gold)';
-                const pctColor = isOver ? 'var(--err)' : isNear ? 'var(--warn)' : 'var(--ok)';
-                // when budgets set: bar = % of allocated; otherwise: bar = % of max committed
-                const barFill =
-                  pct != null ? Math.min(100, pct) : (cat.committed / maxCommitted) * 100;
 
+            <div
+              style={{
+                height: 8,
+                borderRadius: 4,
+                background: 'var(--bg-raised)',
+                overflow: 'hidden',
+                display: 'flex',
+              }}
+            >
+              <div style={{ width: `${bridePct}%`, background: 'var(--bride)' }} />
+              <div style={{ width: `${100 - bridePct}%`, background: 'var(--groom)' }} />
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginTop: 5,
+                fontSize: 11,
+                color: 'var(--ink-dim)',
+              }}
+            >
+              <span>
+                <span style={{ color: 'var(--bride)' }}>●</span> Bride {bridePct.toFixed(0)}%
+              </span>
+              <span>
+                Groom {(100 - bridePct).toFixed(0)}% <span style={{ color: 'var(--groom)' }}>●</span>
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: 20, marginTop: 16 }}>
+              {(['bride', 'groom'] as const).map((side) => {
+                const theme = SIDE_THEME[side];
+                const figures = sideSummary[side];
                 return (
-                  <div
-                    key={cat.name}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: visibleHasBudgets
-                        ? '1fr 95px 95px 95px 95px 95px 60px 140px'
-                        : '1fr 100px 100px 100px 100px 180px',
-                      gap: 8,
-                      padding: '11px 20px',
-                      minWidth: visibleHasBudgets ? 860 : 700,
-                      borderBottom: i < sorted.length - 1 ? '1px solid var(--line-soft)' : 'none',
-                      alignItems: 'center',
-                      background: isOver ? 'rgba(220,38,38,0.02)' : 'transparent',
-                      transition: 'background 120ms',
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = isOver
-                        ? 'rgba(220,38,38,0.05)'
-                        : 'var(--bg-raised)';
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = isOver
-                        ? 'rgba(220,38,38,0.02)'
-                        : 'transparent';
-                    }}
-                  >
-                    {/* Name */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                      <span
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          flexShrink: 0,
-                          background: COLORS[i % COLORS.length],
-                        }}
-                      />
-                      <span
-                        style={{
-                          fontSize: 13,
-                          color: 'var(--ink-high)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {cat.name}
-                      </span>
-                      {isOver && (
-                        <span
-                          style={{
-                            fontSize: 9,
-                            padding: '1px 6px',
-                            borderRadius: 100,
-                            background: 'rgba(220,38,38,0.1)',
-                            color: 'var(--err)',
-                            fontWeight: 700,
-                            flexShrink: 0,
-                          }}
-                        >
-                          OVER
-                        </span>
-                      )}
-                      {cat.committed === 0 && (
-                        <span
-                          style={{
-                            fontSize: 9,
-                            padding: '1px 6px',
-                            borderRadius: 100,
-                            background: 'var(--bg-raised)',
-                            color: 'var(--ink-dim)',
-                            fontWeight: 600,
-                            flexShrink: 0,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          planned only
-                        </span>
-                      )}
+                  <div key={side} style={{ flex: 1, minWidth: 0 }}>
+                    <div className="uppercase-eyebrow" style={{ fontSize: 9.5, marginBottom: 2 }}>
+                      {theme.label}
                     </div>
-
-                    {/* Budget — only when budgets exist */}
-                    {visibleHasBudgets && (
-                      <span
-                        className="mono"
-                        style={{
-                          fontSize: 12,
-                          color: catHasBudget ? 'var(--ink-mid)' : 'var(--ink-dim)',
-                          textAlign: 'right',
-                        }}
-                      >
-                        {catHasBudget ? formatCurrency(cat.allocated) : '—'}
-                      </span>
-                    )}
-
-                    {/* Planned */}
-                    <span
-                      className="mono"
-                      style={{
-                        fontSize: 12,
-                        color: cat.planned > 0 ? 'var(--ink-mid)' : 'var(--ink-dim)',
-                        textAlign: 'right',
-                      }}
-                    >
-                      {cat.planned > 0 ? formatCurrency(cat.planned) : '—'}
-                    </span>
-
-                    {/* Allocated */}
-                    <span
-                      className="mono"
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: cat.committed > 0 ? 'var(--gold-deep)' : 'var(--ink-dim)',
-                        textAlign: 'right',
-                      }}
-                    >
-                      {cat.committed > 0 ? formatCurrency(cat.committed) : '—'}
-                    </span>
-
-                    {/* Paid */}
-                    <span
-                      className="mono"
-                      style={{
-                        fontSize: 12,
-                        color: cat.paid > 0 ? 'var(--ok)' : 'var(--ink-dim)',
-                        textAlign: 'right',
-                      }}
-                    >
-                      {cat.paid > 0 ? formatCurrency(cat.paid) : '—'}
-                    </span>
-
-                    {/* Outstanding */}
-                    <span
-                      className="mono"
-                      style={{
-                        fontSize: 12,
-                        color: cat.outstanding > 0 ? 'var(--warn)' : 'var(--ink-dim)',
-                        textAlign: 'right',
-                      }}
-                    >
-                      {cat.outstanding > 0 ? formatCurrency(cat.outstanding) : '—'}
-                    </span>
-
-                    {/* % used — only when budgets exist */}
-                    {visibleHasBudgets && (
-                      <span
-                        className="mono"
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: pct != null ? pctColor : 'var(--ink-dim)',
-                          textAlign: 'right',
-                        }}
-                      >
-                        {pct != null ? `${pct.toFixed(0)}%` : '—'}
-                      </span>
-                    )}
-
-                    {/* Bar */}
-                    <div
-                      style={{
-                        height: 8,
-                        borderRadius: 4,
-                        background: 'var(--line-soft)',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <div
-                        style={{
-                          height: '100%',
-                          borderRadius: 4,
-                          width: `${barFill}%`,
-                          background: barColor,
-                          transition: 'width 600ms',
-                        }}
-                      />
+                    <div className="mono" style={{ fontSize: 15, fontWeight: 700, color: theme.deep }}>
+                      {formatCurrency(figures.total)}
+                    </div>
+                    <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
+                      <div>
+                        <div className="uppercase-eyebrow" style={{ fontSize: 9 }}>
+                          Paid
+                        </div>
+                        <div className="mono" style={{ fontSize: 12, fontWeight: 600, color: 'var(--ok)' }}>
+                          {formatCurrency(figures.paid)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="uppercase-eyebrow" style={{ fontSize: 9 }}>
+                          Owed
+                        </div>
+                        <div
+                          className="mono"
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: figures.outstanding > 0 ? 'var(--warn)' : 'var(--ink-dim)',
+                          }}
+                        >
+                          {formatCurrency(figures.outstanding)}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
-          )}
-
-          {/* Footer totals */}
-          {sorted.length > 0 && (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: visibleHasBudgets
-                  ? '1fr 100px 100px 100px 70px 140px'
-                  : '1fr 110px 130px 180px',
-                gap: 8,
-                padding: '10px 20px',
-                background: 'var(--bg-raised)',
-                borderTop: '1px solid var(--line)',
-                minWidth: visibleHasBudgets ? 680 : 560,
-              }}
-            >
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-mid)' }}>Total</span>
-              {visibleHasBudgets && (
-                <span
-                  className="mono"
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: 'var(--ink-mid)',
-                    textAlign: 'right',
-                  }}
-                >
-                  {formatCurrency(visibleTotalAllocated)}
-                </span>
-              )}
-              <span
-                className="mono"
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: 'var(--ink-mid)',
-                  textAlign: 'right',
-                }}
-              >
-                {formatCurrency(visibleTotalPlanned)}
-              </span>
-              <span
-                className="mono"
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: 'var(--gold-deep)',
-                  textAlign: 'right',
-                }}
-              >
-                {formatCurrency(visibleTotalCommitted)}
-              </span>
-              {visibleHasBudgets && (
-                <span
-                  className="mono"
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color:
-                      visibleTotalCommitted > visibleTotalAllocated ? 'var(--err)' : 'var(--ok)',
-                    textAlign: 'right',
-                  }}
-                >
-                  {`${((visibleTotalCommitted / visibleTotalAllocated) * 100).toFixed(0)}%`}
-                </span>
-              )}
-              <span />
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

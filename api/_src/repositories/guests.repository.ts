@@ -40,6 +40,9 @@ export interface GuestFilters {
   side?: string | undefined;
   needs_accommodation?: string | undefined;
   search?: string | undefined;
+  // Vendor team members are stored as guest_type='vendor_team' rows mixed
+  // into the same table; excluded by default, included when explicitly asked.
+  include_vendor_team?: boolean | undefined;
 }
 
 export async function findAllByOwner(
@@ -59,8 +62,15 @@ export async function findAllByOwner(
     query = query.eq('needs_accommodation', true);
   }
 
+  if (!filters.include_vendor_team) {
+    query = query.neq('guest_type', 'vendor_team');
+  }
+
   if (filters.search) {
-    query = query.or(`first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%`);
+    const term = filters.search.replace(/[%,]/g, '');
+    query = query.or(
+      `first_name.ilike.%${term}%,last_name.ilike.%${term}%,phone.ilike.%${term}%,email.ilike.%${term}%,relationship.ilike.%${term}%`,
+    );
   }
 
   const { data, error } = await query.order('first_name', { ascending: true });

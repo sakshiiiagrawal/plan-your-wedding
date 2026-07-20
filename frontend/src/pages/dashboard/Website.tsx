@@ -1,6 +1,7 @@
 import { useEffect, useState, type ComponentProps } from 'react';
-import { useParams } from 'react-router-dom';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { useWeddingSlug } from '../../hooks/useWeddingSlug';
+import { publicSiteLabel, publicSiteUrl, weddingPath } from '../../utils/tenant';
 import { useViewPreference } from '../../hooks/useViewPreference';
 import {
   HiOutlineDeviceMobile,
@@ -56,7 +57,7 @@ const DEFAULT_MUSIC_END = 45;
 type Tab = 'design' | 'content';
 
 export default function Website() {
-  const { slug } = useParams<{ slug: string }>();
+  const slug = useWeddingSlug();
   // Below the desktop breakpoint the studio swaps to the photo-editor-style
   // mobile shell (full-bleed preview + bottom tool dock) instead of stacking
   // the desktop panels.
@@ -157,11 +158,8 @@ export default function Website() {
   const template = getTemplate(templateId, kind);
   const palette = getPalette(paletteId);
 
-  const pageUrl = (page: PublicPageRecord) =>
-    `${window.location.origin}/${slug}${page.page_slug ? `/${page.page_slug}` : ''}`;
-  const siteUrlLabel = `${window.location.host}/${slug}${
-    selectedPage?.page_slug ? `/${selectedPage.page_slug}` : ''
-  }`;
+  const pageUrl = (page: PublicPageRecord) => publicSiteUrl(slug ?? '', page.page_slug);
+  const siteUrlLabel = publicSiteLabel(slug ?? '', selectedPage?.page_slug ?? '');
 
   const markDirty = <T,>(setter: (v: T) => void) => (v: T) => {
     setter(v);
@@ -432,6 +430,8 @@ export default function Website() {
 
   const previewData: SiteData = {
     slug: slug ?? '',
+    homePath: weddingPath(slug ?? ''),
+    pagePath: (target: string) => weddingPath(slug ?? '', target ? `/${target}` : ''),
     brideName: brideName || 'Bride',
     groomName: groomName || 'Groom',
     weddingDate: weddingDate ? parseLocalDate(weddingDate) : null,
@@ -566,7 +566,7 @@ export default function Website() {
         <ConfirmDialog
           open
           title={`Delete "${pendingDelete.title}"?`}
-          message={`Guests will no longer be able to open /${slug}/${pendingDelete.page_slug}. This can't be undone.`}
+          message={`Guests will no longer be able to open ${publicSiteLabel(slug ?? '', pendingDelete.page_slug)}. This can't be undone.`}
           confirmLabel="Delete page"
           onConfirm={() => void handleDeletePage()}
           onCancel={() => setPendingDelete(null)}
@@ -591,7 +591,7 @@ export default function Website() {
         <ConfirmDialog
           open
           title={`Take "${pendingUnpublish.title}" offline?`}
-          message={`Guests opening ${window.location.host}/${slug}${pendingUnpublish.page_slug ? `/${pendingUnpublish.page_slug}` : ''} will see a "not published" page until you publish it again.`}
+          message={`Guests opening ${publicSiteLabel(slug ?? '', pendingUnpublish.page_slug)} will see a "not published" page until you publish it again.`}
           confirmLabel="Unpublish"
           onConfirm={() => {
             void togglePublished(pendingUnpublish);
@@ -658,7 +658,7 @@ export default function Website() {
                 key={page.id}
                 role="button"
                 tabIndex={0}
-                title={`${window.location.host}/${slug}${page.page_slug ? `/${page.page_slug}` : ''}`}
+                title={publicSiteLabel(slug ?? '', page.page_slug)}
                 aria-current={active ? 'true' : undefined}
                 onClick={() => {
                   if (!active) requestSwitch(page);

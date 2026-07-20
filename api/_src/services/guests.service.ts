@@ -1,10 +1,11 @@
 import { NotFoundError, BadRequestError } from '../shared/errors/HttpError';
-import type { GuestInsert, GuestGroupInsert } from '../../../shared/src';
+import type { GuestInsert, GuestGroupInsert, Paginated } from '../../../shared/src';
 import * as repo from '../repositories/guests.repository';
 import type { GuestFilters } from '../repositories/guests.repository';
 import * as eventsRepo from '../repositories/events.repository';
 import { listEvents } from './events.service';
 import { parseGuestExcel, validateGuest, generateGuestTemplate } from '../excel/guests.excel';
+import { resolvePagination, paginate } from '../shared/utils/pagination.utils';
 
 /**
  * Collapse per-event RSVPs into one guest-level status:
@@ -379,13 +380,49 @@ export async function importGuests(buffer: Buffer, ownerId: string) {
   } as const;
 }
 
-// One round-trip for the Guests page (was guests + summary + events). Guests
-// are returned unfiltered; the page filters by side client-side.
-export async function getPageData(ownerId: string) {
-  const [guests, summary, events] = await Promise.all([
-    listGuests(ownerId, {}),
+export interface GuestPageDataOptions {
+  side?: string | undefined;
+  search?: string | undefined;
+  include_vendor_team?: boolean | undefined;
+  // rsvp_status is computed (aggregated from guest_event_rsvp child rows in
+  // listGuests), so it's filtered here in-memory rather than in the repo's
+  // SQL WHERE — same hybrid pattern vendors.service.ts uses for its
+  // finance-derived payment-state filter.
+  rsvp_status?: string | undefined;
+  page?: number | undefined;
+  per_page?: number | undefined;
+}
+
+type GuestWithRsvp = Awaited<ReturnType<typeof listGuests>>[number];
+
+// One round-trip for the Guests page (was guests + summary + events).
+// `summary` stays whole-wedding (unfiltered) — it's a KPI strip, not scoped
+// to the list's current filters.
+export async function getPageData(
+  ownerId: string,
+  options: GuestPageDataOptions = {},
+): Promise<{
+  guests: GuestWithRsvp[] | Paginated<GuestWithRsvp>;
+  summary: Awaited<ReturnType<typeof getGuestSummary>>;
+  events: Awaited<ReturnType<typeof listEvents>>;
+}> {
+  const [allGuests, summary, events] = await Promise.all([
+    listGuests(ownerId, {
+      side: options.side,
+      search: options.search,
+      include_vendor_team: options.include_vendor_team,
+    }),
     getGuestSummary(ownerId),
     listEvents(ownerId),
   ]);
+
+  const filtered =
+    options.rsvp_status && options.rsvp_status !== 'all'
+      ? allGuests.filter((g) => g.rsvp_status === options.rsvp_status)
+      : allGuests;
+
+  const pageRequest = resolvePagination(options, 20);
+  const guests = pageRequest ? paginate(filtered, pageRequest.page, pageRequest.perPage) : filtered;
+
   return { guests, summary, events };
 }

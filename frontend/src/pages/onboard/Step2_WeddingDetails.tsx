@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { RESERVED_WEDDING_SLUGS } from '@wedding-planner/shared';
 import api from '../../api/axios';
 import DatePicker from '../../components/ui/DatePicker';
+import { publicSiteLabel } from '../../utils/tenant';
 
 const RESERVED = new Set<string>(RESERVED_WEDDING_SLUGS);
 
@@ -93,7 +94,9 @@ export default function Step2_WeddingDetails({
     onNext(values);
   };
 
-  const host = typeof window !== 'undefined' ? window.location.host : 'yourapp.com';
+  // Where this wedding will actually live — a subdomain on wildcard hosts,
+  // a path elsewhere. Shown as the couple types so the slug reads as a URL.
+  const siteLabel = slugValue ? publicSiteLabel(slugValue) : '';
 
   return (
     <motion.div
@@ -167,7 +170,7 @@ export default function Step2_WeddingDetails({
           />
           {slugValue && (
             <p className="text-xs text-gray-400 mt-1">
-              {host}/<span className="font-medium text-maroon-700">{slugValue}</span>
+              <span className="font-medium text-maroon-700">{siteLabel}</span>
             </p>
           )}
           {errors.slug && <p className="text-red-500 text-xs mt-1">{errors.slug.message}</p>}

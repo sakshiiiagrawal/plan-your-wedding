@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { goToWedding } from '../utils/tenant';
 import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion';
 import { FaWhatsapp } from 'react-icons/fa';
 import {
@@ -472,7 +473,8 @@ export default function Marketing() {
   useEffect(() => {
     if (loading || !isAuthenticated) return;
     // Accounts with no wedding yet — their home is the workspace hub
-    navigate(slug ? `/${slug}/dashboard` : '/hub', { replace: true });
+    if (slug) goToWedding(slug, '/dashboard', navigate, { replace: true });
+    else navigate('/hub', { replace: true });
   }, [loading, isAuthenticated, slug, navigate]);
 
   // A returning (token-bearing) user is about to be redirected the instant

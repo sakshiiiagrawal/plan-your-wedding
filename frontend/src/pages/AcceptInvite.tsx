@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { goToWedding, weddingHref } from '../utils/tenant';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -61,14 +62,17 @@ export default function AcceptInvite() {
   }, [preview, emailUnlocked]);
 
   const goToDashboard = (slug: string | null | undefined) => {
-    navigate(slug ? `/${slug}/dashboard` : '/hub', { replace: true });
+    if (slug) goToWedding(slug, '/dashboard', navigate, { replace: true });
+    else navigate('/hub', { replace: true });
   };
 
   const openJoinedWedding = (wedding: AcceptedInviteWedding) => {
-    // useSetActiveWedding reloads on success; point the URL at the new
-    // wedding's dashboard first so the reload lands there.
-    if (wedding.slug) window.history.replaceState(null, '', `/${wedding.slug}/dashboard`);
-    setActiveWedding.mutate(wedding.id);
+    // The switch reloads on success; hand it the new wedding's dashboard URL
+    // so it lands there instead of back on this invite page.
+    setActiveWedding.mutate({
+      weddingId: wedding.id,
+      href: wedding.slug ? weddingHref(wedding.slug, '/dashboard') : undefined,
+    });
   };
 
   // Already signed in: accept straight away

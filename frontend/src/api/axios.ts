@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { clearSession, readToken } from '../utils/session';
+import { weddingHref } from '../utils/tenant';
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -10,7 +12,7 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = readToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -37,13 +39,11 @@ api.interceptors.response.use(
       const isOnboard = path === '/onboard';
       if (!isLoginPage && !isOnboard) {
         const slug = localStorage.getItem('slug');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('slug');
+        clearSession();
         // Read by the login page after the redirect to explain why it landed there
         sessionStorage.setItem('sessionExpired', '1');
-        // Redirect to slug-scoped login if we have a slug, otherwise home
-        window.location.href = slug ? `/${slug}/login` : '/';
+        // Back to this wedding's own login when we know which one it is
+        window.location.href = slug ? weddingHref(slug, '/login') : '/';
       }
     }
     return Promise.reject(error);

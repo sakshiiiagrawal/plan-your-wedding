@@ -5,6 +5,11 @@ import * as service from '../services/tasks.service';
 type IdParam = { id: string };
 
 const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
+const num = (v: unknown) => {
+  if (typeof v !== 'string') return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+};
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -14,6 +19,9 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
         priority: str(req.query['priority']),
         event_id: str(req.query['event_id']),
         assigned_to: str(req.query['assigned_to']),
+        search: str(req.query['search']),
+        page: num(req.query['page']),
+        per_page: num(req.query['per_page']),
       }),
     );
   } catch (e) {

@@ -12,6 +12,11 @@ export default defineConfig({
     },
   },
   server: {
+    // Wedding subdomains in dev, no /etc/hosts needed: *.localtest.me resolves
+    // publicly to 127.0.0.1 and is a real registrable domain, so it can carry
+    // the cross-subdomain session cookie (see utils/tenant.ts). Plain
+    // localhost stays path-scoped — that's the preview-deployment fallback.
+    allowedHosts: ['.localtest.me'],
     proxy: {
       '/api': 'http://localhost:3001',
     },

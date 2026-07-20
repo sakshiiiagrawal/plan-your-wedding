@@ -4,6 +4,7 @@ import type {
   VendorRow,
   VendorWithFinance,
   FinanceTier,
+  Paginated,
 } from '../../../shared/src';
 import * as repo from '../repositories/vendors.repository';
 import { getCategoryTree } from './expense.service';
@@ -20,6 +21,7 @@ import {
 } from './finance.service';
 import { withPgTransaction } from '../config/postgres';
 import { syncVendorTeamMembers } from './vendor-team.service';
+import { resolvePagination, paginate } from '../shared/utils/pagination.utils';
 
 type VendorPaymentState = 'quoted' | 'deposit' | 'confirmed';
 type VendorLogisticsFilter = 'food' | 'accommodation' | 'team';
@@ -33,13 +35,7 @@ export interface VendorListOptions {
   per_page?: number;
 }
 
-export interface PaginatedVendorsResult {
-  items: Array<VendorWithFinance & Record<string, unknown>>;
-  page: number;
-  per_page: number;
-  total_items: number;
-  total_pages: number;
-}
+export type PaginatedVendorsResult = Paginated<VendorWithFinance & Record<string, unknown>>;
 
 function normalizeDate(value: string | null | undefined): string {
   return value && value.trim() !== '' ? value : new Date().toISOString().slice(0, 10);
@@ -139,18 +135,6 @@ function getVendorEventNames(vendor: VendorWithFinance): string[] {
   return (assignments ?? []).map((assignment) => assignment.events?.name ?? '').filter(Boolean);
 }
 
-function toValidPage(value: number | undefined): number | undefined {
-  if (!Number.isFinite(value) || !value) return undefined;
-  const page = Math.trunc(value);
-  return page > 0 ? page : undefined;
-}
-
-function toValidPerPage(value: number | undefined): number | undefined {
-  if (!Number.isFinite(value) || !value) return undefined;
-  const perPage = Math.trunc(value);
-  return Math.max(1, Math.min(perPage, 100));
-}
-
 async function loadVendorsWithFinance(
   ownerId: string,
 ): Promise<Array<VendorWithFinance & Record<string, unknown>>> {
@@ -217,24 +201,9 @@ export async function listVendors(
     });
   }
 
-  const requestedPage = toValidPage(options.page);
-  const requestedPerPage = toValidPerPage(options.per_page);
-  const shouldPaginate = requestedPage !== undefined || requestedPerPage !== undefined;
-  if (!shouldPaginate) return results;
-
-  const perPage = requestedPerPage ?? 12;
-  const totalItems = results.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / perPage));
-  const page = Math.min(requestedPage ?? 1, totalPages);
-  const start = (page - 1) * perPage;
-
-  return {
-    items: results.slice(start, start + perPage),
-    page,
-    per_page: perPage,
-    total_items: totalItems,
-    total_pages: totalPages,
-  };
+  const pageRequest = resolvePagination(options, 12);
+  if (!pageRequest) return results;
+  return paginate(results, pageRequest.page, pageRequest.perPage);
 }
 
 export async function getCategories(ownerId: string) {

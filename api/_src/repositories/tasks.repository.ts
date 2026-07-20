@@ -1,25 +1,48 @@
 import { supabase } from '../config/database';
 import type { TaskInsert, TaskRow } from '../../../shared/src';
+import { toValidPage, toValidPerPage } from '../shared/utils/pagination.utils';
 
 export interface TaskFilters {
   status?: string | undefined;
   priority?: string | undefined;
   event_id?: string | undefined;
   assigned_to?: string | undefined;
+  search?: string | undefined;
 }
 
-export async function findAllByOwner(ownerId: string, filters: TaskFilters) {
-  let query = supabase.from('tasks').select('*, events(name)').eq('user_id', ownerId);
+export interface TaskListOptions extends TaskFilters {
+  page?: number | undefined;
+  per_page?: number | undefined;
+}
 
-  if (filters.status && filters.status !== 'all') query = query.eq('status', filters.status);
-  if (filters.priority && filters.priority !== 'all')
-    query = query.eq('priority', filters.priority);
-  if (filters.event_id) query = query.eq('event_id', filters.event_id);
-  if (filters.assigned_to) query = query.eq('assigned_to', filters.assigned_to);
+export async function findAllByOwner(ownerId: string, options: TaskListOptions) {
+  let query = supabase
+    .from('tasks')
+    .select('*, events(name)', { count: 'exact' })
+    .eq('user_id', ownerId);
 
-  const { data, error } = await query.order('due_date', { ascending: true });
+  if (options.status && options.status !== 'all') query = query.eq('status', options.status);
+  if (options.priority && options.priority !== 'all')
+    query = query.eq('priority', options.priority);
+  if (options.event_id) query = query.eq('event_id', options.event_id);
+  if (options.assigned_to) query = query.eq('assigned_to', options.assigned_to);
+  if (options.search?.trim()) query = query.ilike('title', `%${options.search.trim()}%`);
+
+  query = query.order('due_date', { ascending: true });
+
+  const requestedPage = toValidPage(options.page);
+  const requestedPerPage = toValidPerPage(options.per_page);
+  const shouldPaginate = requestedPage !== undefined || requestedPerPage !== undefined;
+  if (shouldPaginate) {
+    const perPage = requestedPerPage ?? 20;
+    const page = requestedPage ?? 1;
+    const from = (page - 1) * perPage;
+    query = query.range(from, from + perPage - 1);
+  }
+
+  const { data, error, count } = await query;
   if (error) throw error;
-  return data ?? [];
+  return { data: data ?? [], count: count ?? 0, paginated: shouldPaginate };
 }
 
 export async function findOverdue(ownerId: string, today: string) {

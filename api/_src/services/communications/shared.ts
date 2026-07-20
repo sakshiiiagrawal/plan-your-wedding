@@ -1,6 +1,6 @@
 import { supabase } from '../../config/database';
-import { env } from '../../config/env';
 import * as eventsRepo from '../../repositories/events.repository';
+import { publicSiteUrl } from '../../utils/urls';
 
 export type EventLite = Awaited<ReturnType<typeof eventsRepo.findAllByOwner>>[number] & {
   venues?: {
@@ -40,5 +40,5 @@ export async function getWedding(
 }
 
 export function siteUrl(slug: string): string {
-  return `${env.FRONTEND_URL ?? 'https://shaadi.diy'}/${slug}`;
+  return publicSiteUrl(slug);
 }

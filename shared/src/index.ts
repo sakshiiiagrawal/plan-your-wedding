@@ -158,4 +158,4 @@ export type {
   AuthUser,
 } from './api/auth.dto';
 
-export type { ApiResponse, PaginatedResponse, ErrorResponse } from './api/common.dto';
+export type { ApiResponse, Paginated, ErrorResponse } from './api/common.dto';

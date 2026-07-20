@@ -1,5 +1,7 @@
 import { Suspense, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import { useWeddingSlug } from '../../hooks/useWeddingSlug';
+import { publicSiteUrl, weddingPath } from '../../utils/tenant';
 import {
   useGalleryContent,
   useHeroContent,
@@ -24,7 +26,8 @@ import { parseLocalDate } from '../../utils/date';
  * (names/date/story/gallery/events) is shared across all pages.
  */
 export default function PublicPage() {
-  const { slug, pageSlug = '' } = useParams<{ slug: string; pageSlug?: string }>();
+  const slug = useWeddingSlug();
+  const { pageSlug = '' } = useParams<{ pageSlug?: string }>();
   const { isAuthenticated } = useAuth();
   const [searchParams] = useSearchParams();
 
@@ -73,7 +76,7 @@ export default function PublicPage() {
           <p className="text-gray-600 mb-6">This page isn&apos;t published</p>
           {fallback && (
             <a
-              href={`/${slug}${fallback.page_slug ? `/${fallback.page_slug}` : ''}`}
+              href={weddingPath(slug ?? '', fallback.page_slug ? `/${fallback.page_slug}` : '')}
               className="btn-primary px-6 py-3"
             >
               Open {fallback.title}
@@ -99,6 +102,8 @@ export default function PublicPage() {
 
   const data: SiteData = {
     slug: slug ?? '',
+    homePath: weddingPath(slug ?? ''),
+    pagePath: (target: string) => weddingPath(slug ?? '', target ? `/${target}` : ''),
     brideName: heroContent?.bride_name || 'Bride',
     groomName: heroContent?.groom_name || 'Groom',
     weddingDate: weddingDateStr ? parseLocalDate(weddingDateStr) : null,
@@ -122,7 +127,7 @@ export default function PublicPage() {
     qrCode: {
       enabled: !!page.config?.qr_enabled,
       style: page.config?.qr_style ?? DEFAULT_QR_DESIGN_ID,
-      url: `${window.location.origin}/${slug}${page.page_slug ? `/${page.page_slug}` : ''}`,
+      url: publicSiteUrl(slug ?? '', page.page_slug),
     },
     authed: isAuthenticated,
     print: wantsPrint,

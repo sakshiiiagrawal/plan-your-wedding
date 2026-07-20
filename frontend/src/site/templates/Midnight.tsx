@@ -433,7 +433,7 @@ export default function Midnight({ data }: TemplateProps) {
         <nav className="absolute top-0 left-0 right-0 z-20">
           <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
             <a
-              href={`/${data.slug}`}
+              href={data.homePath}
               className="font-serif-display text-lg tracking-widest uppercase"
               style={{ color: p.onHero }}
             >
@@ -460,7 +460,7 @@ export default function Midnight({ data }: TemplateProps) {
                 ))}
               {invitePage && (
                 <Link
-                  to={`/${data.slug}/${invitePage.pageSlug}`}
+                  to={data.pagePath(invitePage.pageSlug)}
                   className="hidden sm:block text-xs uppercase hover:opacity-60"
                   style={{ color: p.onHero, letterSpacing: '0.16em' }}
                 >
@@ -469,7 +469,7 @@ export default function Midnight({ data }: TemplateProps) {
               )}
               {data.authed && (
                 <Link
-                  to={`/${data.slug}/dashboard`}
+                  to={data.pagePath('dashboard')}
                   className="text-xs uppercase hover:opacity-60"
                   style={{ color: p.onHeroSoft, letterSpacing: '0.16em' }}
                 >

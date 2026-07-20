@@ -47,6 +47,7 @@ import { Checkbox } from '../../components/ui';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import { currencySymbol } from '../../utils/currency';
+import { matchesAllWords } from '../../utils/textMatch';
 
 const PRESET_ROOM_TYPES: { label: string; capacity: number; prefix: string }[] = [
   { label: 'Standard Room', capacity: 2, prefix: 'STD' },
@@ -179,15 +180,6 @@ type EnrichedVenue = AllocationVenue & {
   roomsBooked: number;
 };
 
-function fuzzyMatch(query: string, text: string): boolean {
-  if (!query.trim()) return true;
-  const q = query.toLowerCase();
-  const t = text.toLowerCase();
-  return q
-    .split(/\s+/)
-    .filter(Boolean)
-    .every((word) => t.includes(word));
-}
 
 function formatStayDate(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -630,7 +622,7 @@ export default function Accommodations() {
   const filteredGuestSegments = useMemo(() => {
     if (!guestPanelSearch.trim()) return guestSegments;
     const filter = (g: AccommodationGuest) =>
-      fuzzyMatch(guestPanelSearch, `${g.first_name} ${g.last_name ?? ''}`);
+      matchesAllWords(guestPanelSearch, `${g.first_name} ${g.last_name ?? ''}`);
     return {
       unassigned: guestSegments.unassigned.filter(filter),
       assigned: guestSegments.assigned.filter(filter),
@@ -2070,7 +2062,7 @@ export default function Accommodations() {
             ...groups.notFlagged,
           ];
           const searchFilter = (g: AccommodationGuest) =>
-            fuzzyMatch(guestSearchQuery, `${g.first_name} ${g.last_name ?? ''}`);
+            matchesAllWords(guestSearchQuery, `${g.first_name} ${g.last_name ?? ''}`);
           const filteredCurrent = groups.current.filter(searchFilter);
           const filteredNeeds = groups.unassignedNeeds.filter(searchFilter);
           const filteredElsewhere = groups.assignedElsewhere.filter(searchFilter);

@@ -1,9 +1,9 @@
 import { supabase } from '../config/database';
 import { withPgClient } from '../config/postgres';
-import { env } from '../config/env';
 import * as tasksRepo from '../repositories/tasks.repository';
 import { sendEmail } from './email';
 import { digestEmail, escapeHtml } from './email/templates';
+import { publicSiteUrl } from '../utils/urls';
 
 // ---------------------------------------------------------------------------
 // Feed — the single source for the topbar bell and the daily email digest.
@@ -269,7 +269,7 @@ export async function sendDailyDigests(): Promise<DigestRunResult> {
           count,
           sectionsHtml,
           sectionsText,
-          dashboardLink: `${env.FRONTEND_URL ?? ''}/${w.slug ?? ''}/dashboard`,
+          dashboardLink: publicSiteUrl(w.slug ?? '', '/dashboard'),
         }),
       });
       sent += 1;

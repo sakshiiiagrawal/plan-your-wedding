@@ -1,10 +1,21 @@
 import { NotFoundError } from '../shared/errors/HttpError';
-import type { TaskInsert } from '../../../shared/src';
+import type { TaskInsert, TaskRow, Paginated } from '../../../shared/src';
 import * as repo from '../repositories/tasks.repository';
-import type { TaskFilters } from '../repositories/tasks.repository';
+import type { TaskListOptions } from '../repositories/tasks.repository';
+import { toValidPerPage, toEnvelope } from '../shared/utils/pagination.utils';
 
-export async function listTasks(ownerId: string, filters: TaskFilters) {
-  return repo.findAllByOwner(ownerId, filters);
+type TaskWithEvent = TaskRow & Record<string, unknown>;
+
+export async function listTasks(
+  ownerId: string,
+  options: TaskListOptions,
+): Promise<TaskWithEvent[] | Paginated<TaskWithEvent>> {
+  const { data, count, paginated } = await repo.findAllByOwner(ownerId, options);
+  if (!paginated) return data as TaskWithEvent[];
+
+  const perPage = toValidPerPage(options.per_page) ?? 20;
+  const page = Math.max(1, Math.trunc(options.page ?? 1));
+  return toEnvelope(data as TaskWithEvent[], page, perPage, count);
 }
 
 export async function getOverdueTasks(ownerId: string) {

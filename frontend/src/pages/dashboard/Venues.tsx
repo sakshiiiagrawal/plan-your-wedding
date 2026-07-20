@@ -24,7 +24,8 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import SortableItem from '../../components/SortableItem';
-import { SectionHeader, Checkbox } from '../../components/ui';
+import { Checkbox } from '../../components/ui';
+import { usePageHeader } from '../../contexts/PageHeaderContext';
 import SplitShare from '../../components/ui/SplitShare';
 import AddressAutocomplete, { buildMapsUrl } from '../../components/AddressAutocomplete';
 import {
@@ -578,6 +579,15 @@ export default function Venues() {
   const [installments, setInstallments] = useState<InstallmentFormRow[]>([]);
 
   const { data: pageData, isLoading, error } = useVenuesPageData();
+
+  usePageHeader({
+    title: 'Venues',
+    action: (
+      <button onClick={() => setShowVenueModal(true)} className="btn-primary" style={{ fontSize: 13 }}>
+        Add venue
+      </button>
+    ),
+  });
   const venues = pageData?.venues ?? [];
   const roomsByVenue = pageData?.roomsByVenue ?? {};
   const createMutation = useCreateVenue();
@@ -901,20 +911,6 @@ export default function Venues() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <SectionHeader
-        eyebrow="Locations"
-        title="Venues"
-        action={
-          <button
-            onClick={() => setShowVenueModal(true)}
-            className="btn-primary"
-            style={{ fontSize: 13 }}
-          >
-            Add venue
-          </button>
-        }
-      />
-
       {venues.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '48px 0' }}>
           <p style={{ color: 'var(--ink-low)', fontSize: 13 }}>

@@ -1,30 +1,27 @@
 import type { NextFunction, Request, Response } from 'express';
+import { RESERVED_WEDDING_SLUGS } from '../../../shared/src';
 import * as contentRepo from '../repositories/website-content.repository';
 import * as pagesRepo from '../repositories/pages.repository';
+import { isApexHost, publicSiteUrl, tenantSlugFromHost } from '../utils/urls';
 
 /**
  * WhatsApp / social link previews for the public pages.
  *
- * On Vercel, /{slug} and /{slug}/{pageSlug} rewrite to this Express app
- * (real files like /index.html and /assets/* are served from the filesystem
- * first, so only virtual page URLs land here). We fetch the built SPA shell
- * and inject per-wedding OpenGraph tags before </head> — bots get a rich
- * card, humans get the same HTML and the SPA boots normally.
+ * On Vercel, public page URLs rewrite to this Express app (real files like
+ * /index.html and /assets/* are served from the filesystem first, so only
+ * virtual page URLs land here). We fetch the built SPA shell and inject
+ * per-wedding OpenGraph tags before </head> — bots get a rich card, humans
+ * get the same HTML and the SPA boots normally.
+ *
+ * Which wedding a request is for depends on the host: `{slug}.shaadi.diy`
+ * names it directly, and the path is just the page. Preview deployments have
+ * no wildcard DNS, so there the slug still comes from the first path segment.
+ * On the apex, a legacy `/{slug}` URL redirects to the subdomain.
  */
 
 // First URL segments that are app routes, never wedding slugs
-const RESERVED_SEGMENTS = new Set([
-  'api',
-  'assets',
-  'login',
-  'onboard',
-  'invites',
-  'hub',
-  'weddings',
-  'forgot-password',
-  'reset-password',
-  'accept-invite',
-  'verify-email',
+const RESERVED_SEGMENTS = new Set<string>([
+  ...RESERVED_WEDDING_SLUGS,
   'index.html',
   'favicon.ico',
   'robots.txt',
@@ -61,20 +58,36 @@ function sendShell(res: Response, html: string): void {
 }
 
 export const serveWithOgTags = async (
-  req: Request<{ slug: string; pageSlug?: string }>,
+  req: Request<{ slug?: string; pageSlug?: string }>,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
-  const { slug, pageSlug } = req.params;
   // Only meaningful on the deployed host, where Vercel rewrites page URLs
   // here and the built shell exists; in dev, Vite serves these paths itself.
   if (!process.env.VERCEL && process.env.NODE_ENV !== 'production') return next();
+
+  const host = req.headers.host;
+  if (!host) return next();
+
+  const tenant = tenantSlugFromHost(host);
+  // On a wedding subdomain the whole path is page-relative, so what the route
+  // captured as ':slug' is really the page slug.
+  const slug = tenant ?? req.params.slug;
+  const pageSlug = tenant ? (req.params.slug ?? '') : (req.params.pageSlug ?? '');
   if (!slug) return next();
 
-  try {
-    const host = req.headers.host;
-    if (!host) return next();
+  // Old shared links and printed QR codes still point at /{slug}. Send them to
+  // the wedding's own host permanently — humans and scrapers both follow it.
+  if (!tenant && isApexHost(host) && !RESERVED_SEGMENTS.has(slug)) {
+    const rest = pageSlug ? `/${pageSlug}` : '';
+    const query = req.originalUrl.includes('?')
+      ? req.originalUrl.slice(req.originalUrl.indexOf('?'))
+      : '';
+    res.redirect(308, publicSiteUrl(slug, `${rest}${query}`));
+    return;
+  }
 
+  try {
     const shell = await getShell(host);
     if (!shell) return next();
 
@@ -85,16 +98,15 @@ export const serveWithOgTags = async (
     const ownerId = await contentRepo.findOwnerBySlug(slug);
     if (!ownerId) return sendShell(res, shell);
 
-     
     const hero = ((await contentRepo.findSectionContent('hero', ownerId)) ??
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       {}) as Record<string, any>;
-     
+
     const gallery = ((await contentRepo.findSectionContent('gallery', ownerId)) ??
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       {}) as Record<string, any>;
     const pages = await pagesRepo.findPublishedByOwner(ownerId);
-    const page = pages.find((p) => p.page_slug === (pageSlug ?? ''));
+    const page = pages.find((p) => p.page_slug === pageSlug);
     // /:slug/dashboard, /:slug/login, an unknown page, or a page that isn't
     // published: plain shell, SPA routes/renders it (no OG leak).
     if (!page) return sendShell(res, shell);
@@ -103,8 +115,7 @@ export const serveWithOgTags = async (
       hero.bride_name && hero.groom_name
         ? `${hero.bride_name} & ${hero.groom_name}`
         : 'A wedding celebration';
-    const title =
-      page?.kind === 'invite' ? `You're invited — ${couple}` : `${couple} — Wedding`;
+    const title = page?.kind === 'invite' ? `You're invited — ${couple}` : `${couple} — Wedding`;
     const dateText = hero.wedding_date
       ? new Date(`${hero.wedding_date}T00:00:00`).toLocaleDateString('en-IN', {
           day: 'numeric',
@@ -115,7 +126,7 @@ export const serveWithOgTags = async (
     const description =
       hero.tagline || (dateText ? `Join us on ${dateText}` : 'Save the date and RSVP online');
     const image: string | undefined = gallery.images?.[0]?.url;
-    const pageUrl = `https://${host}/${slug}${pageSlug ? `/${pageSlug}` : ''}`;
+    const pageUrl = publicSiteUrl(slug, pageSlug ? `/${pageSlug}` : '');
 
     // The static shell (index.html) ships fallback og/twitter/description/title
     // tags for the root site. Strip them so this page's specific tags aren't

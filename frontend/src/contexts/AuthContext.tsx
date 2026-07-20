@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api/axios';
+import { clearSession, persistSession, readToken } from '../utils/session';
 import { setActiveCurrency } from '../utils/currency';
 import { resetUser } from '../services/analytics/mixpanel.service';
 
@@ -64,7 +65,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const checkAuth = async (): Promise<AuthUser | null> => {
-    const token = localStorage.getItem('token');
+    const token = readToken();
     if (!token) {
       setLoading(false);
       return null;
@@ -86,9 +87,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       return response.data;
     } catch {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('slug');
+      clearSession();
       setSlug(null);
       return null;
     } finally {
@@ -104,7 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     token: string,
     fallback: { user: AuthUser; slug: string | null },
   ): Promise<{ user: AuthUser; slug: string | null }> => {
-    localStorage.setItem('token', token);
+    persistSession(token);
     try {
       const me = (await api.get<AuthUser>('/auth/me')).data;
       localStorage.setItem('user', JSON.stringify(me));
@@ -152,9 +151,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('slug');
+    // clearSession drops the parent-domain cookie too, so logging out here
+    // logs out every wedding subdomain, not just this origin.
+    clearSession();
     setUser(null);
     setSlug(null);
     setActiveCurrency(null);

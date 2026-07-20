@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useViewPreference } from '../../hooks/useViewPreference';
+import { useUrlFilters } from '../../hooks/useUrlFilters';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { Pagination } from '../../components/ui/Pagination';
 import {
   DndContext,
   DragOverlay,
@@ -147,6 +150,15 @@ const STATUS_CYCLE: Record<string, string> = {
   pending: 'in_progress',
   in_progress: 'completed',
   completed: 'pending',
+};
+
+// Module-level (stable reference) so useUrlFilters doesn't recompute on every render.
+const TASK_FILTER_DEFAULTS = {
+  status: 'all',
+  priority: 'all',
+  search: '',
+  page: 1,
+  per_page: 12,
 };
 
 function fmtDate(d: string) {
@@ -409,8 +421,22 @@ function DroppableColumn({
 
 export default function Tasks() {
   const [viewMode, setViewMode] = useViewPreference<'list' | 'kanban'>('tasks.viewMode', 'list');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [filters, setFilters] = useUrlFilters(TASK_FILTER_DEFAULTS);
+  const statusFilter = filters.status;
+  const priorityFilter = filters.priority;
+  const setStatusFilter = (next: string) => setFilters({ status: next });
+  const setPriorityFilter = (next: string) => setFilters({ priority: next });
+  const setPage = (next: number) => setFilters({ page: next });
+
+  // Local instant state for the search box; only pushed to the URL/query
+  // after a debounce so typing doesn't fire a network request per keystroke.
+  const [searchInput, setSearchInput] = useState(filters.search);
+  const debouncedSearch = useDebouncedValue(searchInput, 300);
+  useEffect(() => {
+    if (debouncedSearch !== filters.search) setFilters({ search: debouncedSearch });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState<TaskFormData>(DEFAULT_FORM);
   const [editingTask, setEditingTask] = useState<any>(null);
@@ -422,15 +448,26 @@ export default function Tasks() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
+  // Kanban needs every task (unpaginated, unfiltered) to fill its columns
+  // correctly — pagination/search/status/priority filters apply to list view only.
   const queryParams =
     viewMode === 'kanban'
       ? {}
       : {
           ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
           ...(priorityFilter !== 'all' ? { priority: priorityFilter } : {}),
+          ...(filters.search.trim() ? { search: filters.search.trim() } : {}),
+          page: filters.page,
+          per_page: filters.per_page,
         };
 
-  const { data: tasks = [], isLoading: tasksLoading } = useTasks(queryParams);
+  const {
+    data: tasksResponse,
+    isLoading: tasksLoading,
+    isFetching: tasksFetching,
+  } = useTasks(queryParams);
+  const tasksIsPaginated = !!tasksResponse && !Array.isArray(tasksResponse);
+  const tasks = tasksIsPaginated ? tasksResponse.items : (tasksResponse ?? []);
   const { data: stats } = useTaskStats();
   const { data: members = [] } = useMembers();
   const createMutation = useCreateTask();
@@ -684,6 +721,14 @@ export default function Tasks() {
       {viewMode === 'list' && (
         <>
           <div className="card" style={{ padding: 12, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="input"
+              placeholder="Search tasks"
+              style={{ maxWidth: 220 }}
+            />
             <SegmentedControl
               options={[
                 { value: 'all', label: 'All' },
@@ -850,12 +895,25 @@ export default function Tasks() {
                   color: 'var(--ink-dim)',
                 }}
               >
-                {statusFilter !== 'all' || priorityFilter !== 'all'
+                {statusFilter !== 'all' || priorityFilter !== 'all' || filters.search.trim()
                   ? 'No tasks match these filters.'
                   : 'No tasks yet — add your first task.'}
               </div>
             )}
           </div>
+
+          {tasksIsPaginated && tasksResponse.total_items > 0 && (
+            <Pagination
+              page={tasksResponse.page}
+              perPage={tasksResponse.per_page}
+              totalPages={tasksResponse.total_pages}
+              totalItems={tasksResponse.total_items}
+              itemCountOnPage={tasks.length}
+              itemLabel="tasks"
+              onPageChange={setPage}
+              isFetching={tasksFetching}
+            />
+          )}
         </>
       )}
 

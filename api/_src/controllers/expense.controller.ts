@@ -6,6 +6,11 @@ type IdParam = { id: string };
 type PaymentParam = { paymentId: string };
 type AttachmentParam = { attachmentId: string };
 const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
+const num = (v: unknown) => {
+  if (typeof v !== 'string') return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+};
 
 // ---------------------------------------------------------------------------
 // Summary / overview
@@ -159,24 +164,27 @@ export const updateCategory = async (
 // Expenses
 // ---------------------------------------------------------------------------
 
+const EXPENSE_SORT_KEYS = new Set(['date', 'outstanding', 'committed', 'description']);
+
 export const getExpenses = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const filters: service.ExpenseQueryFilters = {};
-    const categoryId = str(req.query['category_id']);
-    const side = str(req.query['side']);
-    const sourceType = str(req.query['source_type']);
-    const status = str(req.query['status']);
-
-    if (categoryId) filters.category_id = categoryId;
-    if (side) filters.side = side;
-    if (sourceType) filters.source_type = sourceType;
-    if (status) filters.status = status;
-
-    res.json(await service.listExpenses(getWeddingOwnerId(req), filters));
+    const sort = str(req.query['sort']);
+    res.json(
+      await service.getExpensesList(getWeddingOwnerId(req), {
+        category_id: str(req.query['category_id']),
+        side: str(req.query['side']),
+        source_type: str(req.query['source_type']),
+        status: str(req.query['status']),
+        search: str(req.query['search']),
+        sort: sort && EXPENSE_SORT_KEYS.has(sort) ? (sort as service.ExpenseListOptions['sort']) : undefined,
+        page: num(req.query['page']),
+        per_page: num(req.query['per_page']),
+      }),
+    );
   } catch (e) {
     next(e);
   }
@@ -401,7 +409,14 @@ export const getPayments = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.json(await service.getPayments(getWeddingOwnerId(req)));
+    res.json(
+      await service.getPayments(getWeddingOwnerId(req), {
+        status: str(req.query['status']),
+        side: str(req.query['side']),
+        page: num(req.query['page']),
+        per_page: num(req.query['per_page']),
+      }),
+    );
   } catch (e) {
     next(e);
   }
@@ -413,7 +428,12 @@ export const getOutstanding = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.json(await service.getOutstanding(getWeddingOwnerId(req)));
+    res.json(
+      await service.getOutstanding(getWeddingOwnerId(req), {
+        page: num(req.query['page']),
+        per_page: num(req.query['per_page']),
+      }),
+    );
   } catch (e) {
     next(e);
   }

@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useUrlFilters } from '../../hooks/useUrlFilters';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { Pagination } from '../../components/ui/Pagination';
+import { sideLabel } from '../../utils/sideLabels';
 import { useQueryClient } from '@tanstack/react-query';
 import { FaWhatsapp } from 'react-icons/fa';
 import ConversationsTab from '../../components/comms/ConversationsTab';
@@ -30,13 +34,8 @@ import {
   HiOutlinePhone,
   HiOutlineChevronRight,
 } from 'react-icons/hi';
-import {
-  SectionHeader,
-  SegmentedControl,
-  KPICard,
-  DrawerPanel,
-  Checkbox,
-} from '../../components/ui';
+import { SegmentedControl, KPICard, DrawerPanel, Checkbox } from '../../components/ui';
+import { usePageHeader } from '../../contexts/PageHeaderContext';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import { formatDate } from '../../utils/date';
@@ -60,6 +59,16 @@ interface GuestFormData {
 interface PendingRow extends GuestFormData {
   _key: string;
 }
+
+// Module-level (stable reference) so useUrlFilters doesn't recompute on every render.
+const GUEST_FILTER_DEFAULTS = {
+  search: '',
+  side: 'all',
+  rsvp: 'all',
+  vendor_teams: 'hide',
+  page: 1,
+  per_page: 20,
+};
 
 const DEFAULT_FORM: GuestFormData = {
   first_name: '',
@@ -383,10 +392,25 @@ export default function Guests() {
     setSearchParams(t === 'list' ? {} : { tab: t }, { replace: true });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [composerOpen, setComposerOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sideFilter, setSideFilter] = useState('all');
-  const [rsvpFilter, setRsvpFilter] = useState('all');
-  const [showVendorTeams, setShowVendorTeams] = useState(false);
+  const [filters, setFilters] = useUrlFilters(GUEST_FILTER_DEFAULTS);
+  const sideFilter = filters.side;
+  const rsvpFilter = filters.rsvp;
+  const showVendorTeams = filters.vendor_teams === 'show';
+  const setSideFilter = (next: string) => setFilters({ side: next });
+  const setRsvpFilter = (next: string) => setFilters({ rsvp: next });
+  const setShowVendorTeams = (next: boolean) => setFilters({ vendor_teams: next ? 'show' : 'hide' });
+  const setPage = (next: number) => setFilters({ page: next });
+
+  // Local instant state for the search box; only pushed to the URL/query
+  // after a debounce so typing doesn't fire a network request per keystroke.
+  const [searchInput, setSearchInput] = useState(filters.search);
+  const debouncedSearch = useDebouncedValue(searchInput, 300);
+  useEffect(() => {
+    if (debouncedSearch !== filters.search) setFilters({ search: debouncedSearch });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
+  const searchTerm = filters.search;
+
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState<GuestFormData>(DEFAULT_FORM);
   const [editingGuest, setEditingGuest] = useState<any>(null);
@@ -400,17 +424,31 @@ export default function Guests() {
   const [selectedGuest, setSelectedGuest] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: pageData, isLoading: guestsLoading } = useGuestsPageData();
+  const {
+    data: pageData,
+    isLoading: guestsLoading,
+    isFetching: guestsFetching,
+  } = useGuestsPageData(
+    // The Conversations tab needs every guest, independent of the List
+    // view's filters/pagination — only apply those params on the list tab.
+    tab === 'list'
+      ? {
+          side: sideFilter,
+          search: searchTerm.trim() || undefined,
+          rsvp_status: rsvpFilter,
+          include_vendor_team: showVendorTeams || undefined,
+          page: filters.page,
+          per_page: filters.per_page,
+        }
+      : {},
+  );
   const summary = pageData?.summary;
   const allEvents = pageData?.events ?? [];
-  // Side filter is applied client-side (guest lists are small) so switching it
-  // doesn't trigger a refetch.
+  const guestsResponse = pageData?.guests;
+  const guestsIsPaginated = !!guestsResponse && !Array.isArray(guestsResponse);
   const guests = useMemo(
-    () =>
-      sideFilter === 'all'
-        ? (pageData?.guests ?? [])
-        : (pageData?.guests ?? []).filter((g) => g.side === sideFilter),
-    [pageData?.guests, sideFilter],
+    () => (guestsIsPaginated ? guestsResponse.items : (guestsResponse ?? [])),
+    [guestsResponse, guestsIsPaginated],
   );
   const exportGuests = useExportGuests();
   const bulkCreateMutation = useBulkCreateGuests();
@@ -651,37 +689,16 @@ export default function Guests() {
     }
   };
 
-  const filteredGuests = useMemo(() => {
-    return guests.filter((guest: any) => {
-      if (!showVendorTeams && guest.guest_type === 'vendor_team') return false;
-
-      if (searchTerm) {
-        const search = searchTerm.toLowerCase();
-        const fullName = `${guest.first_name} ${guest.last_name}`.toLowerCase();
-        const matchesSearch =
-          fullName.includes(search) ||
-          guest.phone?.toLowerCase().includes(search) ||
-          guest.email?.toLowerCase().includes(search) ||
-          guest.relationship?.toLowerCase().includes(search);
-
-        if (!matchesSearch) return false;
-      }
-
-      if (rsvpFilter !== 'all' && (guest.rsvp_status ?? 'pending') !== rsvpFilter) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [guests, searchTerm, rsvpFilter, showVendorTeams]);
+  // search/side/rsvp/vendor-team filtering all happen server-side now (see
+  // useGuestsPageData above) — `guests` is already the filtered, paged set.
 
   // Select-all applies to the filtered view, so the RSVP/side/search filters
   // double as audience building. Selection is general-purpose (bulk edits +
   // WhatsApp) — the composer only receives the phone-having subset.
-  const selectableIds = useMemo(() => filteredGuests.map((g: any) => g.id), [filteredGuests]);
+  const selectableIds = useMemo(() => guests.map((g: any) => g.id), [guests]);
   const selectedWithPhone = useMemo(
-    () => filteredGuests.filter((g: any) => selected.has(g.id) && g.phone).map((g: any) => g.id),
-    [filteredGuests, selected],
+    () => guests.filter((g: any) => selected.has(g.id) && g.phone).map((g: any) => g.id),
+    [guests, selected],
   );
   const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
   const toggleSelectAll = () => {
@@ -692,6 +709,68 @@ export default function Guests() {
       return next;
     });
   };
+
+  usePageHeader({
+    title: 'Guests & RSVP',
+    nav: (
+      [
+        ['list', 'Guest List'],
+        ['conversations', 'Conversations'],
+      ] as const
+    ).map(([value, label]) => (
+      <button
+        key={value}
+        onClick={() => setTab(value)}
+        role="tab"
+        aria-selected={tab === value}
+        style={{
+          padding: '8px 11px',
+          marginBottom: -1,
+          fontSize: 13.5,
+          fontWeight: tab === value ? 600 : 500,
+          whiteSpace: 'nowrap',
+          color: tab === value ? 'var(--ink-high)' : 'var(--ink-low)',
+          borderBottom: tab === value ? '2px solid var(--gold)' : '2px solid transparent',
+          background: 'transparent',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          transition: 'color 150ms, border-color 150ms',
+        }}
+      >
+        {value === 'conversations' && <FaWhatsapp style={{ width: 13, height: 13 }} />}
+        {label}
+      </button>
+    )),
+    action:
+      tab === 'list' ? (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm border border-line-strong rounded-lg hover:bg-surface-raised text-ink-mid transition-colors"
+          >
+            <HiOutlineUpload className="w-4 h-4" />
+            Import Excel
+          </button>
+          <button
+            onClick={() => exportGuests.mutate()}
+            disabled={exportGuests.isPending}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm border border-line-strong rounded-lg hover:bg-surface-raised text-ink-mid transition-colors"
+          >
+            <HiOutlineDownload className="w-4 h-4" />
+            Export Excel
+          </button>
+          <button
+            onClick={() => addPendingRow()}
+            className="btn-primary flex items-center gap-1.5 text-sm px-4 py-2"
+          >
+            <HiOutlinePlus className="w-4 h-4" />
+            Add guest
+          </button>
+        </div>
+      ) : undefined,
+  });
 
   if (guestsLoading) {
     return (
@@ -718,80 +797,7 @@ export default function Guests() {
 
   return (
     <div className="space-y-5">
-      {tab === 'conversations' ? (
-        <SectionHeader
-          eyebrow="Guests & RSVP"
-          title="Conversations"
-          description="Your WhatsApp inbox — delivery and read receipts, guided RSVP replies, polls and message templates, all tied to the guest list."
-        />
-      ) : (
-      <SectionHeader
-        eyebrow="Guest List"
-        title="RSVPs & guest management"
-        description={`${totalGuests} invited · ${confirmed} confirmed · ${pending} pending. Import from Excel, manage meal preferences, allocate rooms.`}
-        action={
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm border border-line-strong rounded-lg hover:bg-surface-raised text-ink-mid transition-colors"
-            >
-              <HiOutlineUpload className="w-4 h-4" />
-              Import Excel
-            </button>
-            <button
-              onClick={() => exportGuests.mutate()}
-              disabled={exportGuests.isPending}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm border border-line-strong rounded-lg hover:bg-surface-raised text-ink-mid transition-colors"
-            >
-              <HiOutlineDownload className="w-4 h-4" />
-              Export Excel
-            </button>
-            <button
-              onClick={() => addPendingRow()}
-              className="btn-primary flex items-center gap-1.5 text-sm px-4 py-2"
-            >
-              <HiOutlinePlus className="w-4 h-4" />
-              Add guest
-            </button>
-          </div>
-        }
-      />
-      )}
-
-      {/* Guest List | Conversations tabs (URL-synced via ?tab=) */}
-      <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--line-soft)' }}>
-        {(
-          [
-            ['list', 'Guest List'],
-            ['conversations', 'Conversations'],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            onClick={() => setTab(value)}
-            role="tab"
-            aria-selected={tab === value}
-            style={{
-              padding: '8px 14px',
-              fontSize: 13,
-              fontWeight: tab === value ? 600 : 500,
-              color: tab === value ? 'var(--gold-deep)' : 'var(--ink-low)',
-              borderBottom: tab === value ? '2px solid var(--gold)' : '2px solid transparent',
-              marginBottom: -1,
-              background: 'transparent',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            {value === 'conversations' && <FaWhatsapp style={{ width: 13, height: 13 }} />}
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'conversations' && <ConversationsTab guests={pageData?.guests ?? []} />}
+      {tab === 'conversations' && <ConversationsTab guests={guests} />}
 
       {tab === 'list' && (
       <>
@@ -827,8 +833,8 @@ export default function Guests() {
           <input
             type="text"
             placeholder="Search guests…"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="input input-neu"
             style={{ paddingLeft: 36, fontSize: 13 }}
           />
@@ -846,8 +852,9 @@ export default function Guests() {
         <SegmentedControl
           options={[
             { value: 'all', label: 'Both' },
-            { value: 'bride', label: 'Bride' },
-            { value: 'groom', label: 'Groom' },
+            { value: 'bride', label: sideLabel('bride') },
+            { value: 'groom', label: sideLabel('groom') },
+            { value: 'mutual', label: sideLabel('mutual') },
           ]}
           value={sideFilter}
           onChange={setSideFilter}
@@ -894,7 +901,7 @@ export default function Guests() {
               </tr>
             </thead>
             <tbody>
-              {filteredGuests.map((guest: any) => {
+              {guests.map((guest: any) => {
                 const isMarkedForDelete = pendingDeletes.has(guest.id);
                 const rsvpVariant =
                   guest.rsvp_status === 'confirmed'
@@ -1021,11 +1028,11 @@ export default function Guests() {
                 );
               })}
 
-              {filteredGuests.length === 0 && pendingRows.length === 0 && (
+              {guests.length === 0 && pendingRows.length === 0 && (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-ink-low">
-                    {searchTerm || rsvpFilter !== 'all'
-                      ? 'No guests match your search.'
+                    {searchTerm || rsvpFilter !== 'all' || sideFilter !== 'all'
+                      ? 'No guests match these filters.'
                       : 'No guests yet — add your first guest.'}
                   </td>
                 </tr>
@@ -1183,6 +1190,19 @@ export default function Guests() {
           </table>
         </div>
       </div>
+
+      {guestsIsPaginated && guestsResponse.total_items > 0 && (
+        <Pagination
+          page={guestsResponse.page}
+          perPage={guestsResponse.per_page}
+          totalPages={guestsResponse.total_pages}
+          totalItems={guestsResponse.total_items}
+          itemCountOnPage={guests.length}
+          itemLabel="guests"
+          onPageChange={setPage}
+          isFetching={guestsFetching}
+        />
+      )}
 
       {/* Selection action bar — the entry point for bulk WhatsApp sends */}
       {selected.size > 0 && (
@@ -1738,7 +1758,7 @@ export default function Guests() {
       <ComposerDrawer
         open={composerOpen}
         onClose={() => setComposerOpen(false)}
-        guests={pageData?.guests ?? []}
+        guests={guests}
         initialGuestIds={selectedWithPhone}
       />
     </div>

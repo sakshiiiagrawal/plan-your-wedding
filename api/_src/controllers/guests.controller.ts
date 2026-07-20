@@ -5,22 +5,6 @@ import * as guestsService from '../services/guests.service';
 type IdParam = { id: string };
 type IdEventParam = { id: string; eventId: string };
 
-export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const ownerId = getWeddingOwnerId(req);
-    const { side, needs_accommodation, search } = req.query;
-    const guests = await guestsService.listGuests(ownerId, {
-      side: typeof side === 'string' ? side : undefined,
-      needs_accommodation:
-        typeof needs_accommodation === 'string' ? needs_accommodation : undefined,
-      search: typeof search === 'string' ? search : undefined,
-    });
-    res.json(guests);
-  } catch (error) {
-    next(error);
-  }
-};
-
 export const getSummary = async (
   req: Request,
   res: Response,
@@ -34,13 +18,29 @@ export const getSummary = async (
   }
 };
 
+const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
+const num = (v: unknown) => {
+  if (typeof v !== 'string') return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+};
+
 export const getPageData = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
   try {
-    res.json(await guestsService.getPageData(getWeddingOwnerId(req)));
+    res.json(
+      await guestsService.getPageData(getWeddingOwnerId(req), {
+        side: str(req.query['side']),
+        search: str(req.query['search']),
+        rsvp_status: str(req.query['rsvp_status']),
+        include_vendor_team: req.query['include_vendor_team'] === 'true',
+        page: num(req.query['page']),
+        per_page: num(req.query['per_page']),
+      }),
+    );
   } catch (error) {
     next(error);
   }

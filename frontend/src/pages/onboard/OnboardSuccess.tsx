@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { goToWedding } from '../../utils/tenant';
 
 interface OnboardSuccessProps {
   brideName: string;
@@ -49,7 +50,7 @@ export default function OnboardSuccess({ brideName, groomName, slug, email }: On
       <p className="text-sm text-gray-400 max-w-sm mx-auto">
         Planning together? Invite your partner (as an admin), family, or wedding planner from{' '}
         <button
-          onClick={() => navigate(`/${slug}/dashboard/settings`)}
+          onClick={() => goToWedding(slug, '/dashboard/settings', navigate)}
           className="text-maroon-700 underline"
         >
           Settings → Members
@@ -58,10 +59,10 @@ export default function OnboardSuccess({ brideName, groomName, slug, email }: On
       </p>
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-        <button onClick={() => navigate(`/${slug}`)} className="btn-secondary px-8 py-3">
+        <button onClick={() => goToWedding(slug, '', navigate)} className="btn-secondary px-8 py-3">
           View Wedding Website
         </button>
-        <button onClick={() => navigate(`/${slug}/dashboard`)} className="btn-primary px-8 py-3">
+        <button onClick={() => goToWedding(slug, '/dashboard', navigate)} className="btn-primary px-8 py-3">
           Go to Planner →
         </button>
       </div>

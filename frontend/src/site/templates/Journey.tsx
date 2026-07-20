@@ -121,7 +121,7 @@ export default function Journey({ data }: TemplateProps) {
         {anyEnabled && (
         <nav className="absolute top-0 left-0 right-0 z-20">
           <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
-            <a href={`/${data.slug}`} className="font-serif-display text-lg" style={{ color: p.onHero }}>
+            <a href={data.homePath} className="font-serif-display text-lg" style={{ color: p.onHero }}>
               {data.brideName[0]}
               <span style={{ color: p.accent }}>&amp;</span>
               {data.groomName[0]}
@@ -129,7 +129,7 @@ export default function Journey({ data }: TemplateProps) {
             <div className="flex items-center gap-6">
               {invitePage && (
                 <Link
-                  to={`/${data.slug}/${invitePage.pageSlug}`}
+                  to={data.pagePath(invitePage.pageSlug)}
                   className="hidden sm:block text-xs uppercase hover:opacity-60"
                   style={{ color: p.onHero, letterSpacing: '0.14em' }}
                 >
@@ -138,7 +138,7 @@ export default function Journey({ data }: TemplateProps) {
               )}
               {data.authed && (
                 <Link
-                  to={`/${data.slug}/dashboard`}
+                  to={data.pagePath('dashboard')}
                   className="text-xs uppercase hover:opacity-60"
                   style={{ color: p.onHeroSoft, letterSpacing: '0.14em' }}
                 >

@@ -27,10 +27,11 @@ type PaymentDirection = FinancePaymentDirection;
 type PaymentStatus = FinancePaymentStatus;
 
 export interface ExpenseQueryFilters {
-  category_id?: string;
-  side?: string;
-  source_type?: string;
-  status?: string;
+  category_id?: string | undefined;
+  side?: string | undefined;
+  source_type?: string | undefined;
+  status?: string | undefined;
+  search?: string | undefined;
 }
 
 export interface PaymentMutationInput extends Omit<PaymentInsert, 'expense_id'> {
@@ -1406,6 +1407,10 @@ export async function listExpenses(
       clauses.push(
         `EXISTS (SELECT 1 FROM expense_items ei WHERE ei.expense_id = e.id AND ei.side = $${values.length})`,
       );
+    }
+    if (filters.search?.trim()) {
+      values.push(`%${filters.search.trim()}%`);
+      clauses.push(`e.description ILIKE $${values.length}`);
     }
 
     const { rows } = await client.query<DbRow>(

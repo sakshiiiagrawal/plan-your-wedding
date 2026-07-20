@@ -119,6 +119,11 @@ export const GALLERY_LAYOUTS: { id: GalleryLayoutId; name: string; hint: string 
 /** Normalized, template-agnostic input every template renders from. */
 export interface SiteData {
   slug: string;
+  /** Link to this wedding's home page. Root-relative on a wedding subdomain,
+   *  `/{slug}` on path-scoped hosts — never build these by hand. */
+  homePath: string;
+  /** Link to another page of this wedding, by its page slug ('' = home). */
+  pagePath: (pageSlug: string) => string;
   brideName: string;
   groomName: string;
   weddingDate: Date | null;

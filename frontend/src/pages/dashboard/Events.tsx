@@ -25,7 +25,8 @@ import {
   HiOutlineUserGroup,
   HiOutlineChevronRight,
 } from 'react-icons/hi';
-import { SectionHeader, Ornament } from '../../components/ui';
+import { Ornament } from '../../components/ui';
+import { usePageHeader } from '../../contexts/PageHeaderContext';
 import DatePicker from '../../components/ui/DatePicker';
 import TimePicker from '../../components/ui/TimePicker';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
@@ -492,6 +493,56 @@ export default function Events() {
     return `${hour12}:${minutes} ${ampm}`;
   };
 
+  usePageHeader({
+    title: 'Events & timeline',
+    action: (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 2,
+            background: 'var(--bg-raised)',
+            padding: 4,
+            borderRadius: 10,
+          }}
+        >
+          {[
+            { mode: 'timeline' as const, Icon: HiOutlineViewList, label: 'Timeline' },
+            { mode: 'cards' as const, Icon: HiOutlineViewGrid, label: 'Cards' },
+          ].map(({ mode, Icon, label }) => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '5px 10px',
+                borderRadius: 7,
+                fontSize: 11,
+                fontWeight: 500,
+                background: viewMode === mode ? 'var(--bg-panel)' : 'transparent',
+                color: viewMode === mode ? 'var(--gold-deep)' : 'var(--ink-low)',
+                boxShadow: viewMode === mode ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                cursor: 'pointer',
+                transition: 'all 150ms',
+              }}
+            >
+              <Icon style={{ width: 13, height: 13 }} /> {label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setShowEventModal(true)}
+          className="btn-primary"
+          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
+        >
+          <HiOutlinePlus style={{ width: 14, height: 14 }} /> New event
+        </button>
+      </div>
+    ),
+  });
+
   if (isLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 256 }}>
@@ -513,58 +564,6 @@ export default function Events() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <SectionHeader
-        eyebrow="Festivities"
-        title="Events & timeline"
-        description="All events and ceremonies. Click any event to see full details."
-        action={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div
-              style={{
-                display: 'flex',
-                gap: 2,
-                background: 'var(--bg-raised)',
-                padding: 4,
-                borderRadius: 10,
-              }}
-            >
-              {[
-                { mode: 'timeline' as const, Icon: HiOutlineViewList, label: 'Timeline' },
-                { mode: 'cards' as const, Icon: HiOutlineViewGrid, label: 'Cards' },
-              ].map(({ mode, Icon, label }) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    padding: '5px 10px',
-                    borderRadius: 7,
-                    fontSize: 11,
-                    fontWeight: 500,
-                    background: viewMode === mode ? 'var(--bg-panel)' : 'transparent',
-                    color: viewMode === mode ? 'var(--gold-deep)' : 'var(--ink-low)',
-                    boxShadow: viewMode === mode ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                    cursor: 'pointer',
-                    transition: 'all 150ms',
-                  }}
-                >
-                  <Icon style={{ width: 13, height: 13 }} /> {label}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setShowEventModal(true)}
-              className="btn-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
-            >
-              <HiOutlinePlus style={{ width: 14, height: 14 }} /> New event
-            </button>
-          </div>
-        }
-      />
-
       {/* ── Timeline View ── */}
       {viewMode === 'timeline' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

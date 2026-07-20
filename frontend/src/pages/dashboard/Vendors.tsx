@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useViewPreference } from '../../hooks/useViewPreference';
+import { useUrlFilters } from '../../hooks/useUrlFilters';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { Pagination } from '../../components/ui/Pagination';
+import { MultiSelectDropdown } from '../../components/ui/MultiSelectDropdown';
 import {
   HiOutlineCurrencyRupee,
   HiOutlineDownload,
@@ -30,7 +34,8 @@ import {
 } from '../../hooks/useApi';
 import type { PaymentRow, VendorWithFinance } from '@wedding-planner/shared';
 import { financeTier } from '@wedding-planner/shared';
-import { SectionHeader, Checkbox } from '../../components/ui';
+import { Checkbox } from '../../components/ui';
+import { usePageHeader } from '../../contexts/PageHeaderContext';
 import { Modal, FormSection, SideToggle } from '../../components/ui/Modal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import DatePicker from '../../components/ui/DatePicker';
@@ -112,6 +117,16 @@ function getVendorEvents(vendor: VendorWithFinance): string[] {
 
 type VendorPaymentFilter = 'quoted' | 'deposit' | 'confirmed';
 type VendorLogisticsFilter = 'food' | 'accommodation' | 'team';
+
+// Module-level (stable reference) so useUrlFilters doesn't recompute on every render.
+const VENDOR_FILTER_DEFAULTS = {
+  search: '',
+  category_ids: '',
+  payment_states: '',
+  logistics: '',
+  page: 1,
+  per_page: 12,
+};
 
 function summarizeMultiSelect(labels: string[], fallback: string) {
   if (labels.length === 0) return fallback;
@@ -348,12 +363,38 @@ export default function Vendors() {
   const canSeeMoney = tier !== 'none';
   const canSeeSplits = tier === 'full';
 
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [paymentFilters, setPaymentFilters] = useState<VendorPaymentFilter[]>([]);
-  const [logisticsFilters, setLogisticsFilters] = useState<VendorLogisticsFilter[]>([]);
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(12);
+  const [filters, setFilters] = useUrlFilters(VENDOR_FILTER_DEFAULTS);
+  const selectedCategoryIds = useMemo(
+    () => (filters.category_ids ? filters.category_ids.split(',') : []),
+    [filters.category_ids],
+  );
+  const paymentFilters = useMemo(
+    () => (filters.payment_states ? (filters.payment_states.split(',') as VendorPaymentFilter[]) : []),
+    [filters.payment_states],
+  );
+  const logisticsFilters = useMemo(
+    () =>
+      filters.logistics ? (filters.logistics.split(',') as VendorLogisticsFilter[]) : [],
+    [filters.logistics],
+  );
+  const setSelectedCategoryIds = (next: string[]) => setFilters({ category_ids: next.join(',') });
+  const setPaymentFilters = (next: VendorPaymentFilter[]) => setFilters({ payment_states: next.join(',') });
+  const setLogisticsFilters = (next: VendorLogisticsFilter[]) => setFilters({ logistics: next.join(',') });
+  const page = filters.page;
+  const setPage = (next: number) => setFilters({ page: next });
+  const perPage = filters.per_page;
+  const setPerPage = (next: number) => setFilters({ per_page: next });
+
+  // Local instant state for the search box; only pushed to the URL/query
+  // after a debounce so typing doesn't fire a network request per keystroke.
+  const [searchInput, setSearchInput] = useState(filters.search);
+  const debouncedSearch = useDebouncedValue(searchInput, 300);
+  useEffect(() => {
+    if (debouncedSearch !== filters.search) setFilters({ search: debouncedSearch });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
+  const searchQuery = filters.search;
+
   const [viewMode, setViewMode] = useViewPreference<'grid' | 'list'>('vendors.viewMode', 'grid');
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [showVendorModal, setShowVendorModal] = useState(false);
@@ -399,8 +440,6 @@ export default function Vendors() {
   const totalPages = vendorsResponse?.total_pages ?? 1;
   const activePage = vendorsResponse?.page ?? page;
   const activePerPage = vendorsResponse?.per_page ?? perPage;
-  const startIndex = totalVendors === 0 ? 0 : (activePage - 1) * activePerPage + 1;
-  const endIndex = totalVendors === 0 ? 0 : startIndex + vendors.length - 1;
 
   const filterMenuRef = useRef<HTMLDivElement>(null);
   const createMutation = useCreateVendor();
@@ -502,10 +541,6 @@ export default function Vendors() {
     document.addEventListener('mousedown', handlePointerDown);
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, [isFilterMenuOpen]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [selectedCategoryIds, paymentFilters, logisticsFilters, searchQuery]);
 
   const toggleSelection = <T extends string>(
     value: T,
@@ -678,6 +713,61 @@ export default function Vendors() {
     }
   };
 
+  usePageHeader({
+    title: 'Vendors',
+    action: (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div
+          style={{
+            display: 'flex',
+            border: '1px solid var(--line)',
+            borderRadius: 8,
+            overflow: 'hidden',
+          }}
+        >
+          {[
+            { mode: 'grid' as const, Icon: HiOutlineViewGrid, title: 'Grid view' },
+            { mode: 'list' as const, Icon: HiOutlineViewList, title: 'List view' },
+          ].map(({ mode, Icon, title }) => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              title={title}
+              style={{
+                padding: '6px 10px',
+                background: viewMode === mode ? 'var(--gold-glow)' : 'transparent',
+                color: viewMode === mode ? 'var(--gold-deep)' : 'var(--ink-dim)',
+                cursor: 'pointer',
+                transition: 'all 150ms',
+              }}
+            >
+              <Icon style={{ width: 15, height: 15 }} />
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => exportVendors.mutate()}
+          disabled={exportVendors.isPending}
+          className="btn-outline"
+          style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <HiOutlineDownload style={{ width: 14, height: 14 }} />
+          Export Excel
+        </button>
+        <button
+          onClick={() => {
+            resetForm();
+            setShowVendorModal(true);
+          }}
+          className="btn-primary"
+          style={{ fontSize: 13 }}
+        >
+          Add vendor
+        </button>
+      </div>
+    ),
+  });
+
   if (loadingVendors || loadingCategories) {
     return (
       <div
@@ -704,62 +794,6 @@ export default function Vendors() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <SectionHeader
-        eyebrow="Service providers"
-        title="Vendors"
-        action={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div
-              style={{
-                display: 'flex',
-                border: '1px solid var(--line)',
-                borderRadius: 8,
-                overflow: 'hidden',
-              }}
-            >
-              {[
-                { mode: 'grid' as const, Icon: HiOutlineViewGrid, title: 'Grid view' },
-                { mode: 'list' as const, Icon: HiOutlineViewList, title: 'List view' },
-              ].map(({ mode, Icon, title }) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  title={title}
-                  style={{
-                    padding: '6px 10px',
-                    background: viewMode === mode ? 'var(--gold-glow)' : 'transparent',
-                    color: viewMode === mode ? 'var(--gold-deep)' : 'var(--ink-dim)',
-                    cursor: 'pointer',
-                    transition: 'all 150ms',
-                  }}
-                >
-                  <Icon style={{ width: 15, height: 15 }} />
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => exportVendors.mutate()}
-              disabled={exportVendors.isPending}
-              className="btn-outline"
-              style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
-            >
-              <HiOutlineDownload style={{ width: 14, height: 14 }} />
-              Export Excel
-            </button>
-            <button
-              onClick={() => {
-                resetForm();
-                setShowVendorModal(true);
-              }}
-              className="btn-primary"
-              style={{ fontSize: 13 }}
-            >
-              Add vendor
-            </button>
-          </div>
-        }
-      />
-
       <div
         className="card"
         style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 18 }}
@@ -787,8 +821,8 @@ export default function Vendors() {
             />
             <input
               type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="input input-neu"
               placeholder="Search vendors, contacts, categories, or events"
               style={{ paddingLeft: 38 }}
@@ -799,11 +833,8 @@ export default function Vendors() {
               <button
                 type="button"
                 onClick={() => {
-                  setSearchQuery('');
-                  setSelectedCategoryIds([]);
-                  setPaymentFilters([]);
-                  setLogisticsFilters([]);
-                  setPage(1);
+                  setSearchInput('');
+                  setFilters({ search: '', category_ids: '', payment_states: '', logistics: '' });
                 }}
                 className="btn-outline"
                 style={{ whiteSpace: 'nowrap' }}
@@ -910,12 +941,9 @@ export default function Vendors() {
                     {hasActiveFilters && (
                       <button
                         type="button"
-                        onClick={() => {
-                          setSelectedCategoryIds([]);
-                          setPaymentFilters([]);
-                          setLogisticsFilters([]);
-                          setPage(1);
-                        }}
+                        onClick={() =>
+                          setFilters({ category_ids: '', payment_states: '', logistics: '' })
+                        }
                         style={{
                           border: 'none',
                           background: 'transparent',
@@ -930,204 +958,43 @@ export default function Vendors() {
                     )}
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div className="uppercase-eyebrow">Categories</div>
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                        gap: 8,
-                        fontSize: 12,
-                        color: 'var(--ink-high)',
-                      }}
-                    >
-                      {categoryTree
-                        .filter((cat) => cat.name !== 'Venue')
-                        .map((cat) => {
-                          const checked = selectedCategoryIds.includes(cat.id);
-                          return (
-                            <button
-                              key={cat.id}
-                              type="button"
-                              onClick={() =>
-                                toggleSelection(cat.id, selectedCategoryIds, setSelectedCategoryIds)
-                              }
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'flex-start',
-                                gap: 8,
-                                width: '100%',
-                                minHeight: 36,
-                                padding: '8px 10px',
-                                borderRadius: 10,
-                                border: `1px solid ${checked ? 'rgba(176,141,62,0.35)' : 'var(--line-soft)'}`,
-                                background: checked ? 'var(--gold-glow)' : 'var(--bg-raised)',
-                                cursor: 'pointer',
-                                fontSize: 12,
-                                color: 'var(--ink-high)',
-                                textTransform: 'none',
-                                letterSpacing: 'normal',
-                              }}
-                            >
-                              <Checkbox
-                                className="pointer-events-none"
-                                checked={checked}
-                                onChange={() =>
-                                  toggleSelection(
-                                    cat.id,
-                                    selectedCategoryIds,
-                                    setSelectedCategoryIds,
-                                  )
-                                }
-                              />
-                              <span
-                                style={{
-                                  display: 'block',
-                                  minWidth: 0,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  color: checked ? 'var(--gold-deep)' : 'var(--ink-high)',
-                                  fontWeight: checked ? 600 : 500,
-                                  lineHeight: 1.3,
-                                  textAlign: 'left',
-                                }}
-                              >
-                                {cat.name}
-                              </span>
-                            </button>
-                          );
-                        })}
-                    </div>
-                  </div>
+                  <MultiSelectDropdown
+                    label="Categories"
+                    columns={2}
+                    options={categoryTree
+                      .filter((cat) => cat.name !== 'Venue')
+                      .map((cat) => ({ value: cat.id, label: cat.name }))}
+                    selected={selectedCategoryIds}
+                    onToggle={(id) => toggleSelection(id, selectedCategoryIds, setSelectedCategoryIds)}
+                  />
 
                   {canSeeMoney && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <div className="uppercase-eyebrow">Payment status</div>
-                      <div style={{ display: 'grid', gap: 8 }}>
-                        {paymentFilterOptions.map((option) => {
-                          const checked = paymentFilters.includes(option.id);
-                          return (
-                            <button
-                              key={option.id}
-                              type="button"
-                              onClick={() =>
-                                toggleSelection(option.id, paymentFilters, setPaymentFilters)
-                              }
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'flex-start',
-                                gap: 8,
-                                width: '100%',
-                                minHeight: 36,
-                                padding: '8px 10px',
-                                borderRadius: 10,
-                                border: `1px solid ${checked ? 'rgba(176,141,62,0.35)' : 'var(--line-soft)'}`,
-                                background: checked ? 'var(--gold-glow)' : 'var(--bg-raised)',
-                                cursor: 'pointer',
-                                fontSize: 12,
-                                color: 'var(--ink-high)',
-                                textTransform: 'none',
-                                letterSpacing: 'normal',
-                              }}
-                            >
-                              <Checkbox
-                                className="pointer-events-none"
-                                checked={checked}
-                                onChange={() =>
-                                  toggleSelection(option.id, paymentFilters, setPaymentFilters)
-                                }
-                              />
-                              <span
-                                style={{
-                                  display: 'block',
-                                  color: checked ? 'var(--gold-deep)' : 'var(--ink-high)',
-                                  fontWeight: checked ? 600 : 500,
-                                  lineHeight: 1.3,
-                                  textAlign: 'left',
-                                }}
-                              >
-                                {option.label}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
+                    <MultiSelectDropdown
+                      label="Payment status"
+                      options={paymentFilterOptions.map((option) => ({
+                        value: option.id,
+                        label: option.label,
+                      }))}
+                      selected={paymentFilters}
+                      onToggle={(id) => toggleSelection(id, paymentFilters, setPaymentFilters)}
+                    />
                   )}
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div className="uppercase-eyebrow">Team logistics</div>
-                    <div style={{ display: 'grid', gap: 8 }}>
-                      {logisticsFilterOptions.map((option) => {
-                        const checked = logisticsFilters.includes(option.id);
-                        return (
-                          <button
-                            key={option.id}
-                            type="button"
-                            onClick={() =>
-                              toggleSelection(option.id, logisticsFilters, setLogisticsFilters)
-                            }
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'flex-start',
-                              gap: 8,
-                              width: '100%',
-                              minHeight: 36,
-                              padding: '8px 10px',
-                              borderRadius: 10,
-                              border: `1px solid ${checked ? 'rgba(15,118,110,0.22)' : 'var(--line-soft)'}`,
-                              background: checked ? 'rgba(15,118,110,0.08)' : 'var(--bg-raised)',
-                              cursor: 'pointer',
-                              fontSize: 12,
-                              color: 'var(--ink-high)',
-                              textTransform: 'none',
-                              letterSpacing: 'normal',
-                            }}
-                          >
-                            <Checkbox
-                              className="pointer-events-none"
-                              checked={checked}
-                              onChange={() =>
-                                toggleSelection(option.id, logisticsFilters, setLogisticsFilters)
-                              }
-                            />
-                            <span
-                              style={{
-                                display: 'block',
-                                color: checked ? '#0f766e' : 'var(--ink-high)',
-                                fontWeight: checked ? 600 : 500,
-                                lineHeight: 1.3,
-                                textAlign: 'left',
-                              }}
-                            >
-                              {option.label}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <MultiSelectDropdown
+                    label="Team logistics"
+                    options={logisticsFilterOptions.map((option) => ({
+                      value: option.id,
+                      label: option.label,
+                    }))}
+                    selected={logisticsFilters}
+                    onToggle={(id) => toggleSelection(id, logisticsFilters, setLogisticsFilters)}
+                    accentColor="#0f766e"
+                    checkedBorder="rgba(15,118,110,0.22)"
+                    checkedBackground="rgba(15,118,110,0.08)"
+                  />
                 </div>
               )}
             </div>
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 10,
-          }}
-        >
-          <div style={{ fontSize: 12, color: 'var(--ink-low)' }}>
-            Showing {startIndex} - {endIndex} of {totalVendors} vendors
-            {fetchingVendors ? ' · Updating…' : ''}
           </div>
         </div>
       </div>
@@ -1689,57 +1556,17 @@ export default function Vendors() {
         </div>
       )}
 
-      <div className="card" style={{ padding: '12px 16px' }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            gap: 8,
-            flexWrap: 'wrap',
-          }}
-        >
-          <span style={{ fontSize: 12, color: 'var(--ink-low)' }}>Per page</span>
-          <select
-            className="input"
-            value={perPage}
-            onChange={(event) => {
-              setPerPage(Number(event.target.value));
-              setPage(1);
-            }}
-            style={{ width: 80 }}
-          >
-            {[12, 24, 48].map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="btn-outline"
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
-            disabled={activePage <= 1 || fetchingVendors}
-            style={{ padding: '6px 10px', opacity: activePage <= 1 ? 0.5 : 1 }}
-          >
-            Prev
-          </button>
-          <span
-            style={{ fontSize: 12, color: 'var(--ink-low)', minWidth: 80, textAlign: 'center' }}
-          >
-            Page {activePage} / {totalPages}
-          </span>
-          <button
-            type="button"
-            className="btn-outline"
-            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-            disabled={activePage >= totalPages || fetchingVendors}
-            style={{ padding: '6px 10px', opacity: activePage >= totalPages ? 0.5 : 1 }}
-          >
-            Next
-          </button>
-        </div>
-      </div>
+      <Pagination
+        page={activePage}
+        perPage={activePerPage}
+        totalPages={totalPages}
+        totalItems={totalVendors}
+        itemCountOnPage={vendors.length}
+        itemLabel="vendors"
+        onPageChange={setPage}
+        onPerPageChange={setPerPage}
+        isFetching={fetchingVendors}
+      />
 
       {showVendorModal && (
         <Modal

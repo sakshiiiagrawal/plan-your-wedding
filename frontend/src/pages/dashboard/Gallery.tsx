@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { HiOutlinePlus, HiOutlinePhotograph, HiOutlineTrash } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { SectionHeader } from '../../components/ui';
@@ -51,12 +51,19 @@ function GalleryCard({
   );
 }
 
+// Images are fetched as one JSON array (no server pagination is possible —
+// there's no per-image row/id, just a blob on the wedding's website_content
+// row) — this caps how many render at once, purely a DOM-size optimization.
+const PAGE_SIZE = 24;
+
 export default function Gallery() {
   const { data } = useGalleryContent(undefined);
   const uploadImage = useUploadGalleryImage();
   const deleteImage = useDeleteGalleryImage();
   const fileRef = useRef<HTMLInputElement>(null);
-  const images = data?.images ?? [];
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const allImages = data?.images ?? [];
+  const images = allImages.slice(0, visibleCount);
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -127,6 +134,18 @@ export default function Gallery() {
         </div>
       </div>
 
+      {allImages.length > visibleCount && (
+        <div className="text-center">
+          <button
+            onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+            className="btn-outline"
+            style={{ fontSize: 12, padding: '5px 14px' }}
+          >
+            Show {PAGE_SIZE} more ({images.length} of {allImages.length})
+          </button>
+        </div>
+      )}
+
       <input
         ref={fileRef}
         type="file"
@@ -136,7 +155,7 @@ export default function Gallery() {
         onChange={(e) => handleFiles(e.target.files)}
       />
 
-      {images.length === 0 && (
+      {allImages.length === 0 && (
         <div className="text-center text-ink-dim text-sm py-8">
           No photos yet — upload your first one above.
         </div>

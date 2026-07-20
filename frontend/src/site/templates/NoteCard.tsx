@@ -166,12 +166,12 @@ export default function NoteCard({ data }: TemplateProps) {
 
           <motion.div variants={fadeUp} className="flex justify-center gap-6 text-xs uppercase mt-2" style={{ letterSpacing: '0.14em' }}>
             {websitePage && (
-              <Link to={`/${data.slug}`} style={{ color: p.accent }}>
+              <Link to={data.homePath} style={{ color: p.accent }}>
                 <E k="final.website" />
               </Link>
             )}
             {data.authed && (
-              <Link to={`/${data.slug}/dashboard`} style={{ color: p.inkSoft }}>
+              <Link to={data.pagePath('dashboard')} style={{ color: p.inkSoft }}>
                 Dashboard
               </Link>
             )}

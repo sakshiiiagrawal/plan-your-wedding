@@ -881,7 +881,7 @@ export async function getAllocationPageData(ownerId: string) {
   const [matrix, unassignedGuests, guests] = await Promise.all([
     getAllocationMatrix(ownerId),
     getUnassignedGuests(ownerId),
-    listGuests(ownerId, {}),
+    listGuests(ownerId, { include_vendor_team: true }),
   ]);
   return { matrix, unassignedGuests, guests };
 }

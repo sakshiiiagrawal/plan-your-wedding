@@ -14,6 +14,8 @@ import type {
   PaymentAttachmentRow,
   VendorWithFinance,
   VenueWithFinance,
+  Paginated,
+  TaskRow,
 } from '@wedding-planner/shared';
 import type { QueryClient } from '@tanstack/react-query';
 
@@ -383,18 +385,6 @@ export const useRecentActivity = () =>
 // GUESTS HOOKS
 // =====================================================
 
-export interface GuestFilters {
-  side?: string;
-  needs_accommodation?: string;
-  search?: string;
-}
-
-export const useGuests = (filters: GuestFilters = {}) =>
-  useQuery<GuestWithDetails[]>({
-    queryKey: ['guests', filters],
-    queryFn: () => api.get('/guests', { params: filters }).then((res) => res.data),
-  });
-
 export interface GuestSummary {
   total: number;
   bride: number;
@@ -410,18 +400,28 @@ export const useGuestSummary = () =>
     queryFn: () => api.get('/guests/summary').then((res) => res.data),
   });
 
+export interface GuestPageDataParams {
+  side?: string | undefined;
+  search?: string | undefined;
+  rsvp_status?: string | undefined;
+  include_vendor_team?: boolean | undefined;
+  page?: number | undefined;
+  per_page?: number | undefined;
+}
+
 export interface GuestsPageData {
-  guests: GuestWithDetails[];
+  guests: (GuestWithDetails & { rsvp_status: string })[] | Paginated<GuestWithDetails & { rsvp_status: string }>;
   summary: GuestSummary;
   events: EventWithVenue[];
 }
 
 // Single request backing the Guests page (was guests + summary + events).
-// Guests come unfiltered; the page filters by side client-side.
-export const useGuestsPageData = () =>
+// Filtering/sorting/pagination happen server-side; `summary` stays whole-wedding.
+export const useGuestsPageData = (params: GuestPageDataParams = {}) =>
   useQuery<GuestsPageData>({
-    queryKey: ['guests', 'page-data'],
-    queryFn: () => api.get('/guests/page-data').then((res) => res.data),
+    queryKey: ['guests', 'page-data', params],
+    queryFn: () => api.get('/guests/page-data', { params }).then((res) => res.data),
+    placeholderData: (previousData) => previousData,
   });
 
 export const useGuestGroups = () =>
@@ -966,13 +966,7 @@ export interface VendorsListParams {
   per_page?: number;
 }
 
-export interface VendorsListResponse {
-  items: VendorWithFinance[];
-  page: number;
-  per_page: number;
-  total_items: number;
-  total_pages: number;
-}
+export type VendorsListResponse = Paginated<VendorWithFinance>;
 
 export const useVendors = () =>
   useQuery<VendorWithFinance[]>({
@@ -1160,10 +1154,24 @@ export const useExpensesByCategoryTree = () =>
     queryFn: () => api.get('/expense/expenses/by-category-tree').then((res) => res.data),
   });
 
-export const useExpenses = (filters: Record<string, string> = {}) =>
-  useQuery<ExpenseWithDetails[]>({
-    queryKey: ['expense', 'expenses', filters],
-    queryFn: () => api.get('/expense/expenses', { params: filters }).then((res) => res.data),
+export interface ExpenseListParams {
+  category_id?: string | undefined;
+  side?: string | undefined;
+  source_type?: string | undefined;
+  status?: string | undefined;
+  search?: string | undefined;
+  sort?: 'date' | 'outstanding' | 'committed' | 'description' | undefined;
+  page?: number | undefined;
+  per_page?: number | undefined;
+}
+
+export type ExpenseWithSideMeta = ExpenseWithDetails & { side_key: string; side_label: string };
+
+export const useExpensesList = (params: ExpenseListParams) =>
+  useQuery<Paginated<ExpenseWithSideMeta>>({
+    queryKey: ['expense', 'expenses', 'list', params],
+    queryFn: () => api.get('/expense/expenses', { params }).then((res) => res.data),
+    placeholderData: (previousData) => previousData,
   });
 
 export const useVendorExpenseSummary = () =>
@@ -1195,10 +1203,11 @@ export interface SideSummary {
   shared: SideFigures;
 }
 
-export const useSideSummary = () =>
+export const useSideSummary = (enabled = true) =>
   useQuery<SideSummary>({
     queryKey: ['expense', 'side-summary'],
     queryFn: () => api.get('/expense/side-summary').then((res) => res.data),
+    enabled,
   });
 
 export const useCreateExpense = () => {
@@ -1261,16 +1270,39 @@ export const useCreateCustomCategory = () => {
   });
 };
 
-export const useExpensePayments = () =>
-  useQuery<FinanceTimelinePayment[]>({
-    queryKey: ['expense', 'payments'],
-    queryFn: () => api.get('/expense/payments').then((res) => res.data),
+export interface PaymentsListParams {
+  status?: string | undefined;
+  side?: string | undefined;
+  page?: number | undefined;
+  per_page?: number | undefined;
+}
+
+// Plain array when no page/per_page is sent (the unbounded Scheduled list),
+// or a Paginated envelope when they are (the paginated History list) —
+// mirrors the backend's dual return shape (see expense.service.getPayments).
+export type PaymentsListResponse = FinanceTimelinePayment[] | Paginated<FinanceTimelinePayment>;
+
+export const useExpensePayments = (params: PaymentsListParams = {}) =>
+  useQuery<PaymentsListResponse>({
+    queryKey: ['expense', 'payments', params],
+    queryFn: () => api.get('/expense/payments', { params }).then((res) => res.data),
+    placeholderData: (previousData) => previousData,
   });
 
-export const useExpenseOutstanding = () =>
-  useQuery<{ items: ExpenseOutstandingItem[]; totalOutstanding: number }>({
-    queryKey: ['expense', 'outstanding'],
-    queryFn: () => api.get('/expense/outstanding').then((res) => res.data),
+export interface OutstandingListParams {
+  page?: number | undefined;
+  per_page?: number | undefined;
+}
+
+export type OutstandingListResponse = Paginated<ExpenseOutstandingItem> & {
+  totalOutstanding: number;
+};
+
+export const useExpenseOutstanding = (params: OutstandingListParams = {}) =>
+  useQuery<OutstandingListResponse>({
+    queryKey: ['expense', 'outstanding', params],
+    queryFn: () => api.get('/expense/outstanding', { params }).then((res) => res.data),
+    placeholderData: (previousData) => previousData,
   });
 
 export const useExpenseAlerts = () =>
@@ -1513,12 +1545,22 @@ export const useDeletePaymentAttachment = () => {
 export interface TaskFilters {
   status?: string;
   priority?: string;
+  search?: string;
+  page?: number;
+  per_page?: number;
 }
 
+export type TaskWithEvent = TaskRow & Record<string, unknown>;
+// Matches the backend: a plain array when no page/per_page is sent (used by
+// the Kanban view, which needs every task to fill its columns), or a
+// Paginated envelope when they are (used by the paginated list view).
+export type TasksListResponse = TaskWithEvent[] | Paginated<TaskWithEvent>;
+
 export const useTasks = (filters: TaskFilters = {}) =>
-  useQuery<any[]>({
+  useQuery<TasksListResponse>({
     queryKey: ['tasks', filters],
     queryFn: () => api.get('/tasks', { params: filters }).then((res) => res.data),
+    placeholderData: (previousData) => previousData,
   });
 
 export interface TaskStats {
@@ -1896,11 +1938,16 @@ export const useWeddings = () =>
 
 export const useSetActiveWedding = () =>
   useMutation({
-    mutationFn: (weddingId: string) =>
+    mutationFn: ({ weddingId }: { weddingId: string; href?: string | undefined }) =>
       api.post('/auth/active-wedding', { weddingId }).then((res) => res.data),
     // Switching changes every scoped query, the slug and the currency; a full
-    // reload re-resolves the auth context and refetches everything cleanly.
-    onSuccess: () => window.location.reload(),
+    // document load re-resolves the auth context and refetches everything
+    // cleanly — and it's the only way to reach a wedding on another subdomain.
+    // Pass href (from weddingHref) to land somewhere other than this URL.
+    onSuccess: (_data, { href }) => {
+      if (href) window.location.assign(href);
+      else window.location.reload();
+    },
   });
 
 export interface Wedding {

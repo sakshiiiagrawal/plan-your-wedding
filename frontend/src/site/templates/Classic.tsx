@@ -227,7 +227,7 @@ export default function Classic({ data }: TemplateProps) {
     .map((s) => ({ id: s.id as string, label: SECTION_LABELS[s.id] }));
   if (invitePage) navLinks.push({ id: `page:${invitePage.pageSlug}`, label: invitePage.title });
 
-  const navHref = (id: string) => (id.startsWith('page:') ? `/${data.slug}/${id.slice(5)}` : `#${id}`);
+  const navHref = (id: string) => (id.startsWith('page:') ? data.pagePath(id.slice(5)) : `#${id}`);
 
   const vars = siteVars(p);
 
@@ -547,7 +547,7 @@ export default function Classic({ data }: TemplateProps) {
         <nav className="absolute top-0 left-0 right-0 z-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-              <a href={`/${data.slug}`} className="font-script text-2xl" style={{ color: p.onHero }}>
+              <a href={data.homePath} className="font-script text-2xl" style={{ color: p.onHero }}>
                 {shimmerOn ? (
                   <ShimmerText colors={[p.onHero, p.accent, p.onHero]}>{coupleNames}</ShimmerText>
                 ) : (
@@ -576,7 +576,7 @@ export default function Classic({ data }: TemplateProps) {
                 )}
                 {data.authed && (
                   <Link
-                    to={`/${data.slug}/dashboard`}
+                    to={data.pagePath('dashboard')}
                     className="text-sm hover:opacity-70"
                     style={{ color: p.onHeroSoft }}
                   >
@@ -619,7 +619,7 @@ export default function Classic({ data }: TemplateProps) {
                 )}
                 {data.authed && (
                   <Link
-                    to={`/${data.slug}/dashboard`}
+                    to={data.pagePath('dashboard')}
                     onClick={() => setMobileMenuOpen(false)}
                     className="block px-4 py-3 rounded-lg"
                     style={{ color: p.inkSoft }}
@@ -822,7 +822,7 @@ export default function Classic({ data }: TemplateProps) {
           )}
           {invitePage && (
             <Link
-              to={`/${data.slug}/${invitePage.pageSlug}`}
+              to={data.pagePath(invitePage.pageSlug)}
               className="inline-block mb-6 text-sm underline underline-offset-4"
               style={{ color: p.onHeroSoft }}
             >

@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Fragment, useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useDashboardOverview, useExpenseAlerts } from '../../hooks/useApi';
+import { useWeddingSlug } from '../../hooks/useWeddingSlug';
+import { weddingPath } from '../../utils/tenant';
 import {
   HiOutlineUserGroup,
   HiOutlineCurrencyRupee,
@@ -62,7 +64,7 @@ function RingStat({
 }
 
 export default function Dashboard() {
-  const { slug } = useParams<{ slug: string }>();
+  const slug = useWeddingSlug();
   const { user } = useAuth();
   const canSeeMoney = financeTier(user) !== 'none';
   const [cd, setCd] = useState<Countdown>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -305,7 +307,7 @@ export default function Dashboard() {
         {!weddingDateStr ? (
           <div style={{ marginTop: 34 }}>
             <Link
-              to={`/${slug}/dashboard/website`}
+              to={weddingPath(slug ?? '', '/dashboard/website')}
               className="display"
               style={{ fontSize: 18, fontStyle: 'italic', color: 'var(--gold-deep)' }}
             >
@@ -427,7 +429,7 @@ export default function Dashboard() {
                 >
                   <div className="uppercase-eyebrow">Payments due</div>
                   <Link
-                    to={`/${slug}/dashboard/expense?tab=payments`}
+                    to={weddingPath(slug ?? '', '/dashboard/expense?tab=payments')}
                     style={{ fontSize: 12, color: 'var(--gold-deep)', textDecoration: 'none' }}
                   >
                     →
@@ -436,7 +438,7 @@ export default function Dashboard() {
 
                 {paymentAlerts.overdueCount > 0 && (
                   <Link
-                    to={`/${slug}/dashboard/expense?tab=payments`}
+                    to={weddingPath(slug ?? '', '/dashboard/expense?tab=payments')}
                     style={{
                       display: 'block',
                       fontSize: 13,
@@ -499,7 +501,7 @@ export default function Dashboard() {
             >
               <div className="uppercase-eyebrow">Up next</div>
               <Link
-                to={`/${slug}/dashboard/tasks`}
+                to={weddingPath(slug ?? '', '/dashboard/tasks')}
                 style={{ fontSize: 12, color: 'var(--gold-deep)', textDecoration: 'none' }}
               >
                 →
@@ -511,7 +513,7 @@ export default function Dashboard() {
                 {tasksTotal === 0 ? (
                   <>
                     No tasks yet —{' '}
-                    <Link to={`/${slug}/dashboard/tasks`} style={{ color: 'var(--gold-deep)' }}>
+                    <Link to={weddingPath(slug ?? '', '/dashboard/tasks')} style={{ color: 'var(--gold-deep)' }}>
                       add your first task
                     </Link>
                     .
@@ -590,7 +592,7 @@ export default function Dashboard() {
           {QUICK_ACTIONS.map((action) => (
             <Link
               key={action.label}
-              to={`/${slug}/dashboard${action.path}`}
+              to={weddingPath(slug ?? '', `/dashboard${action.path}`)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -642,10 +644,10 @@ export default function Dashboard() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Link to={`/${slug}/dashboard/events`} className="btn-primary">
+            <Link to={weddingPath(slug ?? '', '/dashboard/events')} className="btn-primary">
               Add an event
             </Link>
-            <Link to={`/${slug}/dashboard/guests`} className="btn-outline">
+            <Link to={weddingPath(slug ?? '', '/dashboard/guests')} className="btn-outline">
               Add guests
             </Link>
           </div>
@@ -681,7 +683,7 @@ export default function Dashboard() {
               </h2>
             </div>
             <Link
-              to={`/${slug}/dashboard/events`}
+              to={weddingPath(slug ?? '', '/dashboard/events')}
               style={{
                 display: 'flex',
                 alignItems: 'center',

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { HiOutlineSearch, HiOutlineX, HiOutlinePlus } from 'react-icons/hi';
 import { useCategoryTree } from '../hooks/useApi';
+import { fuzzySubsequenceMatch } from '../utils/textMatch';
 
 interface Category {
   id: string;
@@ -19,18 +20,6 @@ interface CategoryComboboxProps {
   onAddCustom?: (parentId: string | null) => void;
   required?: boolean;
   disabled?: boolean;
-}
-
-function fuzzyMatch(text: string, query: string): boolean {
-  if (!query) return true;
-  const t = text.toLowerCase();
-  const q = query.toLowerCase();
-  if (t.includes(q)) return true;
-  let qi = 0;
-  for (let i = 0; i < t.length && qi < q.length; i++) {
-    if (t[i] === q[qi]) qi++;
-  }
-  return qi === q.length;
 }
 
 export default function CategoryCombobox({
@@ -67,13 +56,13 @@ export default function CategoryCombobox({
   const filteredGroups = useMemo(() => {
     return tree
       .map((parent) => {
-        const parentMatches = fuzzyMatch(parent.name, query);
+        const parentMatches = fuzzySubsequenceMatch(query, parent.name);
         const allChildren = parent.children ?? [];
         const children =
           level === 'parent'
             ? []
             : query
-              ? allChildren.filter((c) => fuzzyMatch(c.name, query))
+              ? allChildren.filter((c) => fuzzySubsequenceMatch(query, c.name))
               : allChildren;
 
         if (!parentMatches && children.length === 0) return null;

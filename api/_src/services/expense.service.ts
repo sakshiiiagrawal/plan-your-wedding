@@ -6,11 +6,13 @@ import type {
   ExpenseWithDetails,
   PaymentRow,
   PaymentAttachmentRow,
+  Paginated,
 } from '../../../shared/src';
 import * as repo from '../repositories/expense.repository';
 import * as finance from './finance.service';
 import * as paymentAttachments from './payment-attachment.service';
 import { ensureDefaultCategories } from './expense-categories.service';
+import { resolvePagination, paginate } from '../shared/utils/pagination.utils';
 
 const toFloat = (value: unknown) => parseFloat(String(value ?? 0));
 
@@ -267,6 +269,97 @@ export async function listExpenses(ownerId: string, filters: finance.ExpenseQuer
   return finance.listExpenses(ownerId, filters);
 }
 
+export type ExpenseSideKey = 'bride' | 'groom' | 'shared' | 'mixed';
+export type ExpenseWithSideMeta = ExpenseWithDetails & {
+  side_key: ExpenseSideKey;
+  side_label: string;
+};
+
+// Mirrors the frontend's getSideMeta (was computed client-side in
+// Expense.tsx) — 'mixed' isn't a real DB value, it's "this expense's line
+// items span more than one side", so it can only be computed after fetch.
+function getSideMeta(expense: ExpenseWithDetails): { side_key: ExpenseSideKey; side_label: string } {
+  const uniqueSides = Array.from(new Set(expense.items.map((item) => item.side)));
+  if (uniqueSides.length !== 1) {
+    return { side_key: 'mixed', side_label: 'Mixed' };
+  }
+
+  const side = (uniqueSides[0] ?? 'shared') as ExpenseSideKey;
+  if (side === 'shared') {
+    const percentages = Array.from(
+      new Set(expense.items.map((item) => item.bride_share_percentage ?? 50)),
+    );
+    const onlyPercentage = percentages[0] ?? 50;
+    return {
+      side_key: 'shared',
+      side_label:
+        percentages.length === 1 ? `Shared (${onlyPercentage} / ${100 - onlyPercentage})` : 'Shared',
+    };
+  }
+
+  return { side_key: side, side_label: `${side.charAt(0).toUpperCase()}${side.slice(1)}` };
+}
+
+export interface ExpenseListOptions {
+  status?: string | undefined;
+  source_type?: string | undefined;
+  category_id?: string | undefined;
+  search?: string | undefined;
+  // 'mixed' isn't a DB value — handled in-memory below, never sent to SQL.
+  side?: string | undefined;
+  sort?: 'date' | 'outstanding' | 'committed' | 'description' | undefined;
+  page?: number | undefined;
+  per_page?: number | undefined;
+}
+
+const EXPENSE_SORTERS: Record<
+  NonNullable<ExpenseListOptions['sort']>,
+  (a: ExpenseWithSideMeta, b: ExpenseWithSideMeta) => number
+> = {
+  outstanding: (a, b) => b.summary.outstanding_amount - a.summary.outstanding_amount,
+  committed: (a, b) => b.summary.committed_amount - a.summary.committed_amount,
+  description: (a, b) => a.description.localeCompare(b.description),
+  // ISO date strings sort correctly lexicographically.
+  date: (a, b) =>
+    b.expense_date === a.expense_date
+      ? b.created_at.localeCompare(a.created_at)
+      : b.expense_date.localeCompare(a.expense_date),
+};
+
+// Dashboard-facing list: SQL filters what it can (status/source_type/category_id/
+// search), then side='mixed' and sort/pagination happen in-memory since they
+// depend on computed fields (side_key spans items; committed/outstanding
+// come from the aggregated summary) — same hybrid pattern as vendors/guests.
+export async function getExpensesList(
+  ownerId: string,
+  options: ExpenseListOptions = {},
+): Promise<Paginated<ExpenseWithSideMeta>> {
+  const isMixedSide = options.side === 'mixed';
+  const results = await finance.listExpenses(ownerId, {
+    status: options.status,
+    source_type: options.source_type,
+    category_id: options.category_id,
+    search: options.search,
+    side: isMixedSide ? undefined : options.side,
+  });
+
+  let withSideMeta: ExpenseWithSideMeta[] = results.map((expense) => ({
+    ...expense,
+    ...getSideMeta(expense),
+  }));
+
+  if (isMixedSide) {
+    withSideMeta = withSideMeta.filter((expense) => expense.side_key === 'mixed');
+  }
+
+  withSideMeta.sort(EXPENSE_SORTERS[options.sort ?? 'date']);
+
+  const pageRequest = resolvePagination(options, 20);
+  return pageRequest
+    ? paginate(withSideMeta, pageRequest.page, pageRequest.perPage)
+    : paginate(withSideMeta, 1, Math.max(withSideMeta.length, 1));
+}
+
 export async function getExpense(id: string, ownerId: string) {
   return finance.getExpense(ownerId, id);
 }
@@ -329,10 +422,20 @@ export async function getExpensesByVendor(ownerId: string) {
 // Payments timeline
 // ---------------------------------------------------------------------------
 
-export async function getPayments(ownerId: string) {
+export interface PaymentsListOptions {
+  status?: string | undefined;
+  side?: string | undefined;
+  page?: number | undefined;
+  per_page?: number | undefined;
+}
+
+// Scheduled payments (status='scheduled') are called with no page/per_page —
+// that list stays a small, naturally-bounded queue and is rendered in full.
+// History (status='posted') is called with pagination — see ExpensePaymentsTab.
+export async function getPayments(ownerId: string, options: PaymentsListOptions = {}) {
   const expenses = await finance.listExpenses(ownerId);
   const byExpense = new Map(expenses.map((expense) => [expense.id, expense]));
-  return expenses
+  let results = expenses
     .flatMap((expense) =>
       expense.payments.map((payment) => ({
         ...payment,
@@ -344,22 +447,37 @@ export async function getPayments(ownerId: string) {
         },
       })),
     )
-    .sort((a, b) => {
-      const left = a.paid_date ?? a.due_date ?? a.created_at;
-      const right = b.paid_date ?? b.due_date ?? b.created_at;
-      return right.localeCompare(left);
-    })
     .map((payment) => ({
       ...payment,
       expense_summary: byExpense.get(payment.expense.id)?.summary ?? null,
     }));
+
+  if (options.status) results = results.filter((payment) => payment.status === options.status);
+  if (options.side) results = results.filter((payment) => payment.paid_by_side === options.side);
+
+  results =
+    options.status === 'scheduled'
+      ? results.sort((a, b) =>
+          (a.due_date ?? a.created_at).localeCompare(b.due_date ?? b.created_at),
+        )
+      : results.sort((a, b) =>
+          (b.paid_date ?? b.created_at).localeCompare(a.paid_date ?? a.created_at),
+        );
+
+  const pageRequest = resolvePagination(options, 20);
+  return pageRequest ? paginate(results, pageRequest.page, pageRequest.perPage) : results;
 }
 
 // ---------------------------------------------------------------------------
 // Outstanding balances
 // ---------------------------------------------------------------------------
 
-export async function getOutstanding(ownerId: string) {
+export interface OutstandingListOptions {
+  page?: number | undefined;
+  per_page?: number | undefined;
+}
+
+export async function getOutstanding(ownerId: string, options: OutstandingListOptions = {}) {
   const expenses = await finance.listExpenses(ownerId);
   const items = expenses
     .filter((expense) => expense.summary.outstanding_amount > 0)
@@ -372,12 +490,19 @@ export async function getOutstanding(ownerId: string) {
       paid: expense.summary.paid_amount,
       outstanding: expense.summary.outstanding_amount,
       expense_id: expense.id,
-    }));
+    }))
+    .sort((a, b) => b.outstanding - a.outstanding);
 
-  return {
-    items,
-    totalOutstanding: items.reduce((sum, item) => sum + item.outstanding, 0),
-  };
+  // totalOutstanding is a whole-wedding KPI — always summed over every owed
+  // item, never scoped to the current page.
+  const totalOutstanding = items.reduce((sum, item) => sum + item.outstanding, 0);
+
+  const pageRequest = resolvePagination(options, 20);
+  const paged = pageRequest
+    ? paginate(items, pageRequest.page, pageRequest.perPage)
+    : paginate(items, 1, Math.max(items.length, 1));
+
+  return { ...paged, totalOutstanding };
 }
 
 // ---------------------------------------------------------------------------
@@ -399,13 +524,41 @@ export async function getAlerts(ownerId: string, todayOverride?: string) {
   const nextWeekStr = nextWeek.toISOString().slice(0, 10);
   const spending = new Map(rollups.map((rollup) => [rollup.category_id, rollup]));
 
+  // Budgets are often set on a parent category while actual expenses are
+  // logged against its children (e.g. "Catering" budget, "Catering > Food"
+  // items). Roll each parent's own allocated/planned/committed up with its
+  // children's before comparing, mirroring the client-side rollup in
+  // ExpenseBudgetTab so the two views agree on what's "over budget".
+  const rolled = new Map(
+    categories.map((category) => [
+      category.id,
+      {
+        allocated: toFloat(category.allocated_amount),
+        planned: spending.get(category.id)?.planned_amount ?? 0,
+        committed: spending.get(category.id)?.committed_amount ?? 0,
+      },
+    ]),
+  );
+  for (const category of categories) {
+    if (!category.parent_category_id) continue;
+    const parent = rolled.get(category.parent_category_id);
+    const own = rolled.get(category.id);
+    if (!parent || !own) continue;
+    parent.allocated += own.allocated;
+    parent.planned += own.planned;
+    parent.committed += own.committed;
+  }
+
   const overBudgetCategories = categories
-    .map((category) => ({
-      id: category.id,
-      name: category.name,
-      allocated: toFloat(category.allocated_amount),
-      spent: spending.get(category.id)?.committed_amount ?? 0,
-    }))
+    .map((category) => {
+      const totals = rolled.get(category.id)!;
+      return {
+        id: category.id,
+        name: category.name,
+        allocated: totals.allocated,
+        spent: totals.committed,
+      };
+    })
     .filter((category) => category.allocated > 0 && category.spent > category.allocated)
     .map((category) => ({
       ...category,
@@ -413,12 +566,15 @@ export async function getAlerts(ownerId: string, todayOverride?: string) {
     }));
 
   const nearBudgetCategories = categories
-    .map((category) => ({
-      id: category.id,
-      name: category.name,
-      allocated: toFloat(category.allocated_amount),
-      spent: spending.get(category.id)?.committed_amount ?? 0,
-    }))
+    .map((category) => {
+      const totals = rolled.get(category.id)!;
+      return {
+        id: category.id,
+        name: category.name,
+        allocated: totals.allocated,
+        spent: totals.committed,
+      };
+    })
     .filter(
       (category) =>
         category.allocated > 0 &&
@@ -433,12 +589,15 @@ export async function getAlerts(ownerId: string, todayOverride?: string) {
   // Allocated has outgrown the pencilled-in plan. Only categories with a real
   // plan qualify (planned 0 means "no plan recorded", not "plan of zero").
   const overPlanCategories = categories
-    .map((category) => ({
-      id: category.id,
-      name: category.name,
-      planned: spending.get(category.id)?.planned_amount ?? 0,
-      committed: spending.get(category.id)?.committed_amount ?? 0,
-    }))
+    .map((category) => {
+      const totals = rolled.get(category.id)!;
+      return {
+        id: category.id,
+        name: category.name,
+        planned: totals.planned,
+        committed: totals.committed,
+      };
+    })
     .filter((category) => category.planned > 0 && category.committed > category.planned)
     .map((category) => ({
       ...category,

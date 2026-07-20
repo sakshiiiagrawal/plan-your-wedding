@@ -490,7 +490,7 @@ export default function Invite({ data }: TemplateProps) {
           <div className="mt-10 flex flex-col items-center gap-3">
             {websitePage && (
               <Link
-                to={`/${data.slug}`}
+                to={data.homePath}
                 className="text-xs uppercase hover:opacity-60 underline underline-offset-4"
                 style={{ color: vars.gold, letterSpacing: '0.2em' }}
               >
@@ -499,7 +499,7 @@ export default function Invite({ data }: TemplateProps) {
             )}
             {data.authed && (
               <Link
-                to={`/${data.slug}/dashboard`}
+                to={data.pagePath('dashboard')}
                 className="text-xs uppercase hover:opacity-60"
                 style={{ color: vars.textMedium, letterSpacing: '0.2em' }}
               >

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useWeddingSlug } from '../hooks/useWeddingSlug';
+import { apexHref, goToWedding } from '../utils/tenant';
 import { useAuth } from '../contexts/AuthContext';
 import { useHeroContent } from '../hooks/useApi';
 import PasswordInput from '../components/ui/PasswordInput';
@@ -12,7 +14,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
-  const { slug } = useParams<{ slug: string }>();
+  const slug = useWeddingSlug();
   const [searchParams] = useSearchParams();
 
   const { data: heroContent } = useHeroContent(slug);
@@ -39,10 +41,10 @@ export default function Login() {
       if (next && next.startsWith('/')) {
         navigate(next);
       } else if (targetSlug) {
-        navigate(`/${targetSlug}/dashboard`);
+        goToWedding(targetSlug, '/dashboard', navigate);
       } else {
         // No wedding yet (collaborator account) — invites live here
-        navigate('/hub');
+        window.location.assign(apexHref('/hub'));
       }
     } catch (error) {
       const err = error as { response?: { data?: { error?: string } } };
@@ -90,14 +92,14 @@ export default function Login() {
       </form>
 
       <p className="mt-4 text-center text-sm">
-        <Link to="/forgot-password" className="text-maroon-700 hover:underline">
+        <Link to={apexHref('/forgot-password')} className="text-maroon-700 hover:underline">
           Forgot password?
         </Link>
       </p>
 
       <p className="mt-3 text-center text-sm text-gray-600">
         New here?{' '}
-        <Link to="/onboard" className="text-maroon-700 font-medium hover:underline">
+        <Link to={apexHref('/onboard')} className="text-maroon-700 font-medium hover:underline">
           Start planning your wedding
         </Link>
       </p>

@@ -25,7 +25,7 @@ function toBuffer(rows: Record<string, unknown>[], sheetName: string): Buffer {
 }
 
 export async function exportGuests(ownerId: string): Promise<Buffer> {
-  const guests = await guestsService.listGuests(ownerId, {});
+  const guests = await guestsService.listGuests(ownerId, { include_vendor_team: true });
   // Flatten the joins: group name as a column, per-event rows collapsed into
   // the aggregated rsvp_status that listGuests already computes
   const rows = guests.map(({ guest_groups, guest_event_rsvp, ...g }) => ({

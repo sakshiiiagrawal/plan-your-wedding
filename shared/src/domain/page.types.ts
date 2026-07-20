@@ -13,9 +13,10 @@ export const RESERVED_PAGE_SLUGS = [
   'settings',
 ] as const;
 
-/** First URL segments that can never be wedding slugs — top-level app routes
- *  (App.tsx) and infrastructure paths (Vercel rewrites, static assets) win
- *  over /:slug, so a wedding registered under one would be unreachable.
+/** Names that can never be wedding slugs. A slug is both a first URL segment
+ *  on fallback hosts (`/:slug`) and a subdomain on wildcard hosts
+ *  (`{slug}.shaadi.diy`), so it must dodge two namespaces: top-level app
+ *  routes / infrastructure paths, and infrastructure hostnames.
  *  Shared so onboarding validates the same list the API enforces. */
 export const RESERVED_WEDDING_SLUGS = [
   'login',
@@ -36,6 +37,23 @@ export const RESERVED_WEDDING_SLUGS = [
   'assets',
   'health',
   'p',
+  // Subdomain-sensitive: these resolve to real infrastructure, or would once
+  // someone points them there.
+  'www',
+  'app',
+  'mail',
+  'smtp',
+  'ftp',
+  'staging',
+  'dev',
+  'test',
+  'cdn',
+  'static',
+  'status',
+  'blog',
+  'docs',
+  'help',
+  'support',
 ] as const;
 
 export interface PublicPageRow {

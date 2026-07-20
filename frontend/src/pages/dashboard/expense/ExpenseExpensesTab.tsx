@@ -1,8 +1,12 @@
-import { useState } from 'react';
 import { HiOutlineArchive, HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
 import { parseLocalDate } from '../../../utils/date';
+import { Pagination } from '../../../components/ui/Pagination';
+import { SegmentedControl } from '../../../components/ui';
+import { sideLabel } from '../../../utils/sideLabels';
 
-type SortKey = 'date' | 'outstanding' | 'committed' | 'description';
+export type ExpenseSortKey = 'date' | 'outstanding' | 'committed' | 'description';
+export type ExpenseTypeFilter = 'all' | 'manual' | 'vendor' | 'venue';
+export type ExpenseSideFilter = 'all' | 'bride' | 'groom' | 'shared' | 'mixed';
 
 export interface ExpenseListRow {
   id: string;
@@ -25,6 +29,9 @@ export interface ExpenseListRow {
 interface ExpenseExpensesTabProps {
   rows: ExpenseListRow[];
   loading: boolean;
+  isFetching: boolean;
+  /** Whether the wedding has any expenses at all, regardless of the current filters. */
+  hasAnyExpenses: boolean;
   formatCurrency: (amount: number) => string;
   onEdit: (row: ExpenseListRow) => void;
   onDelete: (id: string) => void;
@@ -36,11 +43,26 @@ interface ExpenseExpensesTabProps {
   onAdd: () => void;
   /** Bride/groom liability side is only meaningful with budget:splits. */
   showSides?: boolean;
+  filterType: ExpenseTypeFilter;
+  onFilterTypeChange: (v: ExpenseTypeFilter) => void;
+  filterSide: ExpenseSideFilter;
+  onFilterSideChange: (v: ExpenseSideFilter) => void;
+  search: string;
+  onSearchChange: (v: string) => void;
+  sortKey: ExpenseSortKey;
+  onSortKeyChange: (v: ExpenseSortKey) => void;
+  page: number;
+  perPage: number;
+  totalPages: number;
+  totalItems: number;
+  onPageChange: (page: number) => void;
 }
 
 export default function ExpenseExpensesTab({
   rows,
   loading,
+  isFetching,
+  hasAnyExpenses,
   formatCurrency,
   onEdit,
   onDelete,
@@ -48,50 +70,32 @@ export default function ExpenseExpensesTab({
   onViewPayments,
   onAdd,
   showSides = true,
+  filterType,
+  onFilterTypeChange,
+  filterSide,
+  onFilterSideChange,
+  search,
+  onSearchChange,
+  sortKey,
+  onSortKeyChange,
+  page,
+  perPage,
+  totalPages,
+  totalItems,
+  onPageChange,
 }: ExpenseExpensesTabProps) {
-  const [filterType, setFilterType] = useState<'all' | 'manual' | 'vendor' | 'venue'>('all');
-  const [filterSide, setFilterSide] = useState<'all' | 'bride' | 'groom' | 'shared' | 'mixed'>(
-    'all',
-  );
-  const [search, setSearch] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('date');
-
   if (loading) {
     return <div className="card p-8 text-center text-ink-low">Loading expenses...</div>;
   }
 
-  const query = search.trim().toLowerCase();
-  const filtered = rows
-    .filter((row) => {
-      if (filterType !== 'all' && row.source_type !== filterType) return false;
-      if (filterSide !== 'all' && row.side_key !== filterSide) return false;
-      if (
-        query &&
-        !row.description.toLowerCase().includes(query) &&
-        !row.category_summary.toLowerCase().includes(query)
-      )
-        return false;
-      return true;
-    })
-    .sort((a, b) => {
-      switch (sortKey) {
-        case 'outstanding':
-          return b.outstanding - a.outstanding;
-        case 'committed':
-          return b.committed - a.committed;
-        case 'description':
-          return a.description.localeCompare(b.description);
-        default:
-          return parseLocalDate(b.expense_date).getTime() - parseLocalDate(a.expense_date).getTime();
-      }
-    });
+  // Page-scoped sums — server-side pagination means we only have the
+  // current page's rows client-side, not the whole filtered set.
+  const plannedTotal = rows.reduce((sum, row) => sum + row.planned, 0);
+  const committedTotal = rows.reduce((sum, row) => sum + row.committed, 0);
+  const paidTotal = rows.reduce((sum, row) => sum + row.paid, 0);
+  const outstandingTotal = rows.reduce((sum, row) => sum + row.outstanding, 0);
 
-  const plannedTotal = filtered.reduce((sum, row) => sum + row.planned, 0);
-  const committedTotal = filtered.reduce((sum, row) => sum + row.committed, 0);
-  const paidTotal = filtered.reduce((sum, row) => sum + row.paid, 0);
-  const outstandingTotal = filtered.reduce((sum, row) => sum + row.outstanding, 0);
-
-  if (rows.length === 0) {
+  if (!hasAnyExpenses) {
     return (
       <div className="card p-8 text-center space-y-3">
         <div className="text-ink-low">No expenses recorded yet.</div>
@@ -105,61 +109,40 @@ export default function ExpenseExpensesTab({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-center">
-        <div className="flex gap-1 bg-surface-highest rounded-lg p-1">
-          {(['all', 'manual', 'vendor', 'venue'] as const).map((type) => (
-            <button
-              key={type}
-              onClick={() => setFilterType(type)}
-              style={{
-                padding: '4px 12px',
-                fontSize: 13,
-                borderRadius: 6,
-                cursor: 'pointer',
-                transition: 'all 150ms',
-                background: filterType === type ? 'white' : 'transparent',
-                color: filterType === type ? 'var(--gold-deep)' : 'var(--ink-low)',
-                fontWeight: filterType === type ? 600 : 400,
-                boxShadow: filterType === type ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              }}
-            >
-              {type === 'all' ? 'All' : `${type.charAt(0).toUpperCase()}${type.slice(1)}s`}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          options={[
+            { value: 'all', label: 'All' },
+            { value: 'manual', label: 'Manuals' },
+            { value: 'vendor', label: 'Vendors' },
+            { value: 'venue', label: 'Venues' },
+          ]}
+          value={filterType}
+          onChange={onFilterTypeChange}
+        />
         {showSides && (
-          <div className="flex gap-1 bg-surface-highest rounded-lg p-1">
-            {(['all', 'bride', 'groom', 'shared', 'mixed'] as const).map((side) => (
-              <button
-                key={side}
-                onClick={() => setFilterSide(side)}
-                style={{
-                  padding: '4px 12px',
-                  fontSize: 13,
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  transition: 'all 150ms',
-                  background: filterSide === side ? 'white' : 'transparent',
-                  color: filterSide === side ? 'var(--gold-deep)' : 'var(--ink-low)',
-                  fontWeight: filterSide === side ? 600 : 400,
-                  boxShadow: filterSide === side ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                }}
-              >
-                {side === 'all' ? 'All Sides' : `${side.charAt(0).toUpperCase()}${side.slice(1)}`}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            options={[
+              { value: 'all', label: 'All Sides' },
+              { value: 'bride', label: sideLabel('bride') },
+              { value: 'groom', label: sideLabel('groom') },
+              { value: 'shared', label: sideLabel('shared') },
+              { value: 'mixed', label: sideLabel('mixed') },
+            ]}
+            value={filterSide}
+            onChange={onFilterSideChange}
+          />
         )}
         <input
           type="search"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search description or category…"
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search description…"
           className="input"
           style={{ flex: 1, minWidth: 180, maxWidth: 320 }}
         />
         <select
           value={sortKey}
-          onChange={(e) => setSortKey(e.target.value as SortKey)}
+          onChange={(e) => onSortKeyChange(e.target.value as ExpenseSortKey)}
           className="input"
           style={{ width: 'auto' }}
         >
@@ -170,7 +153,7 @@ export default function ExpenseExpensesTab({
         </select>
       </div>
 
-      {filtered.length === 0 ? (
+      {rows.length === 0 ? (
         <div className="card p-8 text-center text-ink-low">
           No entries match the selected filters.
         </div>
@@ -193,7 +176,7 @@ export default function ExpenseExpensesTab({
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((row) => (
+                {rows.map((row) => (
                   <tr
                     key={row.id}
                     className="table-row group"
@@ -322,7 +305,7 @@ export default function ExpenseExpensesTab({
               <tfoot className="bg-surface-highest font-bold">
                 <tr>
                   <td className="p-4 min-w-[140px]">
-                    Total
+                    Page total
                     <div className="text-xs font-normal md:hidden mt-1 space-x-2">
                       {plannedTotal > 0 && (
                         <span className="text-ink-mid">Planned {formatCurrency(plannedTotal)}</span>
@@ -355,6 +338,19 @@ export default function ExpenseExpensesTab({
             </table>
           </div>
         </div>
+      )}
+
+      {totalItems > 0 && (
+        <Pagination
+          page={page}
+          perPage={perPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          itemCountOnPage={rows.length}
+          itemLabel="expenses"
+          onPageChange={onPageChange}
+          isFetching={isFetching}
+        />
       )}
     </div>
   );

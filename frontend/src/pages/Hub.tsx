@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams, Navigate, Link } from 'react-router-dom';
+import WeddingRedirect from '../components/WeddingRedirect';
+import { publicSiteLabel, weddingHref } from '../utils/tenant';
 import toast from 'react-hot-toast';
 import { SECTION_LABELS, type WeddingSection } from '@wedding-planner/shared';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -49,7 +51,7 @@ export default function Hub() {
   // this redirect fires before the hub ever paints. No active workspace →
   // slug is null and the hub renders as the create-or-join home.
   if (slug && !wantsHub) {
-    return <Navigate to={`/${slug}/dashboard`} replace />;
+    return <WeddingRedirect slug={slug} path="/dashboard" />;
   }
 
   const emailVerified = user?.emailVerified !== false;
@@ -57,12 +59,13 @@ export default function Hub() {
   const owned = weddings.filter((w) => w.isOwner);
   const shared = weddings.filter((w) => !w.isOwner);
 
-  const openWedding = async (w: WeddingOption) => {
-    if (w.slug) {
-      // useSetActiveWedding reloads the page; land directly on the dashboard.
-      window.history.replaceState(null, '', `/${w.slug}/dashboard`);
-    }
-    setActiveWedding.mutate(w.id);
+  const openWedding = (w: WeddingOption) => {
+    // The switch reloads; give it the wedding's own dashboard URL to land on,
+    // which is a different origin once the wedding has its subdomain.
+    setActiveWedding.mutate({
+      weddingId: w.id,
+      href: w.slug ? weddingHref(w.slug, '/dashboard') : undefined,
+    });
   };
 
   const handleAccept = async (id: string) => {
@@ -73,8 +76,10 @@ export default function Hub() {
       // explicit click, never a silent switch.
       if (weddings.length === 0 && wedding?.slug) {
         toast.success("You're in! Welcome aboard.");
-        window.history.replaceState(null, '', `/${wedding.slug}/dashboard`);
-        setActiveWedding.mutate(wedding.id);
+        setActiveWedding.mutate({
+          weddingId: wedding.id,
+          href: weddingHref(wedding.slug, '/dashboard'),
+        });
       } else {
         toast.success(`You joined ${wedding?.title ?? 'the wedding'} — open it below.`);
         await refresh();
@@ -116,7 +121,7 @@ export default function Hub() {
             )}
           </span>
           <span className="block text-xs text-gray-500 truncate">
-            {w.slug ? `/${w.slug}` : 'No public site yet'}
+            {w.slug ? publicSiteLabel(w.slug) : 'No public site yet'}
             {!w.isOwner && (
               <>
                 {' · '}

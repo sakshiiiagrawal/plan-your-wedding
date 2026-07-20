@@ -1,5 +1,16 @@
-import { Outlet, NavLink, useNavigate, Navigate, useParams, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, Navigate, useLocation } from 'react-router-dom';
+import WeddingRedirect from '../components/WeddingRedirect';
+import { useWeddingSlug } from '../hooks/useWeddingSlug';
+import {
+  TENANT_SLUG,
+  apexHref,
+  goToWedding,
+  publicSiteLabel,
+  weddingHref,
+  weddingPath,
+} from '../utils/tenant';
 import { useAuth } from '../contexts/AuthContext';
+import { PageHeaderProvider, useTopbarHeader } from '../contexts/PageHeaderContext';
 import {
   useHeroContent,
   useWeddings,
@@ -428,7 +439,7 @@ function WeddingSwitcher({
   weddings: SwitcherWedding[];
   activeWeddingId: string | null;
   pendingInviteCount: number;
-  onPick: (w: { id: string; title: string }) => void;
+  onPick: (w: { id: string; slug: string | null; title: string }) => void;
 }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -523,7 +534,7 @@ function WeddingSwitcher({
               whiteSpace: 'nowrap',
             }}
           >
-            {w.slug ? `/${w.slug}` : 'no public site yet'}
+            {w.slug ? publicSiteLabel(w.slug) : 'no public site yet'}
           </span>
         </span>
         {isActive ? (
@@ -660,7 +671,7 @@ function WeddingSwitcher({
                 style={{ ...itemStyle, color: 'var(--gold-deep)', fontWeight: 500 }}
                 onClick={() => {
                   setOpen(false);
-                  navigate('/weddings/new');
+                  window.location.assign(apexHref('/weddings/new'));
                 }}
               >
                 <HiOutlinePlus style={{ width: 14, height: 14, flexShrink: 0, margin: '0 5px' }} />
@@ -709,19 +720,30 @@ function WeddingSwitcher({
 }
 
 export default function DashboardLayout() {
+  return (
+    <PageHeaderProvider>
+      <DashboardLayoutInner />
+    </PageHeaderProvider>
+  );
+}
+
+function DashboardLayoutInner() {
   const { logout, user, slug: authSlug, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { slug: urlSlug } = useParams<{ slug: string }>();
+  const urlSlug = useWeddingSlug();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // The URL slug is cosmetic; the authenticated slug (which accounts for
-  // wedding-member access) is the source of truth. Correct the URL if they
-  // ever diverge so branding/data can't come from someone else's wedding.
+  // The location's slug is cosmetic; the authenticated slug (which accounts
+  // for wedding-member access) is the source of truth. Correct the URL if they
+  // ever diverge so branding/data can't come from someone else's wedding — on
+  // a wedding subdomain that means moving to a different origin.
   useEffect(() => {
-    if (!loading && isAuthenticated && authSlug && urlSlug && urlSlug !== authSlug) {
-      navigate(location.pathname.replace(`/${urlSlug}`, `/${authSlug}`), { replace: true });
-    }
+    if (loading || !isAuthenticated || !authSlug || !urlSlug || urlSlug === authSlug) return;
+    const withinWedding = TENANT_SLUG
+      ? location.pathname
+      : location.pathname.replace(`/${urlSlug}`, '');
+    goToWedding(authSlug, withinWedding, navigate, { replace: true });
   }, [loading, isAuthenticated, authSlug, urlSlug, location.pathname, navigate]);
 
   const slug = authSlug ?? urlSlug;
@@ -739,9 +761,12 @@ export default function DashboardLayout() {
       })
     : '';
 
-  const basePath = `/${slug}/dashboard`;
+  const basePath = weddingPath(slug ?? '', '/dashboard');
   const subPath = location.pathname.replace(basePath, '') || '';
   const currentCrumb = CRUMB_MAP[subPath] ?? subPath.replace('/', '');
+  // Pages opted into usePageHeader() replace this crumb with their real title
+  // (+ inline nav/action) directly in the topbar; others fall back to the crumb.
+  const pageHeader = useTopbarHeader();
 
   // Section-restricted members (planners granted only some sections) see a
   // trimmed nav; the API enforces the same list, this just keeps UI honest.
@@ -768,11 +793,16 @@ export default function DashboardLayout() {
 
   // Switching weddings hard-reloads the app — confirm so mid-edit work isn't
   // silently discarded by a stray dropdown change.
-  const [pendingSwitch, setPendingSwitch] = useState<{ id: string; title: string } | null>(null);
+  const [pendingSwitch, setPendingSwitch] = useState<{
+    id: string;
+    slug: string | null;
+    title: string;
+  } | null>(null);
 
   const handleLogout = () => {
     logout();
-    navigate(`/${slug}/login`, { replace: true });
+    if (slug) goToWedding(slug, '/login', navigate, { replace: true });
+    else navigate('/login', { replace: true });
   };
 
   if (loading) {
@@ -793,13 +823,16 @@ export default function DashboardLayout() {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to={`/${slug}/login`} replace />;
+    return slug ? <WeddingRedirect slug={slug} path="/login" /> : <Navigate to="/login" replace />;
   }
 
   // Signed in but no wedding (deleted their last one, or membership revoked):
   // the hub is home — it offers create-or-join instead of a broken dashboard.
   if (!authSlug) {
-    return <Navigate to="/hub" replace />;
+    const hub = apexHref('/hub');
+    if (hub.startsWith('/')) return <Navigate to={hub} replace />;
+    window.location.replace(hub);
+    return null;
   }
 
   // Deep link into a section this member can't access → back to Overview
@@ -978,8 +1011,9 @@ export default function DashboardLayout() {
             zIndex: 20,
           }}
         >
-          {/* Mobile hamburger + Breadcrumb */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Mobile hamburger + page title/nav (pages opt in via usePageHeader;
+              others fall back to the plain breadcrumb) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0, flex: 1 }}>
             <button
               onClick={() => setSidebarOpen(true)}
               className="lg:hidden"
@@ -988,22 +1022,52 @@ export default function DashboardLayout() {
                 borderRadius: 6,
                 color: 'var(--ink-mid)',
                 background: 'transparent',
+                flexShrink: 0,
               }}
             >
               <HiOutlineMenu style={{ width: 20, height: 20 }} />
             </button>
-            <div
-              className="mono hidden sm:flex"
-              style={{ alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-low)' }}
-            >
-              <span>dashboard</span>
-              <HiOutlineChevronRight style={{ width: 12, height: 12 }} />
-              <span style={{ color: 'var(--ink-mid)' }}>{currentCrumb}</span>
-            </div>
+            {pageHeader ? (
+              <>
+                <h1
+                  className="display"
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 600,
+                    letterSpacing: '-0.01em',
+                    lineHeight: 1.1,
+                    margin: 0,
+                    color: 'var(--ink-high)',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  {pageHeader.title}
+                </h1>
+                {pageHeader.nav && (
+                  <nav
+                    className="hidden sm:flex overflow-x-auto"
+                    style={{ gap: 2, minWidth: 0 }}
+                  >
+                    {pageHeader.nav}
+                  </nav>
+                )}
+              </>
+            ) : (
+              <div
+                className="mono hidden sm:flex"
+                style={{ alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-low)' }}
+              >
+                <span>dashboard</span>
+                <HiOutlineChevronRight style={{ width: 12, height: 12 }} />
+                <span style={{ color: 'var(--ink-mid)' }}>{currentCrumb}</span>
+              </div>
+            )}
           </div>
 
           {/* Right actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {pageHeader?.action}
             <RemindersBell basePath={basePath} />
             {/* Print — only where the page is a printable document (see
                 PRINTABLE_PATHS); Overview/Gallery/Settings/Site Studio would
@@ -1033,7 +1097,7 @@ export default function DashboardLayout() {
                 Site Studio has its own per-page "Open live" control */}
             {subPath === '' && (
               <NavLink
-                to={`/${slug}`}
+                to={weddingPath(slug ?? '')}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -1086,7 +1150,11 @@ export default function DashboardLayout() {
         confirmLabel="Switch"
         isPending={setActiveWedding.isPending}
         onConfirm={() => {
-          if (pendingSwitch) setActiveWedding.mutate(pendingSwitch.id);
+          if (!pendingSwitch) return;
+          setActiveWedding.mutate({
+            weddingId: pendingSwitch.id,
+            href: pendingSwitch.slug ? weddingHref(pendingSwitch.slug, '/dashboard') : undefined,
+          });
         }}
         onCancel={() => setPendingSwitch(null)}
       />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useWeddingSlug } from '../../hooks/useWeddingSlug';
+import { apexHref, weddingHref } from '../../utils/tenant';
 import toast from 'react-hot-toast';
 import {
   WEDDING_SECTIONS,
@@ -498,8 +499,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 export default function Settings() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const { slug } = useParams<{ slug: string }>();
+  const slug = useWeddingSlug();
   // Wedding settings (URL, currency, delete) belong to the owner and admins;
   // the owner alone may delete the wedding itself.
   const canManageWedding = user?.isOwner === true || user?.role === 'admin';
@@ -581,7 +581,7 @@ export default function Settings() {
       if (updated.slug && updated.slug !== slug) {
         localStorage.setItem('slug', updated.slug);
         // Full reload so AuthContext re-reads the new slug from storage
-        window.location.href = `/${updated.slug}/dashboard/settings`;
+        window.location.href = weddingHref(updated.slug, '/dashboard/settings');
       } else if (updated.currency !== user.currency) {
         // Full reload so AuthContext (and every money display) picks up the change
         window.location.reload();
@@ -598,7 +598,7 @@ export default function Settings() {
       await deleteWedding.mutateAsync(user.weddingId);
       // Switching context away from the deleted wedding: the hub picks the
       // next one (or offers create/join). Full reload re-resolves auth.
-      window.location.href = '/hub';
+      window.location.href = apexHref('/hub');
     } catch {
       toast.error('Failed to delete wedding');
     }
@@ -621,7 +621,7 @@ export default function Settings() {
     try {
       await deleteAccount.mutateAsync();
       logout();
-      navigate('/');
+      window.location.href = apexHref('/');
     } catch {
       toast.error('Failed to delete account');
     }
