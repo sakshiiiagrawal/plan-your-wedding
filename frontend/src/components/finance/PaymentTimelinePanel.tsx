@@ -1,11 +1,17 @@
 import { useState } from 'react';
-import { HiOutlineChevronDown, HiOutlineChevronUp, HiOutlineTrash } from 'react-icons/hi';
+import {
+  HiOutlineChevronDown,
+  HiOutlineChevronUp,
+  HiOutlinePencil,
+  HiOutlineTrash,
+} from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import CategoryCombobox from '../CategoryCombobox';
 import DatePicker from '../ui/DatePicker';
 import SplitShare from '../ui/SplitShare';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import MarkPaidDialog, { type MarkPaidResult } from './MarkPaidDialog';
+import EditPaymentDialog, { type EditPaymentResult } from './EditPaymentDialog';
 import { ModeToggle, type PaymentMode } from './InstallmentsEditor';
 import PaymentAttachments from './PaymentAttachments';
 import PaymentNotesEditor from './PaymentNotesEditor';
@@ -137,6 +143,7 @@ export default function PaymentTimelinePanel({
   );
   const [deleteTarget, setDeleteTarget] = useState<PaymentRow | null>(null);
   const [markPaidTarget, setMarkPaidTarget] = useState<PaymentRow | null>(null);
+  const [editTarget, setEditTarget] = useState<PaymentRow | null>(null);
   // Method, side, split, and notes stay tucked away — the defaults inherit
   // from the obligation, so most payments only need an amount and a date.
   const [showMore, setShowMore] = useState(false);
@@ -251,10 +258,8 @@ export default function PaymentTimelinePanel({
       return;
     }
 
-    if (excessAmount > 0 && !formData.extra_category_id) {
-      toast.error('Select a category for the excess amount.');
-      return;
-    }
+    // Excess no longer blocks the save. Naming a category books it as a real
+    // line item; leaving it blank records a plain overpayment.
 
     const targetItemId = formData.apply_to_item_id;
     // Full amount to the targeted item — the server rejects if it exceeds that
@@ -326,7 +331,7 @@ export default function PaymentTimelinePanel({
     if (!deleteTarget) return;
     try {
       await onDelete(deleteTarget.id);
-      toast.success('Scheduled payment deleted.');
+      toast.success('Payment deleted.');
       setDeleteTarget(null);
     } catch (error: unknown) {
       const apiError = error as ApiError;
@@ -334,6 +339,22 @@ export default function PaymentTimelinePanel({
         apiError.response?.data?.error ||
         apiError.response?.data?.message ||
         'Failed to delete payment.';
+      toast.error(message);
+    }
+  };
+
+  const confirmEdit = async (result: EditPaymentResult) => {
+    if (!editTarget || !onUpdate) return;
+    try {
+      await onUpdate(editTarget.id, { ...result });
+      toast.success('Payment updated.');
+      setEditTarget(null);
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      const message =
+        apiError.response?.data?.error ||
+        apiError.response?.data?.message ||
+        'Failed to update payment.';
       toast.error(message);
     }
   };
@@ -426,6 +447,7 @@ export default function PaymentTimelinePanel({
                 payment={payment}
                 isDeleting={isDeleting}
                 onDelete={(p) => setDeleteTarget(p)}
+                onEdit={onUpdate ? (p) => setEditTarget(p) : undefined}
                 onMarkPaid={onUpdate ? (p) => setMarkPaidTarget(p) : undefined}
                 onReverse={startReverse}
                 allocationChips={
@@ -710,11 +732,12 @@ export default function PaymentTimelinePanel({
           >
             <div style={{ fontSize: 13, color: '#9a3412' }}>
               You are paying {formatCurrency(excessAmount)} more than the current outstanding
-              amount. Classify this extra amount so it can be added as a new finance item.
+              amount. Give it a category to book it as a new finance item, or leave this blank to
+              just record the overpayment.
             </div>
 
             <div>
-              <label className="label">Extra Amount Category</label>
+              <label className="label">Extra Amount Category (optional)</label>
               <CategoryCombobox
                 value={formData.extra_category_id}
                 onChange={(id) => setFormData((p) => ({ ...p, extra_category_id: id }))}
@@ -775,10 +798,12 @@ export default function PaymentTimelinePanel({
 
       <ConfirmDialog
         open={deleteTarget != null}
-        title="Delete scheduled payment"
+        title="Delete payment"
         message={
           deleteTarget
-            ? `Delete the scheduled ${formatCurrency(deleteTarget.amount)} payment? This can't be undone.`
+            ? deleteTarget.status === 'posted'
+              ? `Delete the ${formatCurrency(deleteTarget.amount)} payment? The balances will be recalculated as if it never happened.`
+              : `Delete the scheduled ${formatCurrency(deleteTarget.amount)} payment? This can't be undone.`
             : ''
         }
         confirmLabel="Delete"
@@ -786,6 +811,16 @@ export default function PaymentTimelinePanel({
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      {editTarget && (
+        <EditPaymentDialog
+          payment={editTarget}
+          canSeeSplits={canSeeSplits}
+          isPending={isUpdating}
+          onConfirm={confirmEdit}
+          onCancel={() => setEditTarget(null)}
+        />
+      )}
 
       {markPaidTarget && (
         <MarkPaidDialog
@@ -808,6 +843,7 @@ interface PaymentTimelineItemProps {
   payment: PaymentRow;
   isDeleting: boolean;
   onDelete: (payment: PaymentRow) => void;
+  onEdit?: ((payment: PaymentRow) => void) | undefined;
   onMarkPaid?: ((payment: PaymentRow) => void) | undefined;
   onReverse?: ((payment: PaymentRow) => void) | undefined;
   allocationChips: AllocationChip[];
@@ -817,6 +853,7 @@ function PaymentTimelineItem({
   payment,
   isDeleting,
   onDelete,
+  onEdit,
   onMarkPaid,
   onReverse,
   allocationChips,
@@ -963,18 +1000,42 @@ function PaymentTimelineItem({
           )}
         </div>
       </div>
-      {isScheduled && (
+      {/* Edit and delete stay available on every payment, posted included —
+          fixing a wrong figure should cost one click, not a reversal entry. */}
+      <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={() => onEdit(payment)}
+            title="Edit payment"
+            style={{
+              padding: '6px 8px',
+              borderRadius: 6,
+              color: 'var(--ink-low)',
+              background: 'transparent',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.background = 'var(--bg-raised)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.background = 'transparent';
+            }}
+          >
+            <HiOutlinePencil style={{ width: 15, height: 15 }} />
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onDelete(payment)}
           disabled={isDeleting}
+          title="Delete payment"
           style={{
             padding: '6px 8px',
             borderRadius: 6,
             color: 'var(--err)',
             background: 'transparent',
             cursor: 'pointer',
-            flexShrink: 0,
             opacity: isDeleting ? 0.5 : 1,
           }}
           onMouseEnter={(e) => {
@@ -986,7 +1047,7 @@ function PaymentTimelineItem({
         >
           <HiOutlineTrash style={{ width: 15, height: 15 }} />
         </button>
-      )}
+      </div>
     </div>
   );
 }

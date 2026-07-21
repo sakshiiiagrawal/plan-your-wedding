@@ -1,4 +1,3 @@
-import { AppError } from '../shared/errors/AppError';
 import { BadRequestError, ConflictError, NotFoundError } from '../shared/errors/HttpError';
 import { withPgTransaction, withPgClient } from '../config/postgres';
 import { ensureDefaultCategoriesTx } from './expense-categories.service';
@@ -845,6 +844,46 @@ function autoAllocateProportionally(
     }));
 }
 
+/** Folds duplicate item ids together so a merged plan stays one row per item. */
+function mergeAllocations(...groups: PaymentAllocationInput[][]): PaymentAllocationInput[] {
+  const totals = new Map<string, number>();
+  for (const group of groups) {
+    for (const allocation of group) {
+      totals.set(
+        allocation.expense_item_id,
+        normalizeMoney((totals.get(allocation.expense_item_id) ?? 0) + allocation.amount),
+      );
+    }
+  }
+  return Array.from(totals.entries())
+    .filter(([, amount]) => amount > 0)
+    .map(([expense_item_id, amount]) => ({ expense_item_id, amount }));
+}
+
+/**
+ * Spreads an overpayment across the expense's line items. Nothing is "owed"
+ * at this point — every item is already settled — so weight by the committed
+ * amount, which puts most of a tip on the biggest line. Falls back to the
+ * first item when the whole expense is zero-value and there is no ratio to
+ * weight by.
+ */
+function allocateExcess(
+  excess: number,
+  items: Array<{ id: string; amount: number }>,
+): PaymentAllocationInput[] {
+  const candidates = items
+    .map((item) => ({ id: item.id, available: item.amount }))
+    .filter((entry) => entry.available > 0);
+  if (candidates.length === 0) {
+    const fallback = items[0];
+    if (!fallback) {
+      throw new BadRequestError('This expense has no line items to allocate the payment against.');
+    }
+    return [{ expense_item_id: fallback.id, amount: excess }];
+  }
+  return autoAllocateProportionally(excess, candidates);
+}
+
 async function insertPaymentAllocations(
   client: PoolClient,
   actorId: string,
@@ -1031,15 +1070,19 @@ export async function createPaymentRecordTx(
         .map(([id, values]) => ({ id, available: values.outstanding }))
         .filter((entry) => entry.available > 0);
       const available = normalizeMoney(candidates.reduce((sum, item) => sum + item.available, 0));
+      // Overpaying is allowed: settle what is owed first, then spread the
+      // remainder over the line items as an overpayment. The caller can still
+      // send `new_items` to book the excess as a real Tip/Late Fee line
+      // instead — this is only the fallback when they don't.
       if (candidateAmount > available) {
         const excess = normalizeMoney(candidateAmount - available);
-        throw new AppError(
-          `Payment exceeds the remaining balance by ${excess}. Add a new finance line item such as Tip, Late Fee, or Extra Service to continue.`,
-          400,
-          'EXCESS_AMOUNT',
+        allocations = mergeAllocations(
+          available > 0 ? autoAllocateProportionally(available, candidates) : [],
+          allocateExcess(excess, items),
         );
+      } else {
+        allocations = autoAllocateProportionally(candidateAmount, candidates);
       }
-      allocations = autoAllocateProportionally(candidateAmount, candidates);
     }
 
     if (!allocations || allocations.length === 0) {
@@ -1053,12 +1096,15 @@ export async function createPaymentRecordTx(
       if (!itemState) {
         throw new BadRequestError('Payment allocation references an invalid expense item.');
       }
-      const limit = normalized.direction === 'inflow' ? itemState.paid : itemState.outstanding;
-      if (normalizeMoney(allocation.amount) > normalizeMoney(limit)) {
+      // Outflows may exceed an item's remaining balance — that is an
+      // overpayment, not an error. Inflows still cannot refund more than was
+      // actually paid, which would drive net paid negative.
+      if (
+        normalized.direction === 'inflow' &&
+        normalizeMoney(allocation.amount) > normalizeMoney(itemState.paid)
+      ) {
         throw new ConflictError(
-          normalized.direction === 'inflow'
-            ? 'Refund allocation exceeds the amount previously paid for one of the line items.'
-            : 'Payment allocation exceeds the remaining balance for one of the line items.',
+          'Refund allocation exceeds the amount previously paid for one of the line items.',
         );
       }
     }
@@ -1177,7 +1223,14 @@ export async function createPaymentRecordTx(
   return payment;
 }
 
-export async function deleteScheduledPaymentTx(
+/**
+ * Deletes a payment of any status. Posted payments used to be undeletable —
+ * you had to book an offsetting reversal — which made a simple typo expensive
+ * to fix. The row now goes away so balances recompute cleanly, and the full
+ * before-image is still written to finance_activity for the audit trail.
+ * Reversals remain available for anyone who wants the correction on the books.
+ */
+export async function deletePaymentTx(
   client: PoolClient,
   actorId: string,
   paymentId: string,
@@ -1185,9 +1238,21 @@ export async function deleteScheduledPaymentTx(
   const payments = await lockPayments(client, [paymentId]);
   const payment = payments[0];
   if (!payment) throw new NotFoundError('Payment not found');
-  if (payment.status !== 'scheduled') {
-    throw new ConflictError('Only scheduled payments can be deleted.');
+
+  // A reversal of a payment that no longer exists is meaningless, and leaving
+  // one behind would drive the item's net paid negative and trip the deferred
+  // integrity trigger. Take the reversal chain down with it.
+  const { rows: reversalRows } = await client.query<DbRow>(
+    `SELECT id FROM payments WHERE reverses_payment_id = $1`,
+    [paymentId],
+  );
+  for (const row of reversalRows) {
+    await deletePaymentTx(client, actorId, String(row['id']));
   }
+
+  // payment_allocations.payment_id is ON DELETE RESTRICT, so allocations have
+  // to be torn down by hand — which also logs them to the audit trail.
+  await removeExistingAllocations(client, actorId, payment.expense_id, paymentId);
   await client.query(`DELETE FROM payments WHERE id = $1`, [paymentId]);
   await insertActivity(
     client,
@@ -1528,9 +1593,8 @@ export async function updateExpensePayment(
     const payments = await lockPayments(client, [paymentId]);
     const payment = payments[0];
     if (!payment) throw new NotFoundError('Payment not found');
-    if (payment.status === 'cancelled') {
-      throw new ConflictError('Cancelled scheduled payments cannot be edited.');
-    }
+    // Every status is editable, cancelled included — reinstating a cancelled
+    // payment is just a status change back to scheduled or posted.
     const merged: PaymentMutationInput = { ...payment, ...payload };
     await createPaymentRecordTx(client, ownerId, actorId, payment.expense_id, merged, payment);
     return getExpenseDetailsTx(client, ownerId, payment.expense_id);
@@ -1542,7 +1606,7 @@ export async function deleteExpensePayment(
   actorId: string,
   paymentId: string,
 ): Promise<void> {
-  await withPgTransaction((client) => deleteScheduledPaymentTx(client, actorId, paymentId));
+  await withPgTransaction((client) => deletePaymentTx(client, actorId, paymentId));
 }
 
 export async function getSourceExpenseId(

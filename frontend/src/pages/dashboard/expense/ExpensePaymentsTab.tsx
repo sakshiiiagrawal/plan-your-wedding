@@ -16,6 +16,9 @@ import { financeTier } from '@wedding-planner/shared';
 import { useAuth } from '../../../contexts/AuthContext';
 import PaymentAttachments from '../../../components/finance/PaymentAttachments';
 import MarkPaidDialog, { type MarkPaidResult } from '../../../components/finance/MarkPaidDialog';
+import EditPaymentDialog, {
+  type EditPaymentResult,
+} from '../../../components/finance/EditPaymentDialog';
 import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 
 interface ExpensePaymentsTabProps {
@@ -137,6 +140,7 @@ export default function ExpensePaymentsTab({
   const updatePayment = useUpdateExpensePayment();
   const deletePayment = useDeleteExpensePayment();
   const [markPaidTarget, setMarkPaidTarget] = useState<FinanceTimelinePayment | null>(null);
+  const [editTarget, setEditTarget] = useState<FinanceTimelinePayment | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<FinanceTimelinePayment | null>(null);
 
   if (loadingScheduled || loadingHistory || loadingOutstanding) {
@@ -186,6 +190,22 @@ export default function ExpensePaymentsTab({
     }
   };
 
+  const confirmEdit = async (result: EditPaymentResult) => {
+    if (!editTarget) return;
+    try {
+      await updatePayment.mutateAsync({ paymentId: editTarget.id, ...result });
+      toast.success('Payment updated.');
+      setEditTarget(null);
+    } catch (error) {
+      const apiError = error as { response?: { data?: { error?: string; message?: string } } };
+      toast.error(
+        apiError.response?.data?.error ||
+          apiError.response?.data?.message ||
+          'Failed to update payment.',
+      );
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     try {
@@ -193,7 +213,7 @@ export default function ExpensePaymentsTab({
         expenseId: deleteTarget.expense_id,
         paymentId: deleteTarget.id,
       });
-      toast.success('Scheduled payment deleted.');
+      toast.success('Payment deleted.');
       setDeleteTarget(null);
     } catch (error) {
       const apiError = error as { response?: { data?: { error?: string; message?: string } } };
@@ -289,6 +309,12 @@ export default function ExpensePaymentsTab({
                             className="text-xs font-medium text-green-700 hover:underline"
                           >
                             Mark paid
+                          </button>
+                          <button
+                            onClick={() => setEditTarget(payment)}
+                            className="text-xs font-medium text-ink-low hover:underline"
+                          >
+                            Edit
                           </button>
                           <button
                             onClick={() => setDeleteTarget(payment)}
@@ -409,6 +435,9 @@ export default function ExpensePaymentsTab({
                     )}
                     <th className="text-right p-3">Amount</th>
                     <th className="text-left p-3">Receipts</th>
+                    <th className="text-right p-3 pr-4">
+                      <span className="sr-only">Actions</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -452,6 +481,25 @@ export default function ExpensePaymentsTab({
                       <td className="p-3">
                         <PaymentAttachments paymentId={payment.id} />
                       </td>
+                      {/* Recorded payments stay correctable — a wrong amount or
+                          a split booked to the wrong side is a typo, not a new
+                          transaction. */}
+                      <td className="p-3 pr-4 text-right whitespace-nowrap">
+                        <div className="flex justify-end gap-3">
+                          <button
+                            onClick={() => setEditTarget(payment)}
+                            className="text-xs font-medium text-ink-low hover:underline"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget(payment)}
+                            className="text-xs font-medium text-red-600 hover:underline"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -484,12 +532,24 @@ export default function ExpensePaymentsTab({
         />
       )}
 
+      {editTarget && (
+        <EditPaymentDialog
+          payment={editTarget}
+          canSeeSplits={canSeeSplits}
+          isPending={updatePayment.isPending}
+          onConfirm={confirmEdit}
+          onCancel={() => setEditTarget(null)}
+        />
+      )}
+
       <ConfirmDialog
         open={deleteTarget != null}
-        title="Delete scheduled payment"
+        title="Delete payment"
         message={
           deleteTarget
-            ? `Delete the scheduled ${formatCurrency(deleteTarget.amount)} payment? This can't be undone.`
+            ? deleteTarget.status === 'posted'
+              ? `Delete the ${formatCurrency(deleteTarget.amount)} payment? The balances will be recalculated as if it never happened.`
+              : `Delete the scheduled ${formatCurrency(deleteTarget.amount)} payment? This can't be undone.`
             : ''
         }
         confirmLabel="Delete"
