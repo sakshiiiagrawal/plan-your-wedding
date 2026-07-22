@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useViewPreference } from '../../hooks/useViewPreference';
+import PrintDocumentHeader from '../../components/PrintDocumentHeader';
 import { useUrlFilters } from '../../hooks/useUrlFilters';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { Pagination } from '../../components/ui/Pagination';
@@ -787,6 +788,8 @@ export default function Vendors() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <PrintDocumentHeader title="Vendors" />
+
       <div
         className="card"
         style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 18 }}

@@ -11,6 +11,7 @@ import {
 } from '../utils/tenant';
 import { useAuth } from '../contexts/AuthContext';
 import { PageHeaderProvider, PageHeaderSlot } from '../contexts/PageHeaderContext';
+import { PrintProvider, usePrintTrigger } from '../contexts/PrintContext';
 import {
   useHeroContent,
   useWeddings,
@@ -45,7 +46,8 @@ import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useModalDismiss } from '../hooks/useModalDismiss';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { formatDate } from '../utils/date';
+import { formatDate, todayLocal } from '../utils/date';
+import { DEFAULT_DOC_TITLE } from '../utils/documentTitle';
 import { formatCurrency } from '../utils/currency';
 
 // `section` is the access-control key (WEDDING_SECTIONS in shared); items
@@ -82,6 +84,20 @@ const PRINTABLE_PATHS = new Set([
   '/budget',
   '/tasks',
 ]);
+
+// Names for the saved file, not the nav. Browsers derive the "Save as PDF"
+// filename from document.title, so these are kept short, filename-safe and
+// distinct from the nav labels ("Guests & RSVP" would carry an ampersand into
+// every filename).
+const PRINT_DOC_NAMES: Record<string, string> = {
+  '/guests': 'Guest List',
+  '/events': 'Event Schedule',
+  '/venues': 'Venues',
+  '/accommodations': 'Room Allocation',
+  '/vendors': 'Vendors',
+  '/budget': 'Budget',
+  '/tasks': 'Tasks',
+};
 
 const CRUMB_MAP: Record<string, string> = {
   '': 'overview',
@@ -732,7 +748,9 @@ function WeddingSwitcher({
 export default function DashboardLayout() {
   return (
     <PageHeaderProvider>
-      <DashboardLayoutInner />
+      <PrintProvider>
+        <DashboardLayoutInner />
+      </PrintProvider>
     </PageHeaderProvider>
   );
 }
@@ -757,6 +775,7 @@ function DashboardLayoutInner() {
   }, [loading, isAuthenticated, authSlug, urlSlug, location.pathname, navigate]);
 
   const slug = authSlug ?? urlSlug;
+  const triggerPrint = usePrintTrigger();
   const { data: weddingData } = useWeddings();
   const setActiveWedding = useSetActiveWedding();
   const weddings = weddingData?.weddings ?? [];
@@ -774,6 +793,21 @@ function DashboardLayoutInner() {
   const basePath = weddingPath(slug ?? '', '/dashboard');
   const subPath = location.pathname.replace(basePath, '') || '';
   const currentCrumb = CRUMB_MAP[subPath] ?? subPath.replace('/', '');
+
+  // Browsers name the "Save as PDF" file after document.title, and print it in
+  // the page header box. Left at the static index.html title, every export from
+  // every wedding saved as the same filename and the sheets carried no
+  // identification at all. Couple + section + date makes each one findable, and
+  // it doubles as a useful browser tab title.
+  const printDocName = PRINT_DOC_NAMES[subPath] ?? CRUMB_MAP[subPath] ?? 'Dashboard';
+  useEffect(() => {
+    const couple = `${brideName} & ${groomName}`;
+    // Hyphens, not em-dashes: this string becomes a filename.
+    document.title = `${couple} - ${printDocName} - ${todayLocal()}`;
+    return () => {
+      document.title = DEFAULT_DOC_TITLE;
+    };
+  }, [brideName, groomName, printDocName]);
   // Pages opted into usePageHeader() replace this crumb with their real title
   // (+ inline nav/action) directly in the topbar; others fall back to the crumb.
   // Read through <PageHeaderSlot> at the leaf, never here — this component
@@ -1086,10 +1120,12 @@ function DashboardLayoutInner() {
             <RemindersBell basePath={basePath} />
             {/* Print — only where the page is a printable document (see
                 PRINTABLE_PATHS); Overview/Gallery/Settings/Site Studio would
-                just print dashboard chrome */}
+                just print dashboard chrome. Goes through the print trigger, not
+                window.print(), so paginated pages can load their hidden rows
+                first — see PrintContext. */}
             {PRINTABLE_PATHS.has(subPath) && (
               <button
-                onClick={() => window.print()}
+                onClick={() => void triggerPrint()}
                 style={{
                   display: 'flex',
                   alignItems: 'center',

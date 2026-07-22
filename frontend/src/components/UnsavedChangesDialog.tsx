@@ -40,6 +40,8 @@ export default function UnsavedChangesDialog({
             padding: 24,
             maxWidth: 500,
             width: '100%',
+            maxHeight: 'calc(100dvh - 32px)',
+            overflowY: 'auto',
             boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
           }}
         >
@@ -52,12 +54,11 @@ export default function UnsavedChangesDialog({
           <p style={{ fontSize: 13, color: 'var(--ink-low)', margin: '0 0 20px' }}>
             You have unsaved changes in this modal.
           </p>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div className="unsaved-actions">
             <button
               type="button"
               onClick={onKeepEditing}
               className="btn-outline"
-              style={{ flex: 1 }}
             >
               Keep editing
             </button>
@@ -65,7 +66,7 @@ export default function UnsavedChangesDialog({
               type="button"
               onClick={onDiscardChanges}
               className="btn-outline"
-              style={{ flex: 1, color: 'var(--err)' }}
+              style={{ color: 'var(--err)' }}
             >
               Discard changes
             </button>
@@ -74,7 +75,7 @@ export default function UnsavedChangesDialog({
               onClick={onSaveChanges}
               disabled={isSaving}
               className="btn-primary"
-              style={{ flex: 1, opacity: isSaving ? 0.5 : 1 }}
+              style={{ opacity: isSaving ? 0.5 : 1 }}
             >
               {isSaving ? 'Saving…' : 'Save changes'}
             </button>

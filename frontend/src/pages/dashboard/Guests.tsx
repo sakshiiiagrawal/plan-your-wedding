@@ -2,6 +2,8 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useUrlFilters } from '../../hooks/useUrlFilters';
+import { usePrintPrepare } from '../../contexts/PrintContext';
+import PrintDocumentHeader from '../../components/PrintDocumentHeader';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { Pagination } from '../../components/ui/Pagination';
 import { sideLabel } from '../../utils/sideLabels';
@@ -12,6 +14,7 @@ import ComposerDrawer from '../../components/comms/ComposerDrawer';
 import {
   useGuest,
   useGuestsPageData,
+  guestsPageDataQuery,
   useBulkCreateGuests,
   useUpdateGuest,
   useBulkDeleteGuests,
@@ -450,6 +453,52 @@ export default function Guests() {
     () => (guestsIsPaginated ? guestsResponse.items : (guestsResponse ?? [])),
     [guestsResponse, guestsIsPaginated],
   );
+
+  // Printing renders the live DOM, and the list is paginated 20 at a time — so
+  // a printed guest list used to stop at 20 rows with nothing to indicate the
+  // rest existed. Before the dialog opens we refetch the same filters with no
+  // page/per_page (the API then returns the whole filtered set) and render that
+  // instead. Screen state is untouched; the extra rows only exist for the print.
+  const [printRows, setPrintRows] = useState<any[] | null>(null);
+  const printParams = {
+    side: sideFilter,
+    search: searchTerm.trim() || undefined,
+    rsvp_status: rsvpFilter,
+    include_vendor_team: showVendorTeams || undefined,
+  };
+
+  usePrintPrepare(async () => {
+    if (tab !== 'list') return;
+    const data = await queryClient.fetchQuery(guestsPageDataQuery(printParams));
+    const all = Array.isArray(data.guests) ? data.guests : data.guests.items;
+    setPrintRows(all);
+    // Let React commit the expanded table before the dialog snapshots the page.
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return () => setPrintRows(null);
+  });
+
+  // Secondary net for browsers that return from window.print() before the
+  // dialog is dismissed — without it the table would sit there showing every
+  // row while the pagination footer still claims one page of 20.
+  useEffect(() => {
+    const restore = () => setPrintRows(null);
+    window.addEventListener('afterprint', restore);
+    return () => window.removeEventListener('afterprint', restore);
+  }, []);
+
+  const rows = printRows ?? guests;
+
+  // Stamped on the printout so a filtered list can't be mistaken for the
+  // complete one. Mirrors the filter bar above the table.
+  const printFilterSummary = useMemo(() => {
+    const active: string[] = [];
+    if (sideFilter !== 'all') active.push(`Side: ${sideLabel(sideFilter)}`);
+    if (rsvpFilter !== 'all') active.push(`RSVP: ${rsvpFilter}`);
+    if (searchTerm.trim()) active.push(`Search: "${searchTerm.trim()}"`);
+    active.push(showVendorTeams ? 'Including vendor teams' : 'Excluding vendor teams');
+    return active;
+  }, [sideFilter, rsvpFilter, searchTerm, showVendorTeams]);
+
   const exportGuests = useExportGuests();
   const bulkCreateMutation = useBulkCreateGuests();
   const updateMutation = useUpdateGuest();
@@ -801,6 +850,8 @@ export default function Guests() {
 
       {tab === 'list' && (
       <>
+      <PrintDocumentHeader title="Guest List" filters={printFilterSummary} count={{ label: 'Guests', shown: rows.length }} />
+
       {/* Stats row — 4 KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard eyebrow="Invited" value={totalGuests} hint="Total invites sent" />
@@ -816,9 +867,10 @@ export default function Guests() {
         <KPICard eyebrow="Regrets" value={declined} hint="Cannot attend" />
       </div>
 
-      {/* Toolbar */}
+      {/* Toolbar — search/filter inputs are screen-only; what they filtered to
+          is recorded in the print masthead instead. */}
       <div
-        className="card"
+        className="card no-print"
         style={{
           padding: 12,
           marginBottom: 0,
@@ -884,7 +936,7 @@ export default function Guests() {
           <table className="tbl">
             <thead>
               <tr>
-                <th style={{ width: 36 }}>
+                <th style={{ width: 36 }} className="no-print">
                   <Checkbox
                     checked={allSelected}
                     disabled={selectableIds.length === 0}
@@ -897,11 +949,11 @@ export default function Guests() {
                 <th className="hidden sm:table-cell">Phone</th>
                 <th className="hidden md:table-cell">Meal</th>
                 <th>RSVP</th>
-                <th>Actions</th>
+                <th className="no-print">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {guests.map((guest: any) => {
+              {rows.map((guest: any) => {
                 const isMarkedForDelete = pendingDeletes.has(guest.id);
                 const rsvpVariant =
                   guest.rsvp_status === 'confirmed'
@@ -921,7 +973,7 @@ export default function Guests() {
                     onClick={() => !isMarkedForDelete && setSelectedGuest(guest)}
                     className={isMarkedForDelete ? 'opacity-40 line-through' : 'cursor-pointer'}
                   >
-                    <td onClick={(e) => e.stopPropagation()} style={{ width: 36 }}>
+                    <td onClick={(e) => e.stopPropagation()} style={{ width: 36 }} className="no-print">
                       <Checkbox
                         checked={selected.has(guest.id)}
                         onChange={() => toggleSelect(guest.id)}
@@ -979,7 +1031,7 @@ export default function Guests() {
                         {rsvpLabel}
                       </span>
                     </td>
-                    <td onClick={(e) => e.stopPropagation()}>
+                    <td onClick={(e) => e.stopPropagation()} className="no-print">
                       <div className="flex gap-1">
                         {!isMarkedForDelete ? (
                           <>
@@ -1028,7 +1080,7 @@ export default function Guests() {
                 );
               })}
 
-              {guests.length === 0 && pendingRows.length === 0 && (
+              {rows.length === 0 && pendingRows.length === 0 && (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-ink-low">
                     {searchTerm || rsvpFilter !== 'all' || sideFilter !== 'all'

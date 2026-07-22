@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { HiOutlinePlus, HiOutlineDownload } from 'react-icons/hi';
 import { useViewPreference } from '../../hooks/useViewPreference';
+import PrintDocumentHeader from '../../components/PrintDocumentHeader';
 import { useUrlFilters } from '../../hooks/useUrlFilters';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import {
@@ -344,6 +345,12 @@ export default function Expense() {
 
   return (
     <div className="space-y-4">
+      {/* Printing captures the live DOM, so only the open tab reaches the page —
+          name the document after that tab rather than "Budget" generally. */}
+      <PrintDocumentHeader
+        title={`Budget — ${TABS.find((t) => t.id === activeTab)?.label ?? 'Overview'}`}
+      />
+
       {activeTab === 'overview' && (
         <ExpenseOverviewTab
           expenseOverview={expenseOverview}

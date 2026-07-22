@@ -142,7 +142,9 @@ export function SectionHeader({
 }) {
   return (
     <div className="flex items-end justify-between gap-4 mb-6 flex-wrap">
-      <div>
+      {/* min-w-0 lets the title column shrink instead of forcing the row wider
+          than the viewport on narrow screens. */}
+      <div className="min-w-0">
         {eyebrow && <div className="uppercase-eyebrow mb-2">{eyebrow}</div>}
         <h1
           className="display"
@@ -171,7 +173,10 @@ export function SectionHeader({
           </p>
         )}
       </div>
-      {action && <div className="flex-shrink-0">{action}</div>}
+      {/* Callers pass their own wrapping button rows here. flex-shrink-0 would
+          pin this at its natural width, so the inner flex-wrap would never see
+          a narrow enough box to wrap and the buttons would overflow the page. */}
+      {action && <div className="min-w-0">{action}</div>}
     </div>
   );
 }

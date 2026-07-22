@@ -308,12 +308,13 @@ function MembersPanel() {
             placeholder="email@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            style={{ minWidth: 180 }}
             required
           />
           {preset === 'custom' && (
             <select
               className="input"
-              style={{ width: 120 }}
+              style={{ width: 120, maxWidth: '100%' }}
               value={role}
               onChange={(e) => setRole(e.target.value as MemberRole)}
             >
@@ -366,19 +367,32 @@ function MembersPanel() {
                 padding: '10px 12px',
               }}
             >
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <div style={{ minWidth: 0 }}>
-                  <span>{m.invited_email}</span>{' '}
-                  <span style={{ color: 'var(--ink-low)', fontSize: 12 }}>
+              {/* flex-wrap so the controls drop to their own line rather than
+                  crushing the email column to one word per line. */}
+              <div className="flex items-center justify-between gap-3 text-sm flex-wrap">
+                <div style={{ minWidth: 0, flex: '1 1 180px' }}>
+                  {/* Emails are long and unbreakable — truncate rather than let
+                      them slide under the opaque role select. */}
+                  <div
+                    title={m.invited_email}
+                    style={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {m.invited_email}
+                  </div>
+                  <div style={{ color: 'var(--ink-low)', fontSize: 12 }}>
                     {m.status === 'pending'
-                      ? `(invited ${formatDate(m.created_at, { month: 'short', day: 'numeric' })} · not accepted yet)`
-                      : '(active)'}
-                  </span>
+                      ? `Invited ${formatDate(m.created_at, { month: 'short', day: 'numeric' })} · not accepted yet`
+                      : 'Active'}
+                  </div>
                 </div>
                 {targetIsUntouchableAdmin ? (
                   <span style={{ fontSize: 12, color: 'var(--ink-dim)' }}>Admin</span>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
                     {m.status === 'pending' && (
                       <button
                         onClick={() => handleResendInvite(m)}
@@ -391,7 +405,7 @@ function MembersPanel() {
                     )}
                     <select
                       className="input"
-                      style={{ width: 120 }}
+                      style={{ width: 120, maxWidth: '100%' }}
                       value={m.role}
                       onChange={(e) => updateMember.mutate({ id: m.id, role: e.target.value })}
                     >

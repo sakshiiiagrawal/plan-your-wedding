@@ -406,12 +406,21 @@ export interface GuestsPageData {
   events: EventWithVenue[];
 }
 
+// Shared so the hook below and one-off fetches (queryClient.fetchQuery, used by
+// the Guests print path) hit the same cache entry instead of drifting apart.
+export const guestsPageDataQuery = (params: GuestPageDataParams = {}) => ({
+  queryKey: ['guests', 'page-data', params] as const,
+  queryFn: (): Promise<GuestsPageData> =>
+    api.get('/guests/page-data', { params }).then((res) => res.data),
+});
+
 // Single request backing the Guests page (was guests + summary + events).
 // Filtering/sorting/pagination happen server-side; `summary` stays whole-wedding.
+// Omitting page/per_page entirely returns the full filtered list (see
+// resolvePagination on the API) — that is how printing gets every row.
 export const useGuestsPageData = (params: GuestPageDataParams = {}) =>
   useQuery<GuestsPageData>({
-    queryKey: ['guests', 'page-data', params],
-    queryFn: () => api.get('/guests/page-data', { params }).then((res) => res.data),
+    ...guestsPageDataQuery(params),
     placeholderData: (previousData) => previousData,
   });
 
@@ -1545,10 +1554,19 @@ export type TaskWithEvent = TaskRow & Record<string, unknown>;
 // Paginated envelope when they are (used by the paginated list view).
 export type TasksListResponse = TaskWithEvent[] | Paginated<TaskWithEvent>;
 
+// Shared so the hook and one-off fetches (queryClient.fetchQuery, used by the
+// Tasks print path) hit the same cache entry instead of drifting apart.
+export const tasksQuery = (filters: TaskFilters = {}) => ({
+  queryKey: ['tasks', filters] as const,
+  queryFn: (): Promise<TasksListResponse> =>
+    api.get('/tasks', { params: filters }).then((res) => res.data),
+});
+
+// Omitting page/per_page returns the full filtered list — that is how printing
+// gets every row rather than just the visible page.
 export const useTasks = (filters: TaskFilters = {}) =>
   useQuery<TasksListResponse>({
-    queryKey: ['tasks', filters],
-    queryFn: () => api.get('/tasks', { params: filters }).then((res) => res.data),
+    ...tasksQuery(filters),
     placeholderData: (previousData) => previousData,
   });
 

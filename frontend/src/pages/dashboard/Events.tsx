@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import PrintDocumentHeader from '../../components/PrintDocumentHeader';
 import { useViewPreference } from '../../hooks/useViewPreference';
 import {
   useEvents,
@@ -564,6 +565,8 @@ export default function Events() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <PrintDocumentHeader title="Event Schedule" count={{ label: 'Events', shown: events.length }} />
+
       {/* ── Timeline View ── */}
       {viewMode === 'timeline' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -1405,7 +1408,7 @@ export default function Events() {
                         <label className="label">Estimated Guests</label>
                         <input
                           type="number"
-                          value={formData.estimated_guests || ''}
+                          value={formData.estimated_guests}
                           onChange={(e) =>
                             setFormData({
                               ...formData,

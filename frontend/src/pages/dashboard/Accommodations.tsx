@@ -1,5 +1,6 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import PrintDocumentHeader from '../../components/PrintDocumentHeader';
 import { useQueryClient } from '@tanstack/react-query';
 import { useViewPreference } from '../../hooks/useViewPreference';
 import {
@@ -43,6 +44,7 @@ import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Portal from '../../components/Portal';
 import DateRangePicker from '../../components/ui/DateRangePicker';
+import DatePicker from '../../components/ui/DatePicker';
 import { Checkbox } from '../../components/ui';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
@@ -180,7 +182,6 @@ type EnrichedVenue = AllocationVenue & {
   roomsBooked: number;
 };
 
-
 function formatStayDate(iso: string | null | undefined): string {
   if (!iso) return '—';
   const d = new Date(`${iso}T00:00:00`);
@@ -294,8 +295,22 @@ export default function Accommodations() {
   const [noRoomNeededCollapsed, setNoRoomNeededCollapsed] = useState(true);
   const [collapsedHotelIds, setCollapsedHotelIds] = useState<Set<string>>(() => new Set());
   const [editingHotelId, setEditingHotelId] = useState<string | null>(null);
-  const [draggingGuestId, setDraggingGuestId] = useState<string | null>(null);
+  // The guest armed for assignment — set either by dragging (pointer) or by
+  // tapping the guest row (touch, where HTML5 drag events never fire). Both
+  // paths land in handleDropOnAllocation, which reads this rather than
+  // dataTransfer, so the two modes share one code path.
+  const [pendingGuestId, setPendingGuestId] = useState<string | null>(null);
   const [dropTargetKey, setDropTargetKey] = useState<string | null>(null);
+
+  // Escape cancels an armed guest, so a tap-selection is never a trap.
+  useEffect(() => {
+    if (!pendingGuestId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPendingGuestId(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [pendingGuestId]);
   const [editHotelDateValues, setEditHotelDateValues] = useState<{
     default_check_in_date: string;
     default_check_out_date: string;
@@ -703,44 +718,63 @@ export default function Accommodations() {
     guest: AccommodationGuest,
     stays?: { room_number: string; venue_name: string; check_in: string; check_out: string }[],
     draggable = false,
-  ) => (
-    <div
-      key={guest.id}
-      draggable={draggable}
-      onDragStart={
-        draggable
-          ? (e) => {
-              setDraggingGuestId(guest.id);
-              e.dataTransfer.effectAllowed = 'move';
-              e.dataTransfer.setData('guestId', guest.id);
-            }
-          : undefined
-      }
-      onDragEnd={draggable ? () => setDraggingGuestId(null) : undefined}
-      className={`flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-raised transition-opacity ${
-        draggable ? 'cursor-grab active:cursor-grabbing' : ''
-      } ${draggingGuestId === guest.id ? 'opacity-40' : ''}`}
-    >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-sm font-medium text-ink-high truncate">
-            {[guest.first_name, guest.last_name].filter(Boolean).join(' ')}
-          </span>
-          {guest.side === 'bride' && <span className="badge-bride text-xs">Bride</span>}
-          {guest.side === 'groom' && <span className="badge-groom text-xs">Groom</span>}
-          {guest.is_vip && <span className="badge bg-gold-100 text-gold-800 text-xs">VIP</span>}
+  ) => {
+    const isPending = pendingGuestId === guest.id;
+    return (
+      <div
+        key={guest.id}
+        draggable={draggable}
+        onDragStart={
+          draggable
+            ? (e) => {
+                setPendingGuestId(guest.id);
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('guestId', guest.id);
+              }
+            : undefined
+        }
+        onDragEnd={draggable ? () => setPendingGuestId(null) : undefined}
+        // Tap arms/disarms the guest — the touch equivalent of picking one up.
+        onClick={draggable ? () => setPendingGuestId(isPending ? null : guest.id) : undefined}
+        onKeyDown={
+          draggable
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setPendingGuestId(isPending ? null : guest.id);
+                }
+              }
+            : undefined
+        }
+        role={draggable ? 'button' : undefined}
+        tabIndex={draggable ? 0 : undefined}
+        aria-pressed={draggable ? isPending : undefined}
+        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors ${
+          draggable ? 'cursor-grab active:cursor-grabbing' : ''
+        } ${isPending ? 'bg-green-50 ring-2 ring-green-300' : 'hover:bg-surface-raised'}`}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-sm font-medium text-ink-high truncate">
+              {[guest.first_name, guest.last_name].filter(Boolean).join(' ')}
+            </span>
+            {guest.side === 'bride' && <span className="badge badge-bride text-xs">Bride</span>}
+            {guest.side === 'groom' && <span className="badge badge-groom text-xs">Groom</span>}
+            {guest.is_vip && <span className="badge bg-gold-100 text-gold-800 text-xs">VIP</span>}
+          </div>
+          {stays &&
+            stays.map((r, i) => (
+              <p key={i} className="text-xs text-ink-dim mt-0.5">
+                Room {r.room_number} · {r.venue_name} · {formatStayDate(r.check_in)}→
+                {formatStayDate(r.check_out)}
+              </p>
+            ))}
         </div>
-        {stays &&
-          stays.map((r, i) => (
-            <p key={i} className="text-xs text-ink-dim mt-0.5">
-              Room {r.room_number} · {r.venue_name} · {formatStayDate(r.check_in)}→
-              {formatStayDate(r.check_out)}
-            </p>
-          ))}
+        {/* Drag grip is a pointer-only affordance — on touch the row is tapped. */}
+        {draggable && <span className="pointer-only text-ink-dim text-xs select-none">⠿</span>}
       </div>
-      {draggable && <span className="text-ink-dim text-xs select-none">⠿</span>}
-    </div>
-  );
+    );
+  };
 
   const openCreateStayModal = (
     room: VenueRoom,
@@ -778,8 +812,8 @@ export default function Accommodations() {
     alloc: RoomAllocationSummary | null,
   ) => {
     setDropTargetKey(null);
-    const guestId = draggingGuestId;
-    setDraggingGuestId(null);
+    const guestId = pendingGuestId;
+    setPendingGuestId(null);
     if (!guestId) return;
 
     const guest = allGuests.find((g: AccommodationGuest) => g.id === guestId);
@@ -846,10 +880,12 @@ export default function Accommodations() {
 
   return (
     <div className="space-y-6">
+      <PrintDocumentHeader title="Room Allocation" />
+
       <SectionHeader
         eyebrow="Stay & Rooms"
         title="Accommodations & Room Allocation"
-        description="Tap a guest chip to cycle: expected → checked in → checked out"
+        description="Pick a guest, then pick a room to assign them. Tap a guest already in a room to cycle: expected → checked in → checked out."
         action={
           <div className="flex gap-2 flex-wrap">
             <button
@@ -900,8 +936,10 @@ export default function Accommodations() {
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <h2 className="section-title">Guests</h2>
+                {/* Progress, not a repeat of the section counts below. */}
                 <span className="badge bg-gold-100 text-gold-800 text-xs">
-                  {guestSegments.unassigned.length + guestSegments.assigned.length} needing rooms
+                  {guestSegments.assigned.length} of{' '}
+                  {guestSegments.unassigned.length + guestSegments.assigned.length} placed
                 </span>
               </div>
 
@@ -933,7 +971,9 @@ export default function Accommodations() {
                     Unassigned ({filteredGuestSegments.unassigned.length})
                   </span>
                   {filteredGuestSegments.unassigned.length > 0 && (
-                    <span className="ml-auto text-xs text-ink-dim italic">drag to assign</span>
+                    <span className="ml-auto text-xs text-ink-dim italic">
+                      {pendingGuestId ? 'now pick a room' : 'pick one to assign'}
+                    </span>
                   )}
                 </div>
                 {filteredGuestSegments.unassigned.length > 0 ? (
@@ -970,22 +1010,33 @@ export default function Accommodations() {
               <div>
                 <button
                   onClick={() => setNoRoomNeededCollapsed(!noRoomNeededCollapsed)}
-                  className="flex items-center gap-2 w-full mb-2 hover:opacity-80"
+                  disabled={filteredGuestSegments.noRoomNeeded.length === 0}
+                  aria-expanded={!noRoomNeededCollapsed}
+                  className="flex items-center gap-2 w-full mb-2 hover:opacity-80 disabled:cursor-default disabled:hover:opacity-100"
                 >
                   <span className="w-2 h-2 rounded-full bg-ink-dim flex-shrink-0" />
                   <span className="text-xs font-semibold text-ink-low uppercase tracking-wide flex-1 text-left">
                     No Room Needed ({filteredGuestSegments.noRoomNeeded.length})
                   </span>
-                  {noRoomNeededCollapsed ? (
-                    <HiOutlineChevronDown className="w-4 h-4 text-ink-dim" />
-                  ) : (
-                    <HiOutlineChevronUp className="w-4 h-4 text-ink-dim" />
-                  )}
+                  {/* An empty group has nothing to disclose — match the flat
+                      empty state the Assigned section uses. */}
+                  {filteredGuestSegments.noRoomNeeded.length > 0 &&
+                    (noRoomNeededCollapsed ? (
+                      <HiOutlineChevronDown className="w-4 h-4 text-ink-dim" />
+                    ) : (
+                      <HiOutlineChevronUp className="w-4 h-4 text-ink-dim" />
+                    ))}
                 </button>
-                {!noRoomNeededCollapsed &&
+                {filteredGuestSegments.noRoomNeeded.length === 0 ? (
+                  <p className="text-xs italic text-ink-dim px-2">
+                    {guestPanelSearch ? 'No matches' : 'Everyone needs a room'}
+                  </p>
+                ) : (
+                  !noRoomNeededCollapsed &&
                   filteredGuestSegments.noRoomNeeded.map((g: AccommodationGuest) =>
                     renderGuestRow(g),
-                  )}
+                  )
+                )}
               </div>
             </div>
           </div>
@@ -1030,11 +1081,12 @@ export default function Accommodations() {
                   >
                     ‹
                   </button>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={scheduleDate}
-                    onChange={(e) => setScheduleDate(e.target.value)}
-                    className="input py-1.5 text-sm w-40"
+                    onChange={setScheduleDate}
+                    size="sm"
+                    clearable={false}
+                    className="w-44"
                   />
                   <button
                     onClick={() => {
@@ -1228,19 +1280,6 @@ export default function Accommodations() {
                                 >
                                   <HiOutlineDotsVertical className="w-5 h-5" />
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={toggleHotelCollapsed}
-                                  className="mt-0.5 p-1.5 rounded-lg hover:bg-surface-highest text-ink-low flex-shrink-0"
-                                  aria-expanded={!isHotelCollapsed}
-                                  title={isHotelCollapsed ? 'Expand' : 'Collapse'}
-                                >
-                                  {isHotelCollapsed ? (
-                                    <HiOutlineChevronDown className="w-5 h-5" />
-                                  ) : (
-                                    <HiOutlineChevronUp className="w-5 h-5" />
-                                  )}
-                                </button>
                                 <div className="flex items-center gap-3 min-w-0">
                                   <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center flex-shrink-0">
                                     <HiOutlineOfficeBuilding className="w-5 h-5 text-gold-600" />
@@ -1286,6 +1325,28 @@ export default function Accommodations() {
                                 >
                                   <HiOutlinePlus className="w-4 h-4" />
                                   Add Room
+                                </button>
+                                {/* Collapse sits on the trailing edge, matching
+                                    every other disclosure in the app. ml-auto
+                                    keeps it right-aligned on the line it lands
+                                    on once this row wraps on narrow screens. */}
+                                <button
+                                  type="button"
+                                  onClick={toggleHotelCollapsed}
+                                  className="ml-auto p-1.5 rounded-lg hover:bg-surface-highest text-ink-low flex-shrink-0"
+                                  aria-expanded={!isHotelCollapsed}
+                                  aria-label={
+                                    isHotelCollapsed
+                                      ? `Expand ${hotel.name}`
+                                      : `Collapse ${hotel.name}`
+                                  }
+                                  title={isHotelCollapsed ? 'Expand' : 'Collapse'}
+                                >
+                                  {isHotelCollapsed ? (
+                                    <HiOutlineChevronDown className="w-5 h-5" />
+                                  ) : (
+                                    <HiOutlineChevronUp className="w-5 h-5" />
+                                  )}
                                 </button>
                               </div>
                             </div>
@@ -1342,7 +1403,7 @@ export default function Accommodations() {
                                       </span>
                                     </div>
                                     <div className="flex items-center gap-1.5 text-xs text-ink-low">
-                                      <span>Check-out:</span>
+                                      <span>Default check-out:</span>
                                       <span className="font-medium text-ink-mid">
                                         {hotel.default_check_out_date ?? (
                                           <span className="italic text-ink-low">not set</span>
@@ -1364,8 +1425,9 @@ export default function Accommodations() {
                                           return next;
                                         });
                                       }}
-                                      className="opacity-0 group-hover/dates:opacity-100 transition-opacity text-ink-dim hover:text-ink-mid"
+                                      className="hover-reveal-dates text-ink-dim hover:text-ink-mid"
                                       title="Edit default dates"
+                                      aria-label="Edit default check-in and check-out dates"
                                     >
                                       <HiOutlinePencil className="w-3.5 h-3.5" />
                                     </button>
@@ -1374,9 +1436,9 @@ export default function Accommodations() {
 
                                 {/* Room list */}
                                 <div className="border-t border-gold-100 pt-4">
-                                  {draggingGuestId && hotel.rooms && hotel.rooms.length > 0 && (
-                                    <p className="text-xs text-green-600 font-medium mb-2 animate-pulse">
-                                      ↓ Drop guest onto a stay to assign
+                                  {pendingGuestId && hotel.rooms && hotel.rooms.length > 0 && (
+                                    <p className="text-xs text-green-600 font-medium mb-2">
+                                      ↓ Pick a stay to assign this guest
                                     </p>
                                   )}
                                   {hotel.rooms && hotel.rooms.length > 0 ? (
@@ -1506,8 +1568,9 @@ export default function Accommodations() {
                                                   Room {room.room_number}
                                                   <button
                                                     onClick={startEditRoom}
-                                                    className="opacity-0 group-hover:opacity-100 text-ink-dim hover:text-ink-mid transition-opacity"
+                                                    className="hover-reveal text-ink-dim hover:text-ink-mid"
                                                     title="Edit room"
+                                                    aria-label="Edit room number"
                                                   >
                                                     <HiOutlinePencil className="w-3.5 h-3.5" />
                                                   </button>
@@ -1631,7 +1694,7 @@ export default function Accommodations() {
                                                   <div
                                                     key={alloc.id}
                                                     onDragOver={
-                                                      draggingGuestId
+                                                      pendingGuestId
                                                         ? (e) => {
                                                             e.preventDefault();
                                                             e.dataTransfer.dropEffect = 'move';
@@ -1640,12 +1703,12 @@ export default function Accommodations() {
                                                         : undefined
                                                     }
                                                     onDragLeave={
-                                                      draggingGuestId
+                                                      pendingGuestId
                                                         ? () => setDropTargetKey(null)
                                                         : undefined
                                                     }
                                                     onDrop={
-                                                      draggingGuestId
+                                                      pendingGuestId
                                                         ? (e) => {
                                                             e.preventDefault();
                                                             handleDropOnAllocation(
@@ -1656,12 +1719,27 @@ export default function Accommodations() {
                                                           }
                                                         : undefined
                                                     }
+                                                    // Tap completes a tap-armed assignment.
+                                                    onClick={
+                                                      pendingGuestId
+                                                        ? () =>
+                                                            handleDropOnAllocation(
+                                                              room,
+                                                              hotel,
+                                                              alloc,
+                                                            )
+                                                        : undefined
+                                                    }
                                                     className={`flex flex-col sm:flex-row sm:items-center gap-3 p-2 rounded-lg transition-colors ${
+                                                      pendingGuestId ? 'cursor-pointer' : ''
+                                                    } ${
                                                       isDropTarget
                                                         ? stayFull
                                                           ? 'bg-red-50 ring-2 ring-red-300'
                                                           : 'bg-green-50 ring-2 ring-green-300'
-                                                        : 'bg-surface-panel'
+                                                        : pendingGuestId
+                                                          ? 'bg-surface-panel ring-1 ring-green-200'
+                                                          : 'bg-surface-panel'
                                                     }`}
                                                   >
                                                     <div className="flex items-center gap-2 min-w-0 sm:w-56 flex-shrink-0">
@@ -1695,9 +1773,12 @@ export default function Accommodations() {
                                                             <button
                                                               type="button"
                                                               key={g.id}
-                                                              onClick={() =>
-                                                                cycleGuestStatus(alloc, g.id)
-                                                              }
+                                                              onClick={(e) => {
+                                                                // Don't let the row's assign-on-tap
+                                                                // handler swallow a status cycle.
+                                                                e.stopPropagation();
+                                                                cycleGuestStatus(alloc, g.id);
+                                                              }}
                                                               title="Tap to cycle: expected → checked in → checked out"
                                                               className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                                                                 status === 'checked_out'
@@ -1726,7 +1807,10 @@ export default function Accommodations() {
                                                     </div>
 
                                                     <button
-                                                      onClick={() => openEditStay(alloc)}
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openEditStay(alloc);
+                                                      }}
                                                       className="text-xs text-gold-600 hover:text-gold-700 font-medium flex-shrink-0"
                                                     >
                                                       Edit
@@ -1737,7 +1821,7 @@ export default function Accommodations() {
                                             ) : (
                                               <div
                                                 onDragOver={
-                                                  draggingGuestId
+                                                  pendingGuestId
                                                     ? (e) => {
                                                         e.preventDefault();
                                                         e.dataTransfer.dropEffect = 'move';
@@ -1746,25 +1830,37 @@ export default function Accommodations() {
                                                     : undefined
                                                 }
                                                 onDragLeave={
-                                                  draggingGuestId
+                                                  pendingGuestId
                                                     ? () => setDropTargetKey(null)
                                                     : undefined
                                                 }
                                                 onDrop={
-                                                  draggingGuestId
+                                                  pendingGuestId
                                                     ? (e) => {
                                                         e.preventDefault();
                                                         handleDropOnAllocation(room, hotel, null);
                                                       }
                                                     : undefined
                                                 }
+                                                onClick={
+                                                  pendingGuestId
+                                                    ? () =>
+                                                        handleDropOnAllocation(room, hotel, null)
+                                                    : undefined
+                                                }
                                                 className={`p-2 rounded-lg text-xs italic text-ink-dim transition-colors ${
+                                                  pendingGuestId ? 'cursor-pointer' : ''
+                                                } ${
                                                   dropTargetKey === room.id
                                                     ? 'bg-green-50 ring-2 ring-green-300'
-                                                    : ''
+                                                    : pendingGuestId
+                                                      ? 'ring-1 ring-green-200'
+                                                      : ''
                                                 }`}
                                               >
-                                                Available — drag a guest here or add a stay
+                                                {pendingGuestId
+                                                  ? 'Tap here to assign the selected guest'
+                                                  : 'Available — add a stay, or pick a guest to assign'}
                                               </div>
                                             )}
                                           </div>
@@ -1978,10 +2074,7 @@ export default function Accommodations() {
                                 />
                               ) : (
                                 /* Presets know their occupancy — nothing to ask. */
-                                <span
-                                  className="text-sm text-ink-low text-center"
-                                  title="Sleeps"
-                                >
+                                <span className="text-sm text-ink-low text-center" title="Sleeps">
                                   {cat.capacity || 2}
                                 </span>
                               )}
@@ -2088,6 +2181,11 @@ export default function Accommodations() {
             .reduce((s, a) => s + a.count, 0);
           const effectiveCapacity = Math.max(0, (modalRoomContext?.capacity ?? 2) - overlapUsed);
           const atCapacity = selectedCount >= effectiveCapacity;
+          const datesComplete = Boolean(
+            allocationFormData.check_in_date && allocationFormData.check_out_date,
+          );
+          // Edit mode with every guest unchecked is the "remove the stay" path — dates are moot.
+          const isRemovingAll = isEditing && selectedCount === 0;
 
           const toggleGuest = (guestId: string) => {
             const isSelected = allocationFormData.guest_ids.includes(guestId);
@@ -2157,8 +2255,8 @@ export default function Accommodations() {
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* Header */}
-                  <div className="flex items-center justify-between p-6 border-b border-gold-200 flex-shrink-0">
-                    <div>
+                  <div className="flex items-start justify-between gap-4 p-6 border-b border-gold-200 flex-shrink-0">
+                    <div className="min-w-0">
                       <h2 className="text-xl display font-semibold text-ink-high">
                         {isEditing ? 'Edit Room Assignment' : 'Assign Guests to Room'}
                       </h2>
@@ -2168,34 +2266,33 @@ export default function Accommodations() {
                           : 'Select guests to assign, then set their stay dates'}
                       </p>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-start gap-2 flex-shrink-0">
                       {modalRoomContext && (
-                        <div className="flex flex-col items-end">
-                          <div
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
+                        <div className="flex flex-col items-end max-w-[13rem]">
+                          <span
+                            className={`inline-flex items-center whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium leading-5 ${
                               atCapacity ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
                             }`}
                           >
-                            <span>
-                              {selectedCount} / {effectiveCapacity}
-                            </span>
-                            <span className="text-xs opacity-75">capacity</span>
-                          </div>
+                            {selectedCount} of {effectiveCapacity} assigned
+                          </span>
                           {overlapUsed > 0 && (
-                            <span className="text-[11px] text-ink-dim mt-1">
+                            <span className="text-[11px] text-ink-dim mt-1 text-right">
                               {overlapUsed} spot{overlapUsed !== 1 ? 's' : ''} taken by another stay
                               on these dates
                             </span>
                           )}
                         </div>
                       )}
+                      <button
+                        type="button"
+                        aria-label="Close"
+                        onClick={attemptCloseAllocationModal}
+                        className="p-2 -mt-1 hover:bg-surface-highest rounded-lg flex-shrink-0"
+                      >
+                        <HiOutlineX className="w-5 h-5" />
+                      </button>
                     </div>
-                    <button
-                      onClick={attemptCloseAllocationModal}
-                      className="p-2 hover:bg-surface-highest rounded-lg"
-                    >
-                      <HiOutlineX className="w-5 h-5" />
-                    </button>
                   </div>
 
                   <form
@@ -2408,9 +2505,10 @@ export default function Accommodations() {
                               createAllocationMutation.isPending ||
                               updateAllocationMutation.isPending ||
                               deleteAllocationMutation.isPending ||
-                              (!isEditing && allocationFormData.guest_ids.length === 0)
+                              (!isEditing && allocationFormData.guest_ids.length === 0) ||
+                              (!isRemovingAll && !datesComplete)
                             }
-                            className={`btn-primary disabled:opacity-50 ${
+                            className={`btn-primary disabled:opacity-50 disabled:cursor-not-allowed ${
                               isEditing && allocationFormData.guest_ids.length === 0
                                 ? 'bg-red-600 hover:bg-red-700'
                                 : ''

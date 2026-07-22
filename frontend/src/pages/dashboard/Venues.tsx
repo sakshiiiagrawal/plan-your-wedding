@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import PrintDocumentHeader from '../../components/PrintDocumentHeader';
 import {
   HiOutlinePhone,
   HiOutlineCurrencyRupee,
@@ -466,11 +467,11 @@ function VenueRoomsSection({ rooms = [] }: { rooms?: any[] }) {
         >
           {expanded ? (
             <>
-              <HiOutlineChevronUp style={{ width: 12, height: 12 }} /> Collapse
+              Collapse <HiOutlineChevronUp style={{ width: 12, height: 12 }} />
             </>
           ) : (
             <>
-              <HiOutlineChevronDown style={{ width: 12, height: 12 }} /> View details
+              View details <HiOutlineChevronDown style={{ width: 12, height: 12 }} />
             </>
           )}
         </button>
@@ -583,7 +584,11 @@ export default function Venues() {
   usePageHeader({
     title: 'Venues',
     action: (
-      <button onClick={() => setShowVenueModal(true)} className="btn-primary" style={{ fontSize: 13 }}>
+      <button
+        onClick={() => setShowVenueModal(true)}
+        className="btn-primary"
+        style={{ fontSize: 13 }}
+      >
         Add venue
       </button>
     ),
@@ -911,6 +916,8 @@ export default function Venues() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <PrintDocumentHeader title="Venues" count={{ label: 'Venues', shown: venues.length }} />
+
       {venues.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '48px 0' }}>
           <p style={{ color: 'var(--ink-low)', fontSize: 13 }}>

@@ -489,13 +489,37 @@ textarea.input {
 }
 
 /* Gold-accented native checkbox — themed box, browser draws the tick so it's always centered. */
+/* Date-range triggers: same skin as .input so they read as fields, not tinted blocks.
+   Border-color lives here (not inline) so :hover can take effect. */
+.date-trigger {
+  background: var(--bg-raised);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-high);
+  outline: none;
+  position: relative;
+  cursor: pointer;
+  transition:
+    border-color 150ms,
+    box-shadow 150ms;
+}
+.date-trigger:hover:not(:disabled) {
+  border-color: var(--gold-soft);
+}
+.date-trigger:disabled {
+  cursor: not-allowed;
+}
+.date-trigger:focus-visible {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-glow);
+}
+
 .checkbox-gold {
   appearance: none;
   width: 17px;
   height: 17px;
   flex-shrink: 0;
   margin: 0;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: var(--bg-raised);
   cursor: pointer;
@@ -532,37 +556,79 @@ textarea.input {
   --rdp-today-color: var(--gold-deep);
   --rdp-day_button-border-radius: var(--radius-sm);
   --rdp-selected-border: none;
+  --rdp-day-height: 36px;
+  --rdp-day-width: 36px;
+  --rdp-day_button-height: 36px;
+  --rdp-day_button-width: 36px;
+  --rdp-outside-opacity: 1;
+  --rdp-disabled-opacity: 1;
   color: var(--ink-high);
+  margin: 0;
 }
-.rdp-theme .rdp-month_caption {
-  font-family: var(--font-display);
-  color: var(--ink-high);
-  font-size: 14px;
+/* Month name and arrows are rendered by CalendarMonthNav (see components/ui/calendar.tsx)
+   so the single-date and range popups share one header. Hide the library's own. */
+.rdp-theme .rdp-month_caption,
+.rdp-theme .rdp-nav {
+  display: none;
+}
+.rdp-theme .rdp-months,
+.rdp-theme .rdp-month {
+  width: 100%;
+  max-width: none;
 }
 .rdp-theme .rdp-weekday {
   color: var(--ink-low);
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   font-size: 10px;
+  padding-bottom: 2px;
 }
 .rdp-theme .rdp-day_button {
   color: var(--ink-high);
   font-size: 13px;
+  font-weight: 400;
+  border: 1px solid transparent;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
 }
 .rdp-theme .rdp-day_button:hover:not(:disabled) {
-  background: var(--bg-raised);
+  background: var(--gold-glow);
+}
+.rdp-theme .rdp-day_button:focus-visible {
+  outline: 2px solid var(--gold-deep);
+  outline-offset: -2px;
+}
+.rdp-theme .rdp-today:not(.rdp-selected) .rdp-day_button {
+  color: var(--gold-deep);
+  font-weight: 600;
+  border-color: var(--gold-soft);
+}
+.rdp-theme .rdp-outside .rdp-day_button {
+  color: var(--ink-dim);
+  opacity: 0.55;
+}
+.rdp-theme .rdp-disabled .rdp-day_button {
+  color: var(--ink-dim);
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .rdp-theme .rdp-selected .rdp-day_button {
   background: var(--gold);
+  border-color: var(--gold);
   color: #fff;
+  font-weight: 600;
 }
+/* Range: solid gold caps, a soft gold wash for the nights in between. */
 .rdp-theme .rdp-range_middle .rdp-day_button {
-  background: transparent;
+  background: var(--gold-glow);
+  border-color: transparent;
+  color: var(--ink-high);
+  font-weight: 500;
 }
-.rdp-theme .rdp-button_previous:hover,
-.rdp-theme .rdp-button_next:hover {
-  background: var(--bg-raised);
-  border-radius: var(--radius-sm);
+.rdp-theme .rdp-range_middle.rdp-outside .rdp-day_button {
+  color: var(--ink-dim);
 }
 
 @utility label {
@@ -719,6 +785,58 @@ textarea.input {
   color: #1d4ed8;
   border-color: rgba(29, 78, 216, 0.25);
   background: rgba(29, 78, 216, 0.06);
+}
+
+/* ── Hover-reveal ────────────────────────────────────────────────────────────
+   Secondary controls (edit pencils, delete buttons) that fade in on hover.
+   Touch devices have no hover, so `opacity-0 group-hover:opacity-100` renders
+   them permanently invisible and the action becomes unreachable. Stay visible
+   by default; only opt into the fade where a real pointer can trigger it. */
+@utility hover-reveal {
+  opacity: 1;
+  transition: opacity 150ms;
+
+  @media (hover: hover) and (pointer: fine) {
+    opacity: 0;
+
+    .group:hover &,
+    .group:focus-within & {
+      opacity: 1;
+    }
+  }
+
+  &:focus-visible {
+    opacity: 1;
+  }
+}
+
+/* Same, for rows that scope their hover group with `group/<name>`. */
+@utility hover-reveal-dates {
+  opacity: 1;
+  transition: opacity 150ms;
+
+  @media (hover: hover) and (pointer: fine) {
+    opacity: 0;
+
+    .group\/dates:hover &,
+    .group\/dates:focus-within & {
+      opacity: 1;
+    }
+  }
+
+  &:focus-visible {
+    opacity: 1;
+  }
+}
+
+/* Affordances that only make sense with a real pointer (drag grips, hover
+   hints). Hidden on touch, where the equivalent action is a tap. */
+@utility pointer-only {
+  display: none;
+
+  @media (hover: hover) and (pointer: fine) {
+    display: inline;
+  }
 }
 
 /* ── Avatar ──────────────────────────────────────────────────────────────── */
@@ -1074,6 +1192,12 @@ textarea.input {
   background: var(--gold-glow);
 }
 
+/* Blocks that exist only on paper (document mastheads). Hidden on screen here
+   so the rule applies outside the print context too. */
+.print-only {
+  display: none;
+}
+
 /* Print: hide dashboard chrome, print a clean list. The dashboard shell pins
    itself to 100vh with overflow:hidden (and several pages clip long lists into
    internal scrollers), which would clip printing to a single screenful —
@@ -1091,6 +1215,135 @@ textarea.input {
     height: auto !important;
     max-height: none !important;
     overflow: visible !important;
+  }
+
+  /* Sheet geometry. The bottom margin is roomier because browsers print their
+     own footer (URL/page numbers) into it. */
+  @page {
+    size: A4 portrait;
+    margin: 14mm 12mm 16mm;
+  }
+
+  /* Status meaning in this app is carried by background colour (RSVP chips,
+     priority pills, payment badges). Browsers drop backgrounds by default,
+     which would print those as identical blank capsules. */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-only {
+    display: block;
+  }
+
+  /* Tables are the main multi-sheet risk: without these the header row prints
+     once and every later sheet is unlabelled columns, and rows split mid-height
+     across the page break. */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tfoot {
+    display: table-footer-group;
+  }
+  tr,
+  img {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Keep a card whole rather than letting a break slice through it. */
+  .card,
+  .stat-card,
+  .card-hover {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* …except when the card wraps a long table. A list of 40 guests can't fit on
+     one sheet, so "keep whole" just pushes the entire table to the next sheet
+     and leaves the first one half empty. Rows still avoid splitting
+     individually (see the tr rule above), which is the part that matters. */
+  .card:has(table) {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  /* A heading stranded at the foot of a sheet reads as a missing section. */
+  h1,
+  h2,
+  h3,
+  .section-title {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  p,
+  li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Columns dropped at narrow widths (Phone, Meal) are hidden by a screen
+     breakpoint, but the print viewport is paper-width — without this the
+     printed table silently loses exactly the columns someone printing a
+     contact sheet needs. */
+  .tbl th.hidden,
+  .tbl td.hidden {
+    display: table-cell !important;
+  }
+
+  /* Screen affordances that mean nothing on paper. */
+  .tbl-scroll {
+    overflow: visible !important;
+  }
+  .tbl-scroll .tbl {
+    min-width: 0 !important;
+  }
+  a[href]::after {
+    content: '';
+  }
+
+  /* Document masthead — see PrintDocumentHeader.tsx */
+  .print-doc-header {
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1.5px solid #111;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  .print-doc-titles h1 {
+    font-size: 19pt;
+    font-weight: 600;
+    margin: 0;
+    color: #111;
+  }
+  .print-doc-wedding {
+    font-size: 10.5pt;
+    margin: 2px 0 0;
+    color: #444;
+  }
+  .print-doc-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 22px;
+    margin: 8px 0 0;
+    font-size: 8.5pt;
+    color: #555;
+  }
+  .print-doc-meta div {
+    display: flex;
+    gap: 5px;
+  }
+  .print-doc-meta dt {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .print-doc-meta dd {
+    margin: 0;
   }
 }
 
@@ -1254,6 +1507,22 @@ textarea.input {
 @media (max-width: 767px) {
   .split-num-main {
     font-size: 16px;
+  }
+}
+
+/* Unsaved-changes dialog: three actions don't fit one row on phones */
+.unsaved-actions {
+  display: flex;
+  gap: 10px;
+}
+.unsaved-actions > button {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+@media (max-width: 479px) {
+  .unsaved-actions {
+    flex-direction: column-reverse;
   }
 }
 

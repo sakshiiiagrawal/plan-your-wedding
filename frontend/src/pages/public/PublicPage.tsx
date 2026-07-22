@@ -18,6 +18,7 @@ import QrCodeBlock from '../../site/QrCodeBlock';
 import { DEFAULT_QR_DESIGN_ID } from '../../site/qrDesigns';
 import type { SiteData } from '../../site/types';
 import { parseLocalDate } from '../../utils/date';
+import { DEFAULT_DOC_TITLE } from '../../utils/documentTitle';
 
 /**
  * Public renderer for every wedding page: /{slug} resolves the home page
@@ -46,6 +47,24 @@ export default function PublicPage() {
     const t = setTimeout(() => window.print(), 800);
     return () => clearTimeout(t);
   }, [wantsPrint, pagesLoading, heroLoading]);
+
+  // Browsers name the saved PDF after document.title. Left at the static
+  // index.html title, every page a couple printed from the Studio — invite,
+  // schedule, directions — saved under the same generic marketing string.
+  // Resolved here rather than below the early returns so it stays a hook.
+  const couple =
+    heroContent?.bride_name || heroContent?.groom_name
+      ? `${heroContent?.bride_name || 'Bride'} & ${heroContent?.groom_name || 'Groom'}`
+      : null;
+  const resolvedTitle = (pages ?? []).find((p) => p.page_slug === pageSlug)?.title;
+  useEffect(() => {
+    if (!couple) return;
+    // Hyphen, not em-dash: this string becomes a filename.
+    document.title = resolvedTitle ? `${couple} - ${resolvedTitle}` : couple;
+    return () => {
+      document.title = DEFAULT_DOC_TITLE;
+    };
+  }, [couple, resolvedTitle]);
 
   if (pagesLoading || heroLoading) {
     return <div className="min-h-screen" style={{ background: '#faf8f4' }} />;

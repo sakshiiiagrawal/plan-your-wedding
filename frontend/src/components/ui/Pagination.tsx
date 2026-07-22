@@ -27,7 +27,9 @@ export function Pagination({
   const endIndex = totalItems === 0 ? 0 : startIndex + itemCountOnPage - 1;
 
   return (
-    <div className="card" style={{ padding: '12px 16px' }}>
+    // Screen-only: printing expands the list past the current page, so a
+    // "1–20 of 47" footer under 47 printed rows would just contradict itself.
+    <div className="card no-print" style={{ padding: '12px 16px' }}>
       <div
         style={{
           display: 'flex',

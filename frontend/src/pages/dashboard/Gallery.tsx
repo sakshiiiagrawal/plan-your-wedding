@@ -43,7 +43,8 @@ function GalleryCard({
 
       <button
         onClick={onDelete}
-        className="absolute top-2 right-2 p-1.5 bg-surface-panel/80 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+        aria-label="Delete photo"
+        className="hover-reveal absolute top-2 right-2 p-1.5 bg-surface-panel/80 rounded-lg"
       >
         <HiOutlineTrash className="w-4 h-4 text-ink-mid" />
       </button>

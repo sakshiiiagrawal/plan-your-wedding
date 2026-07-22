@@ -3,6 +3,7 @@ import { Reorder } from 'framer-motion';
 import { HiOutlineMusicNote, HiOutlineX } from 'react-icons/hi';
 import { Link } from 'react-router-dom';
 import AudioRangeSelector from '../../../components/AudioRangeSelector';
+import DatePicker from '../../../components/ui/DatePicker';
 import { defaultForKey } from '../../../site/copy/registry';
 import QrCode from '../../../site/QrCode';
 import { QR_DESIGNS } from '../../../site/qrDesigns';
@@ -138,12 +139,11 @@ export default function ContentPanel({
               placeholder="Groom's name"
               aria-label="Groom's name"
             />
-            <input
-              type="date"
+            <DatePicker
               value={weddingDate}
-              onChange={(e) => onWeddingDate(e.target.value)}
-              className="input"
-              aria-label="Wedding date"
+              onChange={onWeddingDate}
+              placeholder="Wedding date"
+              id="site-wedding-date"
             />
             <textarea
               value={heroTagline}

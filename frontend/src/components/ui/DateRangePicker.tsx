@@ -1,13 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { DayPicker, type DateRange } from 'react-day-picker';
 import { HiOutlineCalendar, HiArrowRight } from 'react-icons/hi';
 import 'react-day-picker/style.css';
+import {
+  CalendarFooter,
+  CalendarMonthNav,
+  CalendarPanel,
+  CalendarYearGrid,
+  calendarTopRowStyle,
+  formatDisplay,
+  formatWeekdayName,
+  parseISO,
+  startOfDay,
+  toISO,
+  useCalendarPopover,
+} from './calendar';
 
 /**
  * Joined date-range picker — two triggers, one shared popup.
  * Picking the start date auto-advances the popup to check-out selection with a subtle fade.
- * Calendar grid itself is react-day-picker (keyboard nav, month boundaries, a11y built in).
+ * Grid and chrome come from ./calendar, so this matches DatePicker exactly.
  */
 interface DateRangePickerProps {
   startValue: string;
@@ -23,43 +36,6 @@ interface DateRangePickerProps {
   disabled?: boolean;
   size?: 'sm' | 'md';
   className?: string;
-}
-
-const MONTHS_SHORT = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-function parseISO(v: string): Date | null {
-  if (!v) return null;
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
-  if (!m) return null;
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return isNaN(d.getTime()) ? null : d;
-}
-
-function toISO(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function startOfDay(d: Date): number {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-}
-
-function formatDisplay(d: Date): string {
-  return `${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
 
 type Stage = 'start' | 'end';
@@ -84,81 +60,40 @@ export default function DateRangePicker({
   const minDate = useMemo(() => parseISO(min || ''), [min]);
   const maxDate = useMemo(() => parseISO(max || ''), [max]);
 
-  const [isOpen, setIsOpen] = useState(false);
   const [stage, setStage] = useState<Stage>('start');
   const [viewMonth, setViewMonth] = useState<Date>(() => startDate || new Date());
-  const [pickerStyle, setPickerStyle] = useState<React.CSSProperties>({});
-  const [animIn, setAnimIn] = useState(false);
+  const [yearMode, setYearMode] = useState(false);
   const [stageFlash, setStageFlash] = useState(false);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const startBtnRef = useRef<HTMLButtonElement>(null);
   const endBtnRef = useRef<HTMLButtonElement>(null);
-  const popupRef = useRef<HTMLDivElement>(null);
+  const {
+    isOpen,
+    openAt,
+    close: closePopover,
+    style,
+    animIn,
+    popupRef,
+    isMobile,
+  } = useCalendarPopover(wrapperRef);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    // Fade-in on next frame.
-    const t = requestAnimationFrame(() => setAnimIn(true));
-    return () => cancelAnimationFrame(t);
-  }, [isOpen]);
-
-  const positionFromTrigger = (el: HTMLElement) => {
-    const rect = el.getBoundingClientRect();
-    const popupHeight = 360;
-    const popupWidth = 320;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const top =
-      spaceBelow < popupHeight + 20 && rect.top > popupHeight + 20
-        ? rect.top - popupHeight - 8
-        : rect.bottom + 6;
-    const left = Math.min(rect.left, window.innerWidth - popupWidth - 12);
-    setPickerStyle({
-      position: 'fixed',
-      top,
-      left: Math.max(12, left),
-      width: popupWidth,
-      zIndex: 9999,
-    });
+  const close = () => {
+    closePopover();
+    setStage('start');
+    setYearMode(false);
   };
 
-  const openAt = (which: Stage) => {
+  const openStage = (which: Stage) => {
     if (disabled) return;
-    const el = which === 'start' ? startBtnRef.current : endBtnRef.current;
-    if (!el) return;
-    positionFromTrigger(el);
-    // Choose initial stage: end trigger with no start yet still starts at 'start'.
+    // The end trigger with no start yet still begins at 'start'.
     const initialStage: Stage = which === 'end' && startDate ? 'end' : 'start';
     setStage(initialStage);
     const focusDate = initialStage === 'end' ? endDate || startDate : startDate || endDate;
     setViewMonth(focusDate || new Date());
-    setAnimIn(false);
-    setIsOpen(true);
+    setYearMode(false);
+    openAt(which === 'start' ? startBtnRef.current : endBtnRef.current);
   };
-
-  const close = () => {
-    setIsOpen(false);
-    setAnimIn(false);
-    setStage('start');
-  };
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const onMouseDown = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (wrapperRef.current?.contains(t) || popupRef.current?.contains(t)) return;
-      close();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
-    };
-    document.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onMouseDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [isOpen]);
 
   const isDateDisabled = (d: Date) => {
     if (minDate && startOfDay(d) < startOfDay(minDate)) return true;
@@ -175,25 +110,42 @@ export default function DateRangePicker({
     ? { from: startDate, to: endDate ?? undefined }
     : undefined;
 
-  const handleRangeSelect = (next: DateRange | undefined) => {
-    onChange({ start: next?.from ? toISO(next.from) : '', end: next?.to ? toISO(next.to) : '' });
-    if (next?.from && next?.to) {
-      close();
-      return;
-    }
-    if (next?.from) {
+  /**
+   * Selection is driven by `stage` and the clicked day, not by react-day-picker's
+   * accumulated range: its first click on an empty range yields `{from: d, to: d}`,
+   * which would read as a finished range and close the popup on the check-in click.
+   */
+  const handleRangeSelect = (_next: DateRange | undefined, day: Date) => {
+    if (!day || isDateDisabled(day)) return;
+    const iso = toISO(day);
+
+    if (stage === 'start') {
+      // Keep an existing check-out only while it still sits after the new check-in.
+      const keptEnd = endDate && startOfDay(endDate) > startOfDay(day) ? endValue : '';
+      onChange({ start: iso, end: keptEnd });
+      if (keptEnd) {
+        close();
+        return;
+      }
       setStage('end');
       flashStage();
       return;
     }
-    setStage('start');
+
+    // Check-out on or before check-in restarts the range from that day.
+    if (!startDate || startOfDay(day) <= startOfDay(startDate)) {
+      onChange({ start: iso, end: '' });
+      setStage('end');
+      flashStage();
+      return;
+    }
+
+    onChange({ start: startValue, end: iso });
+    close();
   };
 
   const triggerPadY = size === 'sm' ? 'py-1.5' : 'py-[9px]';
   const triggerFontSize = size === 'sm' ? 12 : 13;
-
-  const startFilled = Boolean(startDate);
-  const endFilled = Boolean(endDate);
 
   const renderStageTab = (s: Stage) => {
     const isActive = stage === s;
@@ -253,26 +205,27 @@ export default function DateRangePicker({
   ) => {
     const active = isOpen && stage === which;
     const borderRadius = joinSide === 'left' ? '8px 0 0 8px' : '0 8px 8px 0';
+    // Don't echo the label back as the empty state — "CHECK-IN / Check-in" reads as a bug.
+    const emptyText =
+      label && label.trim().toLowerCase() === placeholder.trim().toLowerCase()
+        ? 'Select date'
+        : placeholder;
     return (
       <button
         ref={ref}
         type="button"
         disabled={disabled}
-        onClick={() => (isOpen && stage === which ? close() : openAt(which))}
-        className={`flex items-center gap-2 px-3 ${triggerPadY} text-left transition-colors flex-1 min-w-0`}
+        onClick={() => (isOpen && stage === which ? close() : openStage(which))}
+        className={`date-trigger flex items-center gap-2 px-3 ${triggerPadY} text-left transition-colors flex-1 min-w-0`}
         style={{
           fontSize: triggerFontSize,
-          background: 'var(--bg-raised)',
-          border: '1px solid var(--line)',
           borderRadius,
           borderRightWidth: joinSide === 'left' ? 0 : 1,
           color: filled ? 'var(--ink-high)' : 'var(--ink-dim)',
-          cursor: disabled ? 'not-allowed' : 'pointer',
           opacity: disabled ? 0.6 : 1,
-          boxShadow: active ? '0 0 0 3px var(--gold-glow)' : 'none',
-          borderColor: active ? 'var(--gold)' : 'var(--line)',
-          outline: 'none',
-          position: 'relative',
+          // Leave border/shadow to CSS when idle so :hover and :focus-visible can win —
+          // an inline value always beats a stylesheet rule.
+          ...(active && { borderColor: 'var(--gold)', boxShadow: '0 0 0 3px var(--gold-glow)' }),
           zIndex: active ? 1 : 0,
         }}
         aria-haspopup="dialog"
@@ -292,7 +245,7 @@ export default function DateRangePicker({
             </span>
           )}
           <span className="truncate" style={{ lineHeight: label ? 1.4 : 1.2 }}>
-            {value ? formatDisplay(value) : placeholder}
+            {value ? formatDisplay(value) : emptyText}
           </span>
         </span>
       </button>
@@ -300,55 +253,47 @@ export default function DateRangePicker({
   };
 
   const popup = isOpen ? (
-    <div
-      ref={popupRef}
-      style={{
-        ...pickerStyle,
-        opacity: animIn ? 1 : 0,
-        transform: animIn ? 'translateY(0)' : 'translateY(-4px)',
-        transition: 'opacity 140ms ease, transform 140ms ease',
-      }}
-      className="bg-surface-panel rounded-xl overflow-hidden"
-      onMouseDown={(e) => e.stopPropagation()}
+    <CalendarPanel
+      popupRef={popupRef}
+      style={style}
+      animIn={animIn}
+      isMobile={isMobile}
+      onClose={close}
     >
+      {/* Stage tabs */}
       <div
-        className="rounded-xl"
-        style={{
-          border: '1px solid var(--line-soft)',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.12), 0 0 0 1px var(--gold-glow)',
-          background: 'var(--bg-panel)',
-        }}
+        className="grid grid-cols-[1fr_auto_1fr] items-center gap-1 px-3 py-2.5"
+        style={calendarTopRowStyle}
       >
-        {/* Stage tabs */}
-        <div
-          className="grid grid-cols-[1fr_auto_1fr] items-center gap-1 px-3 py-2.5"
+        {renderStageTab('start')}
+        <HiArrowRight
+          className="w-3.5 h-3.5 mx-1"
           style={{
-            background: 'linear-gradient(180deg, rgba(176,141,62,0.08), rgba(176,141,62,0.02))',
-            borderBottom: '1px solid var(--line-soft)',
+            color: stage === 'end' ? 'var(--gold-deep)' : 'var(--ink-low)',
+            transition: 'color 180ms ease, transform 180ms ease',
+            transform: stage === 'end' ? 'translateX(2px)' : 'none',
           }}
-        >
-          {renderStageTab('start')}
-          <HiArrowRight
-            className="w-3.5 h-3.5 mx-1"
-            style={{
-              color: stage === 'end' ? 'var(--gold-deep)' : 'var(--ink-low)',
-              transition: 'color 180ms ease, transform 180ms ease',
-              transform: stage === 'end' ? 'translateX(2px)' : 'none',
-            }}
-          />
-          {renderStageTab('end')}
-        </div>
+        />
+        {renderStageTab('end')}
+      </div>
 
-        {/* Calendar — react-day-picker handles month nav, weekday header, and keyboard nav */}
-        <div
-          className="rdp-theme px-2 pt-1 pb-2"
-          style={
-            {
-              '--rdp-day-height': '36px',
-              '--rdp-day-width': '36px',
-            } as React.CSSProperties
-          }
-        >
+      <CalendarMonthNav
+        month={viewMonth}
+        onMonthChange={setViewMonth}
+        yearMode={yearMode}
+        onToggleYearMode={() => setYearMode((v) => !v)}
+      />
+
+      {yearMode ? (
+        <CalendarYearGrid
+          month={viewMonth}
+          onSelectYear={(y) => {
+            setViewMonth(new Date(y, viewMonth.getMonth(), 1));
+            setYearMode(false);
+          }}
+        />
+      ) : (
+        <div className="rdp-theme px-2 pt-1 pb-2">
           <DayPicker
             mode="range"
             selected={selectedRange}
@@ -356,35 +301,30 @@ export default function DateRangePicker({
             month={viewMonth}
             onMonthChange={setViewMonth}
             disabled={isDateDisabled}
+            formatters={{ formatWeekdayName }}
+            hideNavigation
             showOutsideDays
           />
         </div>
+      )}
 
-        {/* Footer */}
-        <div
-          className="flex items-center justify-between px-3 py-2"
-          style={{ borderTop: '1px solid var(--line-soft)', background: 'var(--bg-raised)' }}
-        >
+      <CalendarFooter
+        left={
           <div className="text-[11px]" style={{ color: 'var(--ink-low)' }}>
             {stage === 'start' ? 'Pick check-in date' : 'Pick check-out date'}
           </div>
-          {(startValue || endValue) && (
-            <button
-              type="button"
-              onClick={() => {
+        }
+        onClear={
+          startValue || endValue
+            ? () => {
                 onChange({ start: '', end: '' });
                 setStage('start');
                 flashStage();
-              }}
-              className="text-[11px] font-medium uppercase tracking-wider transition-colors"
-              style={{ color: 'var(--ink-low)', letterSpacing: '0.1em' }}
-            >
-              Clear
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+              }
+            : undefined
+        }
+      />
+    </CalendarPanel>
   ) : null;
 
   return (
@@ -397,10 +337,18 @@ export default function DateRangePicker({
             startDate,
             startPlaceholder,
             startLabel,
-            startFilled,
+            Boolean(startDate),
             'left',
           )}
-          {renderTrigger(endBtnRef, 'end', endDate, endPlaceholder, endLabel, endFilled, 'right')}
+          {renderTrigger(
+            endBtnRef,
+            'end',
+            endDate,
+            endPlaceholder,
+            endLabel,
+            Boolean(endDate),
+            'right',
+          )}
         </div>
         {required && (
           <>

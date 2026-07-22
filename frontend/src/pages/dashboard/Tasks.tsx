@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useViewPreference } from '../../hooks/useViewPreference';
 import { useUrlFilters } from '../../hooks/useUrlFilters';
+import { usePrintPrepare } from '../../contexts/PrintContext';
+import PrintDocumentHeader from '../../components/PrintDocumentHeader';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { Pagination } from '../../components/ui/Pagination';
 import {
@@ -17,6 +20,7 @@ import {
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import {
   useTasks,
+  tasksQuery,
   useTaskStats,
   useCreateTask,
   useUpdateTask,
@@ -467,7 +471,52 @@ export default function Tasks() {
     isFetching: tasksFetching,
   } = useTasks(queryParams);
   const tasksIsPaginated = !!tasksResponse && !Array.isArray(tasksResponse);
-  const tasks = tasksIsPaginated ? tasksResponse.items : (tasksResponse ?? []);
+  const tasksPage = tasksIsPaginated ? tasksResponse.items : (tasksResponse ?? []);
+
+  // List view pages 12 at a time, so printing used to stop at 12 tasks with no
+  // sign the rest existed. Refetch the same filters unpaginated before the
+  // dialog opens and render that; screen state is untouched. Kanban already
+  // fetches everything, so it needs no preparation.
+  const printQueryClient = useQueryClient();
+  const [printTasks, setPrintTasks] = useState<any[] | null>(null);
+
+  usePrintPrepare(async () => {
+    if (viewMode !== 'list') return;
+    // Same filters as the list view, minus paging — the API returns everything
+    // when neither page nor per_page is sent.
+    const data = await printQueryClient.fetchQuery(
+      tasksQuery({
+        ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+        ...(priorityFilter !== 'all' ? { priority: priorityFilter } : {}),
+        ...(filters.search.trim() ? { search: filters.search.trim() } : {}),
+      }),
+    );
+    setPrintTasks(Array.isArray(data) ? data : data.items);
+    // Let React commit the expanded list before the dialog snapshots the page.
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return () => setPrintTasks(null);
+  });
+
+  // Secondary net — see the equivalent note in Guests.tsx.
+  useEffect(() => {
+    const restore = () => setPrintTasks(null);
+    window.addEventListener('afterprint', restore);
+    return () => window.removeEventListener('afterprint', restore);
+  }, []);
+
+  const tasks = printTasks ?? tasksPage;
+
+  // Stamped on the printout so a filtered list can't be mistaken for the
+  // complete one.
+  const printFilterSummary = useMemo(() => {
+    if (viewMode === 'kanban') return ['Board view — all tasks'];
+    const active: string[] = [];
+    if (statusFilter !== 'all') active.push(`Status: ${statusFilter.replace('_', ' ')}`);
+    if (priorityFilter !== 'all') active.push(`Priority: ${priorityFilter}`);
+    if (filters.search.trim()) active.push(`Search: "${filters.search.trim()}"`);
+    return active;
+  }, [viewMode, statusFilter, priorityFilter, filters.search]);
+
   const { data: stats } = useTaskStats();
   const { data: members = [] } = useMembers();
   const createMutation = useCreateTask();
@@ -589,17 +638,20 @@ export default function Tasks() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <PrintDocumentHeader title="Tasks" filters={printFilterSummary} />
+
       <SectionHeader
         eyebrow="Checklist"
         title="Tasks & to-dos"
         action={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <div
               style={{
                 display: 'flex',
                 border: '1px solid var(--line)',
                 borderRadius: 8,
                 overflow: 'hidden',
+                flexShrink: 0,
               }}
             >
               {[
@@ -720,7 +772,11 @@ export default function Tasks() {
       {/* ── LIST VIEW ── */}
       {viewMode === 'list' && (
         <>
-          <div className="card" style={{ padding: 12, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          {/* Screen-only — the print masthead records the active filters. */}
+          <div
+            className="card no-print"
+            style={{ padding: 12, display: 'flex', flexWrap: 'wrap', gap: 10 }}
+          >
             <input
               type="search"
               value={searchInput}
