@@ -12,6 +12,14 @@
       "missing": [{ "type": "host", "value": "www\\.shaadi\\.diy" }],
       "dest": "/api/index"
     },
+    {
+      "src": "/(tools|guides|checklists|compare|wedding-website-templates|wedding-invitation-templates)/([a-z0-9-]+)",
+      "dest": "/$1/$2.html"
+    },
+    {
+      "src": "/(wedding-planning-app|wedding-guest-list-manager|wedding-budget-planner|whatsapp-wedding-invitation|wedding-website)",
+      "dest": "/$1.html"
+    },
     { "handle": "filesystem" },
     { "src": "/([^/]+)", "dest": "/api/index" },
     { "src": "/([^/]+)/([^/]+)", "dest": "/api/index" },

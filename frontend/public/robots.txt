@@ -1,0 +1,18 @@
+# www.shaadi.diy
+User-agent: *
+Allow: /
+
+# App & auth routes — no search value, keep them out of the index
+Disallow: /login
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /accept-invite
+Disallow: /onboard
+Disallow: /hub
+Disallow: /invites
+Disallow: /dashboard
+Disallow: /weddings/
+Disallow: /__preview
+
+Sitemap: https://www.shaadi.diy/sitemap.xml

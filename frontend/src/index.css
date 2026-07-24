@@ -91,6 +91,12 @@
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    /* Force lining figures site-wide. Cormorant Garamond (our display font)
+       defaults to old-style figures where 1/8/7 sit at different heights,
+       which reads as misaligned. Inter is already lining, so this is a no-op
+       for body text. Cascades to everything; .kpi-num etc. can still opt into
+       tabular-nums on top. */
+    font-variant-numeric: lining-nums;
   }
 
   button {

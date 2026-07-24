@@ -54,6 +54,24 @@ export const RESERVED_WEDDING_SLUGS = [
   'docs',
   'help',
   'support',
+  // Marketing/SEO surface: these first segments are prerendered static pages
+  // (see frontend/src/seo/registry.ts and scripts/prerender-seo.mjs). Reserving
+  // them means no couple can register a slug that would be shadowed by one,
+  // and og.controller.ts will never treat them as a wedding.
+  'tools',
+  'guides',
+  'checklists',
+  'compare',
+  'wedding-website-templates',
+  'wedding-invitation-templates',
+  'wedding-planning-app',
+  'wedding-guest-list-manager',
+  'wedding-budget-planner',
+  'whatsapp-wedding-invitation',
+  'wedding-website',
+  'destination-wedding-planning',
+  'wedding-vendor-management',
+  'wedding-guest-accommodation',
 ] as const;
 
 export interface PublicPageRow {

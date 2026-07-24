@@ -354,7 +354,7 @@ function VenueRoomsSection({ rooms = [] }: { rooms?: any[] }) {
                   style={{
                     flexShrink: 0,
                     color: 'var(--ink-dim)',
-                    fontVariantNumeric: 'tabular-nums',
+                    fontVariantNumeric: 'lining-nums tabular-nums',
                   }}
                 >
                   {nightly.hasOccupancy ? (

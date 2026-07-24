@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run build:app && npm run build:seo-ssr && npm run build:seo-islands && npm run build:seo",
+    "build:app": "vite build",
+    "build:seo-ssr": "vite build --ssr src/seo/entry-server.tsx --outDir dist-ssr",
+    "build:seo-islands": "vite build --config vite.seo-islands.config.ts",
+    "build:seo": "node ../scripts/prerender-seo.mjs",
     "lint": "npm run lint --prefix ..",
     "preview": "vite preview"
   },
