@@ -1094,7 +1094,10 @@ function DashboardLayoutInner() {
                     {pageHeader.nav && (
                       <nav
                         className="hidden sm:flex overflow-x-auto"
-                        style={{ gap: 2, minWidth: 0 }}
+                        // overflow-x-auto promotes overflow-y to auto (CSS spec); the tabs'
+                        // marginBottom:-1 then overflows 1px → phantom vertical scrollbar.
+                        // paddingBottom:1 absorbs the negative margin; overflowY hidden is belt-and-suspenders.
+                        style={{ gap: 2, minWidth: 0, paddingBottom: 1, overflowY: 'hidden' }}
                       >
                         {pageHeader.nav}
                       </nav>

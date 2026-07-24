@@ -344,7 +344,7 @@ export default function Expense() {
   const remainingBudget = expenseSummary?.remainingBudget ?? totalBudget - committed;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       {/* Printing captures the live DOM, so only the open tab reaches the page —
           name the document after that tab rather than "Budget" generally. */}
       <PrintDocumentHeader

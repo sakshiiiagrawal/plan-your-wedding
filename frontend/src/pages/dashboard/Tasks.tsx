@@ -637,7 +637,7 @@ export default function Tasks() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minHeight: '100%' }}>
       <PrintDocumentHeader title="Tasks" filters={printFilterSummary} />
 
       <SectionHeader

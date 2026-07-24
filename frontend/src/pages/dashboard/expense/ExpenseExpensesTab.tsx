@@ -105,7 +105,7 @@ export default function ExpenseExpensesTab({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
       <div className="flex flex-wrap gap-3 items-center">
         <SegmentedControl
           options={[

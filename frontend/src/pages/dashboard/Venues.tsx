@@ -935,6 +935,7 @@ export default function Venues() {
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gridAutoRows: '1fr',
                 gap: 16,
               }}
             >
@@ -974,6 +975,7 @@ export default function Venues() {
                           overflow: 'hidden',
                           display: 'flex',
                           flexDirection: 'column',
+                          height: '100%',
                           position: 'relative',
                         }}
                       >

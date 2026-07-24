@@ -29,7 +29,9 @@ export function Pagination({
   return (
     // Screen-only: printing expands the list past the current page, so a
     // "1–20 of 47" footer under 47 printed rows would just contradict itself.
-    <div className="card no-print" style={{ padding: '12px 16px' }}>
+    // marginTop:auto pins the control to the bottom of a full-height flex-column
+    // page root when the list is short; inert inside a plain block (card footers).
+    <div className="card no-print" style={{ marginTop: 'auto', padding: '12px 16px' }}>
       <div
         style={{
           display: 'flex',

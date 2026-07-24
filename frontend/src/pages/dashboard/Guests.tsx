@@ -41,6 +41,7 @@ import { SegmentedControl, KPICard, DrawerPanel, Checkbox } from '../../componen
 import { usePageHeader } from '../../contexts/PageHeaderContext';
 import useUnsavedChangesPrompt from '../../hooks/useUnsavedChangesPrompt';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { formatDate } from '../../utils/date';
 
 interface GuestFormData {
@@ -417,7 +418,9 @@ export default function Guests() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState<GuestFormData>(DEFAULT_FORM);
   const [editingGuest, setEditingGuest] = useState<any>(null);
-  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
+  // Delete is a single-step confirm (row trash, drawer, or bulk selection all
+  // route through this dialog). ids = who gets deleted on confirm.
+  const [confirmDelete, setConfirmDelete] = useState<{ ids: string[]; name?: string } | null>(null);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -566,27 +569,19 @@ export default function Guests() {
     });
   };
 
-  const markForDelete = (id: string) => {
-    setPendingDeletes((prev) => new Set(prev).add(id));
-  };
-
-  const unmarkForDelete = (id: string) => {
-    setPendingDeletes((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  };
-
-  const commitDeletes = async () => {
-    if (pendingDeletes.size === 0) return;
+  const runDelete = async () => {
+    if (!confirmDelete || confirmDelete.ids.length === 0) return;
+    const { ids } = confirmDelete;
     setIsDeletingAll(true);
     try {
-      await bulkDeleteMutation.mutateAsync([...pendingDeletes]);
-      toast.success(
-        `${pendingDeletes.size} guest${pendingDeletes.size > 1 ? 's' : ''} deleted successfully!`,
-      );
-      setPendingDeletes(new Set());
+      await bulkDeleteMutation.mutateAsync(ids);
+      toast.success(`${ids.length} guest${ids.length > 1 ? 's' : ''} deleted successfully!`);
+      setSelected((prev) => {
+        const next = new Set(prev);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      });
+      setConfirmDelete(null);
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.message || error?.response?.data?.error || 'Failed to delete guests';
@@ -845,7 +840,7 @@ export default function Guests() {
   const declined = s?.declined || 0;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       {tab === 'conversations' && <ConversationsTab guests={guests} />}
 
       {tab === 'list' && (
@@ -954,7 +949,6 @@ export default function Guests() {
             </thead>
             <tbody>
               {rows.map((guest: any) => {
-                const isMarkedForDelete = pendingDeletes.has(guest.id);
                 const rsvpVariant =
                   guest.rsvp_status === 'confirmed'
                     ? 'ok'
@@ -970,8 +964,8 @@ export default function Guests() {
                 return (
                   <tr
                     key={guest.id}
-                    onClick={() => !isMarkedForDelete && setSelectedGuest(guest)}
-                    className={isMarkedForDelete ? 'opacity-40 line-through' : 'cursor-pointer'}
+                    onClick={() => setSelectedGuest(guest)}
+                    className="cursor-pointer"
                   >
                     <td onClick={(e) => e.stopPropagation()} style={{ width: 36 }} className="no-print">
                       <Checkbox
@@ -1033,47 +1027,39 @@ export default function Guests() {
                     </td>
                     <td onClick={(e) => e.stopPropagation()} className="no-print">
                       <div className="flex gap-1">
-                        {!isMarkedForDelete ? (
-                          <>
-                            <button
-                              onClick={() => handleEdit(guest)}
-                              style={{
-                                padding: '5px 7px',
-                                borderRadius: 6,
-                                color: 'var(--ink-dim)',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                              }}
-                              onMouseEnter={(e) => {
-                                (e.currentTarget as HTMLElement).style.background =
-                                  'var(--gold-glow)';
-                                (e.currentTarget as HTMLElement).style.color = 'var(--gold-deep)';
-                              }}
-                              onMouseLeave={(e) => {
-                                (e.currentTarget as HTMLElement).style.background = 'transparent';
-                                (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)';
-                              }}
-                              title="Edit guest"
-                            >
-                              <HiOutlinePencil className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => markForDelete(guest.id)}
-                              className="p-1.5 hover:bg-red-50 rounded-lg text-red-500"
-                              title="Delete guest"
-                            >
-                              <HiOutlineTrash className="w-4 h-4" />
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => unmarkForDelete(guest.id)}
-                            className="p-1.5 hover:bg-surface-highest rounded-lg text-ink-low"
-                            title="Undo deletion"
-                          >
-                            <HiOutlineX className="w-4 h-4" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleEdit(guest)}
+                          style={{
+                            padding: '5px 7px',
+                            borderRadius: 6,
+                            color: 'var(--ink-dim)',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLElement).style.background = 'var(--gold-glow)';
+                            (e.currentTarget as HTMLElement).style.color = 'var(--gold-deep)';
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLElement).style.background = 'transparent';
+                            (e.currentTarget as HTMLElement).style.color = 'var(--ink-dim)';
+                          }}
+                          title="Edit guest"
+                        >
+                          <HiOutlinePencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            setConfirmDelete({
+                              ids: [guest.id],
+                              name: `${guest.first_name} ${guest.last_name || ''}`.trim(),
+                            })
+                          }
+                          className="p-1.5 hover:bg-red-50 rounded-lg text-red-500"
+                          title="Delete guest"
+                        >
+                          <HiOutlineTrash className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1208,36 +1194,6 @@ export default function Guests() {
                   </td>
                 </tr>
               )}
-              {pendingDeletes.size > 0 && pendingRows.length === 0 && (
-                <tr className="bg-red-50/60">
-                  <td colSpan={7} className="px-4 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm text-red-700 font-medium">
-                        {pendingDeletes.size} guest{pendingDeletes.size > 1 ? 's' : ''} marked for
-                        deletion
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setPendingDeletes(new Set())}
-                          className="btn-outline text-sm py-1.5 px-3"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={commitDeletes}
-                          disabled={isDeletingAll}
-                          className="text-sm py-1.5 px-4 flex items-center gap-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50"
-                        >
-                          <HiOutlineTrash className="w-4 h-4" />
-                          {isDeletingAll
-                            ? 'Deleting...'
-                            : `Delete ${pendingDeletes.size} Guest${pendingDeletes.size > 1 ? 's' : ''}`}
-                        </button>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
@@ -1282,6 +1238,14 @@ export default function Guests() {
                 {isBulkMarking ? 'Marking…' : 'Mark needs stay'}
               </button>
               <button
+                onClick={() => setConfirmDelete({ ids: [...selected] })}
+                className="text-sm py-1.5 px-3 flex items-center gap-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                title="Delete the selected guests"
+              >
+                <HiOutlineTrash className="w-4 h-4" />
+                Delete
+              </button>
+              <button
                 onClick={() => setComposerOpen(true)}
                 disabled={selectedWithPhone.length === 0}
                 className="btn-primary flex items-center gap-1.5 text-sm py-1.5 px-4 disabled:opacity-50"
@@ -1315,12 +1279,35 @@ export default function Guests() {
               handleEdit(g);
             }}
             onDelete={(g) => {
-              markForDelete(g.id);
+              setConfirmDelete({
+                ids: [g.id],
+                name: `${g.first_name} ${g.last_name || ''}`.trim(),
+              });
               setSelectedGuest(null);
             }}
           />
         )}
       </DrawerPanel>
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Delete guest?"
+        message={
+          confirmDelete?.name
+            ? `Delete ${confirmDelete.name}? This can't be undone.`
+            : `Delete ${confirmDelete?.ids.length ?? 0} selected guest${
+                (confirmDelete?.ids.length ?? 0) === 1 ? '' : 's'
+              }? This can't be undone.`
+        }
+        confirmLabel={
+          confirmDelete && confirmDelete.ids.length > 1
+            ? `Delete ${confirmDelete.ids.length}`
+            : 'Delete'
+        }
+        isPending={isDeletingAll}
+        onConfirm={runDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
 
       {showEditModal && (
         <Portal>
